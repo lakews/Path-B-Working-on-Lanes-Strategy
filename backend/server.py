@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from database import connect_db, close_db, get_db
 from config import config
@@ -339,6 +339,62 @@ async def get_analytics():
         return JSONResponse(
             status_code=500,
             content={"message": f"Failed to get analytics: {str(e)}"}
+        )
+
+@api_router.get("/trades/stats")
+async def get_trade_stats():
+    """Get trade frequency statistics for different time windows"""
+    db = get_db()
+    
+    try:
+        now = datetime.now(timezone.utc)
+        
+        # Define time windows
+        windows = {
+            "10min": now - timedelta(minutes=10),
+            "30min": now - timedelta(minutes=30),
+            "1hr": now - timedelta(hours=1),
+            "24hr": now - timedelta(hours=24)
+        }
+        
+        # Count trades for each window
+        stats = {}
+        for window_name, window_start in windows.items():
+            count = await db.trades.count_documents({
+                "timestamp": {"$gte": window_start.isoformat()}
+            })
+            stats[window_name] = count
+        
+        # Get live (currently executing) trades count
+        live_trades = await db.trades.count_documents({
+            "status": {"$in": ["pending", "executing", "open"]}
+        })
+        
+        # Get total P&L
+        pnl_pipeline = [
+            {"$group": {"_id": None, "total_pnl": {"$sum": "$pnl"}}}
+        ]
+        pnl_result = await db.trades.aggregate(pnl_pipeline).to_list(length=1)
+        total_pnl = pnl_result[0]["total_pnl"] if pnl_result else 0.0
+        
+        # Get P&L percentage (relative to initial capital)
+        pnl_pct = (total_pnl / config.INITIAL_CAPITAL) * 100 if config.INITIAL_CAPITAL > 0 else 0
+        
+        return {
+            "live_trades": live_trades,
+            "trades_10min": stats["10min"],
+            "trades_30min": stats["30min"],
+            "trades_1hr": stats["1hr"],
+            "trades_24hr": stats["24hr"],
+            "total_pnl": total_pnl,
+            "pnl_pct": pnl_pct,
+            "timestamp": now.isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting trade stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get trade stats: {str(e)}"}
         )
 @api_router.post("/config/update")
 async def update_config(config_update: TradingConfig):
