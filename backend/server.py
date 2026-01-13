@@ -231,6 +231,7 @@ async def get_analytics():
             status_code=500,
             content={"message": f"Failed to get analytics: {str(e)}"}
         )
+@api_router.post("/config/update")
 async def update_config(config_update: TradingConfig):
     """Update trading configuration"""
     try:
@@ -245,6 +246,14 @@ async def update_config(config_update: TradingConfig):
         
         if config_update.max_position_size_pct:
             os.environ['MAX_POSITION_SIZE_PCT'] = str(config_update.max_position_size_pct)
+        
+        if config_update.kelly_fraction is not None:
+            # Validate Kelly fraction is within bounds
+            kelly = max(config.MIN_KELLY_FRACTION, min(config.MAX_KELLY_FRACTION, config_update.kelly_fraction))
+            os.environ['KELLY_FRACTION'] = str(kelly)
+        
+        if config_update.max_drawdown_pct:
+            os.environ['MAX_DRAWDOWN_PCT'] = str(config_update.max_drawdown_pct)
         
         return {"message": "Configuration updated. Restart bot for changes to take effect."}
     except Exception as e:
