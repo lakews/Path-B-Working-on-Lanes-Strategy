@@ -9,6 +9,7 @@ from ml.sharp_detector import SharpDetector
 from strategies.delta_neutral import DeltaNeutralStrategy
 from strategies.volatility_exploitation import VolatilityExploitationStrategy
 from strategies.alpha_directional import AlphaDirectionalStrategy
+from strategies.arbitrage import MultiMarketArbitrageStrategy
 from trading.position_manager import PositionManager
 from trading.risk_controller import RiskController
 from config import config
