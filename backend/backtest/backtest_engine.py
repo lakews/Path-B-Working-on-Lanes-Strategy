@@ -448,6 +448,14 @@ class BacktestEngine:
         try:
             import random
             
+            # Log entry to function
+            market_id = market_data.get('market_id') or market_data.get('id')
+            price = market_data.get('yes_price', 0.5)
+            
+            # Log 1% of entries for debugging
+            if random.random() < 0.01:
+                logger.info(f"Strategy called: {strategy_name}, market={market_id[:8] if market_id else 'None'}, price={price}, positions={len(self.positions)}")
+            
             strategy_map = {
                 "delta_neutral": self.delta_neutral_strategy,
                 "volatility_exploitation": self.volatility_strategy,
