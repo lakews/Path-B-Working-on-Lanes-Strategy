@@ -468,13 +468,10 @@ class BacktestEngine:
             if price < 0.05 or price > 0.95:
                 return None
             
-            # Determine if we should trade based on RL action
-            should_trade = rl_action in ["BUY_SMALL", "BUY_MEDIUM", "BUY_LARGE"]
-            
-            # For backtesting, be more aggressive - 40% base chance to trade
-            if not should_trade:
-                if random.random() > 0.40:
-                    return None
+            # For backtesting: simplified decision - always try to trade with some probability
+            # 50% chance to enter a trade to generate data
+            if random.random() > 0.50:
+                return None
             
             # Check if we can afford a position
             available_capital = self.current_capital * 0.8
