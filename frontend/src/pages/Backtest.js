@@ -176,6 +176,41 @@ const Backtest = () => {
         </div>
       </div>
 
+      {/* Historical Data Summary */}
+      {historicalStats && (
+        <div className="rounded-xl bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-xs text-blue-400/80 uppercase">Data Range</p>
+                <p className="text-sm text-white font-medium">
+                  {historicalStats.oldest_snapshot ? new Date(historicalStats.oldest_snapshot).toLocaleDateString() : 'N/A'} - {historicalStats.newest_snapshot ? new Date(historicalStats.newest_snapshot).toLocaleDateString() : 'N/A'}
+                </p>
+              </div>
+              <div className="w-px h-8 bg-white/10" />
+              <div>
+                <p className="text-xs text-blue-400/80 uppercase">Unique Markets</p>
+                <p className="text-sm text-white font-medium">{historicalStats.unique_markets || 0}</p>
+              </div>
+              <div className="w-px h-8 bg-white/10" />
+              <div>
+                <p className="text-xs text-blue-400/80 uppercase">Categories</p>
+                <div className="flex gap-2 mt-1">
+                  {historicalStats.category_distribution && Object.entries(historicalStats.category_distribution).slice(0,4).map(([cat, count]) => (
+                    <span key={cat} className="text-xs px-2 py-0.5 rounded bg-white/10 text-white/70">
+                      {cat}: {count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="text-xs text-blue-400">
+              {historicalStats.collector_running ? '● Collecting' : '○ Idle'}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Progress Bar (when running) */}
       {backtestRunning && (
         <div className="rounded-xl bg-white/5 border border-white/10 p-4">
