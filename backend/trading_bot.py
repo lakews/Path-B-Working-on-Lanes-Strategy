@@ -30,6 +30,7 @@ class ApexTrader:
         self.delta_neutral_strategy = DeltaNeutralStrategy()
         self.volatility_strategy = VolatilityExploitationStrategy()
         self.alpha_strategy = AlphaDirectionalStrategy()
+        self.arbitrage_strategy = MultiMarketArbitrageStrategy()
         
         self.position_mgr = PositionManager()
         self.risk_ctrl = RiskController()
