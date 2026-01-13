@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from datetime import datetime, timezone, timedelta
 from database import get_db
 import numpy as np
