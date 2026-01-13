@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from database import connect_db, close_db, get_db
 from config import config
 from trading_bot import ApexTrader
+from services.performance_analytics import PerformanceAnalytics
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
