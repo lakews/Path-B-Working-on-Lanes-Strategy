@@ -611,15 +611,15 @@ class BacktestEngine:
                     "win_rate": float(perf["wins"] / trades) if trades > 0 else 0.0
                 }
             
-            # Asset class results
+            # Asset class results - convert numpy types
             asset_class_results = {}
             for category, perf in self.asset_class_performance.items():
                 trades = perf["trades"]
                 asset_class_results[category] = {
-                    "trades": trades,
-                    "wins": perf["wins"],
-                    "pnl": perf["pnl"],
-                    "win_rate": perf["wins"] / trades if trades > 0 else 0
+                    "trades": int(trades),
+                    "wins": int(perf["wins"]),
+                    "pnl": float(perf["pnl"]),
+                    "win_rate": float(perf["wins"] / trades) if trades > 0 else 0.0
                 }
             
             return {
