@@ -246,7 +246,7 @@ class RLAdaptiveEngine:
                 "id": str(uuid.uuid4()),
                 "market_id": market_id,
                 "state": state.tolist(),
-                "action_idx": action_idx,
+                "action_idx": int(action_idx),  # Convert numpy int64 to Python int
                 "timestamp": datetime.now(timezone.utc).isoformat()
             })
         except Exception as e:
