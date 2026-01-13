@@ -110,6 +110,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/markets" element={<Markets />} />
             <Route path="/positions" element={<Positions />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/config" element={<Configuration />} />
           </Routes>
         </main>
