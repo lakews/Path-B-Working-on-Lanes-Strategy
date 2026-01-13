@@ -309,23 +309,114 @@ async def get_trades(limit: int = 100):
         )
 
 @api_router.get("/markets")
-async def get_markets(limit: int = 50):
-    """Get active markets"""
+async def get_markets(limit: int = 50, category: str = None):
+    """Get active markets from Polymarket or historical data"""
     db = get_db()
     
     try:
-        markets = await db.markets.find(
-            {},
-            {"_id": 0}
-        ).sort("volume", -1).limit(limit).to_list(length=limit)
+        # First try to get fresh markets from Polymarket API
+        from data.polymarket_api import PolymarketAPI
         
-        return {"markets": markets, "count": len(markets)}
+        try:
+            async with PolymarketAPI() as api:
+                raw_markets = await api.get_markets(limit=limit)
+                
+                if raw_markets:
+                    markets = []
+                    for m in raw_markets:
+                        # Extract prices from tokens
+                        yes_price = 0.5
+                        no_price = 0.5
+                        tokens = m.get('tokens', [])
+                        if tokens and len(tokens) >= 2:
+                            yes_price = float(tokens[0].get('price', 0.5) or 0.5)
+                            no_price = float(tokens[1].get('price', 0.5) or 0.5)
+                        
+                        # Categorize market
+                        question = m.get('question', '')
+                        cat = categorize_market(question)
+                        
+                        if category and cat.lower() != category.lower():
+                            continue
+                        
+                        markets.append({
+                            "id": m.get('condition_id') or m.get('id'),
+                            "question": question,
+                            "category": cat,
+                            "yes_price": yes_price,
+                            "no_price": no_price,
+                            "volume": float(m.get('volume', 0) or 0),
+                            "liquidity": float(m.get('liquidity', 0) or 0),
+                            "end_date": m.get('end_date_iso') or m.get('endDate'),
+                            "active": m.get('active', True)
+                        })
+                    
+                    return {"markets": markets[:limit], "count": len(markets[:limit]), "source": "polymarket_api"}
+        except Exception as api_error:
+            logger.warning(f"Polymarket API failed, falling back to historical data: {api_error}")
+        
+        # Fallback: Get unique markets from historical data
+        pipeline = [
+            {"$sort": {"timestamp": -1}},
+            {"$group": {
+                "_id": "$market_id",
+                "question": {"$first": "$question"},
+                "category": {"$first": "$category"},
+                "yes_price": {"$first": "$yes_price"},
+                "no_price": {"$first": "$no_price"},
+                "volume": {"$first": "$volume"},
+                "liquidity": {"$first": "$liquidity"},
+                "end_date": {"$first": "$end_date"},
+                "timestamp": {"$first": "$timestamp"}
+            }},
+            {"$limit": limit}
+        ]
+        
+        if category:
+            pipeline.insert(0, {"$match": {"category": category}})
+        
+        cursor = db.historical_data.aggregate(pipeline)
+        historical_markets = await cursor.to_list(length=limit)
+        
+        markets = [{
+            "id": m["_id"],
+            "question": m.get("question", ""),
+            "category": m.get("category", "finance"),
+            "yes_price": m.get("yes_price", 0.5),
+            "no_price": m.get("no_price", 0.5),
+            "volume": m.get("volume", 0),
+            "liquidity": m.get("liquidity", 0),
+            "end_date": m.get("end_date"),
+            "active": True
+        } for m in historical_markets]
+        
+        return {"markets": markets, "count": len(markets), "source": "historical_data"}
     except Exception as e:
         logger.error(f"Error getting markets: {e}")
         return JSONResponse(
             status_code=500,
             content={"message": f"Failed to get markets: {str(e)}"}
         )
+
+def categorize_market(question: str) -> str:
+    """Categorize market based on question text"""
+    question_lower = question.lower()
+    
+    crypto_keywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'coin', 'token', 'solana', 'sol']
+    sports_keywords = ['nfl', 'nba', 'mlb', 'soccer', 'football', 'game', 'championship', 'super bowl', 'world series', 'playoffs', 'win', 'vs']
+    politics_keywords = ['election', 'president', 'congress', 'senate', 'vote', 'political', 'trump', 'biden', 'governor', 'democrat', 'republican']
+    entertainment_keywords = ['oscar', 'grammy', 'emmy', 'movie', 'film', 'album', 'box office', 'celebrity']
+    
+    if any(kw in question_lower for kw in crypto_keywords):
+        return "crypto"
+    elif any(kw in question_lower for kw in sports_keywords):
+        return "sports"
+    elif any(kw in question_lower for kw in politics_keywords):
+        return "politics"
+    elif any(kw in question_lower for kw in entertainment_keywords):
+        return "entertainment"
+    else:
+        return "finance"
 
 @api_router.get("/analytics")
 async def get_analytics():
