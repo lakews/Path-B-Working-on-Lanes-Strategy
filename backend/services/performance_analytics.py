@@ -144,7 +144,10 @@ class PerformanceAnalytics:
                 market_id = trade.get('market_id')
                 
                 # Fetch market to get category
-                market = await self.db.markets.find_one({"id": market_id})
+                market = await self.db.markets.find_one(
+                    {"id": market_id},
+                    {"category": 1, "_id": 0}
+                )
                 category = market.get('category', 'unknown') if market else 'unknown'
                 
                 category_stats[category]['trades'].append(trade)
