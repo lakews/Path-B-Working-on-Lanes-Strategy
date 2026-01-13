@@ -15,6 +15,7 @@ from trading_bot import ApexTrader
 from services.performance_analytics import PerformanceAnalytics
 from backtest.backtest_engine import BacktestEngine
 from data.historical_collector import HistoricalDataCollector
+from ml.rl_engine import RLAdaptiveEngine
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -37,6 +38,7 @@ trading_bot: Optional[ApexTrader] = None
 analytics_engine: Optional[PerformanceAnalytics] = None
 backtest_engine: Optional[BacktestEngine] = None
 historical_collector: Optional[HistoricalDataCollector] = None
+rl_engine: Optional[RLAdaptiveEngine] = None
 trading_mode: str = "stopped"  # "stopped", "live", "backtest"
 
 # Models
