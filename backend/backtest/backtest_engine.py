@@ -126,6 +126,12 @@ class BacktestEngine:
         """Force close all open positions at current prices (for end of backtest)"""
         import random
         
+        logger.info(f"Closing all positions. Open positions: {len(self.positions)}")
+        
+        if not self.positions:
+            logger.warning("No open positions to close")
+            return
+        
         for market_id, position in list(self.positions.items()):
             entry_price = position['entry_price']
             shares = position['shares']
