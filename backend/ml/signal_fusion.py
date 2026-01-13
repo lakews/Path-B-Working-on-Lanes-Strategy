@@ -181,6 +181,25 @@ class SignalFusionEngine:
             logger.error(f"Error determining action: {e}")
             return 'WAIT', 'NONE'
     
+    def _heuristic_sentiment(self, market_data: Dict) -> Tuple[float, float]:
+        """Fast heuristic sentiment for backtesting (no LLM calls)"""
+        try:
+            # Use price as sentiment proxy - prices reflect market sentiment
+            yes_price = market_data.get('yes_price', 0.5)
+            no_price = market_data.get('no_price', 0.5)
+            volume = market_data.get('volume', 0)
+            
+            # Price-based sentiment
+            sentiment = yes_price  # Market's implied probability
+            
+            # Volume-adjusted confidence
+            confidence = min(volume / 10000, 0.8) if volume > 0 else 0.3
+            
+            return sentiment, confidence
+        except Exception as e:
+            logger.error(f"Error in heuristic sentiment: {e}")
+            return 0.5, 0.3
+    
     async def _store_fused_signal(self, market_id: str, result: Dict):
         """Store fused signal in database"""
         try:
