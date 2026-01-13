@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 from database import get_db
 from ml.signal_fusion import SignalFusionEngine
 from ml.kelly_sharpe_optimizer import KellySharpeOptimizer
+from ml.rl_engine import RLAdaptiveEngine
 from strategies.delta_neutral import DeltaNeutralStrategy
 from strategies.volatility_exploitation import VolatilityExploitationStrategy
 from strategies.alpha_directional import AlphaDirectionalStrategy
@@ -21,6 +22,7 @@ class BacktestEngine:
         self.db = get_db()
         self.signal_fusion = SignalFusionEngine()
         self.kelly_optimizer = KellySharpeOptimizer()
+        self.rl_engine = RLAdaptiveEngine()  # Add RL engine for learning
         
         self.delta_neutral_strategy = DeltaNeutralStrategy()
         self.volatility_strategy = VolatilityExploitationStrategy()
@@ -37,13 +39,18 @@ class BacktestEngine:
         self.trades = []
         self.equity_curve = []
         
+        # Performance tracking by strategy and asset class
+        self.strategy_performance = {}
+        self.asset_class_performance = {}
+        self.data_summary = {}
+        
     async def run_backtest(
         self,
         start_date: str,
         end_date: str,
         strategies: List[str] = None
     ) -> Dict:
-        """Run backtest on historical data"""
+        """Run backtest on historical data with RL learning"""
         try:
             self.running = True
             self.backtest_id = str(uuid.uuid4())
@@ -55,14 +62,20 @@ class BacktestEngine:
             self.positions = {}
             self.trades = []
             self.equity_curve = []
+            self.strategy_performance = {s: {"trades": 0, "wins": 0, "pnl": 0.0, "positions": []} for s in (strategies or [])}
+            self.asset_class_performance = {}
             
-            # Get historical market data
-            historical_markets = await self._get_historical_markets(start_date, end_date)
+            # Load RL model if exists
+            await self.rl_engine.load_model()
+            
+            # Get historical market data with summary
+            historical_markets, self.data_summary = await self._get_historical_markets_with_summary(start_date, end_date)
             
             if not historical_markets:
                 return {
                     "error": "No historical data available for selected date range",
-                    "backtest_id": self.backtest_id
+                    "backtest_id": self.backtest_id,
+                    "data_summary": self.data_summary
                 }
             
             logger.info(f"Processing {len(historical_markets)} historical market snapshots")
@@ -72,7 +85,7 @@ class BacktestEngine:
                 if not self.running:
                     break
                 
-                await self._process_snapshot(market_snapshot, strategies)
+                await self._process_snapshot_with_learning(market_snapshot, strategies)
                 
                 # Record equity point
                 self.equity_curve.append({
@@ -85,13 +98,17 @@ class BacktestEngine:
                 if idx % 100 == 0:
                     logger.info(f"Backtest progress: {idx}/{len(historical_markets)} snapshots")
             
+            # Train RL from replay buffer after backtest
+            await self.rl_engine.train_from_replay()
+            await self.rl_engine.save_model()
+            
             # Calculate final metrics
             results = await self._calculate_backtest_results()
             
             # Store backtest results
             await self._store_backtest_results(results)
             
-            logger.info(f"Backtest {self.backtest_id} completed")
+            logger.info(f"Backtest {self.backtest_id} completed - RL model updated")
             
             return results
             
@@ -106,16 +123,112 @@ class BacktestEngine:
         self.running = False
         logger.info(f"Backtest {self.backtest_id} stopped")
     
-    async def _process_snapshot(self, market_snapshot: Dict, enabled_strategies: List[str]):
-        """Process a single market snapshot"""
+    async def _get_historical_markets_with_summary(self, start_date: str, end_date: str):
+        """Get historical markets with data summary"""
+        try:
+            # Query historical data
+            cursor = self.db.historical_data.find(
+                {
+                    "timestamp": {
+                        "$gte": start_date,
+                        "$lte": end_date
+                    }
+                },
+                {"_id": 0}
+            ).sort("timestamp", 1)
+            
+            markets = await cursor.to_list(length=50000)
+            
+            # Build data summary
+            if markets:
+                categories = {}
+                for m in markets:
+                    cat = m.get("category", "unknown")
+                    if cat not in categories:
+                        categories[cat] = 0
+                    categories[cat] += 1
+                
+                timestamps = [m.get("timestamp") for m in markets if m.get("timestamp")]
+                
+                summary = {
+                    "total_snapshots": len(markets),
+                    "unique_markets": len(set(m.get("market_id") for m in markets if m.get("market_id"))),
+                    "date_range": {
+                        "start": min(timestamps) if timestamps else None,
+                        "end": max(timestamps) if timestamps else None
+                    },
+                    "categories": categories,
+                    "avg_volume": sum(m.get("volume", 0) for m in markets) / len(markets) if markets else 0,
+                    "avg_liquidity": sum(m.get("liquidity", 0) for m in markets) / len(markets) if markets else 0
+                }
+            else:
+                summary = {"total_snapshots": 0, "unique_markets": 0, "date_range": {}, "categories": {}}
+            
+            # Transform to market data format
+            market_data_list = []
+            for m in markets:
+                market_data_list.append({
+                    "timestamp": m.get("timestamp"),
+                    "market_data": {
+                        "id": m.get("market_id"),
+                        "question": m.get("question"),
+                        "category": m.get("category"),
+                        "yes_price": m.get("yes_price", 0.5),
+                        "no_price": m.get("no_price", 0.5),
+                        "volume": m.get("volume", 0),
+                        "liquidity": m.get("liquidity", 0)
+                    }
+                })
+            
+            return market_data_list, summary
+            
+        except Exception as e:
+            logger.error(f"Error getting historical markets: {e}")
+            return [], {"error": str(e)}
+    
+    async def _process_snapshot_with_learning(self, market_snapshot: Dict, enabled_strategies: List[str]):
+        """Process a single market snapshot with RL learning"""
         try:
             market_data = market_snapshot.get("market_data", {})
             
             if not market_data:
                 return
             
+            category = market_data.get("category", "unknown")
+            
+            # Initialize asset class tracking
+            if category not in self.asset_class_performance:
+                self.asset_class_performance[category] = {"trades": 0, "wins": 0, "pnl": 0.0}
+            
             # Update existing positions with current prices
-            await self._update_positions(market_data)
+            await self._update_positions_with_tracking(market_data)
+            
+            # Get signals for RL learning
+            signals = await self.signal_fusion.get_fused_signals({
+                "market_id": market_data.get("id"),
+                "yes_price": market_data.get("yes_price", 0.5),
+                "no_price": market_data.get("no_price", 0.5),
+                "volume": market_data.get("volume", 0),
+                "liquidity": market_data.get("liquidity", 0)
+            })
+            
+            # Get RL action recommendation
+            rl_action, rl_confidence = await self.rl_engine.get_optimal_action(market_data, signals)
+            
+            # Try strategies with tracking
+            if enabled_strategies:
+                for strategy_name in enabled_strategies:
+                    strategy_result = await self._run_strategy_with_tracking(
+                        strategy_name, market_data, category, rl_action, rl_confidence
+                    )
+                    
+                    # Update RL with reward from strategy result
+                    if strategy_result and strategy_result.get("pnl"):
+                        reward = strategy_result["pnl"] / self.initial_capital  # Normalize reward
+                        await self.rl_engine.update_from_reward(market_data.get("id"), reward)
+                    
+        except Exception as e:
+            logger.error(f"Error processing snapshot: {e}")
             
             # Try strategies
             if not enabled_strategies or "delta_neutral" in enabled_strategies:
