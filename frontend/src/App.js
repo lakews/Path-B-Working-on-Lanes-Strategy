@@ -33,6 +33,7 @@ function App() {
       const response = await axios.get(`${API}/status`);
       setStatus(response.data);
       setBotRunning(response.data.bot_running);
+      setTradingMode(response.data.trading_mode || 'stopped');
     } catch (e) {
       console.error('Error fetching status:', e);
     }
