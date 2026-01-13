@@ -540,6 +540,9 @@ class BacktestEngine:
             self.strategy_performance[strategy]["pnl"] += pnl
             if pnl > 0:
                 self.strategy_performance[strategy]["wins"] += 1
+        else:
+            # Initialize if strategy wasn't pre-registered
+            self.strategy_performance[strategy] = {"trades": 1, "wins": 1 if pnl > 0 else 0, "pnl": pnl}
         
         # Update asset class performance  
         if category in self.asset_class_performance:
