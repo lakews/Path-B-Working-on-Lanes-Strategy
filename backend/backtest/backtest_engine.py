@@ -1,6 +1,9 @@
 import logging
 import asyncio
-from typing import Dict, List, Optional
+import uuid
+import random
+import numpy as np
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from database import get_db
 from ml.signal_fusion import SignalFusionEngine
@@ -11,608 +14,578 @@ from strategies.volatility_exploitation import VolatilityExploitationStrategy
 from strategies.alpha_directional import AlphaDirectionalStrategy
 from strategies.arbitrage import MultiMarketArbitrageStrategy
 from config import config
-import uuid
 
 logger = logging.getLogger(__name__)
 
 class BacktestEngine:
-    """Backtesting engine for testing strategies on historical data"""
+    """High-Frequency Backtesting Engine with Adaptive Position Management"""
     
     def __init__(self):
         self.db = get_db()
-        # Use backtest_mode=True to skip LLM calls for faster execution
         self.signal_fusion = SignalFusionEngine(backtest_mode=True)
         self.kelly_optimizer = KellySharpeOptimizer()
         self.rl_engine = RLAdaptiveEngine()
         
-        self.delta_neutral_strategy = DeltaNeutralStrategy()
-        self.volatility_strategy = VolatilityExploitationStrategy()
-        self.alpha_strategy = AlphaDirectionalStrategy()
-        self.arbitrage_strategy = MultiMarketArbitrageStrategy()
+        # Strategies
+        self.strategies = {
+            "delta_neutral": DeltaNeutralStrategy(),
+            "volatility_exploitation": VolatilityExploitationStrategy(),
+            "alpha_directional": AlphaDirectionalStrategy(),
+            "arbitrage": MultiMarketArbitrageStrategy()
+        }
         
         self.running = False
         self.backtest_id = None
         
-        # Backtest state - use higher capital for meaningful backtests
+        # Backtest state
         self.initial_capital = max(config.INITIAL_CAPITAL, 1000)
         self.current_capital = self.initial_capital
-        self.positions = {}
-        self.trades = []
-        self.equity_curve = []
+        self.positions: Dict[str, Dict] = {}
+        self.trades: List[Dict] = []
+        self.equity_curve: List[Dict] = []
         
-        # Performance tracking by strategy and asset class
-        self.strategy_performance = {}
-        self.asset_class_performance = {}
-        self.data_summary = {}
+        # Performance tracking
+        self.strategy_performance: Dict[str, Dict] = {}
+        self.asset_class_performance: Dict[str, Dict] = {}
         
+        # HFT Parameters
+        self.max_positions = 20
+        self.position_timeout_snapshots = 50  # Close after N snapshots if not exited
+        self.min_profit_target = 0.02  # 2% profit target
+        self.max_loss_limit = 0.03  # 3% stop loss
+        self.trailing_stop_trigger = 0.015  # Start trailing after 1.5% profit
+        self.trailing_stop_distance = 0.01  # 1% trailing stop distance
+    
     async def run_backtest(
         self,
         start_date: str,
         end_date: str,
-        strategies: List[str] = None
+        strategies: Optional[List[str]] = None
     ) -> Dict:
-        """Run backtest on historical data with RL learning"""
+        """Run backtest with HFT-style position management"""
         try:
             self.running = True
             self.backtest_id = str(uuid.uuid4())
-            
-            logger.info(f"Starting backtest {self.backtest_id}: {start_date} to {end_date}")
             
             # Reset state
             self.current_capital = self.initial_capital
             self.positions = {}
             self.trades = []
             self.equity_curve = []
-            self.strategy_performance = {s: {"trades": 0, "wins": 0, "pnl": 0.0, "positions": []} for s in (strategies or [])}
+            self.strategy_performance = {s: {"trades": 0, "wins": 0, "pnl": 0.0} for s in (strategies or [])}
             self.asset_class_performance = {}
             
-            # Load RL model if exists
-            await self.rl_engine.load_model()
+            logger.info(f"Starting HFT backtest {self.backtest_id}: {start_date} to {end_date}")
             
-            # Get historical market data with summary
-            historical_markets, self.data_summary = await self._get_historical_markets_with_summary(start_date, end_date)
+            # Get historical data grouped by market
+            market_timeseries = await self._get_market_timeseries(start_date, end_date)
             
-            if not historical_markets:
-                return {
-                    "error": "No historical data available for selected date range",
-                    "backtest_id": self.backtest_id,
-                    "data_summary": self.data_summary
-                }
+            if not market_timeseries:
+                return {"error": "No historical data found"}
             
-            logger.info(f"Processing {len(historical_markets)} historical market snapshots")
+            data_summary = {
+                "total_snapshots": sum(len(v) for v in market_timeseries.values()),
+                "unique_markets": len(market_timeseries),
+                "date_range": {"start": start_date, "end": end_date}
+            }
             
-            # Process each historical snapshot
-            for idx, market_snapshot in enumerate(historical_markets):
+            logger.info(f"Loaded {data_summary['total_snapshots']} snapshots across {data_summary['unique_markets']} markets")
+            
+            # Process each market's timeseries
+            enabled_strategies = strategies or list(self.strategies.keys())
+            processed = 0
+            
+            for market_id, timeseries in market_timeseries.items():
                 if not self.running:
                     break
                 
-                await self._process_snapshot_with_learning(market_snapshot, strategies)
+                await self._process_market_timeseries(market_id, timeseries, enabled_strategies)
+                processed += 1
                 
-                # Record equity point
-                self.equity_curve.append({
-                    "timestamp": market_snapshot.get("timestamp"),
-                    "equity": self.current_capital,
-                    "num_positions": len(self.positions)
-                })
-                
-                # Progress logging
-                if idx % 100 == 0:
-                    logger.info(f"Backtest progress: {idx}/{len(historical_markets)} snapshots")
+                if processed % 100 == 0:
+                    logger.info(f"Processed {processed}/{len(market_timeseries)} markets, Open positions: {len(self.positions)}, Capital: ${self.current_capital:.2f}")
             
-            # Force close any remaining positions at last known prices
-            await self._close_all_positions()
-            
-            # Train RL from replay buffer after backtest
+            # Train RL from backtest experience
             await self.rl_engine.train_from_replay()
             await self.rl_engine.save_model()
             
             # Calculate final metrics
-            results = await self._calculate_backtest_results()
-            
-            # Store backtest results
+            results = await self._calculate_backtest_results(data_summary)
             await self._store_backtest_results(results)
             
-            logger.info(f"Backtest {self.backtest_id} completed - RL model updated")
+            logger.info(f"Backtest {self.backtest_id} completed - {results.get('total_trades', 0)} trades, P&L: ${results.get('total_pnl', 0):.2f}")
             
             return results
             
         except Exception as e:
             logger.error(f"Error running backtest: {e}")
+            import traceback
+            traceback.print_exc()
             return {"error": str(e)}
         finally:
             self.running = False
     
-    async def _close_all_positions(self):
-        """Force close all open positions at current prices (for end of backtest)"""
-        import random
-        
-        logger.info(f"Closing all positions. Open positions: {len(self.positions)}")
-        
-        if not self.positions:
-            logger.warning("No open positions to close")
-            return
-        
-        for market_id, position in list(self.positions.items()):
-            entry_price = position['entry_price']
-            shares = position['shares']
-            strategy = position.get('strategy', 'unknown')
-            category = position.get('category', 'unknown')
-            
-            # Simulate exit price with small random variance
-            exit_price = entry_price * (1 + random.uniform(-0.10, 0.10))
-            exit_value = shares * exit_price
-            pnl = exit_value - position['cost']
-            
-            self.current_capital += exit_value
-            
-            # Record exit trade
-            trade_record = {
-                "id": str(uuid.uuid4()),
-                "backtest_id": self.backtest_id,
-                "market_id": market_id,
-                "strategy": strategy,
-                "category": category,
-                "side": "SELL",
-                "price": exit_price,
-                "shares": shares,
-                "value": exit_value,
-                "pnl": pnl,
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-            self.trades.append(trade_record)
-            
-            # Update strategy performance
-            if strategy in self.strategy_performance:
-                self.strategy_performance[strategy]['trades'] += 1
-                self.strategy_performance[strategy]['pnl'] += pnl
-                if pnl > 0:
-                    self.strategy_performance[strategy]['wins'] += 1
-            
-            # Update asset class performance
-            if category in self.asset_class_performance:
-                self.asset_class_performance[category]['trades'] += 1
-                self.asset_class_performance[category]['pnl'] += pnl
-                if pnl > 0:
-                    self.asset_class_performance[category]['wins'] += 1
-            
-            del self.positions[market_id]
-            logger.info(f"Force closed position {market_id[:8]}: pnl=${pnl:.2f}")
-    
-    async def stop_backtest(self):
-        """Stop running backtest"""
-        self.running = False
-        logger.info(f"Backtest {self.backtest_id} stopped")
-    
-    async def _get_historical_markets_with_summary(self, start_date: str, end_date: str):
-        """Get historical markets with data summary"""
+    async def _get_market_timeseries(self, start_date: str, end_date: str) -> Dict[str, List[Dict]]:
+        """Get historical data grouped by market_id as timeseries"""
         try:
-            # Query historical data
             cursor = self.db.historical_data.find(
-                {
-                    "timestamp": {
-                        "$gte": start_date,
-                        "$lte": end_date
-                    }
-                },
+                {"timestamp": {"$gte": start_date, "$lte": end_date}},
                 {"_id": 0}
             ).sort("timestamp", 1)
             
-            markets = await cursor.to_list(length=50000)
+            snapshots = await cursor.to_list(length=100000)
             
-            # Build data summary
-            if markets:
-                categories = {}
-                for m in markets:
-                    cat = m.get("category", "unknown")
-                    if cat not in categories:
-                        categories[cat] = 0
-                    categories[cat] += 1
-                
-                timestamps = [m.get("timestamp") for m in markets if m.get("timestamp")]
-                
-                summary = {
-                    "total_snapshots": len(markets),
-                    "unique_markets": len(set(m.get("market_id") for m in markets if m.get("market_id"))),
-                    "date_range": {
-                        "start": min(timestamps) if timestamps else None,
-                        "end": max(timestamps) if timestamps else None
-                    },
-                    "categories": categories,
-                    "avg_volume": sum(m.get("volume", 0) for m in markets) / len(markets) if markets else 0,
-                    "avg_liquidity": sum(m.get("liquidity", 0) for m in markets) / len(markets) if markets else 0
-                }
+            # Group by market_id
+            market_timeseries = {}
+            for snap in snapshots:
+                market_id = snap.get("market_id")
+                if not market_id:
+                    continue
+                if market_id not in market_timeseries:
+                    market_timeseries[market_id] = []
+                market_timeseries[market_id].append(snap)
+            
+            # Sort each market's timeseries by timestamp
+            for market_id in market_timeseries:
+                market_timeseries[market_id].sort(key=lambda x: x.get("timestamp", ""))
+            
+            return market_timeseries
+            
+        except Exception as e:
+            logger.error(f"Error getting market timeseries: {e}")
+            return {}
+    
+    async def _process_market_timeseries(self, market_id: str, timeseries: List[Dict], enabled_strategies: List[str]):
+        """Process a single market's timeseries for HFT opportunities"""
+        if len(timeseries) < 5:
+            return  # Need enough data points
+        
+        category = timeseries[0].get("category", "unknown")
+        if category not in self.asset_class_performance:
+            self.asset_class_performance[category] = {"trades": 0, "wins": 0, "pnl": 0.0}
+        
+        # Calculate market volatility and trend
+        prices = [s.get("yes_price", 0.5) for s in timeseries]
+        volumes = [s.get("volume", 0) for s in timeseries]
+        
+        volatility = self._calculate_volatility(prices)
+        trend = self._calculate_trend(prices)
+        avg_volume = np.mean(volumes) if volumes else 0
+        
+        # Adaptive parameters based on market characteristics
+        profit_target, stop_loss, position_size_mult = self._get_adaptive_params(volatility, avg_volume)
+        
+        position = None
+        entry_idx = None
+        highest_price = 0
+        
+        for idx, snapshot in enumerate(timeseries):
+            current_price = snapshot.get("yes_price", 0.5)
+            timestamp = snapshot.get("timestamp")
+            
+            if position is None:
+                # Check for entry signal
+                if self._should_enter(prices[:idx+1], volatility, trend, enabled_strategies, current_price):
+                    if len(self.positions) < self.max_positions and self.current_capital > 50:
+                        strategy = self._select_best_strategy(volatility, trend, enabled_strategies)
+                        position = await self._open_position(
+                            market_id, current_price, strategy, category, 
+                            timestamp, profit_target, stop_loss, position_size_mult
+                        )
+                        entry_idx = idx
+                        highest_price = current_price
             else:
-                summary = {"total_snapshots": 0, "unique_markets": 0, "date_range": {}, "categories": {}}
-            
-            # Transform to market data format
-            market_data_list = []
-            for m in markets:
-                market_data_list.append({
-                    "timestamp": m.get("timestamp"),
-                    "market_data": {
-                        "id": m.get("market_id"),
-                        "question": m.get("question"),
-                        "category": m.get("category"),
-                        "yes_price": m.get("yes_price", 0.5),
-                        "no_price": m.get("no_price", 0.5),
-                        "volume": m.get("volume", 0),
-                        "liquidity": m.get("liquidity", 0)
-                    }
-                })
-            
-            return market_data_list, summary
-            
-        except Exception as e:
-            logger.error(f"Error getting historical markets: {e}")
-            return [], {"error": str(e)}
+                # Update trailing stop
+                if current_price > highest_price:
+                    highest_price = current_price
+                
+                # Check for exit conditions
+                exit_reason = self._check_exit_conditions(
+                    position, current_price, highest_price, idx - entry_idx,
+                    volatility, profit_target, stop_loss
+                )
+                
+                if exit_reason:
+                    await self._close_position(market_id, position, current_price, timestamp, exit_reason)
+                    position = None
+                    entry_idx = None
+                    highest_price = 0
+        
+        # Close any remaining position at last price (end of timeseries)
+        if position and len(timeseries) > 0:
+            last_price = timeseries[-1].get("yes_price", position["entry_price"])
+            await self._close_position(market_id, position, last_price, timeseries[-1].get("timestamp"), "end_of_data")
     
-    async def _process_snapshot_with_learning(self, market_snapshot: Dict, enabled_strategies: List[str]):
-        """Process a single market snapshot with RL learning"""
-        try:
-            # Data is wrapped in market_data key
-            market_data = market_snapshot.get("market_data", {})
-            
-            if not market_data or 'yes_price' not in market_data:
-                return
-            
-            category = market_data.get("category", "unknown")
-            
-            # Initialize asset class tracking
-            if category not in self.asset_class_performance:
-                self.asset_class_performance[category] = {"trades": 0, "wins": 0, "pnl": 0.0}
-            
-            # Update existing positions with current prices
-            await self._update_positions_with_tracking(market_data)
-            
-            # Get signals for RL learning using generate_trading_signal
-            market_id = market_data.get("id")
-            signal_result = await self.signal_fusion.generate_trading_signal({
-                "id": market_id,
-                "question": market_data.get("question", ""),
-                "category": category,
-                "yes_price": market_data.get("yes_price", 0.5),
-                "no_price": market_data.get("no_price", 0.5),
-                "volume": market_data.get("volume", 0),
-                "liquidity": market_data.get("liquidity", 0)
-            })
-            
-            signals = signal_result.get("signals", {})
-            
-            # Get RL action recommendation
-            rl_action, rl_confidence = await self.rl_engine.get_optimal_action(market_data, signals)
-            
-            # Try strategies with tracking
-            if enabled_strategies:
-                for strategy_name in enabled_strategies:
-                    strategy_result = await self._run_strategy_with_tracking(
-                        strategy_name, market_data, category, rl_action, rl_confidence
-                    )
-                    
-                    # Update RL with reward from strategy result
-                    if strategy_result and strategy_result.get("pnl"):
-                        reward = strategy_result["pnl"] / self.initial_capital  # Normalize reward
-                        await self.rl_engine.update_from_reward(market_data.get("id"), reward)
-                    
-        except Exception as e:
-            logger.error(f"Error processing snapshot: {e}")
+    def _calculate_volatility(self, prices: List[float]) -> float:
+        """Calculate price volatility"""
+        if len(prices) < 2:
+            return 0.0
+        returns = np.diff(prices) / np.array(prices[:-1])
+        return float(np.std(returns)) if len(returns) > 0 else 0.0
     
-    async def _get_historical_markets(self, start_date: str, end_date: str) -> List[Dict]:
-        """Get historical market snapshots"""
-        try:
-            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-            
-            cursor = self.db.historical_data.find({
-                "timestamp": {
-                    "$gte": start_dt.isoformat(),
-                    "$lte": end_dt.isoformat()
-                }
-            }).sort("timestamp", 1)
-            
-            historical = await cursor.to_list(length=10000)
-            
-            # Group by market
-            snapshots = []
-            for item in historical:
-                snapshots.append({
-                    "timestamp": item.get("timestamp"),
-                    "market_data": {
-                        "id": item.get("market_id"),
-                        "yes_price": item.get("yes_price"),
-                        "no_price": item.get("no_price"),
-                        "volume": item.get("volume"),
-                        "liquidity": item.get("liquidity"),
-                        "category": item.get("category"),
-                        "last_update": item.get("timestamp")
-                    }
-                })
-            
-            return snapshots
-            
-        except Exception as e:
-            logger.error(f"Error getting historical markets: {e}")
-            return []
+    def _calculate_trend(self, prices: List[float]) -> float:
+        """Calculate trend direction (-1 to 1)"""
+        if len(prices) < 5:
+            return 0.0
+        recent = prices[-5:]
+        older = prices[:5] if len(prices) >= 10 else prices[:len(prices)//2]
+        
+        recent_avg = np.mean(recent)
+        older_avg = np.mean(older)
+        
+        if older_avg == 0:
+            return 0.0
+        
+        trend = (recent_avg - older_avg) / older_avg
+        return max(min(trend, 1.0), -1.0)
     
-    async def _calculate_backtest_results(self) -> Dict:
-        """Calculate backtest performance metrics"""
+    def _get_adaptive_params(self, volatility: float, avg_volume: float) -> Tuple[float, float, float]:
+        """Get adaptive parameters based on market characteristics"""
+        # Base parameters
+        profit_target = self.min_profit_target
+        stop_loss = self.max_loss_limit
+        position_size_mult = 1.0
+        
+        # Adjust for volatility
+        if volatility > 0.05:  # High volatility
+            profit_target *= 1.5  # Wider profit target
+            stop_loss *= 1.5  # Wider stop loss
+            position_size_mult = 0.7  # Smaller positions
+        elif volatility < 0.01:  # Low volatility
+            profit_target *= 0.7  # Tighter profit target for quick gains
+            stop_loss *= 0.7  # Tighter stop loss
+            position_size_mult = 1.3  # Larger positions
+        
+        # Adjust for volume
+        if avg_volume > 10000:
+            position_size_mult *= 1.2  # Higher liquidity = larger positions
+        elif avg_volume < 1000:
+            position_size_mult *= 0.6  # Lower liquidity = smaller positions
+        
+        return profit_target, stop_loss, position_size_mult
+    
+    def _should_enter(self, prices: List[float], volatility: float, trend: float, 
+                      strategies: List[str], current_price: float) -> bool:
+        """Determine if we should enter a position"""
+        if len(prices) < 3:
+            return False
+        
+        # Price range check
+        if current_price < 0.10 or current_price > 0.90:
+            return False
+        
+        # Don't enter in extreme volatility
+        if volatility > 0.15:
+            return False
+        
+        # Strategy-specific entry conditions
+        if "delta_neutral" in strategies:
+            # Market making: enter when price is stable
+            if volatility < 0.03 and abs(trend) < 0.1:
+                return random.random() < 0.3
+        
+        if "volatility_exploitation" in strategies:
+            # Enter when volatility is moderate
+            if 0.02 < volatility < 0.08:
+                return random.random() < 0.25
+        
+        if "alpha_directional" in strategies:
+            # Enter on strong trend signals
+            if abs(trend) > 0.05:
+                return random.random() < 0.2
+        
+        # Base probability
+        return random.random() < 0.15
+    
+    def _select_best_strategy(self, volatility: float, trend: float, strategies: List[str]) -> str:
+        """Select the best strategy for current market conditions"""
+        if not strategies:
+            return "delta_neutral"
+        
+        # Score each strategy
+        scores = {}
+        
+        for strategy in strategies:
+            score = 0
+            
+            if strategy == "delta_neutral":
+                # Best for low volatility, no trend
+                score = (1 - volatility * 10) * (1 - abs(trend) * 5)
+            elif strategy == "volatility_exploitation":
+                # Best for moderate-high volatility
+                score = volatility * 10 if volatility < 0.1 else 0.5
+            elif strategy == "alpha_directional":
+                # Best for trending markets
+                score = abs(trend) * 5
+            elif strategy == "arbitrage":
+                # Best for stable markets
+                score = (1 - volatility * 5) * 0.8
+            
+            # Add performance history
+            if strategy in self.strategy_performance:
+                perf = self.strategy_performance[strategy]
+                if perf["trades"] > 0:
+                    win_rate = perf["wins"] / perf["trades"]
+                    score *= (0.5 + win_rate)
+            
+            scores[strategy] = max(score, 0.1)
+        
+        # Weighted random selection based on scores
+        total = sum(scores.values())
+        r = random.random() * total
+        cumulative = 0
+        
+        for strategy, score in scores.items():
+            cumulative += score
+            if r <= cumulative:
+                return strategy
+        
+        return strategies[0]
+    
+    async def _open_position(self, market_id: str, price: float, strategy: str, 
+                            category: str, timestamp: str, profit_target: float,
+                            stop_loss: float, size_mult: float) -> Dict:
+        """Open a new position with adaptive sizing"""
+        available_capital = self.current_capital * 0.8
+        base_size = available_capital * 0.04  # 4% base position
+        position_size = base_size * size_mult
+        
+        shares = position_size / price if price > 0 else 0
+        if shares < 1:
+            shares = 1
+            position_size = shares * price
+        
+        self.current_capital -= position_size
+        
+        position = {
+            "market_id": market_id,
+            "strategy": strategy,
+            "category": category,
+            "entry_price": price,
+            "shares": shares,
+            "cost": position_size,
+            "profit_target": profit_target,
+            "stop_loss": stop_loss,
+            "entry_time": timestamp,
+            "snapshots_held": 0
+        }
+        
+        self.positions[market_id] = position
+        
+        # Record entry trade
+        trade = {
+            "id": str(uuid.uuid4()),
+            "backtest_id": self.backtest_id,
+            "market_id": market_id,
+            "strategy": strategy,
+            "category": category,
+            "side": "BUY",
+            "price": price,
+            "shares": shares,
+            "cost": position_size,
+            "timestamp": timestamp
+        }
+        self.trades.append(trade)
+        
+        logger.debug(f"Opened {strategy} position on {market_id[:8]} @ ${price:.3f}")
+        
+        return position
+    
+    def _check_exit_conditions(self, position: Dict, current_price: float, 
+                               highest_price: float, snapshots_held: int,
+                               volatility: float, profit_target: float, 
+                               stop_loss: float) -> Optional[str]:
+        """Check if position should be closed with adaptive exit logic"""
+        entry_price = position["entry_price"]
+        pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+        
+        # 1. Take profit - adaptive based on volatility
+        if pnl_pct >= profit_target:
+            return "profit_target"
+        
+        # 2. Stop loss
+        if pnl_pct <= -stop_loss:
+            return "stop_loss"
+        
+        # 3. Trailing stop - only activate after minimum profit
+        if pnl_pct > self.trailing_stop_trigger:
+            trailing_stop_price = highest_price * (1 - self.trailing_stop_distance)
+            if current_price < trailing_stop_price:
+                return "trailing_stop"
+        
+        # 4. Time-based exit - close stale positions
+        if snapshots_held > self.position_timeout_snapshots:
+            return "timeout"
+        
+        # 5. Small profit banking for HFT
+        if pnl_pct > 0.01 and snapshots_held > 10:  # 1% profit after 10 snapshots
+            if random.random() < 0.3:  # 30% chance to bank small profit
+                return "bank_profit"
+        
+        # 6. Volatility spike exit - exit if volatility increases significantly
+        if volatility > 0.1 and abs(pnl_pct) > 0.005:
+            return "volatility_spike"
+        
+        return None
+    
+    async def _close_position(self, market_id: str, position: Dict, exit_price: float, 
+                             timestamp: str, exit_reason: str):
+        """Close position and record trade"""
+        shares = position["shares"]
+        exit_value = shares * exit_price
+        pnl = exit_value - position["cost"]
+        
+        self.current_capital += exit_value
+        
+        strategy = position["strategy"]
+        category = position["category"]
+        
+        # Record exit trade
+        trade = {
+            "id": str(uuid.uuid4()),
+            "backtest_id": self.backtest_id,
+            "market_id": market_id,
+            "strategy": strategy,
+            "category": category,
+            "side": "SELL",
+            "price": exit_price,
+            "shares": shares,
+            "value": exit_value,
+            "pnl": pnl,
+            "exit_reason": exit_reason,
+            "timestamp": timestamp
+        }
+        self.trades.append(trade)
+        
+        # Update strategy performance
+        if strategy in self.strategy_performance:
+            self.strategy_performance[strategy]["trades"] += 1
+            self.strategy_performance[strategy]["pnl"] += pnl
+            if pnl > 0:
+                self.strategy_performance[strategy]["wins"] += 1
+        
+        # Update asset class performance  
+        if category in self.asset_class_performance:
+            self.asset_class_performance[category]["trades"] += 1
+            self.asset_class_performance[category]["pnl"] += pnl
+            if pnl > 0:
+                self.asset_class_performance[category]["wins"] += 1
+        
+        # Remove from positions
+        if market_id in self.positions:
+            del self.positions[market_id]
+        
+        logger.debug(f"Closed {strategy} on {market_id[:8]}: ${pnl:.2f} ({exit_reason})")
+    
+    async def _calculate_backtest_results(self, data_summary: Dict) -> Dict:
+        """Calculate comprehensive backtest metrics"""
         try:
-            # Close all remaining positions at last price with tracking
-            for market_id, position in self.positions.items():
-                self.current_capital += position['shares'] * position['entry_price']
+            # Count trades by side
+            buy_trades = [t for t in self.trades if t.get("side") == "BUY"]
+            sell_trades = [t for t in self.trades if t.get("side") == "SELL"]
             
-            total_pnl = self.current_capital - self.initial_capital
-            total_return = (total_pnl / self.initial_capital * 100) if self.initial_capital > 0 else 0
+            total_trades = len(sell_trades)  # Complete round trips
             
-            # Calculate win rate
-            closed_trades = [t for t in self.trades if t.get('side') == 'SELL']
-            winning_trades = [t for t in closed_trades if t.get('pnl', 0) > 0]
-            win_rate = len(winning_trades) / len(closed_trades) if closed_trades else 0
+            # Calculate P&L
+            total_pnl = sum(t.get("pnl", 0) for t in sell_trades)
+            winning_trades = len([t for t in sell_trades if t.get("pnl", 0) > 0])
+            losing_trades = len([t for t in sell_trades if t.get("pnl", 0) < 0])
             
-            # Calculate max drawdown
-            max_drawdown = 0
-            peak = self.initial_capital
-            for point in self.equity_curve:
-                equity = point['equity']
-                if equity > peak:
-                    peak = equity
-                drawdown = (peak - equity) / peak if peak > 0 else 0
-                max_drawdown = max(max_drawdown, drawdown)
+            win_rate = winning_trades / total_trades if total_trades > 0 else 0
             
-            # Calculate Sharpe ratio (simplified)
-            returns = []
-            for i in range(1, len(self.equity_curve)):
-                prev_eq = self.equity_curve[i-1]['equity']
-                if prev_eq > 0:
-                    ret = (self.equity_curve[i]['equity'] - prev_eq) / prev_eq
-                    returns.append(ret)
+            # Calculate returns
+            total_return_pct = ((self.current_capital - self.initial_capital) / self.initial_capital) * 100
             
-            import numpy as np
-            sharpe_ratio = (np.mean(returns) / np.std(returns) * np.sqrt(252)) if len(returns) > 1 and np.std(returns) > 0 else 0
+            # Risk metrics
+            pnls = [t.get("pnl", 0) for t in sell_trades]
+            if pnls:
+                avg_win = np.mean([p for p in pnls if p > 0]) if any(p > 0 for p in pnls) else 0
+                avg_loss = np.mean([p for p in pnls if p < 0]) if any(p < 0 for p in pnls) else 0
+                profit_factor = abs(sum(p for p in pnls if p > 0) / sum(p for p in pnls if p < 0)) if any(p < 0 for p in pnls) else 0
+                
+                # Sharpe ratio
+                returns = np.array(pnls) / self.initial_capital
+                sharpe = np.mean(returns) / np.std(returns) * np.sqrt(252) if np.std(returns) > 0 else 0
+                
+                # Max drawdown
+                cumulative = np.cumsum(pnls)
+                peak = np.maximum.accumulate(cumulative)
+                drawdown = (peak - cumulative) / (peak + self.initial_capital)
+                max_drawdown = np.max(drawdown) if len(drawdown) > 0 else 0
+            else:
+                avg_win = avg_loss = profit_factor = sharpe = max_drawdown = 0
             
-            # Calculate profit factor
-            gross_profit = sum(t.get('pnl', 0) for t in closed_trades if t.get('pnl', 0) > 0)
-            gross_loss = abs(sum(t.get('pnl', 0) for t in closed_trades if t.get('pnl', 0) < 0))
-            profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
+            # Exit reason breakdown
+            exit_reasons = {}
+            for t in sell_trades:
+                reason = t.get("exit_reason", "unknown")
+                exit_reasons[reason] = exit_reasons.get(reason, 0) + 1
             
-            # Calculate strategy performance breakdown
+            # Strategy results
             strategy_results = {}
-            for trade in closed_trades:
-                strategy = trade.get('strategy', 'unknown')
-                if strategy not in strategy_results:
-                    strategy_results[strategy] = {'trades': 0, 'wins': 0, 'pnl': 0.0}
-                strategy_results[strategy]['trades'] += 1
-                strategy_results[strategy]['pnl'] += trade.get('pnl', 0)
-                if trade.get('pnl', 0) > 0:
-                    strategy_results[strategy]['wins'] += 1
+            for strategy, perf in self.strategy_performance.items():
+                trades = perf["trades"]
+                strategy_results[strategy] = {
+                    "trades": trades,
+                    "wins": perf["wins"],
+                    "pnl": perf["pnl"],
+                    "win_rate": perf["wins"] / trades if trades > 0 else 0
+                }
             
-            # Calculate win rate per strategy
-            for strategy in strategy_results:
-                data = strategy_results[strategy]
-                data['win_rate'] = data['wins'] / data['trades'] if data['trades'] > 0 else 0
-            
-            # Calculate asset class performance breakdown
+            # Asset class results
             asset_class_results = {}
-            for trade in closed_trades:
-                category = trade.get('category', 'unknown')
-                if category not in asset_class_results:
-                    asset_class_results[category] = {'trades': 0, 'wins': 0, 'pnl': 0.0}
-                asset_class_results[category]['trades'] += 1
-                asset_class_results[category]['pnl'] += trade.get('pnl', 0)
-                if trade.get('pnl', 0) > 0:
-                    asset_class_results[category]['wins'] += 1
+            for category, perf in self.asset_class_performance.items():
+                trades = perf["trades"]
+                asset_class_results[category] = {
+                    "trades": trades,
+                    "wins": perf["wins"],
+                    "pnl": perf["pnl"],
+                    "win_rate": perf["wins"] / trades if trades > 0 else 0
+                }
             
-            # Add asset class data from tracking
-            for category, data in self.asset_class_performance.items():
-                if category not in asset_class_results:
-                    asset_class_results[category] = data
-            
-            # Calculate win rate per asset class
-            for category in asset_class_results:
-                data = asset_class_results[category]
-                data['win_rate'] = data['wins'] / data['trades'] if data['trades'] > 0 else 0
-            
-            # Get RL learning stats
-            rl_stats = await self.rl_engine.get_training_stats()
-            
-            results = {
+            return {
                 "backtest_id": self.backtest_id,
                 "status": "completed",
                 "initial_capital": self.initial_capital,
                 "final_capital": self.current_capital,
                 "total_pnl": total_pnl,
-                "total_return_pct": total_return,
-                "total_trades": len(self.trades),
-                "closed_trades": len(closed_trades),
-                "winning_trades": len(winning_trades),
-                "losing_trades": len(closed_trades) - len(winning_trades),
+                "total_return_pct": total_return_pct,
+                "total_trades": total_trades,
+                "winning_trades": winning_trades,
+                "losing_trades": losing_trades,
                 "win_rate": win_rate,
-                "max_drawdown": max_drawdown,
-                "sharpe_ratio": float(sharpe_ratio) if not np.isnan(sharpe_ratio) else 0,
-                "profit_factor": profit_factor,
-                "equity_curve": self.equity_curve[-100:],  # Last 100 points
-                "trades_summary": closed_trades[-20:],  # Last 20 trades
+                "avg_win": float(avg_win),
+                "avg_loss": float(avg_loss),
+                "profit_factor": float(profit_factor),
+                "sharpe_ratio": float(sharpe),
+                "max_drawdown": float(max_drawdown),
+                "exit_reasons": exit_reasons,
                 "strategy_results": strategy_results,
                 "asset_class_results": asset_class_results,
-                "data_summary": self.data_summary,
-                "rl_learning_stats": rl_stats,
+                "data_summary": data_summary,
+                "rl_learning_stats": await self.rl_engine.get_training_stats(),
                 "completed_at": datetime.now(timezone.utc).isoformat()
             }
-            
-            return results
-            
         except Exception as e:
-            logger.error(f"Error calculating backtest results: {e}")
-            return {}
-    
-    async def _update_positions_with_tracking(self, market_data: Dict):
-        """Update positions with current market prices and track performance"""
-        try:
-            market_id = market_data.get('id')
-            if not market_id:
-                return
-            
-            current_price = market_data.get('yes_price', 0.5)
-            category = market_data.get('category', 'unknown')
-            
-            if market_id in self.positions:
-                position = self.positions[market_id]
-                entry_price = position['entry_price']
-                shares = position['shares']
-                strategy = position.get('strategy', 'unknown')
-                
-                # Check exit conditions - relaxed for backtesting
-                pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
-                
-                # Exit if profit > 5% or loss > 5% or randomly (10% chance per check)
-                import random
-                should_exit = pnl_pct > 0.05 or pnl_pct < -0.05 or random.random() < 0.10
-                
-                if should_exit:
-                    exit_value = shares * current_price
-                    pnl = exit_value - position['cost']
-                    self.current_capital += exit_value
-                    
-                    logger.info(f"CLOSING POSITION: {market_id[:8]} pnl=${pnl:.2f} (entry={entry_price:.3f}, exit={current_price:.3f})")
-                    
-                    # Record exit trade with category
-                    trade_record = {
-                        "id": str(uuid.uuid4()),
-                        "backtest_id": self.backtest_id,
-                        "market_id": market_id,
-                        "strategy": strategy,
-                        "category": category,
-                        "side": "SELL",
-                        "price": current_price,
-                        "shares": shares,
-                        "value": exit_value,
-                        "pnl": pnl,
-                        "timestamp": market_data.get("last_update")
-                    }
-                    self.trades.append(trade_record)
-                    
-                    # Update strategy performance
-                    if strategy in self.strategy_performance:
-                        self.strategy_performance[strategy]['trades'] += 1
-                        self.strategy_performance[strategy]['pnl'] += pnl
-                        if pnl > 0:
-                            self.strategy_performance[strategy]['wins'] += 1
-                    
-                    # Update asset class performance
-                    if category in self.asset_class_performance:
-                        self.asset_class_performance[category]['trades'] += 1
-                        self.asset_class_performance[category]['pnl'] += pnl
-                        if pnl > 0:
-                            self.asset_class_performance[category]['wins'] += 1
-                    
-                    # Close position
-                    del self.positions[market_id]
-                    
-        except Exception as e:
-            logger.error(f"Error updating positions: {e}")
-    
-    async def _run_strategy_with_tracking(self, strategy_name: str, market_data: Dict, category: str, rl_action: str, rl_confidence: float) -> Optional[Dict]:
-        """Run a strategy with performance tracking"""
-        try:
-            import random
-            
-            strategy_map = {
-                "delta_neutral": self.delta_neutral_strategy,
-                "volatility_exploitation": self.volatility_strategy,
-                "alpha_directional": self.alpha_strategy,
-                "arbitrage": self.arbitrage_strategy
-            }
-            
-            strategy = strategy_map.get(strategy_name)
-            if not strategy:
-                return None
-            
-            market_id = market_data.get('id')
-            price = market_data.get('yes_price', 0.5)
-            
-            # Skip if already have position in this market
-            if market_id in self.positions:
-                return None
-            
-            # Limit total open positions to 20 at a time
-            if len(self.positions) >= 20:
-                return None
-            
-            # Price must be in tradeable range - widen range for testing
-            if price <= 0.01 or price >= 0.99:
-                return None
-            
-            # Check if we can afford a position
-            available_capital = self.current_capital * 0.8
-            if available_capital < 10:
-                logger.warning(f"Not enough capital: {available_capital}")
-                return None
-            
-            # Position sizing - use 5% for visibility in backtests
-            position_size = min(available_capital * 0.05, self.current_capital * 0.05)
-            shares = position_size / price if price > 0 else 0
-            
-            if shares < 1:
-                logger.warning(f"Shares too small: {shares} at price {price}")
-                return None
-            
-            # Log trade opening
-            logger.info(f"OPENING TRADE: {strategy_name} on {market_id[:8] if market_id else 'unknown'} @ ${price:.3f}, shares={shares:.1f}, cost=${position_size:.2f}")
-            if available_capital < 10:
-                return None
-            
-            # Position sizing - use 5% for visibility in backtests
-            position_size = min(available_capital * 0.05, self.current_capital * 0.05)
-            shares = position_size / price if price > 0 else 0
-            
-            if shares < 1:
-                return None
-            
-            # Log trade opening
-            logger.info(f"OPENING TRADE: {strategy_name} on {market_id[:8] if market_id else 'unknown'} @ ${price:.3f}, shares={shares:.1f}")
-            
-            # Record simulated trade
-            trade = {
-                "id": str(uuid.uuid4()),
-                "backtest_id": self.backtest_id,
-                "market_id": market_id,
-                "strategy": strategy_name,
-                "category": category,
-                "side": "BUY",
-                "price": price,
-                "shares": shares,
-                "cost": position_size,
-                "rl_action": rl_action,
-                "rl_confidence": rl_confidence,
-                "timestamp": market_data.get("last_update")
-            }
-            
-            self.trades.append(trade)
-            
-            # Open position
-            self.positions[market_id] = {
-                "strategy": strategy_name,
-                "category": category,
-                "entry_price": price,
-                "shares": shares,
-                "cost": position_size
-            }
-            
-            # Reduce capital
-            self.current_capital -= position_size
-            
-            return {"opened": True, "strategy": strategy_name, "category": category}
-            
-        except Exception as e:
-            logger.error(f"Error running strategy with tracking: {e}")
-            return None
+            logger.error(f"Error calculating results: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"error": str(e)}
     
     async def _store_backtest_results(self, results: Dict):
         """Store backtest results in database"""
         try:
-            await self.db.backtest_results.insert_one(results)
-            logger.info(f"Backtest results stored: {self.backtest_id}")
+            await self.db.backtest_results.insert_one({**results, "_id": None})
+            # Remove _id to avoid serialization issues
+            if "_id" in results:
+                del results["_id"]
         except Exception as e:
             logger.error(f"Error storing backtest results: {e}")
+    
+    async def stop_backtest(self):
+        """Stop running backtest"""
+        self.running = False
+        logger.info(f"Backtest {self.backtest_id} stopped")
     
     async def get_backtest_results(self, backtest_id: Optional[str] = None) -> Dict:
         """Get backtest results"""
@@ -628,22 +601,16 @@ class BacktestEngine:
                     {"_id": 0},
                     sort=[("completed_at", -1)]
                 )
-            
             return result if result else {}
         except Exception as e:
             logger.error(f"Error getting backtest results: {e}")
             return {}
     
     async def get_backtest_history(self, limit: int = 10) -> List[Dict]:
-        """Get list of past backtest results (up to limit)"""
+        """Get list of past backtest results"""
         try:
-            cursor = self.db.backtest_results.find(
-                {},
-                {"_id": 0}
-            ).sort("completed_at", -1).limit(limit)
-            
-            results = await cursor.to_list(length=limit)
-            return results
+            cursor = self.db.backtest_results.find({}, {"_id": 0}).sort("completed_at", -1).limit(limit)
+            return await cursor.to_list(length=limit)
         except Exception as e:
             logger.error(f"Error getting backtest history: {e}")
             return []
@@ -651,7 +618,6 @@ class BacktestEngine:
     async def compare_backtests(self, backtest_ids: List[str]) -> Dict:
         """Compare multiple backtest results with comprehensive metrics"""
         try:
-            # Fetch all requested backtests
             cursor = self.db.backtest_results.find(
                 {"backtest_id": {"$in": backtest_ids}},
                 {"_id": 0}
@@ -659,12 +625,12 @@ class BacktestEngine:
             backtests = await cursor.to_list(length=len(backtest_ids))
             
             if not backtests:
-                return {"error": "No backtests found for comparison"}
+                return {"error": "No backtests found"}
             
-            # Build comparison data
+            # Build comparison
             comparison = {
                 "backtest_count": len(backtests),
-                "backtests": [],
+                "backtests": backtests,
                 "comparison_metrics": {},
                 "strategy_comparison": {},
                 "asset_class_comparison": {},
@@ -672,385 +638,26 @@ class BacktestEngine:
                 "educational_analysis": {}
             }
             
-            # Collect metrics for comparison
-            all_returns = []
-            all_sharpe = []
-            all_drawdowns = []
-            all_win_rates = []
-            all_profit_factors = []
-            strategy_data = {}
-            asset_class_data = {}
+            # Aggregate metrics
+            all_returns = [b.get("total_return_pct", 0) for b in backtests]
+            all_sharpe = [b.get("sharpe_ratio", 0) for b in backtests]
+            all_win_rates = [b.get("win_rate", 0) for b in backtests]
+            all_drawdowns = [b.get("max_drawdown", 0) for b in backtests]
+            all_profit_factors = [b.get("profit_factor", 0) for b in backtests]
             
-            for bt in backtests:
-                bt_summary = {
-                    "backtest_id": bt.get("backtest_id"),
-                    "completed_at": bt.get("completed_at"),
-                    "total_return_pct": bt.get("total_return_pct", 0),
-                    "total_pnl": bt.get("total_pnl", 0),
-                    "sharpe_ratio": bt.get("sharpe_ratio", 0),
-                    "max_drawdown": bt.get("max_drawdown", 0),
-                    "win_rate": bt.get("win_rate", 0),
-                    "profit_factor": bt.get("profit_factor", 0),
-                    "total_trades": bt.get("total_trades", 0),
-                    "data_summary": bt.get("data_summary", {}),
-                    "strategy_results": bt.get("strategy_results", {}),
-                    "asset_class_results": bt.get("asset_class_results", {})
-                }
-                comparison["backtests"].append(bt_summary)
-                
-                all_returns.append(bt.get("total_return_pct", 0))
-                all_sharpe.append(bt.get("sharpe_ratio", 0))
-                all_drawdowns.append(bt.get("max_drawdown", 0))
-                all_win_rates.append(bt.get("win_rate", 0))
-                all_profit_factors.append(bt.get("profit_factor", 0))
-                
-                # Aggregate strategy data
-                for strat, data in bt.get("strategy_results", {}).items():
-                    if strat not in strategy_data:
-                        strategy_data[strat] = {"pnl": [], "win_rate": [], "trades": []}
-                    strategy_data[strat]["pnl"].append(data.get("pnl", 0))
-                    strategy_data[strat]["win_rate"].append(data.get("win_rate", 0))
-                    strategy_data[strat]["trades"].append(data.get("trades", 0))
-                
-                # Aggregate asset class data
-                for asset, data in bt.get("asset_class_results", {}).items():
-                    if asset not in asset_class_data:
-                        asset_class_data[asset] = {"pnl": [], "win_rate": [], "trades": []}
-                    asset_class_data[asset]["pnl"].append(data.get("pnl", 0))
-                    asset_class_data[asset]["win_rate"].append(data.get("win_rate", 0))
-                    asset_class_data[asset]["trades"].append(data.get("trades", 0))
-            
-            import numpy as np
-            
-            # Overall comparison metrics
             comparison["comparison_metrics"] = {
-                "return": {
-                    "best": float(max(all_returns)) if all_returns else 0,
-                    "worst": float(min(all_returns)) if all_returns else 0,
-                    "avg": float(np.mean(all_returns)) if all_returns else 0,
-                    "std": float(np.std(all_returns)) if len(all_returns) > 1 else 0,
-                    "trend": "improving" if len(all_returns) > 1 and all_returns[-1] > all_returns[0] else "declining"
-                },
-                "sharpe_ratio": {
-                    "best": float(max(all_sharpe)) if all_sharpe else 0,
-                    "worst": float(min(all_sharpe)) if all_sharpe else 0,
-                    "avg": float(np.mean(all_sharpe)) if all_sharpe else 0,
-                    "target": 1.5,
-                    "interpretation": "Sharpe > 1.0 = good, > 2.0 = excellent. Measures return per unit of risk."
-                },
-                "max_drawdown": {
-                    "best": float(min(all_drawdowns)) if all_drawdowns else 0,
-                    "worst": float(max(all_drawdowns)) if all_drawdowns else 0,
-                    "avg": float(np.mean(all_drawdowns)) if all_drawdowns else 0,
-                    "target": 0.10,
-                    "interpretation": "Lower is better. Target < 10%. Shows worst peak-to-trough decline."
-                },
-                "win_rate": {
-                    "best": float(max(all_win_rates)) if all_win_rates else 0,
-                    "worst": float(min(all_win_rates)) if all_win_rates else 0,
-                    "avg": float(np.mean(all_win_rates)) if all_win_rates else 0,
-                    "target": 0.55,
-                    "interpretation": "Target > 55%. High win rate with low profit factor = many small wins, few big losses."
-                },
-                "profit_factor": {
-                    "best": float(max(all_profit_factors)) if all_profit_factors else 0,
-                    "worst": float(min(all_profit_factors)) if all_profit_factors else 0,
-                    "avg": float(np.mean(all_profit_factors)) if all_profit_factors else 0,
-                    "target": 1.5,
-                    "interpretation": "Gross profit / gross loss. > 1.5 = good, > 2.0 = excellent. < 1.0 = losing strategy."
-                }
+                "return": {"best": max(all_returns), "worst": min(all_returns), "avg": np.mean(all_returns)},
+                "sharpe_ratio": {"best": max(all_sharpe), "worst": min(all_sharpe), "avg": np.mean(all_sharpe)},
+                "win_rate": {"best": max(all_win_rates), "worst": min(all_win_rates), "avg": np.mean(all_win_rates)},
+                "max_drawdown": {"best": min(all_drawdowns), "worst": max(all_drawdowns), "avg": np.mean(all_drawdowns)},
+                "profit_factor": {"best": max(all_profit_factors), "worst": min(all_profit_factors), "avg": np.mean(all_profit_factors)}
             }
-            
-            # Strategy comparison
-            for strat, data in strategy_data.items():
-                comparison["strategy_comparison"][strat] = {
-                    "avg_pnl": float(np.mean(data["pnl"])) if data["pnl"] else 0,
-                    "total_pnl": float(sum(data["pnl"])),
-                    "avg_win_rate": float(np.mean(data["win_rate"])) if data["win_rate"] else 0,
-                    "total_trades": sum(data["trades"]),
-                    "consistency": float(np.std(data["pnl"])) if len(data["pnl"]) > 1 else 0,
-                    "pnl_trend": data["pnl"],
-                    "is_profitable": sum(data["pnl"]) > 0
-                }
-            
-            # Asset class comparison
-            for asset, data in asset_class_data.items():
-                comparison["asset_class_comparison"][asset] = {
-                    "avg_pnl": float(np.mean(data["pnl"])) if data["pnl"] else 0,
-                    "total_pnl": float(sum(data["pnl"])),
-                    "avg_win_rate": float(np.mean(data["win_rate"])) if data["win_rate"] else 0,
-                    "total_trades": sum(data["trades"]),
-                    "is_profitable": sum(data["pnl"]) > 0
-                }
-            
-            # Generate improvement insights
-            comparison["improvement_insights"] = self._generate_improvement_insights(
-                comparison["comparison_metrics"],
-                comparison["strategy_comparison"],
-                comparison["asset_class_comparison"]
-            )
-            
-            # Educational analysis
-            comparison["educational_analysis"] = self._generate_educational_analysis(
-                comparison["comparison_metrics"],
-                comparison["strategy_comparison"]
-            )
             
             return comparison
             
         except Exception as e:
             logger.error(f"Error comparing backtests: {e}")
             return {"error": str(e)}
-    
-    def _generate_improvement_insights(self, metrics: Dict, strategies: Dict, assets: Dict) -> List[Dict]:
-        """Generate actionable improvement insights"""
-        insights = []
-        
-        # Return insights
-        avg_return = metrics.get("return", {}).get("avg", 0)
-        if avg_return < 0:
-            insights.append({
-                "severity": "critical",
-                "area": "Overall Return",
-                "issue": f"Average return is negative ({avg_return:.2f}%)",
-                "recommendation": "Reduce position sizes, tighten stop-losses, or disable underperforming strategies.",
-                "action": "Consider reducing Kelly fraction by 50% and adding stricter entry criteria."
-            })
-        
-        # Sharpe ratio insights
-        avg_sharpe = metrics.get("sharpe_ratio", {}).get("avg", 0)
-        if avg_sharpe < 0.5:
-            insights.append({
-                "severity": "high",
-                "area": "Risk-Adjusted Return",
-                "issue": f"Sharpe ratio too low ({avg_sharpe:.2f}). Strategy has poor risk/reward.",
-                "recommendation": "Increase win rate or average win size relative to loss size.",
-                "action": "Focus on higher-confidence trades with better reward-to-risk ratios."
-            })
-        
-        # Drawdown insights
-        worst_dd = metrics.get("max_drawdown", {}).get("worst", 0)
-        if worst_dd > 0.15:
-            insights.append({
-                "severity": "high",
-                "area": "Risk Management",
-                "issue": f"Max drawdown too high ({worst_dd*100:.1f}%). Capital at risk.",
-                "recommendation": "Implement stricter position sizing and daily loss limits.",
-                "action": "Reduce max position size to 2% and add 5% daily loss limit."
-            })
-        
-        # Win rate insights
-        avg_win_rate = metrics.get("win_rate", {}).get("avg", 0)
-        if avg_win_rate < 0.45:
-            insights.append({
-                "severity": "medium",
-                "area": "Trade Selection",
-                "issue": f"Win rate below target ({avg_win_rate*100:.1f}%). Too many losing trades.",
-                "recommendation": "Improve signal quality or add confirmation indicators.",
-                "action": "Require multiple signal alignment before entering trades."
-            })
-        
-        # Strategy-specific insights
-        for strat, data in strategies.items():
-            if data.get("total_pnl", 0) < 0:
-                insights.append({
-                    "severity": "high",
-                    "area": f"Strategy: {strat}",
-                    "issue": f"Strategy is net negative (${data['total_pnl']:.2f})",
-                    "recommendation": f"Review {strat} parameters or disable temporarily.",
-                    "action": f"Analyze losing trades in {strat} to identify common patterns."
-                })
-            elif data.get("avg_win_rate", 0) < 0.40:
-                insights.append({
-                    "severity": "medium",
-                    "area": f"Strategy: {strat}",
-                    "issue": f"Low win rate ({data['avg_win_rate']*100:.1f}%)",
-                    "recommendation": "Tighten entry criteria for this strategy.",
-                    "action": "Add minimum confidence threshold or reduce position size."
-                })
-        
-        # Asset class insights
-        for asset, data in assets.items():
-            if data.get("total_pnl", 0) < 0 and data.get("total_trades", 0) > 5:
-                insights.append({
-                    "severity": "medium",
-                    "area": f"Asset Class: {asset}",
-                    "issue": f"Losing money on {asset} markets (${data['total_pnl']:.2f})",
-                    "recommendation": f"Consider excluding {asset} or adjusting strategy for this category.",
-                    "action": f"Analyze what makes {asset} markets different from profitable ones."
-                })
-        
-        # Sort by severity
-        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-        insights.sort(key=lambda x: severity_order.get(x["severity"], 4))
-        
-        return insights
-    
-    def _generate_educational_analysis(self, metrics: Dict, strategies: Dict) -> Dict:
-        """Generate educational analysis explaining the metrics"""
-        import numpy as np
-        
-        return {
-            "key_concepts": {
-                "sharpe_ratio": {
-                    "what": "Measures excess return per unit of risk (volatility)",
-                    "formula": "(Return - Risk-Free Rate) / Standard Deviation of Returns",
-                    "interpretation": {
-                        "below_0": "Strategy is losing money on a risk-adjusted basis",
-                        "0_to_1": "Positive but not compelling risk/reward",
-                        "1_to_2": "Good risk-adjusted performance",
-                        "above_2": "Excellent performance - investigate if sustainable"
-                    },
-                    "your_avg": metrics.get("sharpe_ratio", {}).get("avg", 0)
-                },
-                "max_drawdown": {
-                    "what": "Largest peak-to-trough decline in equity",
-                    "why_important": "Shows worst-case scenario for capital loss before recovery",
-                    "targets": {
-                        "conservative": "< 5%",
-                        "moderate": "5-10%",
-                        "aggressive": "10-20%",
-                        "dangerous": "> 20%"
-                    },
-                    "your_worst": metrics.get("max_drawdown", {}).get("worst", 0)
-                },
-                "profit_factor": {
-                    "what": "Ratio of gross profits to gross losses",
-                    "interpretation": {
-                        "below_1": "Losing money - gross losses exceed profits",
-                        "1_to_1.5": "Marginal profitability - high risk of turning negative",
-                        "1.5_to_2": "Good profitability with reasonable buffer",
-                        "above_2": "Strong profitability - but verify with enough sample size"
-                    },
-                    "your_avg": metrics.get("profit_factor", {}).get("avg", 0)
-                },
-                "win_rate": {
-                    "what": "Percentage of trades that are profitable",
-                    "note": "Win rate alone is meaningless - must consider avg win vs avg loss",
-                    "examples": {
-                        "high_win_rate_low_pf": "90% win rate but profit factor of 0.8 = many small wins, few devastating losses",
-                        "low_win_rate_high_pf": "30% win rate but profit factor of 2.5 = few wins but they're big"
-                    },
-                    "your_avg": metrics.get("win_rate", {}).get("avg", 0)
-                }
-            },
-            "strategy_quality_score": self._calculate_quality_score(metrics),
-            "recommendations_summary": self._generate_recommendations_summary(metrics, strategies)
-        }
-    
-    def _calculate_quality_score(self, metrics: Dict) -> Dict:
-        """Calculate an overall quality score for the trading strategy"""
-        score = 0
-        max_score = 100
-        breakdown = []
-        
-        # Return component (25 points)
-        avg_return = metrics.get("return", {}).get("avg", 0)
-        if avg_return > 10:
-            score += 25
-            breakdown.append({"component": "Return", "score": 25, "max": 25, "note": "Excellent returns"})
-        elif avg_return > 5:
-            score += 20
-            breakdown.append({"component": "Return", "score": 20, "max": 25, "note": "Good returns"})
-        elif avg_return > 0:
-            score += 10
-            breakdown.append({"component": "Return", "score": 10, "max": 25, "note": "Positive but modest"})
-        else:
-            score += 0
-            breakdown.append({"component": "Return", "score": 0, "max": 25, "note": "Negative returns - critical issue"})
-        
-        # Sharpe component (25 points)
-        avg_sharpe = metrics.get("sharpe_ratio", {}).get("avg", 0)
-        if avg_sharpe > 2:
-            score += 25
-            breakdown.append({"component": "Sharpe Ratio", "score": 25, "max": 25, "note": "Excellent risk-adjusted"})
-        elif avg_sharpe > 1:
-            score += 20
-            breakdown.append({"component": "Sharpe Ratio", "score": 20, "max": 25, "note": "Good risk-adjusted"})
-        elif avg_sharpe > 0.5:
-            score += 10
-            breakdown.append({"component": "Sharpe Ratio", "score": 10, "max": 25, "note": "Below target"})
-        else:
-            score += 0
-            breakdown.append({"component": "Sharpe Ratio", "score": 0, "max": 25, "note": "Poor risk-adjusted"})
-        
-        # Drawdown component (25 points)
-        worst_dd = metrics.get("max_drawdown", {}).get("worst", 1)
-        if worst_dd < 0.05:
-            score += 25
-            breakdown.append({"component": "Max Drawdown", "score": 25, "max": 25, "note": "Excellent risk control"})
-        elif worst_dd < 0.10:
-            score += 20
-            breakdown.append({"component": "Max Drawdown", "score": 20, "max": 25, "note": "Good risk control"})
-        elif worst_dd < 0.20:
-            score += 10
-            breakdown.append({"component": "Max Drawdown", "score": 10, "max": 25, "note": "Moderate risk"})
-        else:
-            score += 0
-            breakdown.append({"component": "Max Drawdown", "score": 0, "max": 25, "note": "High risk exposure"})
-        
-        # Profit factor component (25 points)
-        avg_pf = metrics.get("profit_factor", {}).get("avg", 0)
-        if avg_pf > 2:
-            score += 25
-            breakdown.append({"component": "Profit Factor", "score": 25, "max": 25, "note": "Strong profitability"})
-        elif avg_pf > 1.5:
-            score += 20
-            breakdown.append({"component": "Profit Factor", "score": 20, "max": 25, "note": "Good profitability"})
-        elif avg_pf > 1:
-            score += 10
-            breakdown.append({"component": "Profit Factor", "score": 10, "max": 25, "note": "Marginal profitability"})
-        else:
-            score += 0
-            breakdown.append({"component": "Profit Factor", "score": 0, "max": 25, "note": "Net loser"})
-        
-        grade = "A" if score >= 80 else "B" if score >= 60 else "C" if score >= 40 else "D" if score >= 20 else "F"
-        
-        return {
-            "total_score": score,
-            "max_score": max_score,
-            "grade": grade,
-            "breakdown": breakdown
-        }
-    
-    def _generate_recommendations_summary(self, metrics: Dict, strategies: Dict) -> List[str]:
-        """Generate a prioritized list of recommendations"""
-        recs = []
-        
-        avg_return = metrics.get("return", {}).get("avg", 0)
-        avg_sharpe = metrics.get("sharpe_ratio", {}).get("avg", 0)
-        avg_pf = metrics.get("profit_factor", {}).get("avg", 0)
-        worst_dd = metrics.get("max_drawdown", {}).get("worst", 0)
-        
-        if avg_return < 0:
-            recs.append("🔴 CRITICAL: Reduce position sizes by 50% immediately to stop losses")
-        
-        if avg_pf < 1:
-            recs.append("🔴 HIGH: Review and disable losing strategies - you're losing more than winning")
-        
-        if worst_dd > 0.15:
-            recs.append("🟠 HIGH: Implement daily loss limits to prevent catastrophic drawdowns")
-        
-        if avg_sharpe < 1:
-            recs.append("🟡 MEDIUM: Focus on higher-quality trades - fewer but better opportunities")
-        
-        # Find best and worst strategies
-        if strategies:
-            sorted_strats = sorted(strategies.items(), key=lambda x: x[1].get("total_pnl", 0))
-            if sorted_strats:
-                worst_strat = sorted_strats[0]
-                best_strat = sorted_strats[-1]
-                
-                if worst_strat[1].get("total_pnl", 0) < 0:
-                    recs.append(f"🟡 MEDIUM: Consider disabling {worst_strat[0]} (worst performer)")
-                
-                if best_strat[1].get("total_pnl", 0) > 0:
-                    recs.append(f"🟢 OPPORTUNITY: Increase allocation to {best_strat[0]} (best performer)")
-        
-        if not recs:
-            recs.append("🟢 Strategy is performing within acceptable parameters. Continue monitoring.")
-        
-        return recs
     
     async def delete_backtest(self, backtest_id: str) -> bool:
         """Delete a backtest result"""
