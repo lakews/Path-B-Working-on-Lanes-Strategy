@@ -113,22 +113,58 @@ function App() {
               </div>
               
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg backdrop-blur-sm bg-white/5 border border-white/10">
-                  <div className={`w-2 h-2 rounded-full ${ botRunning ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} data-testid="bot-status-indicator"></div>
-                  <span className="text-sm text-white/90">{botRunning ? 'Active' : 'Stopped'}</span>
+                {/* Mode Switcher */}
+                <div className="flex items-center gap-2 rounded-lg backdrop-blur-sm bg-white/5 border border-white/10 p-1">
+                  <button
+                    onClick={() => handleModeSwitch('live')}
+                    data-testid="mode-live-button"
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
+                      tradingMode === 'live' 
+                        ? 'bg-green-500 text-white' 
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    Live
+                  </button>
+                  <button
+                    onClick={() => handleModeSwitch('backtest')}
+                    data-testid="mode-backtest-button"
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
+                      tradingMode === 'backtest' 
+                        ? 'bg-orange-500 text-white' 
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    Backtest
+                  </button>
                 </div>
                 
-                <button
-                  onClick={botRunning ? stopBot : startBot}
-                  data-testid="bot-toggle-button"
-                  className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                    botRunning 
-                      ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30' 
-                      : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white shadow-lg shadow-cyan-500/30'
-                  }`}
-                >
-                  {botRunning ? 'Stop Trading' : 'Start Trading'}
-                </button>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg backdrop-blur-sm bg-white/5 border border-white/10">
+                  <div className={`w-2 h-2 rounded-full ${
+                    tradingMode === 'live' ? 'bg-green-400 animate-pulse' :
+                    tradingMode === 'backtest' ? 'bg-orange-400 animate-pulse' :
+                    'bg-gray-400'
+                  }`} data-testid="bot-status-indicator"></div>
+                  <span className="text-sm text-white/90">
+                    {tradingMode === 'live' ? 'Live Trading' : 
+                     tradingMode === 'backtest' ? 'Backtesting' : 
+                     'Stopped'}
+                  </span>
+                </div>
+                
+                {tradingMode === 'live' && (
+                  <button
+                    onClick={botRunning ? stopBot : startBot}
+                    data-testid="bot-toggle-button"
+                    className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                      botRunning 
+                        ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30' 
+                        : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/30'
+                    }`}
+                  >
+                    {botRunning ? 'Stop Live' : 'Start Live'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
