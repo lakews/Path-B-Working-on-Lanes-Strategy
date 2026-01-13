@@ -600,15 +600,15 @@ class BacktestEngine:
                 reason = t.get("exit_reason", "unknown")
                 exit_reasons[reason] = exit_reasons.get(reason, 0) + 1
             
-            # Strategy results
+            # Strategy results - convert numpy types to Python types
             strategy_results = {}
             for strategy, perf in self.strategy_performance.items():
                 trades = perf["trades"]
                 strategy_results[strategy] = {
-                    "trades": trades,
-                    "wins": perf["wins"],
-                    "pnl": perf["pnl"],
-                    "win_rate": perf["wins"] / trades if trades > 0 else 0
+                    "trades": int(trades),
+                    "wins": int(perf["wins"]),
+                    "pnl": float(perf["pnl"]),
+                    "win_rate": float(perf["wins"] / trades) if trades > 0 else 0.0
                 }
             
             # Asset class results
