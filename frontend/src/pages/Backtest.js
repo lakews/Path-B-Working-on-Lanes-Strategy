@@ -147,27 +147,59 @@ const Backtest = () => {
         {/* Strategy Selection */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-white mb-3">Strategies to Test</label>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[
-              { id: 'delta_neutral', name: 'Delta-Neutral' },
-              { id: 'volatility_exploitation', name: 'Volatility Exploitation' },
-              { id: 'alpha_directional', name: 'Alpha-Directional' }
+              { id: 'delta_neutral', name: 'Delta-Neutral Market Making', desc: 'Capture spreads with minimal risk' },
+              { id: 'volatility_exploitation', name: 'Volatility Exploitation', desc: '30-100x on extreme prices' },
+              { id: 'alpha_directional', name: 'Alpha-Directional', desc: 'High-confidence directional trades' },
+              { id: 'all', name: 'All Strategies Combined', desc: 'Test all strategies together' }
             ].map((strategy) => (
               <button
                 key={strategy.id}
-                onClick={() => toggleStrategy(strategy.id)}
+                onClick={() => {
+                  if (strategy.id === 'all') {
+                    // Toggle all
+                    if (config.strategies.length === 3) {
+                      setConfig({...config, strategies: []});
+                    } else {
+                      setConfig({...config, strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional']});
+                    }
+                  } else {
+                    toggleStrategy(strategy.id);
+                  }
+                }}
                 disabled={backtestRunning}
                 data-testid={`strategy-${strategy.id}-toggle`}
-                className={`px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 ${
-                  config.strategies.includes(strategy.id)
-                    ? 'bg-cyan-500 text-white'
-                    : 'bg-white/5 text-white/60 hover:bg-white/10'
+                className={`p-4 rounded-lg font-medium transition disabled:opacity-50 text-left border-2 ${
+                  (strategy.id === 'all' && config.strategies.length === 3) || 
+                  (strategy.id !== 'all' && config.strategies.includes(strategy.id))
+                    ? 'bg-cyan-500/20 border-cyan-500 text-white'
+                    : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20'
                 }`}
               >
-                {strategy.name}
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="font-semibold text-base mb-1">{strategy.name}</div>
+                    <div className="text-xs text-white/60">{strategy.desc}</div>
+                  </div>
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                    (strategy.id === 'all' && config.strategies.length === 3) || 
+                    (strategy.id !== 'all' && config.strategies.includes(strategy.id))
+                      ? 'border-cyan-500 bg-cyan-500'
+                      : 'border-white/30'
+                  }`}>
+                    {((strategy.id === 'all' && config.strategies.length === 3) || 
+                      (strategy.id !== 'all' && config.strategies.includes(strategy.id))) && (
+                      <span className="text-white text-xs">✓</span>
+                    )}
+                  </div>
+                </div>
               </button>
             ))}
           </div>
+          <p className="text-xs text-white/60 mt-2">
+            {config.strategies.length} strateg{config.strategies.length === 1 ? 'y' : 'ies'} selected
+          </p>
         </div>
 
         {/* Control Button */}
