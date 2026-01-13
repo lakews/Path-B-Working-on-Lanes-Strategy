@@ -56,7 +56,7 @@ const Analytics = () => {
   return (
     <div className="space-y-6" data-testid="analytics-page">
       {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="overall-win-rate-card">
           <div className="flex items-center gap-3 mb-2">
             <Target className="w-8 h-8 text-cyan-400" />
@@ -70,35 +70,110 @@ const Analytics = () => {
           </p>
         </div>
 
-        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="portfolio-volatility-card">
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="sortino-ratio-card">
           <div className="flex items-center gap-3 mb-2">
-            <Activity className="w-8 h-8 text-purple-400" />
-            <h3 className="text-sm text-white/60">Portfolio Volatility</h3>
+            <TrendingUp className="w-8 h-8 text-purple-400" />
+            <h3 className="text-sm text-white/60">Sortino Ratio</h3>
           </div>
           <p className="text-3xl font-bold text-white">
-            {((analytics?.portfolio_volatility || 0) * 100).toFixed(2)}%
+            {(analytics?.sortino_ratio || 0).toFixed(2)}
           </p>
-          <p className="text-xs text-purple-400 mt-1">Annualized</p>
+          <p className="text-xs text-purple-400 mt-1">Downside risk-adjusted</p>
         </div>
 
-        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="total-trades-card">
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="profit-factor-card">
           <div className="flex items-center gap-3 mb-2">
-            <TrendingUp className="w-8 h-8 text-green-400" />
-            <h3 className="text-sm text-white/60">Total Trades</h3>
+            <Activity className="w-8 h-8 text-green-400" />
+            <h3 className="text-sm text-white/60">Profit Factor</h3>
           </div>
-          <p className="text-3xl font-bold text-white">{analytics?.total_trades || 0}</p>
-          <p className="text-xs text-green-400 mt-1">All Strategies</p>
+          <p className="text-3xl font-bold text-white">
+            {(analytics?.profit_factor || 0).toFixed(2)}
+          </p>
+          <p className="text-xs text-green-400 mt-1">{(analytics?.profit_factor || 0) > 1.5 ? 'Excellent' : 'Target: >1.5'}</p>
         </div>
 
-        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="realized-pnl-card">
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="expectancy-card">
           <div className="flex items-center gap-3 mb-2">
             <AlertCircle className="w-8 h-8 text-orange-400" />
-            <h3 className="text-sm text-white/60">Realized P&L</h3>
+            <h3 className="text-sm text-white/60">Expectancy</h3>
           </div>
-          <p className={`text-3xl font-bold ${(analytics?.realized_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            ${(analytics?.realized_pnl || 0).toFixed(2)}
+          <p className={`text-3xl font-bold ${(analytics?.expectancy || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            ${(analytics?.expectancy || 0).toFixed(2)}
           </p>
-          <p className="text-xs text-orange-400 mt-1">Closed Positions</p>
+          <p className="text-xs text-orange-400 mt-1">Per trade average</p>
+        </div>
+      </div>
+
+      {/* Additional Metrics Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4">
+          <h3 className="text-xs text-white/60 mb-1">Win/Loss Ratio</h3>
+          <p className="text-2xl font-bold text-white">{(analytics?.win_loss_ratio || 0).toFixed(2)}</p>
+          <p className="text-xs text-cyan-400 mt-1">Avg win / Avg loss</p>
+        </div>
+
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4">
+          <h3 className="text-xs text-white/60 mb-1">Recovery Factor</h3>
+          <p className="text-2xl font-bold text-white">{(analytics?.recovery_factor || 0).toFixed(2)}</p>
+          <p className="text-xs text-purple-400 mt-1">Profit / Max DD</p>
+        </div>
+
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4">
+          <h3 className="text-xs text-white/60 mb-1">Avg Win</h3>
+          <p className="text-2xl font-bold text-green-400">${(analytics?.avg_win || 0).toFixed(2)}</p>
+          <p className="text-xs text-green-400/60 mt-1">Per winning trade</p>
+        </div>
+
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4">
+          <h3 className="text-xs text-white/60 mb-1">Avg Loss</h3>
+          <p className="text-2xl font-bold text-red-400">${(analytics?.avg_loss || 0).toFixed(2)}</p>
+          <p className="text-xs text-red-400/60 mt-1">Per losing trade</p>
+        </div>
+      </div>
+
+      {/* Streaks */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-xl bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 p-6">
+          <h3 className="text-sm text-green-400 mb-2 font-semibold">Max Winning Streak</h3>
+          <p className="text-4xl font-bold text-green-400">{analytics?.max_consecutive_wins || 0}</p>
+          <p className="text-xs text-green-400/60 mt-2">Consecutive profitable trades</p>
+        </div>
+
+        <div className="rounded-xl bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/20 p-6">
+          <h3 className="text-sm text-red-400 mb-2 font-semibold">Max Losing Streak</h3>
+          <p className="text-4xl font-bold text-red-400">{analytics?.max_consecutive_losses || 0}</p>
+          <p className="text-xs text-red-400/60 mt-2">Consecutive losing trades</p>
+        </div>
+      </div>
+
+      {/* Original Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
+          <h3 className="text-lg font-semibold text-white mb-2">Portfolio Volatility</h3>
+          <p className="text-4xl font-bold text-purple-400">{((analytics?.portfolio_volatility || 0) * 100).toFixed(2)}%</p>
+          <p className="text-sm text-white/60 mt-2">Annualized standard deviation</p>
+        </div>
+
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
+          <h3 className="text-lg font-semibold text-white mb-2">Total Performance</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-white/60">Total Trades:</span>
+              <span className="text-white font-semibold">{analytics?.total_trades || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">Realized P&L:</span>
+              <span className={`font-semibold ${(analytics?.realized_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                ${(analytics?.realized_pnl || 0).toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">Unrealized P&L:</span>
+              <span className={`font-semibold ${(analytics?.unrealized_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                ${(analytics?.unrealized_pnl || 0).toFixed(2)}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
