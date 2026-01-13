@@ -437,13 +437,19 @@ class BacktestEngine:
                              timestamp: str, exit_reason: str):
         """Close position and record trade"""
         shares = position["shares"]
+        entry_price = position["entry_price"]
         exit_value = shares * exit_price
-        pnl = exit_value - position["cost"]
+        cost = position["cost"]
+        pnl = exit_value - cost
         
         self.current_capital += exit_value
         
         strategy = position["strategy"]
         category = position["category"]
+        
+        # Only log significant trades
+        if abs(pnl) > 0.10:
+            logger.info(f"TRADE: {strategy} {market_id[:8]} entry=${entry_price:.3f} exit=${exit_price:.3f} pnl=${pnl:.2f} ({exit_reason})")
         
         # Record exit trade
         trade = {
@@ -479,8 +485,6 @@ class BacktestEngine:
         # Remove from positions
         if market_id in self.positions:
             del self.positions[market_id]
-        
-        logger.debug(f"Closed {strategy} on {market_id[:8]}: ${pnl:.2f} ({exit_reason})")
     
     async def _calculate_backtest_results(self, data_summary: Dict) -> Dict:
         """Calculate comprehensive backtest metrics"""
