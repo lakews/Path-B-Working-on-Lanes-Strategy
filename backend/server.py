@@ -214,7 +214,23 @@ async def get_markets(limit: int = 50):
             content={"message": f"Failed to get markets: {str(e)}"}
         )
 
-@api_router.post("/config/update")
+@api_router.get("/analytics")
+async def get_analytics():
+    """Get comprehensive performance analytics"""
+    global analytics_engine
+    
+    try:
+        if not analytics_engine:
+            analytics_engine = PerformanceAnalytics()
+        
+        analytics = await analytics_engine.calculate_comprehensive_metrics()
+        return analytics
+    except Exception as e:
+        logger.error(f"Error getting analytics: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get analytics: {str(e)}"}
+        )
 async def update_config(config_update: TradingConfig):
     """Update trading configuration"""
     try:
