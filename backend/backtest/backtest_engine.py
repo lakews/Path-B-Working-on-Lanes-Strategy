@@ -33,9 +33,9 @@ class BacktestEngine:
         self.running = False
         self.backtest_id = None
         
-        # Backtest state
-        self.initial_capital = config.INITIAL_CAPITAL
-        self.current_capital = config.INITIAL_CAPITAL
+        # Backtest state - use higher capital for meaningful backtests
+        self.initial_capital = max(config.INITIAL_CAPITAL, 1000)
+        self.current_capital = self.initial_capital
         self.positions = {}
         self.trades = []
         self.equity_curve = []
