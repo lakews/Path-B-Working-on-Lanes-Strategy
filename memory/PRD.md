@@ -18,45 +18,57 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 13, 2026 - Session 4 (P3 Complete)
+- ✅ **P3: Backtest History & Comparison System**
+  - Store and retrieve up to 10+ past backtest results
+  - History tab with selection checkboxes for comparison
+  - Compare & Analyze tab with comprehensive metrics
+  - Strategy Quality Score (A-F grade, 0-100 score)
+  - Improvement Insights with severity levels (critical/high/medium/low)
+  - Educational Analysis explaining all trading metrics
+  - API endpoints: `/api/backtest/history`, `/api/backtest/compare`, `/api/backtest/{id}` (DELETE)
+  - Learn tab with educational content about Sharpe Ratio, Max Drawdown, Profit Factor, Win Rate
+
 ### January 13, 2026 - Session 3 (P2 Complete)
 - ✅ **P2: Reinforcement Learning Engine**
   - Built `RLAdaptiveEngine` class with Q-learning and experience replay
   - Actions: WAIT, BUY_SMALL, BUY_MEDIUM, BUY_LARGE, SELL_SMALL, SELL_MEDIUM, SELL_LARGE
-  - State features: price, volatility, sentiment, sharp_alignment, liquidity, volume, time_to_expiry, exposure
   - Endpoints: `/api/rl/stats`, `/api/rl/train`, `/api/rl/save`, `/api/rl/load`
   - Model persistence to disk
 
 - ✅ **P2: Dashboard UI/UX Enhancements**
   - Real-time P&L chart with live updates
-  - RL Engine status card (epsilon, buffer size, iterations)
-  - Historical Data status card with "Collect" button
-  - Risk Status card (Max DD, Kelly, risk level indicator)
-  - Live Trade Feed with color-coded entries
-  - Enhanced P&L by Trade chart
+  - RL Engine status card
+  - Historical Data status card
+  - Risk Status card
+  - Live Trade Feed
 
 ### January 13, 2026 - Session 2
 - ✅ **P0: Spread Calibrator Integration Verified**
-- ✅ **P1: Historical Data Collector** (8000+ market snapshots)
+- ✅ **P1: Historical Data Collector** (64,000+ market snapshots)
 - ✅ **P1: Detailed Analytics** (strategy & asset class performance)
-
-### January 13, 2026 - Session 1
-- ✅ **Enhanced Dashboard Layout** with mode controls, P&L hero, trade frequency stats
 
 ### Previous Implementation
 - ✅ Backend scaffolding with modular architecture
 - ✅ Frontend dashboard with multi-page navigation
 - ✅ 6 AI modules: Volatility Predictor, Sentiment Analyzer, Bayesian Outlier, Sharp Detector, Kelly-Sharpe Optimizer, Spread Calibrator
-- ✅ Signal Fusion Engine (combines all AI signals with Bayesian inference)
-- ✅ 4 Trading strategies: Delta-Neutral, Volatility Exploitation, Alpha-Directional, Arbitrage
+- ✅ Signal Fusion Engine
+- ✅ 4 Trading strategies
 - ✅ Core trading components: ExecutionEngine, PositionManager, RiskController, TradingBot
 - ✅ Mode switcher (Live/Backtest/Stopped)
-- ✅ Configurable parameters (Kelly Fraction, Max Drawdown)
+- ✅ Configurable parameters
 
 ## Backlog
 
-### P3 - Lower Priority
+### P0 - Critical (Next Priority)
+- [ ] **Implement Full ML Model Logic** - The modules in `/app/backend/ml/` need full implementation with real model training
+- [ ] **Refine Trading Strategies for Profitability** - Current backtests show negative returns, strategies need tuning
+
+### P2 - Medium Priority
 - [ ] **AWS Infrastructure as Code** - Terraform/CloudFormation deployment
-- [ ] **Comprehensive Documentation** - API references, architecture diagrams, operational runbooks
+- [ ] **Comprehensive Documentation** - API references, architecture diagrams, runbooks
+
+### P3 - Lower Priority
 - [ ] **WebSocket Integration** - Real-time trade updates without polling
 - [ ] **Alerts System** - Email/SMS notifications for risk events
 
@@ -71,8 +83,9 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - `POST /api/historical/collect` - Trigger data collection
 - `GET /api/rl/stats` - RL engine training statistics
 - `POST /api/rl/train` - Trigger RL batch training
-- `POST /api/rl/save` - Save RL model
-- `POST /api/rl/load` - Load RL model
+- `GET /api/backtest/history` - Get list of past backtests
+- `POST /api/backtest/compare` - Compare multiple backtests with educational analysis
+- `DELETE /api/backtest/{id}` - Delete a backtest
 - `POST /api/bot/start` - Start live trading
 - `POST /api/bot/stop` - Stop live trading
 
@@ -90,26 +103,27 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 │   │   ├── sharp_detector.py
 │   │   ├── kelly_sharpe_optimizer.py
 │   │   ├── signal_fusion.py
-│   │   └── rl_engine.py   # NEW: Reinforcement Learning
+│   │   └── rl_engine.py
 │   ├── strategies/        # Trading strategies
-│   ├── trading/           # Execution, risk management, spread_calibrator
+│   ├── backtest/          # Backtesting engine with history & comparison
+│   ├── trading/           # Execution, risk management
 │   └── services/          # Analytics services
 ├── frontend/
-│   └── src/pages/         # Dashboard (enhanced), Analytics, Backtest, Config
+│   └── src/pages/         # Dashboard, Analytics, Backtest (4 tabs), Config
 └── memory/
-    └── PRD.md             # This document
+    └── PRD.md
 ```
 
 ## Testing Status
 - **Iteration 1**: 12/12 tests passed
 - **Iteration 2**: 15/15 tests passed  
-- **Iteration 3**: 15/15 tests passed (RL Engine + Dashboard)
-- **Total**: 42/42 backend tests passing, 100% frontend UI verified
+- **Iteration 3**: 15/15 tests passed
+- **Iteration 4**: 60/60 tests passed (18 new backtest history/compare tests)
+- **Total**: 100% tests passing
 
 ## Notes
-- All ML modules fully implemented with actual algorithms
-- RL Engine uses Q-learning with epsilon-greedy exploration (starts at 0.15)
-- Historical data: 8000+ market snapshots from 947 unique markets
-- Categories: Sports (445), Finance (425), Politics (74), Crypto (46), Entertainment (10)
+- Historical data: 64,000+ market snapshots from 947 unique markets
+- Categories: Sports (28480), Finance (27200), Politics (4736), Crypto (2944)
 - MongoDB ObjectId serialization handled - always exclude `_id` from responses
 - Credentials stored in `/app/backend/.env`
+- Current backtests show negative P&L - strategy refinement is next priority
