@@ -99,6 +99,9 @@ class BacktestEngine:
                 if idx % 100 == 0:
                     logger.info(f"Backtest progress: {idx}/{len(historical_markets)} snapshots")
             
+            # Force close any remaining positions at last known prices
+            await self._close_all_positions()
+            
             # Train RL from replay buffer after backtest
             await self.rl_engine.train_from_replay()
             await self.rl_engine.save_model()
