@@ -46,9 +46,9 @@ const Configuration = () => {
     toast.info('Reset to defaults');
   };
 
-  const deployedCapital = (config.initial_capital * config.capital_deployment_pct / 100);
-  const maxPositionValue = (config.initial_capital * config.max_position_size_pct / 100);
-  const circuitBreakerValue = (config.initial_capital * config.max_drawdown_pct / 100);
+  const deployedCapital = (config.initial_capital * (config.capital_deployment_pct || 80) / 100);
+  const maxPositionValue = (config.initial_capital * (config.max_position_size_pct || 3) / 100);
+  const circuitBreakerValue = (config.initial_capital * (config.max_drawdown_pct || 3) / 100);
 
   if (loading) return <div className="flex items-center justify-center h-96"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-cyan-500"></div></div>;
 
