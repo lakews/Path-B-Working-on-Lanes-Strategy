@@ -25,6 +25,7 @@ class BacktestEngine:
         self.delta_neutral_strategy = DeltaNeutralStrategy()
         self.volatility_strategy = VolatilityExploitationStrategy()
         self.alpha_strategy = AlphaDirectionalStrategy()
+        self.arbitrage_strategy = MultiMarketArbitrageStrategy()
         
         self.running = False
         self.backtest_id = None
