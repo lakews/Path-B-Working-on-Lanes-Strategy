@@ -377,9 +377,8 @@ class BacktestEngine:
     async def _calculate_backtest_results(self) -> Dict:
         """Calculate backtest performance metrics"""
         try:
-            # Close all remaining positions at last price
+            # Close all remaining positions at last price with tracking
             for market_id, position in self.positions.items():
-                # Assume last price
                 self.current_capital += position['shares'] * position['entry_price']
             
             total_pnl = self.current_capital - self.initial_capital
@@ -403,11 +402,58 @@ class BacktestEngine:
             # Calculate Sharpe ratio (simplified)
             returns = []
             for i in range(1, len(self.equity_curve)):
-                ret = (self.equity_curve[i]['equity'] - self.equity_curve[i-1]['equity']) / self.equity_curve[i-1]['equity']
-                returns.append(ret)
+                prev_eq = self.equity_curve[i-1]['equity']
+                if prev_eq > 0:
+                    ret = (self.equity_curve[i]['equity'] - prev_eq) / prev_eq
+                    returns.append(ret)
             
             import numpy as np
             sharpe_ratio = (np.mean(returns) / np.std(returns) * np.sqrt(252)) if len(returns) > 1 and np.std(returns) > 0 else 0
+            
+            # Calculate profit factor
+            gross_profit = sum(t.get('pnl', 0) for t in closed_trades if t.get('pnl', 0) > 0)
+            gross_loss = abs(sum(t.get('pnl', 0) for t in closed_trades if t.get('pnl', 0) < 0))
+            profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
+            
+            # Calculate strategy performance breakdown
+            strategy_results = {}
+            for trade in closed_trades:
+                strategy = trade.get('strategy', 'unknown')
+                if strategy not in strategy_results:
+                    strategy_results[strategy] = {'trades': 0, 'wins': 0, 'pnl': 0.0}
+                strategy_results[strategy]['trades'] += 1
+                strategy_results[strategy]['pnl'] += trade.get('pnl', 0)
+                if trade.get('pnl', 0) > 0:
+                    strategy_results[strategy]['wins'] += 1
+            
+            # Calculate win rate per strategy
+            for strategy in strategy_results:
+                data = strategy_results[strategy]
+                data['win_rate'] = data['wins'] / data['trades'] if data['trades'] > 0 else 0
+            
+            # Calculate asset class performance breakdown
+            asset_class_results = {}
+            for trade in closed_trades:
+                category = trade.get('category', 'unknown')
+                if category not in asset_class_results:
+                    asset_class_results[category] = {'trades': 0, 'wins': 0, 'pnl': 0.0}
+                asset_class_results[category]['trades'] += 1
+                asset_class_results[category]['pnl'] += trade.get('pnl', 0)
+                if trade.get('pnl', 0) > 0:
+                    asset_class_results[category]['wins'] += 1
+            
+            # Add asset class data from tracking
+            for category, data in self.asset_class_performance.items():
+                if category not in asset_class_results:
+                    asset_class_results[category] = data
+            
+            # Calculate win rate per asset class
+            for category in asset_class_results:
+                data = asset_class_results[category]
+                data['win_rate'] = data['wins'] / data['trades'] if data['trades'] > 0 else 0
+            
+            # Get RL learning stats
+            rl_stats = await self.rl_engine.get_training_stats()
             
             results = {
                 "backtest_id": self.backtest_id,
@@ -422,9 +468,14 @@ class BacktestEngine:
                 "losing_trades": len(closed_trades) - len(winning_trades),
                 "win_rate": win_rate,
                 "max_drawdown": max_drawdown,
-                "sharpe_ratio": sharpe_ratio,
+                "sharpe_ratio": float(sharpe_ratio) if not np.isnan(sharpe_ratio) else 0,
+                "profit_factor": profit_factor,
                 "equity_curve": self.equity_curve[-100:],  # Last 100 points
                 "trades_summary": closed_trades[-20:],  # Last 20 trades
+                "strategy_results": strategy_results,
+                "asset_class_results": asset_class_results,
+                "data_summary": self.data_summary,
+                "rl_learning_stats": rl_stats,
                 "completed_at": datetime.now(timezone.utc).isoformat()
             }
             
@@ -433,6 +484,140 @@ class BacktestEngine:
         except Exception as e:
             logger.error(f"Error calculating backtest results: {e}")
             return {}
+    
+    async def _update_positions_with_tracking(self, market_data: Dict):
+        """Update positions with current market prices and track performance"""
+        try:
+            market_id = market_data.get('id')
+            current_price = market_data.get('yes_price', 0.5)
+            category = market_data.get('category', 'unknown')
+            
+            if market_id in self.positions:
+                position = self.positions[market_id]
+                entry_price = position['entry_price']
+                shares = position['shares']
+                strategy = position.get('strategy', 'unknown')
+                
+                # Check exit conditions
+                pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+                
+                # Exit if profit > 50% or loss > 20%
+                if pnl_pct > 0.5 or pnl_pct < -0.2:
+                    exit_value = shares * current_price
+                    pnl = exit_value - position['cost']
+                    self.current_capital += exit_value
+                    
+                    # Record exit trade with category
+                    trade_record = {
+                        "id": str(uuid.uuid4()),
+                        "backtest_id": self.backtest_id,
+                        "market_id": market_id,
+                        "strategy": strategy,
+                        "category": category,
+                        "side": "SELL",
+                        "price": current_price,
+                        "shares": shares,
+                        "value": exit_value,
+                        "pnl": pnl,
+                        "timestamp": market_data.get("last_update")
+                    }
+                    self.trades.append(trade_record)
+                    
+                    # Update strategy performance
+                    if strategy in self.strategy_performance:
+                        self.strategy_performance[strategy]['trades'] += 1
+                        self.strategy_performance[strategy]['pnl'] += pnl
+                        if pnl > 0:
+                            self.strategy_performance[strategy]['wins'] += 1
+                    
+                    # Update asset class performance
+                    if category in self.asset_class_performance:
+                        self.asset_class_performance[category]['trades'] += 1
+                        self.asset_class_performance[category]['pnl'] += pnl
+                        if pnl > 0:
+                            self.asset_class_performance[category]['wins'] += 1
+                    
+                    # Close position
+                    del self.positions[market_id]
+                    
+        except Exception as e:
+            logger.error(f"Error updating positions: {e}")
+    
+    async def _run_strategy_with_tracking(self, strategy_name: str, market_data: Dict, category: str, rl_action: str, rl_confidence: float) -> Optional[Dict]:
+        """Run a strategy with performance tracking"""
+        try:
+            strategy_map = {
+                "delta_neutral": self.delta_neutral_strategy,
+                "volatility_exploitation": self.volatility_strategy,
+                "alpha_directional": self.alpha_strategy,
+                "arbitrage": self.arbitrage_strategy
+            }
+            
+            strategy = strategy_map.get(strategy_name)
+            if not strategy:
+                return None
+            
+            market_id = market_data.get('id')
+            price = market_data.get('yes_price', 0.5)
+            
+            # Skip if already have position in this market
+            if market_id in self.positions:
+                return None
+            
+            # Check if we can afford a position
+            available_capital = self.current_capital * 0.8
+            if available_capital < 10:
+                return None
+            
+            # Use RL confidence to adjust position sizing
+            rl_multiplier = 1.0
+            if rl_confidence > 0.7:
+                rl_multiplier = 1.2
+            elif rl_confidence < 0.3:
+                rl_multiplier = 0.8
+            
+            # Simulate position sizing (3% max)
+            position_size = min(available_capital * 0.03 * rl_multiplier, self.current_capital * 0.03)
+            shares = position_size / price if price > 0 else 0
+            
+            if shares < 1:
+                return None
+            
+            # Record simulated trade
+            trade = {
+                "id": str(uuid.uuid4()),
+                "backtest_id": self.backtest_id,
+                "market_id": market_id,
+                "strategy": strategy_name,
+                "category": category,
+                "side": "BUY",
+                "price": price,
+                "shares": shares,
+                "cost": position_size,
+                "rl_action": rl_action,
+                "rl_confidence": rl_confidence,
+                "timestamp": market_data.get("last_update")
+            }
+            
+            self.trades.append(trade)
+            
+            # Open position
+            self.positions[market_id] = {
+                "strategy": strategy_name,
+                "category": category,
+                "entry_price": price,
+                "shares": shares,
+                "cost": position_size
+            }
+            
+            # Reduce capital
+            self.current_capital -= position_size
+            
+            return {"opened": True, "strategy": strategy_name, "category": category}
+            
+        except Exception as e:
+            logger.error(f"Error running strategy with tracking: {e}")
+            return None
     
     async def _store_backtest_results(self, results: Dict):
         """Store backtest results in database"""
