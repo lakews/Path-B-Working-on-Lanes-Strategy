@@ -18,32 +18,46 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
-### January 13, 2026
+### January 13, 2026 - Session 2
+- ✅ **P0: Spread Calibrator Integration Verified**
+  - SpreadCalibrator module working correctly
+  - Integrated into DeltaNeutralStrategy (line 11, 29, 44)
+  - Calculates optimal spreads based on volatility, liquidity, volume, timing
+  
+- ✅ **P1: Historical Data Collector**
+  - Built robust data collection for backtesting
+  - Successfully collected 6000+ market snapshots from Polymarket API
+  - Proper market categorization (crypto, sports, politics, finance, entertainment)
+  - New API endpoints:
+    - `GET /api/historical/stats` - Collection statistics
+    - `POST /api/historical/collect` - Trigger one-time collection
+    - `GET /api/historical/data` - Retrieve historical data
+    - `POST /api/historical/start-continuous` - Start background collection
+    - `POST /api/historical/stop-continuous` - Stop background collection
+
+- ✅ **P1: Analytics with Strategy & Asset Class Performance**
+  - Analytics endpoint returns `strategy_performance` and `asset_class_performance`
+  - Per-strategy metrics: win rate, total trades, P&L, classification
+  - Per-asset-class metrics: win rate, trades, P&L by category
+
+### January 13, 2026 - Session 1
 - ✅ **Enhanced Dashboard Layout**
   - Mode control banner with LIVE TRADING, BACKTEST, STOP buttons
   - P&L hero card displayed prominently at top
   - Trade frequency metrics: Live trades, 10min, 30min, 1hr, 24hr counts
-  - 8 stat cards with relevant trading metrics
-  - New `/api/trades/stats` endpoint for trade frequency data
-  - All tests passing (12/12 backend + frontend tests)
+  - New `/api/trades/stats` endpoint
 
 ### Previous Implementation
-- ✅ Backend scaffolding with modular architecture (data, ml, strategies, trading, services)
+- ✅ Backend scaffolding with modular architecture
 - ✅ Frontend dashboard with multi-page navigation
-- ✅ 5 AI modules (stubs): Volatility Predictor, Sentiment Analyzer, Bayesian Outlier, Sharp Detector, Kelly-Sharpe Optimizer
-- ✅ Spread Calibrator module added
+- ✅ 6 AI modules: Volatility Predictor, Sentiment Analyzer, Bayesian Outlier, Sharp Detector, Kelly-Sharpe Optimizer, Spread Calibrator
 - ✅ 4 Trading strategies: Delta-Neutral, Volatility Exploitation, Alpha-Directional, Arbitrage
 - ✅ Core trading components: ExecutionEngine, PositionManager, RiskController, TradingBot
 - ✅ Mode switcher (Live/Backtest/Stopped)
 - ✅ Configurable parameters (Kelly Fraction, Max Drawdown)
-- ✅ Analytics page with Sharpe, Sortino, Calmar ratios
-- ✅ Multi-strategy backtesting selection
+- ✅ Analytics page with Sharpe, Sortino, Calmar ratios, strategy/asset class breakdowns
 
 ## Backlog
-
-### P1 - High Priority
-- [ ] **Detailed Analytics**: Win rate per strategy and by asset class
-- [ ] **Historical Data Collector**: Build robust data collection for backtesting
 
 ### P2 - Medium Priority
 - [ ] **Full ML Model Logic**: Implement actual model loading, feature engineering, inference in `/app/backend/ml/`
@@ -60,7 +74,10 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - `GET /api/performance` - Performance metrics
 - `GET /api/positions` - Open positions
 - `GET /api/trades` - Recent trades
-- `GET /api/analytics` - Comprehensive analytics
+- `GET /api/analytics` - Comprehensive analytics with strategy/asset class breakdowns
+- `GET /api/historical/stats` - Historical data collection statistics
+- `POST /api/historical/collect` - Trigger market data collection
+- `GET /api/historical/data` - Retrieve historical market data
 - `POST /api/bot/start` - Start live trading
 - `POST /api/bot/stop` - Stop live trading
 - `POST /api/backtest/start` - Start backtesting
@@ -71,10 +88,10 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 ├── backend/
 │   ├── server.py          # FastAPI application
 │   ├── trading_bot.py     # Core trading orchestrator
-│   ├── data/              # Data ingestion
-│   ├── ml/                # AI/ML models (stubs)
+│   ├── data/              # Data ingestion (historical_collector, polymarket_api)
+│   ├── ml/                # AI/ML models (stubs pending full implementation)
 │   ├── strategies/        # Trading strategies
-│   ├── trading/           # Execution, risk management
+│   ├── trading/           # Execution, risk management, spread_calibrator
 │   └── services/          # Analytics services
 ├── frontend/
 │   └── src/pages/         # Dashboard, Analytics, Backtest, Config
@@ -82,7 +99,13 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
     └── PRD.md             # This document
 ```
 
+## Testing Status
+- **Iteration 1**: 12/12 tests passed (Dashboard, Trade Stats, API endpoints)
+- **Iteration 2**: 15/15 tests passed (Spread Calibrator, Historical Data Collection)
+- **Total**: 27/27 backend tests passing
+
 ## Notes
 - All ML modules in `/app/backend/ml/` are currently stubs awaiting full implementation
+- Historical data collection is working - 6000+ market snapshots available for backtesting
 - MongoDB ObjectId serialization handled - always exclude `_id` from responses
 - Credentials stored in `/app/backend/.env`
