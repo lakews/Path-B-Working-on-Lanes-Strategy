@@ -190,9 +190,10 @@ class BacktestEngine:
     async def _process_snapshot_with_learning(self, market_snapshot: Dict, enabled_strategies: List[str]):
         """Process a single market snapshot with RL learning"""
         try:
-            market_data = market_snapshot.get("market_data", {})
+            # Historical data is stored flat, not nested under market_data
+            market_data = market_snapshot if 'yes_price' in market_snapshot else market_snapshot.get("market_data", {})
             
-            if not market_data:
+            if not market_data or 'yes_price' not in market_data:
                 return
             
             category = market_data.get("category", "unknown")
