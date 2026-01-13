@@ -247,6 +247,84 @@ async def get_backtest_results(backtest_id: Optional[str] = None):
             content={"message": f"Failed to get results: {str(e)}"}
         )
 
+@api_router.get("/backtest/history")
+async def get_backtest_history(limit: int = 10):
+    """Get list of past backtest results"""
+    global backtest_engine
+    
+    try:
+        if not backtest_engine:
+            backtest_engine = BacktestEngine()
+        
+        history = await backtest_engine.get_backtest_history(limit)
+        
+        return {
+            "history": history,
+            "count": len(history)
+        }
+    except Exception as e:
+        logger.error(f"Error getting backtest history: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get history: {str(e)}"}
+        )
+
+@api_router.post("/backtest/compare")
+async def compare_backtests(backtest_ids: List[str]):
+    """Compare multiple backtest results with comprehensive metrics"""
+    global backtest_engine
+    
+    try:
+        if not backtest_engine:
+            backtest_engine = BacktestEngine()
+        
+        if len(backtest_ids) < 1:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "At least 1 backtest ID required for analysis"}
+            )
+        
+        comparison = await backtest_engine.compare_backtests(backtest_ids)
+        
+        if "error" in comparison:
+            return JSONResponse(
+                status_code=404,
+                content={"message": comparison["error"]}
+            )
+        
+        return comparison
+    except Exception as e:
+        logger.error(f"Error comparing backtests: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to compare: {str(e)}"}
+        )
+
+@api_router.delete("/backtest/{backtest_id}")
+async def delete_backtest(backtest_id: str):
+    """Delete a backtest result"""
+    global backtest_engine
+    
+    try:
+        if not backtest_engine:
+            backtest_engine = BacktestEngine()
+        
+        success = await backtest_engine.delete_backtest(backtest_id)
+        
+        if success:
+            return {"message": f"Backtest {backtest_id} deleted successfully"}
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "Backtest not found"}
+            )
+    except Exception as e:
+        logger.error(f"Error deleting backtest: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to delete: {str(e)}"}
+        )
+
 @api_router.get("/performance", response_model=PerformanceResponse)
 async def get_performance():
     """Get current performance metrics"""
