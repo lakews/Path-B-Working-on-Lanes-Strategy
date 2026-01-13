@@ -466,6 +466,10 @@ class BacktestEngine:
             if market_id in self.positions:
                 return None
             
+            # Limit total open positions to 20 at a time
+            if len(self.positions) >= 20:
+                return None
+            
             # Price must be in tradeable range - widen range for testing
             if price <= 0.01 or price >= 0.99:
                 return None
