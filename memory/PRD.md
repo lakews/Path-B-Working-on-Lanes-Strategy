@@ -18,7 +18,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
-### January 13, 2026 - Session 4 (P3 Complete)
+### January 13, 2026 - Session 4 (P3 + P0 ML Complete)
 - ✅ **P3: Backtest History & Comparison System**
   - Store and retrieve up to 10+ past backtest results
   - History tab with selection checkboxes for comparison
@@ -28,6 +28,13 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Educational Analysis explaining all trading metrics
   - API endpoints: `/api/backtest/history`, `/api/backtest/compare`, `/api/backtest/{id}` (DELETE)
   - Learn tab with educational content about Sharpe Ratio, Max Drawdown, Profit Factor, Win Rate
+
+- ✅ **P0: Trainable ML Models Implementation**
+  - **Volatility Predictor**: Gradient Boosting + Random Forest ensemble trained on 2,920 samples
+  - **Mispricing Detector**: Isolation Forest + Gradient Boosting classifier trained on 64,265 samples
+  - Models persist to disk (`/app/backend/ml/models/`)
+  - Auto-load on startup, fallback to heuristics if not trained
+  - API endpoints: `/api/ml/stats`, `/api/ml/train/all`, `/api/ml/train/volatility`, `/api/ml/train/mispricing`
 
 ### January 13, 2026 - Session 3 (P2 Complete)
 - ✅ **P2: Reinforcement Learning Engine**
@@ -61,8 +68,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 ## Backlog
 
 ### P0 - Critical (Next Priority)
-- [ ] **Implement Full ML Model Logic** - The modules in `/app/backend/ml/` need full implementation with real model training
-- [ ] **Refine Trading Strategies for Profitability** - Current backtests show negative returns, strategies need tuning
+- [ ] **Refine Trading Strategies for Profitability** - Current backtests show negative returns, strategies need tuning using trained ML models
 
 ### P2 - Medium Priority
 - [ ] **AWS Infrastructure as Code** - Terraform/CloudFormation deployment
