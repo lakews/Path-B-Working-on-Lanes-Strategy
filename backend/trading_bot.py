@@ -102,6 +102,11 @@ class ApexTrader:
                 logger.info(f"Alpha-directional trade executed: {market_id}")
                 return
             
+            result = await self.arbitrage_strategy.execute_strategy(market_data)
+            if result:
+                logger.info(f"Arbitrage trade executed: {market_id}")
+                return
+            
             result = await self.delta_neutral_strategy.execute_strategy(market_data)
             if result:
                 logger.info(f"Delta-neutral trade executed: {market_id}")
