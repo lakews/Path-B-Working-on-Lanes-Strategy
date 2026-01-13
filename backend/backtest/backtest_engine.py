@@ -8,6 +8,7 @@ from ml.kelly_sharpe_optimizer import KellySharpeOptimizer
 from strategies.delta_neutral import DeltaNeutralStrategy
 from strategies.volatility_exploitation import VolatilityExploitationStrategy
 from strategies.alpha_directional import AlphaDirectionalStrategy
+from strategies.arbitrage import MultiMarketArbitrageStrategy
 from config import config
 import uuid
 
