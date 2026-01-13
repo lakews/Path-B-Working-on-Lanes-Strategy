@@ -283,7 +283,7 @@ class BacktestEngine:
         return profit_target, stop_loss, position_size_mult
     
     def _should_enter(self, prices: List[float], volatility: float, trend: float, 
-                      strategies: List[str], current_price: float) -> bool:
+                      strategies: List[str], current_price: float, spread: float = 0) -> bool:
         """Determine if we should enter a position"""
         if len(prices) < 3:
             return False
@@ -296,24 +296,29 @@ class BacktestEngine:
         if volatility > 0.15:
             return False
         
+        # Need enough price variation
+        recent_range = max(prices[-5:]) - min(prices[-5:]) if len(prices) >= 5 else 0
+        if recent_range < 0.005:  # Less than 0.5% recent movement
+            return False
+        
         # Strategy-specific entry conditions
         if "delta_neutral" in strategies:
-            # Market making: enter when price is stable
-            if volatility < 0.03 and abs(trend) < 0.1:
-                return random.random() < 0.3
+            # Market making: enter when spread is favorable and price is stable
+            if spread > 0.02 and volatility < 0.05:
+                return random.random() < 0.4
         
         if "volatility_exploitation" in strategies:
-            # Enter when volatility is moderate
-            if 0.02 < volatility < 0.08:
-                return random.random() < 0.25
+            # Enter when volatility is moderate and trend is clear
+            if 0.02 < volatility < 0.08 and abs(trend) > 0.02:
+                return random.random() < 0.35
         
         if "alpha_directional" in strategies:
-            # Enter on strong trend signals
-            if abs(trend) > 0.05:
-                return random.random() < 0.2
+            # Enter on strong trend signals with recent momentum
+            if abs(trend) > 0.03 and recent_range > 0.01:
+                return random.random() < 0.3
         
-        # Base probability
-        return random.random() < 0.15
+        # Base probability for exploration
+        return random.random() < 0.20
     
     def _select_best_strategy(self, volatility: float, trend: float, strategies: List[str]) -> str:
         """Select the best strategy for current market conditions"""
