@@ -316,3 +316,140 @@ class PerformanceAnalytics:
         except Exception as e:
             logger.error(f"Error getting latest analytics: {e}")
             return {}
+    
+    async def _calculate_advanced_metrics(self, trades: List[Dict]) -> Dict:
+        """Calculate advanced performance metrics"""
+        try:
+            if not trades:
+                return {
+                    "sortino_ratio": 0.0,
+                    "profit_factor": 0.0,
+                    "win_loss_ratio": 0.0,
+                    "recovery_factor": 0.0,
+                    "expectancy": 0.0,
+                    "avg_win": 0.0,
+                    "avg_loss": 0.0,
+                    "max_consecutive_wins": 0,
+                    "max_consecutive_losses": 0
+                }
+            
+            # Get returns
+            returns = [self._calculate_trade_pnl(t) for t in trades]
+            
+            # Sortino Ratio (only penalizes downside)
+            sortino = self._calculate_sortino(returns)
+            
+            # Profit Factor
+            wins = [r for r in returns if r > 0]
+            losses = [abs(r) for r in returns if r < 0]
+            profit_factor = sum(wins) / sum(losses) if losses and sum(losses) > 0 else 0
+            
+            # Win/Loss Ratio
+            avg_win = np.mean(wins) if wins else 0
+            avg_loss = np.mean(losses) if losses else 0
+            win_loss_ratio = avg_win / avg_loss if avg_loss > 0 else 0
+            
+            # Recovery Factor
+            total_pnl = sum(returns)
+            max_dd = await self._get_max_drawdown()
+            recovery_factor = total_pnl / max_dd if max_dd > 0 else 0
+            
+            # Expectancy (average $ per trade)
+            expectancy = np.mean(returns)
+            
+            # Consecutive wins/losses
+            max_wins, max_losses = self._calculate_streaks(returns)
+            
+            return {
+                "sortino_ratio": sortino,
+                "profit_factor": profit_factor,
+                "win_loss_ratio": win_loss_ratio,
+                "recovery_factor": recovery_factor,
+                "expectancy": expectancy,
+                "avg_win": avg_win,
+                "avg_loss": avg_loss,
+                "max_consecutive_wins": max_wins,
+                "max_consecutive_losses": max_losses
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating advanced metrics: {e}")
+            return {
+                "sortino_ratio": 0.0,
+                "profit_factor": 0.0,
+                "win_loss_ratio": 0.0,
+                "recovery_factor": 0.0,
+                "expectancy": 0.0,
+                "avg_win": 0.0,
+                "avg_loss": 0.0,
+                "max_consecutive_wins": 0,
+                "max_consecutive_losses": 0
+            }
+    
+    def _calculate_sortino(self, returns: List[float]) -> float:
+        """Calculate Sortino ratio (only penalizes downside volatility)"""
+        try:
+            if len(returns) < 2:
+                return 0.0
+            
+            mean_return = np.mean(returns)
+            downside_returns = [r for r in returns if r < 0]
+            
+            if not downside_returns:
+                return 0.0
+            
+            downside_std = np.std(downside_returns)
+            
+            if downside_std == 0:
+                return 0.0
+            
+            sortino = (mean_return / downside_std) * np.sqrt(252)
+            return sortino
+            
+        except Exception as e:
+            logger.error(f"Error calculating Sortino: {e}")
+            return 0.0
+    
+    def _calculate_streaks(self, returns: List[float]) -> Tuple[int, int]:
+        """Calculate max consecutive wins and losses"""
+        try:
+            if not returns:
+                return 0, 0
+            
+            max_wins = 0
+            max_losses = 0
+            current_wins = 0
+            current_losses = 0
+            
+            for ret in returns:
+                if ret > 0:
+                    current_wins += 1
+                    current_losses = 0
+                    max_wins = max(max_wins, current_wins)
+                elif ret < 0:
+                    current_losses += 1
+                    current_wins = 0
+                    max_losses = max(max_losses, current_losses)
+            
+            return max_wins, max_losses
+            
+        except Exception as e:
+            logger.error(f"Error calculating streaks: {e}")
+            return 0, 0
+    
+    async def _get_max_drawdown(self) -> float:
+        """Get current max drawdown"""
+        try:
+            cursor = self.db.performance_metrics.find(
+                {},
+                {"max_drawdown": 1, "_id": 0}
+            ).sort("timestamp", -1).limit(1)
+            
+            doc = await cursor.to_list(length=1)
+            if doc:
+                return doc[0].get('max_drawdown', 0)
+            return 0
+            
+        except Exception as e:
+            logger.error(f"Error getting max drawdown: {e}")
+            return 0
