@@ -8,6 +8,7 @@ from ml.kelly_sharpe_optimizer import KellySharpeOptimizer
 from trading.execution_engine import ExecutionEngine
 from trading.position_manager import PositionManager
 from trading.risk_controller import RiskController
+from trading.spread_calibrator import SpreadCalibrator
 from models import OrderSide, StrategyType
 from config import config
 
