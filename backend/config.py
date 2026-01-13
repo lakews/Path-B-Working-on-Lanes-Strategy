@@ -31,6 +31,8 @@ class Config:
     TRADES_PER_10MIN = int(os.environ.get('TRADES_PER_10MIN', 500))
     MAX_DRAWDOWN_PCT = float(os.environ.get('MAX_DRAWDOWN_PCT', 3))
     KELLY_FRACTION = float(os.environ.get('KELLY_FRACTION', 0.25))
+    MIN_KELLY_FRACTION = float(os.environ.get('MIN_KELLY_FRACTION', 0.10))
+    MAX_KELLY_FRACTION = float(os.environ.get('MAX_KELLY_FRACTION', 0.50))
     
     # System Performance
     EXECUTION_LATENCY_MS = int(os.environ.get('EXECUTION_LATENCY_MS', 100))
