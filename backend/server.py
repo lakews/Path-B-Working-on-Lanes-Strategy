@@ -201,18 +201,16 @@ async def stop_backtest():
     """Stop running backtest"""
     global backtest_engine, trading_mode
     
-    if not backtest_engine or not backtest_engine.running:
-        return JSONResponse(
-            status_code=400,
-            content={"message": "No backtest is running"}
-        )
-    
+    # Always reset the trading mode when stop is requested
     try:
-        await backtest_engine.stop_backtest()
+        if backtest_engine and backtest_engine.running:
+            await backtest_engine.stop_backtest()
+        
         trading_mode = "stopped"
-        return {"message": "Backtest stopped successfully"}
+        return {"message": "Backtest stopped successfully", "mode": trading_mode}
     except Exception as e:
         logger.error(f"Error stopping backtest: {e}")
+        trading_mode = "stopped"  # Reset mode even on error
         return JSONResponse(
             status_code=500,
             content={"message": f"Failed to stop backtest: {str(e)}"}
