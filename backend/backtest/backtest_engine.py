@@ -245,6 +245,43 @@ class BacktestEngine:
         returns = np.diff(prices) / np.array(prices[:-1])
         return float(np.std(returns)) if len(returns) > 0 else 0.0
     
+    def _simulate_price_series(self, base_price: float, length: int, volume: float, category: str) -> List[float]:
+        """Simulate realistic price movements for backtesting HFT strategies"""
+        # Category-specific volatility profiles
+        vol_profiles = {
+            "sports": 0.015,      # Sports: moderate volatility, event-driven
+            "politics": 0.008,    # Politics: lower volatility, longer-term trends
+            "finance": 0.012,     # Finance: moderate volatility
+            "crypto": 0.025,      # Crypto: higher volatility
+            "entertainment": 0.010
+        }
+        
+        base_vol = vol_profiles.get(category, 0.012)
+        
+        # Adjust volatility based on volume (higher volume = more stable)
+        vol_adj = base_vol * (1 + 0.5 / (1 + volume / 5000))
+        
+        # Generate Brownian motion with mean-reversion
+        prices = [base_price]
+        current = base_price
+        
+        # Add trend component (random walk with drift)
+        trend = random.uniform(-0.001, 0.001)  # Small random trend
+        
+        for i in range(1, length):
+            # Random price change with mean-reversion
+            noise = random.gauss(0, vol_adj)
+            mean_reversion = (base_price - current) * 0.05  # Pull toward base
+            change = trend + noise + mean_reversion
+            
+            # Apply change with constraints
+            current = current * (1 + change)
+            current = max(0.01, min(0.99, current))  # Keep in valid range
+            
+            prices.append(current)
+        
+        return prices
+    
     def _calculate_trend(self, prices: List[float]) -> float:
         """Calculate trend direction (-1 to 1)"""
         if len(prices) < 5:
