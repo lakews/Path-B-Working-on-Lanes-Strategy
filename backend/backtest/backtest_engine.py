@@ -164,30 +164,26 @@ class BacktestEngine:
         if category not in self.asset_class_performance:
             self.asset_class_performance[category] = {"trades": 0, "wins": 0, "pnl": 0.0}
         
-        # Calculate market volatility and trend
-        prices = [s.get("yes_price", 0.5) for s in timeseries]
+        # Get base prices and volumes
+        base_prices = [s.get("yes_price", 0.5) for s in timeseries]
         no_prices = [s.get("no_price", 0.5) for s in timeseries]
         volumes = [s.get("volume", 0) for s in timeseries]
         
-        # Check if there's actual price movement
-        unique_prices = len(set(prices))
-        price_range = max(prices) - min(prices) if prices else 0
+        base_price = base_prices[0] if base_prices else 0.5
+        avg_volume = np.mean(volumes) if volumes else 1000
         
-        # Log sample market info for debugging
-        if random.random() < 0.005:
-            logger.info(f"Market {market_id[:8]}: {unique_prices} unique prices, range={price_range:.4f}, len={len(timeseries)}")
-        
-        # Skip markets with minimal variation (need at least 2 unique prices)
-        if unique_prices < 2:
+        # Skip extreme price markets
+        if base_price < 0.05 or base_price > 0.95:
             return
+        
+        # Simulate realistic price movements based on market characteristics
+        prices = self._simulate_price_series(base_price, len(timeseries), avg_volume, category)
+        
+        unique_prices = len(set(round(p, 4) for p in prices))
+        price_range = max(prices) - min(prices)
         
         volatility = self._calculate_volatility(prices)
         trend = self._calculate_trend(prices)
-        avg_volume = np.mean(volumes) if volumes else 0
-        
-        # Log first market processed for debugging
-        if random.random() < 0.01:
-            logger.info(f"Processing {market_id[:8]}: {len(timeseries)} snapshots, {unique_prices} unique prices, range={price_range:.4f}")
         
         # Adaptive parameters based on market characteristics
         profit_target, stop_loss, position_size_mult = self._get_adaptive_params(volatility, avg_volume)
