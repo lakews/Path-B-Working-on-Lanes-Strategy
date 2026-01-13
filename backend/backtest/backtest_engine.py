@@ -20,9 +20,10 @@ class BacktestEngine:
     
     def __init__(self):
         self.db = get_db()
-        self.signal_fusion = SignalFusionEngine()
+        # Use backtest_mode=True to skip LLM calls for faster execution
+        self.signal_fusion = SignalFusionEngine(backtest_mode=True)
         self.kelly_optimizer = KellySharpeOptimizer()
-        self.rl_engine = RLAdaptiveEngine()  # Add RL engine for learning
+        self.rl_engine = RLAdaptiveEngine()
         
         self.delta_neutral_strategy = DeltaNeutralStrategy()
         self.volatility_strategy = VolatilityExploitationStrategy()
