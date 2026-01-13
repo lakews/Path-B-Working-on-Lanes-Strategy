@@ -78,7 +78,13 @@ async def root():
 @api_router.get("/status", response_model=SystemStatus)
 async def get_system_status():
     """Get system status and configuration"""
-    global trading_mode
+    global trading_mode, backtest_engine
+    
+    # Auto-correct trading mode if backtest has completed
+    if trading_mode == "backtest":
+        if not backtest_engine or not backtest_engine.running:
+            trading_mode = "stopped"
+    
     return SystemStatus(
         status="running" if trading_bot and trading_bot.running else "stopped",
         bot_running=trading_bot.running if trading_bot else False,
