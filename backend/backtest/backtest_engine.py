@@ -470,34 +470,20 @@ class BacktestEngine:
             if price < 0.05 or price > 0.95:
                 return None
             
-            # For backtesting: simplified decision - always try to trade with some probability
-            # 50% chance to enter a trade to generate data
-            if random.random() > 0.50:
-                return None
-            
             # Check if we can afford a position
             available_capital = self.current_capital * 0.8
             if available_capital < 10:
-                logger.debug(f"Not enough capital: {available_capital}")
                 return None
             
-            # Use RL confidence to adjust position sizing
-            rl_multiplier = 1.0
-            if rl_confidence > 0.7:
-                rl_multiplier = 1.2
-            elif rl_confidence < 0.3:
-                rl_multiplier = 0.8
-            
-            # Simulate position sizing (5% max for better testing)
-            position_size = min(available_capital * 0.05 * rl_multiplier, self.current_capital * 0.05)
+            # Position sizing - use 5% for visibility in backtests
+            position_size = min(available_capital * 0.05, self.current_capital * 0.05)
             shares = position_size / price if price > 0 else 0
             
             if shares < 1:
-                logger.debug(f"Shares too small: {shares}")
                 return None
             
             # Log trade opening
-            logger.info(f"OPENING TRADE: {strategy_name} on {market_id[:8]} @ ${price:.3f}, shares={shares:.1f}")
+            logger.info(f"OPENING TRADE: {strategy_name} on {market_id[:8] if market_id else 'unknown'} @ ${price:.3f}, shares={shares:.1f}")
             
             # Record simulated trade
             trade = {
