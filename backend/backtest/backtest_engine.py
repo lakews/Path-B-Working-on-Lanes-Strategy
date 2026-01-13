@@ -444,6 +444,8 @@ class BacktestEngine:
     async def _run_strategy_with_tracking(self, strategy_name: str, market_data: Dict, category: str, rl_action: str, rl_confidence: float) -> Optional[Dict]:
         """Run a strategy with performance tracking"""
         try:
+            import random
+            
             strategy_map = {
                 "delta_neutral": self.delta_neutral_strategy,
                 "volatility_exploitation": self.volatility_strategy,
@@ -462,31 +464,16 @@ class BacktestEngine:
             if market_id in self.positions:
                 return None
             
-            # Use RL action to decide trading
-            # If RL says WAIT with high confidence, skip
-            if rl_action == "WAIT" and rl_confidence > 0.3:
-                return None
-            
-            # Only proceed if RL suggests trading or exploring
-            should_trade = rl_action in ["BUY_SMALL", "BUY_MEDIUM", "BUY_LARGE", "SELL_SMALL", "SELL_MEDIUM", "SELL_LARGE"]
-            
-            # Also check market conditions
-            volume = market_data.get('volume', 0)
-            liquidity = market_data.get('liquidity', 0)
-            
-            # Need minimum volume and liquidity
-            if volume < 100 or liquidity < 500:
-                return None
-            
             # Price must be in tradeable range
             if price < 0.05 or price > 0.95:
                 return None
             
-            # If RL doesn't suggest trading, use probabilistic approach based on signals
+            # Determine if we should trade based on RL action
+            should_trade = rl_action in ["BUY_SMALL", "BUY_MEDIUM", "BUY_LARGE"]
+            
+            # For backtesting, be more aggressive - 40% base chance to trade
             if not should_trade:
-                # 20% chance to trade anyway for exploration during backtest
-                import random
-                if random.random() > 0.20:
+                if random.random() > 0.40:
                     return None
             
             # Check if we can afford a position
