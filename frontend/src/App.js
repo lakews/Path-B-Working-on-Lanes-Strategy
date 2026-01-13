@@ -5,6 +5,7 @@ import '@/App.css';
 import Dashboard from './pages/Dashboard';
 import Markets from './pages/Markets';
 import Positions from './pages/Positions';
+import Analytics from './pages/Analytics';
 import Configuration from './pages/Configuration';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
