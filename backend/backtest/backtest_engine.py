@@ -410,6 +410,8 @@ class BacktestEngine:
                     pnl = exit_value - position['cost']
                     self.current_capital += exit_value
                     
+                    logger.info(f"CLOSING POSITION: {market_id[:8]} pnl=${pnl:.2f} (entry={entry_price:.3f}, exit={current_price:.3f})")
+                    
                     # Record exit trade with category
                     trade_record = {
                         "id": str(uuid.uuid4()),
