@@ -147,6 +147,54 @@ const Configuration = () => {
           </p>
         </div>
 
+        {/* Kelly Fraction */}
+        <div>
+          <label className="block text-sm font-medium text-white mb-2" data-testid="kelly-fraction-label">
+            Kelly Criterion Fraction
+          </label>
+          <p className="text-xs text-white/60 mb-3">Fractional Kelly sizing (10-50%, lower = more conservative)</p>
+          <div className="flex items-center gap-4">
+            <input
+              type="range"
+              data-testid="kelly-fraction-slider"
+              value={config.kelly_fraction || 0.25}
+              onChange={(e) => setConfig({...config, kelly_fraction: parseFloat(e.target.value)})}
+              className="flex-1"
+              min="0.10"
+              max="0.50"
+              step="0.05"
+            />
+            <span className="text-white font-semibold w-16 text-right">{(config.kelly_fraction * 100).toFixed(0)}%</span>
+          </div>
+          <p className="text-xs text-cyan-400 mt-2">
+            Current: {config.kelly_fraction || 0.25} (25% = conservative, 50% = full Kelly)
+          </p>
+        </div>
+
+        {/* Max Drawdown */}
+        <div>
+          <label className="block text-sm font-medium text-white mb-2" data-testid="max-drawdown-label">
+            Max Drawdown (%) - Circuit Breaker
+          </label>
+          <p className="text-xs text-white/60 mb-3">Trading halts automatically when drawdown exceeds this limit</p>
+          <div className="flex items-center gap-4">
+            <input
+              type="range"
+              data-testid="max-drawdown-slider"
+              value={config.max_drawdown_pct || 3}
+              onChange={(e) => setConfig({...config, max_drawdown_pct: parseFloat(e.target.value)})}
+              className="flex-1"
+              min="1"
+              max="10"
+              step="0.5"
+            />
+            <span className="text-white font-semibold w-16 text-right">{config.max_drawdown_pct}%</span>
+          </div>
+          <p className="text-xs text-red-400 mt-2">
+            ⚠️ Circuit breaker activates at {config.max_drawdown_pct}% loss
+          </p>
+        </div>
+
         {/* Save Button */}
         <div className="pt-6 border-t border-white/10">
           <button
