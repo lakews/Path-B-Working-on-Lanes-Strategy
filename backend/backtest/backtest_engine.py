@@ -166,11 +166,15 @@ class BacktestEngine:
         
         # Calculate market volatility and trend
         prices = [s.get("yes_price", 0.5) for s in timeseries]
+        no_prices = [s.get("no_price", 0.5) for s in timeseries]
         volumes = [s.get("volume", 0) for s in timeseries]
         
         # Check if there's actual price movement
         price_range = max(prices) - min(prices) if prices else 0
-        if price_range < 0.01:  # Less than 1% movement - skip this market
+        unique_prices = len(set(prices))
+        
+        # Skip markets with no price variation
+        if unique_prices < 3:
             return
         
         volatility = self._calculate_volatility(prices)
@@ -186,11 +190,15 @@ class BacktestEngine:
         
         for idx, snapshot in enumerate(timeseries):
             current_price = snapshot.get("yes_price", 0.5)
+            current_no_price = snapshot.get("no_price", 0.5)
             timestamp = snapshot.get("timestamp")
+            
+            # Calculate bid-ask spread for market making
+            spread = abs(1.0 - current_price - current_no_price)
             
             if position is None:
                 # Check for entry signal
-                if self._should_enter(prices[:idx+1], volatility, trend, enabled_strategies, current_price):
+                if self._should_enter(prices[:idx+1], volatility, trend, enabled_strategies, current_price, spread):
                     if len(self.positions) < self.max_positions and self.current_capital > 50:
                         strategy = self._select_best_strategy(volatility, trend, enabled_strategies)
                         position = await self._open_position(
@@ -204,10 +212,13 @@ class BacktestEngine:
                 if current_price > highest_price:
                     highest_price = current_price
                 
+                # Calculate actual price change
+                price_change = current_price - position["entry_price"]
+                
                 # Check for exit conditions
                 exit_reason = self._check_exit_conditions(
                     position, current_price, highest_price, idx - entry_idx,
-                    volatility, profit_target, stop_loss
+                    volatility, profit_target, stop_loss, price_change, spread
                 )
                 
                 if exit_reason:
@@ -216,10 +227,12 @@ class BacktestEngine:
                     entry_idx = None
                     highest_price = 0
         
-        # Close any remaining position at last price (end of timeseries)
+        # Close any remaining position at last price
         if position and len(timeseries) > 0:
-            last_price = timeseries[-1].get("yes_price", position["entry_price"])
-            await self._close_position(market_id, position, last_price, timeseries[-1].get("timestamp"), "end_of_data")
+            # Use actual last price, not simulated
+            last_snapshot = timeseries[-1]
+            last_price = last_snapshot.get("yes_price", position["entry_price"])
+            await self._close_position(market_id, position, last_price, last_snapshot.get("timestamp"), "end_of_data")
     
     def _calculate_volatility(self, prices: List[float]) -> float:
         """Calculate price volatility"""
