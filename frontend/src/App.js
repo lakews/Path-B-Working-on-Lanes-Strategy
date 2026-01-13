@@ -6,9 +6,11 @@ import Dashboard from './pages/Dashboard';
 import Markets from './pages/Markets';
 import Positions from './pages/Positions';
 import Analytics from './pages/Analytics';
+import Backtest from './pages/Backtest';
 import Configuration from './pages/Configuration';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
+import { AlertCircle } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
