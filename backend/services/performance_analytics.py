@@ -31,23 +31,44 @@ class PerformanceAnalytics:
             # Portfolio volatility
             portfolio_volatility = await self._calculate_portfolio_volatility()
             
+            # Build clean metrics dict (no ObjectIds)
             metrics = {
-                **overall_metrics,
+                "total_trades": overall_metrics.get("total_trades", 0),
+                "overall_win_rate": overall_metrics.get("overall_win_rate", 0.0),
+                "winning_trades": overall_metrics.get("winning_trades", 0),
+                "losing_trades": overall_metrics.get("losing_trades", 0),
+                "total_pnl": overall_metrics.get("total_pnl", 0.0),
+                "realized_pnl": overall_metrics.get("realized_pnl", 0.0),
+                "unrealized_pnl": overall_metrics.get("unrealized_pnl", 0.0),
                 "strategy_performance": strategy_metrics,
                 "asset_class_performance": asset_class_metrics,
                 "portfolio_volatility": portfolio_volatility,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
-            # Store in database (will have _id added by MongoDB, but we don't return it)
-            result = await self.db.analytics.insert_one(metrics)
+            # Store in database
+            try:
+                await self.db.analytics.insert_one(metrics.copy())
+            except Exception as e:
+                logger.warning(f"Could not store analytics: {e}")
             
-            # Return without _id
             return metrics
             
         except Exception as e:
             logger.error(f"Error calculating comprehensive metrics: {e}")
-            return {}
+            return {
+                "total_trades": 0,
+                "overall_win_rate": 0.0,
+                "winning_trades": 0,
+                "losing_trades": 0,
+                "total_pnl": 0.0,
+                "realized_pnl": 0.0,
+                "unrealized_pnl": 0.0,
+                "strategy_performance": {},
+                "asset_class_performance": {},
+                "portfolio_volatility": 0.0,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
     
     async def _calculate_overall_metrics(self, trades: List[Dict], positions: List[Dict]) -> Dict:
         """Calculate overall portfolio metrics"""
