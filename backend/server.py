@@ -430,6 +430,134 @@ async def update_config(config_update: TradingConfig):
             content={"message": f"Failed to update config: {str(e)}"}
         )
 
+# Historical Data Collection Endpoints
+@api_router.get("/historical/stats")
+async def get_historical_stats():
+    """Get statistics about collected historical data"""
+    global historical_collector
+    
+    try:
+        if not historical_collector:
+            historical_collector = HistoricalDataCollector()
+        
+        stats = await historical_collector.get_collection_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Error getting historical stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get stats: {str(e)}"}
+        )
+
+@api_router.post("/historical/collect")
+async def trigger_collection(background_tasks: BackgroundTasks):
+    """Trigger a one-time data collection"""
+    global historical_collector
+    
+    try:
+        if not historical_collector:
+            historical_collector = HistoricalDataCollector()
+        
+        # Run collection in background
+        count = await historical_collector.collect_market_snapshot()
+        
+        return {
+            "message": f"Collected {count} market snapshots",
+            "count": count,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error triggering collection: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to collect data: {str(e)}"}
+        )
+
+@api_router.post("/historical/start-continuous")
+async def start_continuous_collection(background_tasks: BackgroundTasks):
+    """Start continuous background data collection"""
+    global historical_collector
+    
+    try:
+        if not historical_collector:
+            historical_collector = HistoricalDataCollector()
+        
+        if historical_collector.running:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Continuous collection already running"}
+            )
+        
+        background_tasks.add_task(historical_collector.start_collection)
+        
+        return {
+            "message": "Started continuous data collection",
+            "interval_seconds": historical_collector.collection_interval
+        }
+    except Exception as e:
+        logger.error(f"Error starting continuous collection: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to start collection: {str(e)}"}
+        )
+
+@api_router.post("/historical/stop-continuous")
+async def stop_continuous_collection():
+    """Stop continuous background data collection"""
+    global historical_collector
+    
+    try:
+        if not historical_collector or not historical_collector.running:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Continuous collection not running"}
+            )
+        
+        await historical_collector.stop_collection()
+        
+        return {"message": "Stopped continuous data collection"}
+    except Exception as e:
+        logger.error(f"Error stopping continuous collection: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to stop collection: {str(e)}"}
+        )
+
+@api_router.get("/historical/data")
+async def get_historical_data(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    category: Optional[str] = None,
+    limit: int = 100
+):
+    """Get historical market data"""
+    global historical_collector
+    
+    try:
+        if not historical_collector:
+            historical_collector = HistoricalDataCollector()
+        
+        if start_date and end_date:
+            data = await historical_collector.get_historical_data_by_date_range(
+                start_date, end_date, category
+            )
+            return {"data": data[:limit], "total": len(data)}
+        else:
+            # Return recent data
+            db = get_db()
+            cursor = db.historical_data.find(
+                {},
+                {"_id": 0, "raw_data": 0}
+            ).sort("timestamp", -1).limit(limit)
+            data = await cursor.to_list(length=limit)
+            return {"data": data, "count": len(data)}
+    except Exception as e:
+        logger.error(f"Error getting historical data: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get data: {str(e)}"}
+        )
+
 # Include the router in the main app
 app.include_router(api_router)
 
