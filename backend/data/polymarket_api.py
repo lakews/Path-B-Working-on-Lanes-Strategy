@@ -28,7 +28,7 @@ class PolymarketAPI:
         """Fetch active markets"""
         try:
             url = f"{self.base_url}/markets"
-            params = {"limit": limit, "offset": offset, "active": True}
+            params = {"limit": limit, "offset": offset, "active": "true"}
             
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:
