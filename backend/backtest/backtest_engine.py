@@ -127,6 +127,9 @@ class BacktestEngine:
             if not enabled_strategies or "alpha_directional" in enabled_strategies:
                 await self._try_strategy(self.alpha_strategy, market_data, "alpha_directional")
             
+            if not enabled_strategies or "arbitrage" in enabled_strategies:
+                await self._try_strategy(self.arbitrage_strategy, market_data, "arbitrage")
+            
         except Exception as e:
             logger.error(f"Error processing snapshot: {e}")
     
