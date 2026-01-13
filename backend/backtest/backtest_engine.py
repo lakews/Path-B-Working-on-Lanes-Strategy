@@ -539,3 +539,430 @@ class BacktestEngine:
         except Exception as e:
             logger.error(f"Error getting backtest results: {e}")
             return {}
+    
+    async def get_backtest_history(self, limit: int = 10) -> List[Dict]:
+        """Get list of past backtest results (up to limit)"""
+        try:
+            cursor = self.db.backtest_results.find(
+                {},
+                {"_id": 0}
+            ).sort("completed_at", -1).limit(limit)
+            
+            results = await cursor.to_list(length=limit)
+            return results
+        except Exception as e:
+            logger.error(f"Error getting backtest history: {e}")
+            return []
+    
+    async def compare_backtests(self, backtest_ids: List[str]) -> Dict:
+        """Compare multiple backtest results with comprehensive metrics"""
+        try:
+            # Fetch all requested backtests
+            cursor = self.db.backtest_results.find(
+                {"backtest_id": {"$in": backtest_ids}},
+                {"_id": 0}
+            )
+            backtests = await cursor.to_list(length=len(backtest_ids))
+            
+            if not backtests:
+                return {"error": "No backtests found for comparison"}
+            
+            # Build comparison data
+            comparison = {
+                "backtest_count": len(backtests),
+                "backtests": [],
+                "comparison_metrics": {},
+                "strategy_comparison": {},
+                "asset_class_comparison": {},
+                "improvement_insights": [],
+                "educational_analysis": {}
+            }
+            
+            # Collect metrics for comparison
+            all_returns = []
+            all_sharpe = []
+            all_drawdowns = []
+            all_win_rates = []
+            all_profit_factors = []
+            strategy_data = {}
+            asset_class_data = {}
+            
+            for bt in backtests:
+                bt_summary = {
+                    "backtest_id": bt.get("backtest_id"),
+                    "completed_at": bt.get("completed_at"),
+                    "total_return_pct": bt.get("total_return_pct", 0),
+                    "total_pnl": bt.get("total_pnl", 0),
+                    "sharpe_ratio": bt.get("sharpe_ratio", 0),
+                    "max_drawdown": bt.get("max_drawdown", 0),
+                    "win_rate": bt.get("win_rate", 0),
+                    "profit_factor": bt.get("profit_factor", 0),
+                    "total_trades": bt.get("total_trades", 0),
+                    "data_summary": bt.get("data_summary", {}),
+                    "strategy_results": bt.get("strategy_results", {}),
+                    "asset_class_results": bt.get("asset_class_results", {})
+                }
+                comparison["backtests"].append(bt_summary)
+                
+                all_returns.append(bt.get("total_return_pct", 0))
+                all_sharpe.append(bt.get("sharpe_ratio", 0))
+                all_drawdowns.append(bt.get("max_drawdown", 0))
+                all_win_rates.append(bt.get("win_rate", 0))
+                all_profit_factors.append(bt.get("profit_factor", 0))
+                
+                # Aggregate strategy data
+                for strat, data in bt.get("strategy_results", {}).items():
+                    if strat not in strategy_data:
+                        strategy_data[strat] = {"pnl": [], "win_rate": [], "trades": []}
+                    strategy_data[strat]["pnl"].append(data.get("pnl", 0))
+                    strategy_data[strat]["win_rate"].append(data.get("win_rate", 0))
+                    strategy_data[strat]["trades"].append(data.get("trades", 0))
+                
+                # Aggregate asset class data
+                for asset, data in bt.get("asset_class_results", {}).items():
+                    if asset not in asset_class_data:
+                        asset_class_data[asset] = {"pnl": [], "win_rate": [], "trades": []}
+                    asset_class_data[asset]["pnl"].append(data.get("pnl", 0))
+                    asset_class_data[asset]["win_rate"].append(data.get("win_rate", 0))
+                    asset_class_data[asset]["trades"].append(data.get("trades", 0))
+            
+            import numpy as np
+            
+            # Overall comparison metrics
+            comparison["comparison_metrics"] = {
+                "return": {
+                    "best": float(max(all_returns)) if all_returns else 0,
+                    "worst": float(min(all_returns)) if all_returns else 0,
+                    "avg": float(np.mean(all_returns)) if all_returns else 0,
+                    "std": float(np.std(all_returns)) if len(all_returns) > 1 else 0,
+                    "trend": "improving" if len(all_returns) > 1 and all_returns[-1] > all_returns[0] else "declining"
+                },
+                "sharpe_ratio": {
+                    "best": float(max(all_sharpe)) if all_sharpe else 0,
+                    "worst": float(min(all_sharpe)) if all_sharpe else 0,
+                    "avg": float(np.mean(all_sharpe)) if all_sharpe else 0,
+                    "target": 1.5,
+                    "interpretation": "Sharpe > 1.0 = good, > 2.0 = excellent. Measures return per unit of risk."
+                },
+                "max_drawdown": {
+                    "best": float(min(all_drawdowns)) if all_drawdowns else 0,
+                    "worst": float(max(all_drawdowns)) if all_drawdowns else 0,
+                    "avg": float(np.mean(all_drawdowns)) if all_drawdowns else 0,
+                    "target": 0.10,
+                    "interpretation": "Lower is better. Target < 10%. Shows worst peak-to-trough decline."
+                },
+                "win_rate": {
+                    "best": float(max(all_win_rates)) if all_win_rates else 0,
+                    "worst": float(min(all_win_rates)) if all_win_rates else 0,
+                    "avg": float(np.mean(all_win_rates)) if all_win_rates else 0,
+                    "target": 0.55,
+                    "interpretation": "Target > 55%. High win rate with low profit factor = many small wins, few big losses."
+                },
+                "profit_factor": {
+                    "best": float(max(all_profit_factors)) if all_profit_factors else 0,
+                    "worst": float(min(all_profit_factors)) if all_profit_factors else 0,
+                    "avg": float(np.mean(all_profit_factors)) if all_profit_factors else 0,
+                    "target": 1.5,
+                    "interpretation": "Gross profit / gross loss. > 1.5 = good, > 2.0 = excellent. < 1.0 = losing strategy."
+                }
+            }
+            
+            # Strategy comparison
+            for strat, data in strategy_data.items():
+                comparison["strategy_comparison"][strat] = {
+                    "avg_pnl": float(np.mean(data["pnl"])) if data["pnl"] else 0,
+                    "total_pnl": float(sum(data["pnl"])),
+                    "avg_win_rate": float(np.mean(data["win_rate"])) if data["win_rate"] else 0,
+                    "total_trades": sum(data["trades"]),
+                    "consistency": float(np.std(data["pnl"])) if len(data["pnl"]) > 1 else 0,
+                    "pnl_trend": data["pnl"],
+                    "is_profitable": sum(data["pnl"]) > 0
+                }
+            
+            # Asset class comparison
+            for asset, data in asset_class_data.items():
+                comparison["asset_class_comparison"][asset] = {
+                    "avg_pnl": float(np.mean(data["pnl"])) if data["pnl"] else 0,
+                    "total_pnl": float(sum(data["pnl"])),
+                    "avg_win_rate": float(np.mean(data["win_rate"])) if data["win_rate"] else 0,
+                    "total_trades": sum(data["trades"]),
+                    "is_profitable": sum(data["pnl"]) > 0
+                }
+            
+            # Generate improvement insights
+            comparison["improvement_insights"] = self._generate_improvement_insights(
+                comparison["comparison_metrics"],
+                comparison["strategy_comparison"],
+                comparison["asset_class_comparison"]
+            )
+            
+            # Educational analysis
+            comparison["educational_analysis"] = self._generate_educational_analysis(
+                comparison["comparison_metrics"],
+                comparison["strategy_comparison"]
+            )
+            
+            return comparison
+            
+        except Exception as e:
+            logger.error(f"Error comparing backtests: {e}")
+            return {"error": str(e)}
+    
+    def _generate_improvement_insights(self, metrics: Dict, strategies: Dict, assets: Dict) -> List[Dict]:
+        """Generate actionable improvement insights"""
+        insights = []
+        
+        # Return insights
+        avg_return = metrics.get("return", {}).get("avg", 0)
+        if avg_return < 0:
+            insights.append({
+                "severity": "critical",
+                "area": "Overall Return",
+                "issue": f"Average return is negative ({avg_return:.2f}%)",
+                "recommendation": "Reduce position sizes, tighten stop-losses, or disable underperforming strategies.",
+                "action": "Consider reducing Kelly fraction by 50% and adding stricter entry criteria."
+            })
+        
+        # Sharpe ratio insights
+        avg_sharpe = metrics.get("sharpe_ratio", {}).get("avg", 0)
+        if avg_sharpe < 0.5:
+            insights.append({
+                "severity": "high",
+                "area": "Risk-Adjusted Return",
+                "issue": f"Sharpe ratio too low ({avg_sharpe:.2f}). Strategy has poor risk/reward.",
+                "recommendation": "Increase win rate or average win size relative to loss size.",
+                "action": "Focus on higher-confidence trades with better reward-to-risk ratios."
+            })
+        
+        # Drawdown insights
+        worst_dd = metrics.get("max_drawdown", {}).get("worst", 0)
+        if worst_dd > 0.15:
+            insights.append({
+                "severity": "high",
+                "area": "Risk Management",
+                "issue": f"Max drawdown too high ({worst_dd*100:.1f}%). Capital at risk.",
+                "recommendation": "Implement stricter position sizing and daily loss limits.",
+                "action": "Reduce max position size to 2% and add 5% daily loss limit."
+            })
+        
+        # Win rate insights
+        avg_win_rate = metrics.get("win_rate", {}).get("avg", 0)
+        if avg_win_rate < 0.45:
+            insights.append({
+                "severity": "medium",
+                "area": "Trade Selection",
+                "issue": f"Win rate below target ({avg_win_rate*100:.1f}%). Too many losing trades.",
+                "recommendation": "Improve signal quality or add confirmation indicators.",
+                "action": "Require multiple signal alignment before entering trades."
+            })
+        
+        # Strategy-specific insights
+        for strat, data in strategies.items():
+            if data.get("total_pnl", 0) < 0:
+                insights.append({
+                    "severity": "high",
+                    "area": f"Strategy: {strat}",
+                    "issue": f"Strategy is net negative (${data['total_pnl']:.2f})",
+                    "recommendation": f"Review {strat} parameters or disable temporarily.",
+                    "action": f"Analyze losing trades in {strat} to identify common patterns."
+                })
+            elif data.get("avg_win_rate", 0) < 0.40:
+                insights.append({
+                    "severity": "medium",
+                    "area": f"Strategy: {strat}",
+                    "issue": f"Low win rate ({data['avg_win_rate']*100:.1f}%)",
+                    "recommendation": "Tighten entry criteria for this strategy.",
+                    "action": "Add minimum confidence threshold or reduce position size."
+                })
+        
+        # Asset class insights
+        for asset, data in assets.items():
+            if data.get("total_pnl", 0) < 0 and data.get("total_trades", 0) > 5:
+                insights.append({
+                    "severity": "medium",
+                    "area": f"Asset Class: {asset}",
+                    "issue": f"Losing money on {asset} markets (${data['total_pnl']:.2f})",
+                    "recommendation": f"Consider excluding {asset} or adjusting strategy for this category.",
+                    "action": f"Analyze what makes {asset} markets different from profitable ones."
+                })
+        
+        # Sort by severity
+        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        insights.sort(key=lambda x: severity_order.get(x["severity"], 4))
+        
+        return insights
+    
+    def _generate_educational_analysis(self, metrics: Dict, strategies: Dict) -> Dict:
+        """Generate educational analysis explaining the metrics"""
+        import numpy as np
+        
+        return {
+            "key_concepts": {
+                "sharpe_ratio": {
+                    "what": "Measures excess return per unit of risk (volatility)",
+                    "formula": "(Return - Risk-Free Rate) / Standard Deviation of Returns",
+                    "interpretation": {
+                        "below_0": "Strategy is losing money on a risk-adjusted basis",
+                        "0_to_1": "Positive but not compelling risk/reward",
+                        "1_to_2": "Good risk-adjusted performance",
+                        "above_2": "Excellent performance - investigate if sustainable"
+                    },
+                    "your_avg": metrics.get("sharpe_ratio", {}).get("avg", 0)
+                },
+                "max_drawdown": {
+                    "what": "Largest peak-to-trough decline in equity",
+                    "why_important": "Shows worst-case scenario for capital loss before recovery",
+                    "targets": {
+                        "conservative": "< 5%",
+                        "moderate": "5-10%",
+                        "aggressive": "10-20%",
+                        "dangerous": "> 20%"
+                    },
+                    "your_worst": metrics.get("max_drawdown", {}).get("worst", 0)
+                },
+                "profit_factor": {
+                    "what": "Ratio of gross profits to gross losses",
+                    "interpretation": {
+                        "below_1": "Losing money - gross losses exceed profits",
+                        "1_to_1.5": "Marginal profitability - high risk of turning negative",
+                        "1.5_to_2": "Good profitability with reasonable buffer",
+                        "above_2": "Strong profitability - but verify with enough sample size"
+                    },
+                    "your_avg": metrics.get("profit_factor", {}).get("avg", 0)
+                },
+                "win_rate": {
+                    "what": "Percentage of trades that are profitable",
+                    "note": "Win rate alone is meaningless - must consider avg win vs avg loss",
+                    "examples": {
+                        "high_win_rate_low_pf": "90% win rate but profit factor of 0.8 = many small wins, few devastating losses",
+                        "low_win_rate_high_pf": "30% win rate but profit factor of 2.5 = few wins but they're big"
+                    },
+                    "your_avg": metrics.get("win_rate", {}).get("avg", 0)
+                }
+            },
+            "strategy_quality_score": self._calculate_quality_score(metrics),
+            "recommendations_summary": self._generate_recommendations_summary(metrics, strategies)
+        }
+    
+    def _calculate_quality_score(self, metrics: Dict) -> Dict:
+        """Calculate an overall quality score for the trading strategy"""
+        score = 0
+        max_score = 100
+        breakdown = []
+        
+        # Return component (25 points)
+        avg_return = metrics.get("return", {}).get("avg", 0)
+        if avg_return > 10:
+            score += 25
+            breakdown.append({"component": "Return", "score": 25, "max": 25, "note": "Excellent returns"})
+        elif avg_return > 5:
+            score += 20
+            breakdown.append({"component": "Return", "score": 20, "max": 25, "note": "Good returns"})
+        elif avg_return > 0:
+            score += 10
+            breakdown.append({"component": "Return", "score": 10, "max": 25, "note": "Positive but modest"})
+        else:
+            score += 0
+            breakdown.append({"component": "Return", "score": 0, "max": 25, "note": "Negative returns - critical issue"})
+        
+        # Sharpe component (25 points)
+        avg_sharpe = metrics.get("sharpe_ratio", {}).get("avg", 0)
+        if avg_sharpe > 2:
+            score += 25
+            breakdown.append({"component": "Sharpe Ratio", "score": 25, "max": 25, "note": "Excellent risk-adjusted"})
+        elif avg_sharpe > 1:
+            score += 20
+            breakdown.append({"component": "Sharpe Ratio", "score": 20, "max": 25, "note": "Good risk-adjusted"})
+        elif avg_sharpe > 0.5:
+            score += 10
+            breakdown.append({"component": "Sharpe Ratio", "score": 10, "max": 25, "note": "Below target"})
+        else:
+            score += 0
+            breakdown.append({"component": "Sharpe Ratio", "score": 0, "max": 25, "note": "Poor risk-adjusted"})
+        
+        # Drawdown component (25 points)
+        worst_dd = metrics.get("max_drawdown", {}).get("worst", 1)
+        if worst_dd < 0.05:
+            score += 25
+            breakdown.append({"component": "Max Drawdown", "score": 25, "max": 25, "note": "Excellent risk control"})
+        elif worst_dd < 0.10:
+            score += 20
+            breakdown.append({"component": "Max Drawdown", "score": 20, "max": 25, "note": "Good risk control"})
+        elif worst_dd < 0.20:
+            score += 10
+            breakdown.append({"component": "Max Drawdown", "score": 10, "max": 25, "note": "Moderate risk"})
+        else:
+            score += 0
+            breakdown.append({"component": "Max Drawdown", "score": 0, "max": 25, "note": "High risk exposure"})
+        
+        # Profit factor component (25 points)
+        avg_pf = metrics.get("profit_factor", {}).get("avg", 0)
+        if avg_pf > 2:
+            score += 25
+            breakdown.append({"component": "Profit Factor", "score": 25, "max": 25, "note": "Strong profitability"})
+        elif avg_pf > 1.5:
+            score += 20
+            breakdown.append({"component": "Profit Factor", "score": 20, "max": 25, "note": "Good profitability"})
+        elif avg_pf > 1:
+            score += 10
+            breakdown.append({"component": "Profit Factor", "score": 10, "max": 25, "note": "Marginal profitability"})
+        else:
+            score += 0
+            breakdown.append({"component": "Profit Factor", "score": 0, "max": 25, "note": "Net loser"})
+        
+        grade = "A" if score >= 80 else "B" if score >= 60 else "C" if score >= 40 else "D" if score >= 20 else "F"
+        
+        return {
+            "total_score": score,
+            "max_score": max_score,
+            "grade": grade,
+            "breakdown": breakdown
+        }
+    
+    def _generate_recommendations_summary(self, metrics: Dict, strategies: Dict) -> List[str]:
+        """Generate a prioritized list of recommendations"""
+        recs = []
+        
+        avg_return = metrics.get("return", {}).get("avg", 0)
+        avg_sharpe = metrics.get("sharpe_ratio", {}).get("avg", 0)
+        avg_pf = metrics.get("profit_factor", {}).get("avg", 0)
+        worst_dd = metrics.get("max_drawdown", {}).get("worst", 0)
+        
+        if avg_return < 0:
+            recs.append("🔴 CRITICAL: Reduce position sizes by 50% immediately to stop losses")
+        
+        if avg_pf < 1:
+            recs.append("🔴 HIGH: Review and disable losing strategies - you're losing more than winning")
+        
+        if worst_dd > 0.15:
+            recs.append("🟠 HIGH: Implement daily loss limits to prevent catastrophic drawdowns")
+        
+        if avg_sharpe < 1:
+            recs.append("🟡 MEDIUM: Focus on higher-quality trades - fewer but better opportunities")
+        
+        # Find best and worst strategies
+        if strategies:
+            sorted_strats = sorted(strategies.items(), key=lambda x: x[1].get("total_pnl", 0))
+            if sorted_strats:
+                worst_strat = sorted_strats[0]
+                best_strat = sorted_strats[-1]
+                
+                if worst_strat[1].get("total_pnl", 0) < 0:
+                    recs.append(f"🟡 MEDIUM: Consider disabling {worst_strat[0]} (worst performer)")
+                
+                if best_strat[1].get("total_pnl", 0) > 0:
+                    recs.append(f"🟢 OPPORTUNITY: Increase allocation to {best_strat[0]} (best performer)")
+        
+        if not recs:
+            recs.append("🟢 Strategy is performing within acceptable parameters. Continue monitoring.")
+        
+        return recs
+    
+    async def delete_backtest(self, backtest_id: str) -> bool:
+        """Delete a backtest result"""
+        try:
+            result = await self.db.backtest_results.delete_one({"backtest_id": backtest_id})
+            return result.deleted_count > 0
+        except Exception as e:
+            logger.error(f"Error deleting backtest: {e}")
+            return False
