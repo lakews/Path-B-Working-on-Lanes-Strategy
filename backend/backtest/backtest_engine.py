@@ -654,10 +654,10 @@ class BacktestEngine:
     async def _store_backtest_results(self, results: Dict):
         """Store backtest results in database"""
         try:
-            await self.db.backtest_results.insert_one({**results, "_id": None})
-            # Remove _id to avoid serialization issues
-            if "_id" in results:
-                del results["_id"]
+            # Create copy without _id
+            to_store = {k: v for k, v in results.items() if k != "_id"}
+            await self.db.backtest_results.insert_one(to_store)
+            logger.info(f"Stored backtest results: {results.get('backtest_id')}")
         except Exception as e:
             logger.error(f"Error storing backtest results: {e}")
     
