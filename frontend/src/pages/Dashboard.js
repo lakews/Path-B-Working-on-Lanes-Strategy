@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Activity, Target, Zap, Clock, Timer, BarChart3, Layers } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { TrendingUp, TrendingDown, DollarSign, Activity, Target, Zap, Clock, Timer, BarChart3, Layers, Brain, AlertTriangle, RefreshCw } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -12,7 +12,11 @@ const Dashboard = () => {
   const [trades, setTrades] = useState([]);
   const [tradeStats, setTradeStats] = useState(null);
   const [status, setStatus] = useState(null);
+  const [rlStats, setRlStats] = useState(null);
+  const [historicalStats, setHistoricalStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pnlHistory, setPnlHistory] = useState([]);
+  const tradesFeedRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -20,14 +24,30 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Track P&L history for chart
+  useEffect(() => {
+    if (tradeStats?.total_pnl !== undefined) {
+      setPnlHistory(prev => {
+        const newEntry = {
+          time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+          pnl: tradeStats.total_pnl
+        };
+        const updated = [...prev, newEntry].slice(-30); // Keep last 30 points
+        return updated;
+      });
+    }
+  }, [tradeStats?.total_pnl]);
+
   const fetchData = async () => {
     try {
-      const [perfRes, posRes, tradesRes, statsRes, statusRes] = await Promise.all([
+      const [perfRes, posRes, tradesRes, statsRes, statusRes, rlRes, histRes] = await Promise.all([
         axios.get(`${API}/performance`),
         axios.get(`${API}/positions`),
-        axios.get(`${API}/trades?limit=20`),
+        axios.get(`${API}/trades?limit=50`),
         axios.get(`${API}/trades/stats`),
-        axios.get(`${API}/status`)
+        axios.get(`${API}/status`),
+        axios.get(`${API}/rl/stats`).catch(() => ({ data: null })),
+        axios.get(`${API}/historical/stats`).catch(() => ({ data: null }))
       ]);
       
       setPerformance(perfRes.data);
@@ -35,6 +55,8 @@ const Dashboard = () => {
       setTrades(tradesRes.data.trades || []);
       setTradeStats(statsRes.data);
       setStatus(statusRes.data);
+      setRlStats(rlRes.data);
+      setHistoricalStats(histRes.data);
       setLoading(false);
     } catch (e) {
       console.error('Error fetching data:', e);
@@ -79,6 +101,15 @@ const Dashboard = () => {
       }
     }
     fetchData();
+  };
+
+  const triggerDataCollection = async () => {
+    try {
+      await axios.post(`${API}/historical/collect`);
+      fetchData();
+    } catch (e) {
+      console.error('Failed to collect data:', e);
+    }
   };
 
   if (loading) {
@@ -191,117 +222,144 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* P&L Hero Card */}
-      <div className={`rounded-xl p-8 ${
-        isProfitable 
-          ? 'bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30' 
-          : 'bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30'
-      }`} data-testid="pnl-hero-card">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-white/60 text-sm font-medium mb-1">Total Profit & Loss</p>
-            <div className="flex items-baseline gap-3">
-              <h2 className={`text-5xl font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`} data-testid="total-pnl-value">
+      {/* P&L Hero Card with Real-time Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={`lg:col-span-1 rounded-xl p-6 ${
+          isProfitable 
+            ? 'bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30' 
+            : 'bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30'
+        }`} data-testid="pnl-hero-card">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-white/60 text-sm font-medium mb-1">Total Profit & Loss</p>
+              <h2 className={`text-4xl font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`} data-testid="total-pnl-value">
                 {isProfitable ? '+' : ''}{pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
               </h2>
-              <span className={`text-xl font-semibold ${isProfitable ? 'text-green-400/80' : 'text-red-400/80'}`}>
+              <span className={`text-lg font-semibold ${isProfitable ? 'text-green-400/80' : 'text-red-400/80'}`}>
                 ({isProfitable ? '+' : ''}{pnlPct.toFixed(2)}%)
               </span>
             </div>
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
+              isProfitable ? 'bg-green-500/20' : 'bg-red-500/20'
+            }`}>
+              {isProfitable ? (
+                <TrendingUp className="w-8 h-8 text-green-400" />
+              ) : (
+                <TrendingDown className="w-8 h-8 text-red-400" />
+              )}
+            </div>
           </div>
-          <div className={`w-20 h-20 rounded-2xl flex items-center justify-center ${
-            isProfitable ? 'bg-green-500/20' : 'bg-red-500/20'
-          }`}>
-            {isProfitable ? (
-              <TrendingUp className="w-10 h-10 text-green-400" />
-            ) : (
-              <TrendingDown className="w-10 h-10 text-red-400" />
-            )}
-          </div>
+        </div>
+
+        {/* Real-time P&L Chart */}
+        <div className="lg:col-span-2 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4" data-testid="realtime-pnl-chart">
+          <h3 className="text-sm font-semibold text-white/80 mb-2">Real-time P&L</h3>
+          <ResponsiveContainer width="100%" height={120}>
+            <LineChart data={pnlHistory}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="time" stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 10 }} />
+              <YAxis stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 10 }} />
+              <Tooltip 
+                contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px'}}
+                labelStyle={{color: 'white'}}
+              />
+              <Line type="monotone" dataKey="pnl" stroke={isProfitable ? '#4ade80' : '#f87171'} strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
       {/* Trade Frequency Stats - Top Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Live Trades"
-          value={tradeStats?.live_trades || 0}
-          subtitle="Currently Active"
-          icon={Zap}
-          color="cyan"
-          testId="live-trades-card"
-        />
-        <StatCard
-          title="Last 10 Min"
-          value={tradeStats?.trades_10min || 0}
-          subtitle="trades executed"
-          icon={Timer}
-          color="blue"
-          testId="trades-10min-card"
-        />
-        <StatCard
-          title="Last 30 Min"
-          value={tradeStats?.trades_30min || 0}
-          subtitle="trades executed"
-          icon={Clock}
-          color="purple"
-          testId="trades-30min-card"
-        />
-        <StatCard
-          title="Last 1 Hour"
-          value={tradeStats?.trades_1hr || 0}
-          subtitle="trades executed"
-          icon={Clock}
-          color="indigo"
-          testId="trades-1hr-card"
-        />
+        <StatCard title="Live Trades" value={tradeStats?.live_trades || 0} subtitle="Currently Active" icon={Zap} color="cyan" testId="live-trades-card" />
+        <StatCard title="Last 10 Min" value={tradeStats?.trades_10min || 0} subtitle="trades executed" icon={Timer} color="blue" testId="trades-10min-card" />
+        <StatCard title="Last 30 Min" value={tradeStats?.trades_30min || 0} subtitle="trades executed" icon={Clock} color="purple" testId="trades-30min-card" />
+        <StatCard title="Last 1 Hour" value={tradeStats?.trades_1hr || 0} subtitle="trades executed" icon={Clock} color="indigo" testId="trades-1hr-card" />
       </div>
 
       {/* Second Row Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Last 24 Hours"
-          value={tradeStats?.trades_24hr || 0}
-          subtitle="trades executed"
-          icon={Activity}
-          color="orange"
-          testId="trades-24hr-card"
-        />
-        <StatCard
-          title="Win Rate"
-          value={`${((performance?.win_rate || 0) * 100).toFixed(1)}%`}
-          subtitle={`${performance?.num_trades || 0} total trades`}
-          icon={Target}
-          color="green"
-          testId="win-rate-card"
-        />
-        <StatCard
-          title="Sharpe Ratio"
-          value={performance?.sharpe_ratio?.toFixed(2) || '0.00'}
-          subtitle={`Max DD: ${((performance?.max_drawdown || 0) * 100).toFixed(1)}%`}
-          icon={TrendingUp}
-          color="teal"
-          testId="sharpe-ratio-card"
-        />
-        <StatCard
-          title="Active Positions"
-          value={positions.length}
-          subtitle="open positions"
-          icon={Layers}
-          color="pink"
-          testId="active-positions-card"
-        />
+        <StatCard title="Last 24 Hours" value={tradeStats?.trades_24hr || 0} subtitle="trades executed" icon={Activity} color="orange" testId="trades-24hr-card" />
+        <StatCard title="Win Rate" value={`${((performance?.win_rate || 0) * 100).toFixed(1)}%`} subtitle={`${performance?.num_trades || 0} total trades`} icon={Target} color="green" testId="win-rate-card" />
+        <StatCard title="Sharpe Ratio" value={performance?.sharpe_ratio?.toFixed(2) || '0.00'} subtitle={`Max DD: ${((performance?.max_drawdown || 0) * 100).toFixed(1)}%`} icon={TrendingUp} color="teal" testId="sharpe-ratio-card" />
+        <StatCard title="Active Positions" value={positions.length} subtitle="open positions" icon={Layers} color="pink" testId="active-positions-card" />
       </div>
 
-      {/* Charts Section */}
+      {/* AI & Data Status Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* RL Engine Status */}
+        <div className="rounded-xl bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-500/20 p-4" data-testid="rl-status-card">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-purple-400" />
+              <h3 className="text-sm font-semibold text-white">RL Engine</h3>
+            </div>
+            <span className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400">
+              {rlStats?.total_iterations || 0} iterations
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="text-white/60">Epsilon: <span className="text-white">{(rlStats?.epsilon || 0).toFixed(3)}</span></div>
+            <div className="text-white/60">Buffer: <span className="text-white">{rlStats?.buffer_size || 0}</span></div>
+            <div className="text-white/60">Avg Reward: <span className="text-cyan-400">{(rlStats?.avg_reward_100 || 0).toFixed(4)}</span></div>
+          </div>
+        </div>
+
+        {/* Historical Data Status */}
+        <div className="rounded-xl bg-gradient-to-br from-blue-900/30 to-cyan-900/30 border border-blue-500/20 p-4" data-testid="data-status-card">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-blue-400" />
+              <h3 className="text-sm font-semibold text-white">Historical Data</h3>
+            </div>
+            <button 
+              onClick={triggerDataCollection}
+              className="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 transition flex items-center gap-1"
+            >
+              <RefreshCw className="w-3 h-3" /> Collect
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="text-white/60">Snapshots: <span className="text-white">{(historicalStats?.total_snapshots || 0).toLocaleString()}</span></div>
+            <div className="text-white/60">Markets: <span className="text-white">{historicalStats?.unique_markets || 0}</span></div>
+            <div className="text-white/60">Status: <span className={historicalStats?.collector_running ? 'text-green-400' : 'text-gray-400'}>{historicalStats?.collector_running ? 'Running' : 'Stopped'}</span></div>
+          </div>
+        </div>
+
+        {/* Risk Alert */}
+        <div className="rounded-xl bg-gradient-to-br from-yellow-900/30 to-orange-900/30 border border-yellow-500/20 p-4" data-testid="risk-status-card">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-400" />
+              <h3 className="text-sm font-semibold text-white">Risk Status</h3>
+            </div>
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              (performance?.max_drawdown || 0) < 0.1 ? 'bg-green-500/20 text-green-400' :
+              (performance?.max_drawdown || 0) < 0.2 ? 'bg-yellow-500/20 text-yellow-400' :
+              'bg-red-500/20 text-red-400'
+            }`}>
+              {(performance?.max_drawdown || 0) < 0.1 ? 'Low Risk' :
+               (performance?.max_drawdown || 0) < 0.2 ? 'Medium' : 'High Risk'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="text-white/60">Max DD: <span className="text-white">{((performance?.max_drawdown || 0) * 100).toFixed(1)}%</span></div>
+            <div className="text-white/60">Positions: <span className="text-white">{positions.length}</span></div>
+            <div className="text-white/60">Kelly: <span className="text-cyan-400">{status?.configuration?.kelly_fraction || 0.25}</span></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Live Trade Feed and Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* P&L Chart */}
         <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="pnl-chart">
-          <h3 className="text-lg font-semibold text-white mb-4">P&L Overview</h3>
+          <h3 className="text-lg font-semibold text-white mb-4">P&L by Trade</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={trades.slice(0, 10).reverse().map((t, i) => ({
-              name: `T${i+1}`,
-              pnl: t.pnl || (t.price * t.shares - (t.fee || 0))
+            <AreaChart data={trades.slice(0, 15).reverse().map((t, i) => ({
+              name: `#${i+1}`,
+              pnl: t.pnl || (t.price * t.shares - (t.fee || 0)),
+              strategy: t.strategy
             }))}>
               <defs>
                 <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
@@ -310,8 +368,8 @@ const Dashboard = () => {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" />
-              <YAxis stroke="rgba(255,255,255,0.5)" />
+              <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
+              <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
               <Tooltip 
                 contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px'}}
                 labelStyle={{color: 'white'}}
@@ -321,22 +379,36 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Recent Trades */}
-        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="recent-trades">
-          <h3 className="text-lg font-semibold text-white mb-4">Recent Trades</h3>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+        {/* Live Trade Feed */}
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="trade-feed">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Live Trade Feed</h3>
+            <span className="text-xs text-white/40">Last {trades.length} trades</span>
+          </div>
+          <div ref={tradesFeedRef} className="space-y-2 max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
             {trades.length === 0 ? (
               <p className="text-center text-white/60 py-8">No trades yet</p>
             ) : (
-              trades.slice(0, 8).map((trade, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition" data-testid={`trade-item-${idx}`}>
-                  <div>
-                    <p className="text-sm font-medium text-white">{trade.strategy || 'Manual'}</p>
-                    <p className="text-xs text-white/60">{trade.side} • {(trade.shares || 0).toFixed(2)} shares</p>
+              trades.slice(0, 12).map((trade, idx) => (
+                <div 
+                  key={idx} 
+                  className={`flex items-center justify-between p-3 rounded-lg transition ${
+                    idx === 0 ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-white/5 hover:bg-white/10'
+                  }`} 
+                  data-testid={`trade-item-${idx}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${trade.side === 'BUY' ? 'bg-green-400' : 'bg-red-400'}`} />
+                    <div>
+                      <p className="text-sm font-medium text-white">{trade.strategy || 'Manual'}</p>
+                      <p className="text-xs text-white/60">{trade.side} • {(trade.shares || 0).toFixed(2)} shares</p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-cyan-400">${((trade.price || 0) * (trade.shares || 0)).toFixed(2)}</p>
-                    <p className="text-xs text-white/60">{trade.execution_latency_ms?.toFixed(1) || '0'}ms</p>
+                    <p className={`text-sm font-semibold ${(trade.pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      ${((trade.price || 0) * (trade.shares || 0)).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-white/60">{trade.execution_latency_ms?.toFixed(0) || '0'}ms</p>
                   </div>
                 </div>
               ))
@@ -401,10 +473,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color, testId }) => {
   };
 
   return (
-    <div 
-      className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-xl border border-white/10 p-5 hover:border-white/20 transition-all"
-      data-testid={testId}
-    >
+    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-xl border border-white/10 p-5 hover:border-white/20 transition-all" data-testid={testId}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs text-white/60 mb-1 uppercase tracking-wide">{title}</p>
