@@ -476,9 +476,9 @@ class BacktestEngine:
         strategy = position["strategy"]
         category = position["category"]
         
-        # Only log significant trades
-        if abs(pnl) > 0.10:
-            logger.info(f"TRADE: {strategy} {market_id[:8]} entry=${entry_price:.3f} exit=${exit_price:.3f} pnl=${pnl:.2f} ({exit_reason})")
+        # Only log trades for debugging
+        if random.random() < 0.02:  # Log 2% of trades
+            logger.info(f"TRADE: {strategy} {market_id[:8]} entry=${entry_price:.4f} exit=${exit_price:.4f} pnl=${pnl:.4f} ({exit_reason})")
         
         # Record exit trade
         trade = {
