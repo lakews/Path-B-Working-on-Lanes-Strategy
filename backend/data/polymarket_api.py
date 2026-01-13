@@ -33,7 +33,12 @@ class PolymarketAPI:
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:
                     data = await response.json()
-                    return data if isinstance(data, list) else data.get('markets', [])
+                    # Handle both list and dict response formats
+                    if isinstance(data, list):
+                        return data
+                    elif isinstance(data, dict):
+                        return data.get('data', data.get('markets', []))
+                    return []
                 else:
                     logger.error(f"Failed to fetch markets: {response.status}")
                     return []
