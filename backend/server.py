@@ -41,6 +41,7 @@ trading_mode: str = "stopped"  # "stopped", "live", "backtest"
 class SystemStatus(BaseModel):
     status: str
     bot_running: bool
+    trading_mode: str
     configuration: Dict
     timestamp: str
 
