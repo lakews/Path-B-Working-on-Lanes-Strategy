@@ -94,20 +94,27 @@ async def get_system_status():
 
 @api_router.post("/bot/start")
 async def start_bot(background_tasks: BackgroundTasks):
-    """Start the trading bot"""
-    global trading_bot
+    """Start the LIVE trading bot"""
+    global trading_bot, trading_mode
+    
+    if trading_mode == "backtest" and backtest_engine and backtest_engine.running:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Backtest is running. Stop backtest first."}
+        )
     
     if trading_bot and trading_bot.running:
         return JSONResponse(
             status_code=400,
-            content={"message": "Trading bot is already running"}
+            content={"message": "Live trading bot is already running"}
         )
     
     try:
         trading_bot = ApexTrader()
         background_tasks.add_task(trading_bot.start)
+        trading_mode = "live"
         
-        return {"message": "Trading bot started successfully"}
+        return {"message": "Live trading bot started successfully", "mode": "live"}
     except Exception as e:
         logger.error(f"Error starting bot: {e}")
         return JSONResponse(
@@ -117,23 +124,119 @@ async def start_bot(background_tasks: BackgroundTasks):
 
 @api_router.post("/bot/stop")
 async def stop_bot():
-    """Stop the trading bot"""
-    global trading_bot
+    """Stop the LIVE trading bot"""
+    global trading_bot, trading_mode
     
     if not trading_bot or not trading_bot.running:
         return JSONResponse(
             status_code=400,
-            content={"message": "Trading bot is not running"}
+            content={"message": "Live trading bot is not running"}
         )
     
     try:
         await trading_bot.stop()
-        return {"message": "Trading bot stopped successfully"}
+        trading_mode = "stopped"
+        return {"message": "Live trading bot stopped successfully"}
     except Exception as e:
         logger.error(f"Error stopping bot: {e}")
         return JSONResponse(
             status_code=500,
             content={"message": f"Failed to stop bot: {str(e)}"}
+        )
+
+@api_router.post("/backtest/start")
+async def start_backtest(
+    background_tasks: BackgroundTasks,
+    start_date: str,
+    end_date: str,
+    strategies: Optional[List[str]] = None
+):
+    """Start backtesting"""
+    global backtest_engine, trading_mode
+    
+    if trading_bot and trading_bot.running:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Live trading is running. Stop live trading first."}
+        )
+    
+    if backtest_engine and backtest_engine.running:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Backtest is already running"}
+        )
+    
+    try:
+        if not backtest_engine:
+            backtest_engine = BacktestEngine()
+        
+        trading_mode = "backtest"
+        
+        # Run backtest in background
+        async def run_backtest_task():
+            await backtest_engine.run_backtest(start_date, end_date, strategies)
+        
+        background_tasks.add_task(run_backtest_task)
+        
+        return {
+            "message": "Backtest started successfully",
+            "mode": "backtest",
+            "start_date": start_date,
+            "end_date": end_date
+        }
+    except Exception as e:
+        logger.error(f"Error starting backtest: {e}")
+        trading_mode = "stopped"
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to start backtest: {str(e)}"}
+        )
+
+@api_router.post("/backtest/stop")
+async def stop_backtest():
+    """Stop running backtest"""
+    global backtest_engine, trading_mode
+    
+    if not backtest_engine or not backtest_engine.running:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "No backtest is running"}
+        )
+    
+    try:
+        await backtest_engine.stop_backtest()
+        trading_mode = "stopped"
+        return {"message": "Backtest stopped successfully"}
+    except Exception as e:
+        logger.error(f"Error stopping backtest: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to stop backtest: {str(e)}"}
+        )
+
+@api_router.get("/backtest/results")
+async def get_backtest_results(backtest_id: Optional[str] = None):
+    """Get backtest results"""
+    global backtest_engine
+    
+    try:
+        if not backtest_engine:
+            backtest_engine = BacktestEngine()
+        
+        results = await backtest_engine.get_backtest_results(backtest_id)
+        
+        if not results:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "No backtest results found"}
+            )
+        
+        return results
+    except Exception as e:
+        logger.error(f"Error getting backtest results: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get results: {str(e)}"}
         )
 
 @api_router.get("/performance", response_model=PerformanceResponse)
