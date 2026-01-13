@@ -468,26 +468,30 @@ class BacktestEngine:
             market_id = market_data.get('id')
             price = market_data.get('yes_price', 0.5)
             
-            # Debug logging
-            if not market_id:
-                logger.warning(f"Missing market_id in data: {list(market_data.keys())[:5]}")
-                return None
-            
             # Skip if already have position in this market
             if market_id in self.positions:
                 return None
             
-            # Price must be in tradeable range
-            if price < 0.05 or price > 0.95:
+            # Price must be in tradeable range - widen range for testing
+            if price <= 0.01 or price >= 0.99:
                 return None
-            
-            # Log every 100th attempt for debugging
-            import random as r2
-            if r2.random() < 0.01:
-                logger.info(f"Strategy check: {strategy_name}, price={price}, capital={self.current_capital}")
             
             # Check if we can afford a position
             available_capital = self.current_capital * 0.8
+            if available_capital < 10:
+                logger.warning(f"Not enough capital: {available_capital}")
+                return None
+            
+            # Position sizing - use 5% for visibility in backtests
+            position_size = min(available_capital * 0.05, self.current_capital * 0.05)
+            shares = position_size / price if price > 0 else 0
+            
+            if shares < 1:
+                logger.warning(f"Shares too small: {shares} at price {price}")
+                return None
+            
+            # Log trade opening
+            logger.info(f"OPENING TRADE: {strategy_name} on {market_id[:8] if market_id else 'unknown'} @ ${price:.3f}, shares={shares:.1f}, cost=${position_size:.2f}")
             if available_capital < 10:
                 return None
             
