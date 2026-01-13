@@ -170,16 +170,20 @@ class BacktestEngine:
         volumes = [s.get("volume", 0) for s in timeseries]
         
         # Check if there's actual price movement
-        price_range = max(prices) - min(prices) if prices else 0
         unique_prices = len(set(prices))
+        price_range = max(prices) - min(prices) if prices else 0
         
-        # Skip markets with no price variation
-        if unique_prices < 3:
+        # Skip markets with no meaningful price variation
+        if unique_prices < 3 or price_range < 0.005:
             return
         
         volatility = self._calculate_volatility(prices)
         trend = self._calculate_trend(prices)
         avg_volume = np.mean(volumes) if volumes else 0
+        
+        # Log first market processed for debugging
+        if random.random() < 0.01:
+            logger.info(f"Processing {market_id[:8]}: {len(timeseries)} snapshots, {unique_prices} unique prices, range={price_range:.4f}")
         
         # Adaptive parameters based on market characteristics
         profit_target, stop_loss, position_size_mult = self._get_adaptive_params(volatility, avg_volume)
