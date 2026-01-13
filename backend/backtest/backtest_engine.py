@@ -459,7 +459,7 @@ class BacktestEngine:
             if not strategy:
                 return None
             
-            market_id = market_data.get('id')
+            market_id = market_data.get('market_id') or market_data.get('id')
             price = market_data.get('yes_price', 0.5)
             
             # Skip if already have position in this market
