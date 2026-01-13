@@ -32,6 +32,7 @@ api_router = APIRouter(prefix="/api")
 
 # Global trading bot instance
 trading_bot: Optional[ApexTrader] = None
+analytics_engine: Optional[PerformanceAnalytics] = None
 
 # Models
 class SystemStatus(BaseModel):
