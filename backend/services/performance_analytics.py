@@ -31,6 +31,9 @@ class PerformanceAnalytics:
             # Portfolio volatility
             portfolio_volatility = await self._calculate_portfolio_volatility()
             
+            # Advanced metrics
+            advanced_metrics = await self._calculate_advanced_metrics(trades)
+            
             # Build clean metrics dict (no ObjectIds)
             metrics = {
                 "total_trades": overall_metrics.get("total_trades", 0),
@@ -43,6 +46,7 @@ class PerformanceAnalytics:
                 "strategy_performance": strategy_metrics,
                 "asset_class_performance": asset_class_metrics,
                 "portfolio_volatility": portfolio_volatility,
+                **advanced_metrics,  # Add advanced metrics
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
@@ -67,6 +71,15 @@ class PerformanceAnalytics:
                 "strategy_performance": {},
                 "asset_class_performance": {},
                 "portfolio_volatility": 0.0,
+                "sortino_ratio": 0.0,
+                "profit_factor": 0.0,
+                "win_loss_ratio": 0.0,
+                "recovery_factor": 0.0,
+                "expectancy": 0.0,
+                "avg_win": 0.0,
+                "avg_loss": 0.0,
+                "max_consecutive_wins": 0,
+                "max_consecutive_losses": 0,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
     
