@@ -206,7 +206,7 @@ class BacktestEngine:
             await self._update_positions_with_tracking(market_data)
             
             # Get signals for RL learning using generate_trading_signal
-            market_id = market_data.get("market_id") or market_data.get("id")
+            market_id = market_data.get("id")
             signal_result = await self.signal_fusion.generate_trading_signal({
                 "id": market_id,
                 "question": market_data.get("question", ""),
