@@ -442,12 +442,13 @@ class BacktestEngine:
         """Update positions with current market prices and track performance"""
         try:
             market_id = market_data.get('id')
+            if not market_id:
+                return
+            
             current_price = market_data.get('yes_price', 0.5)
             category = market_data.get('category', 'unknown')
             
-            # Debug: log when we find a position match
             if market_id in self.positions:
-                logger.info(f"Found position match for {market_id[:8]}")
                 position = self.positions[market_id]
                 entry_price = position['entry_price']
                 shares = position['shares']
