@@ -11,7 +11,9 @@ const Configuration = () => {
     trades_per_10min: 500,
     initial_capital: 100,
     capital_deployment_pct: 80,
-    max_position_size_pct: 3
+    max_position_size_pct: 3,
+    kelly_fraction: 0.25,
+    max_drawdown_pct: 3
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
