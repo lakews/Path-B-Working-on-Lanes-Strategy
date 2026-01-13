@@ -193,8 +193,9 @@ class BacktestEngine:
         highest_price = 0
         
         for idx, snapshot in enumerate(timeseries):
-            current_price = snapshot.get("yes_price", 0.5)
-            current_no_price = snapshot.get("no_price", 0.5)
+            # Use simulated price instead of static snapshot price
+            current_price = prices[idx]
+            current_no_price = 1.0 - current_price  # Implied no price
             timestamp = snapshot.get("timestamp")
             
             # Calculate bid-ask spread for market making
@@ -231,12 +232,11 @@ class BacktestEngine:
                     entry_idx = None
                     highest_price = 0
         
-        # Close any remaining position at last price
-        if position and len(timeseries) > 0:
-            # Use actual last price, not simulated
-            last_snapshot = timeseries[-1]
-            last_price = last_snapshot.get("yes_price", position["entry_price"])
-            await self._close_position(market_id, position, last_price, last_snapshot.get("timestamp"), "end_of_data")
+        # Close any remaining position at last simulated price
+        if position and len(prices) > 0:
+            last_price = prices[-1]
+            timestamp = timeseries[-1].get("timestamp") if timeseries else None
+            await self._close_position(market_id, position, last_price, timestamp, "end_of_data")
     
     def _calculate_volatility(self, prices: List[float]) -> float:
         """Calculate price volatility"""
