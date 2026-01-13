@@ -152,17 +152,18 @@ const Backtest = () => {
               { id: 'delta_neutral', name: 'Delta-Neutral Market Making', desc: 'Capture spreads with minimal risk' },
               { id: 'volatility_exploitation', name: 'Volatility Exploitation', desc: '30-100x on extreme prices' },
               { id: 'alpha_directional', name: 'Alpha-Directional', desc: 'High-confidence directional trades' },
-              { id: 'all', name: 'All Strategies Combined', desc: 'Test all strategies together' }
+              { id: 'arbitrage', name: 'Multi-Market Arbitrage', desc: 'Cross-market price inefficiencies' },
+              { id: 'all', name: 'All Strategies Combined', desc: 'Test all 4 strategies together' }
             ].map((strategy) => (
               <button
                 key={strategy.id}
                 onClick={() => {
                   if (strategy.id === 'all') {
                     // Toggle all
-                    if (config.strategies.length === 3) {
+                    if (config.strategies.length === 4) {
                       setConfig({...config, strategies: []});
                     } else {
-                      setConfig({...config, strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional']});
+                      setConfig({...config, strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']});
                     }
                   } else {
                     toggleStrategy(strategy.id);
@@ -171,7 +172,7 @@ const Backtest = () => {
                 disabled={backtestRunning}
                 data-testid={`strategy-${strategy.id}-toggle`}
                 className={`p-4 rounded-lg font-medium transition disabled:opacity-50 text-left border-2 ${
-                  (strategy.id === 'all' && config.strategies.length === 3) || 
+                  (strategy.id === 'all' && config.strategies.length === 4) || 
                   (strategy.id !== 'all' && config.strategies.includes(strategy.id))
                     ? 'bg-cyan-500/20 border-cyan-500 text-white'
                     : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20'
@@ -183,12 +184,12 @@ const Backtest = () => {
                     <div className="text-xs text-white/60">{strategy.desc}</div>
                   </div>
                   <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                    (strategy.id === 'all' && config.strategies.length === 3) || 
+                    (strategy.id === 'all' && config.strategies.length === 4) || 
                     (strategy.id !== 'all' && config.strategies.includes(strategy.id))
                       ? 'border-cyan-500 bg-cyan-500'
                       : 'border-white/30'
                   }`}>
-                    {((strategy.id === 'all' && config.strategies.length === 3) || 
+                    {((strategy.id === 'all' && config.strategies.length === 4) || 
                       (strategy.id !== 'all' && config.strategies.includes(strategy.id))) && (
                       <span className="text-white text-xs">✓</span>
                     )}
