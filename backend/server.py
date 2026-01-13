@@ -159,10 +159,12 @@ async def start_backtest(
     background_tasks: BackgroundTasks,
     start_date: str,
     end_date: str,
-    strategies: Optional[List[str]] = None
+    strategies: Optional[List[str]] = Query(default=None)
 ):
     """Start backtesting"""
     global backtest_engine, trading_mode
+    
+    logger.info(f"Backtest start request: strategies={strategies}")
     
     if trading_bot and trading_bot.running:
         return JSONResponse(
