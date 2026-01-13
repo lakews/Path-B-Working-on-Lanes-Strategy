@@ -10,6 +10,7 @@ class MarketCategory(str, Enum):
     FINANCE = "finance"
     CULTURE = "culture"
     WEATHER = "weather"
+    ENTERTAINMENT = "entertainment"
 
 class OrderSide(str, Enum):
     BUY = "BUY"
