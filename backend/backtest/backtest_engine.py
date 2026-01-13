@@ -449,7 +449,7 @@ class BacktestEngine:
             import random
             
             # Log entry to function
-            market_id = market_data.get('market_id') or market_data.get('id')
+            market_id = market_data.get('id')
             price = market_data.get('yes_price', 0.5)
             
             # Log 1% of entries for debugging
@@ -467,7 +467,7 @@ class BacktestEngine:
             if not strategy:
                 return None
             
-            market_id = market_data.get('market_id') or market_data.get('id')
+            market_id = market_data.get('id')
             price = market_data.get('yes_price', 0.5)
             
             # Debug logging
