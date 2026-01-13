@@ -34,6 +34,8 @@ api_router = APIRouter(prefix="/api")
 # Global trading bot instance
 trading_bot: Optional[ApexTrader] = None
 analytics_engine: Optional[PerformanceAnalytics] = None
+backtest_engine: Optional[BacktestEngine] = None
+trading_mode: str = "stopped"  # "stopped", "live", "backtest"
 
 # Models
 class SystemStatus(BaseModel):
