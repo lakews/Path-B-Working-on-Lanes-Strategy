@@ -26,8 +26,8 @@ class DeltaNeutralStrategy:
         self.execution = ExecutionEngine()
         self.position_mgr = PositionManager()
         self.risk_ctrl = RiskController()
+        self.spread_calibrator = SpreadCalibrator()
         self.hedge_ratio = 0.80
-        self.target_spread = 0.02
         
     async def execute_strategy(self, market_data: Dict) -> Optional[Dict]:
         """Execute delta-neutral strategy
