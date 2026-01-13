@@ -18,6 +18,9 @@ const API = `${BACKEND_URL}/api`;
 function App() {
   const [botRunning, setBotRunning] = useState(false);
   const [status, setStatus] = useState(null);
+  const [tradingMode, setTradingMode] = useState('stopped');
+  const [showModeConfirm, setShowModeConfirm] = useState(false);
+  const [pendingMode, setPendingMode] = useState(null);
 
   useEffect(() => {
     fetchStatus();
