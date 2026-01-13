@@ -560,6 +560,89 @@ async def get_historical_data(
             content={"message": f"Failed to get data: {str(e)}"}
         )
 
+# Reinforcement Learning Engine Endpoints
+@api_router.get("/rl/stats")
+async def get_rl_stats():
+    """Get RL engine training statistics"""
+    global rl_engine
+    
+    try:
+        if not rl_engine:
+            rl_engine = RLAdaptiveEngine()
+        
+        stats = await rl_engine.get_training_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Error getting RL stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get RL stats: {str(e)}"}
+        )
+
+@api_router.post("/rl/train")
+async def trigger_rl_training():
+    """Trigger RL batch training from replay buffer"""
+    global rl_engine
+    
+    try:
+        if not rl_engine:
+            rl_engine = RLAdaptiveEngine()
+        
+        await rl_engine.train_from_replay()
+        stats = await rl_engine.get_training_stats()
+        
+        return {
+            "message": "RL batch training completed",
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Error in RL training: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to train RL: {str(e)}"}
+        )
+
+@api_router.post("/rl/save")
+async def save_rl_model():
+    """Save RL model to disk"""
+    global rl_engine
+    
+    try:
+        if not rl_engine:
+            rl_engine = RLAdaptiveEngine()
+        
+        await rl_engine.save_model()
+        return {"message": "RL model saved successfully"}
+    except Exception as e:
+        logger.error(f"Error saving RL model: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to save RL model: {str(e)}"}
+        )
+
+@api_router.post("/rl/load")
+async def load_rl_model():
+    """Load RL model from disk"""
+    global rl_engine
+    
+    try:
+        if not rl_engine:
+            rl_engine = RLAdaptiveEngine()
+        
+        await rl_engine.load_model()
+        stats = await rl_engine.get_training_stats()
+        
+        return {
+            "message": "RL model loaded successfully",
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Error loading RL model: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to load RL model: {str(e)}"}
+        )
+
 # Include the router in the main app
 app.include_router(api_router)
 
