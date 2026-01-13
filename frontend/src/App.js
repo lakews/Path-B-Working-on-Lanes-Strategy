@@ -42,22 +42,45 @@ function App() {
   const startBot = async () => {
     try {
       await axios.post(`${API}/bot/start`);
-      toast.success('Trading bot started');
+      toast.success('Live trading bot started');
       fetchStatus();
     } catch (e) {
-      toast.error('Failed to start bot');
+      toast.error(e.response?.data?.message || 'Failed to start bot');
     }
   };
 
   const stopBot = async () => {
     try {
       await axios.post(`${API}/bot/stop`);
-      toast.warning('Trading bot stopped');
+      toast.warning('Live trading bot stopped');
       fetchStatus();
     } catch (e) {
       toast.error('Failed to stop bot');
     }
   };
+
+  const handleModeSwitch = (mode) => {
+    if (tradingMode !== 'stopped' && mode !== tradingMode) {
+      setPendingMode(mode);
+      setShowModeConfirm(true);
+    }
+  };
+
+  const confirmModeSwitch = async () => {
+    // Stop current mode
+    if (tradingMode === 'live') {
+      await stopBot();
+    } else if (tradingMode === 'backtest') {
+      try {
+        await axios.post(`${API}/backtest/stop`);
+      } catch (e) {}
+    }
+    
+    setShowModeConfirm(false);
+    setPendingMode(null);
+    await fetchStatus();
+    
+    toast.info(`Switched to ${pendingMode} mode`);
 
   return (
     <BrowserRouter>
