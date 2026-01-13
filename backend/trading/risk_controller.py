@@ -17,6 +17,9 @@ class RiskController:
         self.deployed_capital = config.DEPLOYED_CAPITAL
         self.circuit_breaker_active = False
         self.circuit_breaker_until = None
+        self.kelly_fraction = config.KELLY_FRACTION
+        self.min_kelly = config.MIN_KELLY_FRACTION
+        self.max_kelly = config.MAX_KELLY_FRACTION
         
     async def check_trade_approval(
         self,
