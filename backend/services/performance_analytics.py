@@ -39,9 +39,10 @@ class PerformanceAnalytics:
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
-            # Store in database
-            await self.db.analytics.insert_one(metrics)
+            # Store in database (will have _id added by MongoDB, but we don't return it)
+            result = await self.db.analytics.insert_one(metrics)
             
+            # Return without _id
             return metrics
             
         except Exception as e:
