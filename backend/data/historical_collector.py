@@ -65,8 +65,22 @@ class HistoricalDataCollector:
             yes_price = 0.5
             no_price = 0.5
             
-            # Try different price fields
-            if 'outcomePrices' in market_data:
+            # Try different price fields - tokens array is the standard format
+            tokens = market_data.get('tokens', [])
+            if tokens and len(tokens) >= 2:
+                for token in tokens:
+                    outcome = token.get('outcome', '').lower()
+                    price = token.get('price', 0)
+                    if outcome in ['yes', 'true'] or 'yes' in outcome:
+                        yes_price = float(price) if price else 0.5
+                    elif outcome in ['no', 'false'] or 'no' in outcome:
+                        no_price = float(price) if price else 0.5
+                    # For other outcomes (sports teams, etc.), use first as yes, second as no
+                    elif tokens.index(token) == 0:
+                        yes_price = float(price) if price else 0.5
+                    else:
+                        no_price = float(price) if price else 0.5
+            elif 'outcomePrices' in market_data:
                 prices = market_data.get('outcomePrices', [])
                 if len(prices) >= 2:
                     yes_price = float(prices[0]) if prices[0] else 0.5
