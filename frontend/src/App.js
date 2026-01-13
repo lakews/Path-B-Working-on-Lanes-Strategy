@@ -178,9 +178,55 @@ function App() {
             <Route path="/markets" element={<Markets />} />
             <Route path="/positions" element={<Positions />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/backtest" element={<Backtest />} />
             <Route path="/config" element={<Configuration />} />
           </Routes>
         </main>
+
+        {/* Mode Switch Confirmation Modal */}
+        {showModeConfirm && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" data-testid="mode-confirm-modal">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-white/20 rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <AlertCircle className="w-8 h-8 text-orange-400" />
+                <h3 className="text-xl font-bold text-white">Confirm Mode Switch</h3>
+              </div>
+              
+              <p className="text-white/80 mb-2">
+                You are currently in <span className="font-semibold text-cyan-400">{tradingMode}</span> mode.
+              </p>
+              <p className="text-white/80 mb-6">
+                Switching to <span className="font-semibold text-orange-400">{pendingMode}</span> mode will stop all current operations.
+              </p>
+              
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
+                <p className="text-yellow-400 text-sm font-medium">
+                  ⚠️ Warning: This action will immediately halt all active trading or backtesting.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowModeConfirm(false);
+                    setPendingMode(null);
+                  }}
+                  data-testid="mode-confirm-cancel"
+                  className="flex-1 px-6 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmModeSwitch}
+                  data-testid="mode-confirm-accept"
+                  className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold transition shadow-lg shadow-orange-500/30"
+                >
+                  Confirm Switch
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </BrowserRouter>
   );
