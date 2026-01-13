@@ -733,6 +733,101 @@ async def get_historical_data(
             content={"message": f"Failed to get data: {str(e)}"}
         )
 
+# ML Model Training Endpoints
+@api_router.get("/ml/stats")
+async def get_ml_stats():
+    """Get all ML model training statistics"""
+    try:
+        from ml.volatility_predictor import VolatilityPredictor
+        from ml.bayesian_outlier import BayesianOutlierDetector
+        
+        vol_predictor = VolatilityPredictor()
+        outlier_detector = BayesianOutlierDetector()
+        
+        vol_stats = await vol_predictor.get_model_stats()
+        outlier_stats = await outlier_detector.get_model_stats()
+        
+        return {
+            "volatility_predictor": vol_stats,
+            "bayesian_outlier": outlier_stats
+        }
+    except Exception as e:
+        logger.error(f"Error getting ML stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get ML stats: {str(e)}"}
+        )
+
+@api_router.post("/ml/train/all")
+async def train_all_ml_models(background_tasks: BackgroundTasks):
+    """Train all ML models on historical data"""
+    try:
+        from ml.volatility_predictor import VolatilityPredictor
+        from ml.bayesian_outlier import BayesianOutlierDetector
+        
+        results = {}
+        
+        # Train volatility predictor
+        vol_predictor = VolatilityPredictor()
+        vol_result = await vol_predictor.train_model()
+        results["volatility_predictor"] = vol_result
+        
+        # Train mispricing detector
+        outlier_detector = BayesianOutlierDetector()
+        outlier_result = await outlier_detector.train_model()
+        results["bayesian_outlier"] = outlier_result
+        
+        return {
+            "message": "ML models training completed",
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Error training ML models: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to train ML models: {str(e)}"}
+        )
+
+@api_router.post("/ml/train/volatility")
+async def train_volatility_model():
+    """Train volatility prediction model"""
+    try:
+        from ml.volatility_predictor import VolatilityPredictor
+        
+        vol_predictor = VolatilityPredictor()
+        result = await vol_predictor.train_model()
+        
+        return {
+            "message": "Volatility model training completed",
+            "result": result
+        }
+    except Exception as e:
+        logger.error(f"Error training volatility model: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to train: {str(e)}"}
+        )
+
+@api_router.post("/ml/train/mispricing")
+async def train_mispricing_model():
+    """Train mispricing detection model"""
+    try:
+        from ml.bayesian_outlier import BayesianOutlierDetector
+        
+        detector = BayesianOutlierDetector()
+        result = await detector.train_model()
+        
+        return {
+            "message": "Mispricing model training completed",
+            "result": result
+        }
+    except Exception as e:
+        logger.error(f"Error training mispricing model: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to train: {str(e)}"}
+        )
+
 # Reinforcement Learning Engine Endpoints
 @api_router.get("/rl/stats")
 async def get_rl_stats():
