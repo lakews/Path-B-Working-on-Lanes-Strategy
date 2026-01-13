@@ -77,6 +77,7 @@ function App() {
                   <Link to="/" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="dashboard-nav-link">Dashboard</Link>
                   <Link to="/markets" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="markets-nav-link">Markets</Link>
                   <Link to="/positions" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="positions-nav-link">Positions</Link>
+                  <Link to="/analytics" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="analytics-nav-link">Analytics</Link>
                   <Link to="/config" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="config-nav-link">Config</Link>
                 </nav>
               </div>
