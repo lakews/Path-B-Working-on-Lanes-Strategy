@@ -14,12 +14,18 @@ logger = logging.getLogger(__name__)
 class SignalFusionEngine:
     """Fuses signals from all AI modules using Bayesian inference"""
     
-    def __init__(self):
+    def __init__(self, backtest_mode: bool = False):
         self.db = get_db()
+        self.backtest_mode = backtest_mode
         self.volatility_predictor = VolatilityPredictor()
-        self.sentiment_analyzer = SentimentAnalyzer()
         self.bayesian_outlier = BayesianOutlierDetector()
         self.sharp_detector = SharpDetector()
+        
+        # Only init sentiment analyzer if not in backtest mode (LLM calls are slow)
+        if not backtest_mode:
+            self.sentiment_analyzer = SentimentAnalyzer()
+        else:
+            self.sentiment_analyzer = None
         
         self.weights = {
             'sentiment': 0.30,
@@ -46,7 +52,11 @@ class SignalFusionEngine:
             
             volatility, vol_conf = await self.volatility_predictor.predict_volatility(market_id)
             
-            sentiment, sent_conf = await self.sentiment_analyzer.analyze_sentiment(market_data)
+            # Skip LLM sentiment in backtest mode for speed
+            if self.backtest_mode or self.sentiment_analyzer is None:
+                sentiment, sent_conf = self._heuristic_sentiment(market_data)
+            else:
+                sentiment, sent_conf = await self.sentiment_analyzer.analyze_sentiment(market_data)
             
             is_mispriced, misp_conf, fair_value = await self.bayesian_outlier.detect_mispricing(market_data)
             
