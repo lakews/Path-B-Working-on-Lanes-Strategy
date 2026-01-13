@@ -55,6 +55,8 @@ class TradingConfig(BaseModel):
     initial_capital: Optional[float] = None
     capital_deployment_pct: Optional[float] = None
     max_position_size_pct: Optional[float] = None
+    kelly_fraction: Optional[float] = None
+    max_drawdown_pct: Optional[float] = None
 
 # Routes
 @api_router.get("/")
