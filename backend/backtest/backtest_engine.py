@@ -417,12 +417,13 @@ class BacktestEngine:
     def _check_exit_conditions(self, position: Dict, current_price: float, 
                                highest_price: float, snapshots_held: int,
                                volatility: float, profit_target: float, 
-                               stop_loss: float) -> Optional[str]:
+                               stop_loss: float, price_change: float = 0,
+                               spread: float = 0) -> Optional[str]:
         """Check if position should be closed with adaptive exit logic"""
         entry_price = position["entry_price"]
         pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
         
-        # 1. Take profit - adaptive based on volatility
+        # 1. Take profit - adaptive based on actual price movement
         if pnl_pct >= profit_target:
             return "profit_target"
         
@@ -436,18 +437,24 @@ class BacktestEngine:
             if current_price < trailing_stop_price:
                 return "trailing_stop"
         
-        # 4. Time-based exit - close stale positions
+        # 4. Quick profit banking for HFT - capture small gains
+        if pnl_pct > 0.005 and snapshots_held > 3:  # 0.5% profit after 3 snapshots
+            if random.random() < 0.4:  # 40% chance to bank small profit
+                return "bank_profit"
+        
+        # 5. Time-based exit for stale positions
         if snapshots_held > self.position_timeout_snapshots:
             return "timeout"
         
-        # 5. Small profit banking for HFT
-        if pnl_pct > 0.01 and snapshots_held > 10:  # 1% profit after 10 snapshots
-            if random.random() < 0.3:  # 30% chance to bank small profit
-                return "bank_profit"
+        # 6. Exit if spread narrows (market making profit taken)
+        if spread < 0.01 and pnl_pct > 0:
+            return "spread_capture"
         
-        # 6. Volatility spike exit - exit if volatility increases significantly
-        if volatility > 0.1 and abs(pnl_pct) > 0.005:
-            return "volatility_spike"
+        # 7. Momentum reversal exit
+        if snapshots_held > 5:
+            if (position.get("trend_at_entry", 0) > 0 and price_change < -0.01) or \
+               (position.get("trend_at_entry", 0) < 0 and price_change > 0.01):
+                return "momentum_reversal"
         
         return None
     
