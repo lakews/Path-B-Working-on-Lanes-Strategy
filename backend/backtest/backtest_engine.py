@@ -462,6 +462,11 @@ class BacktestEngine:
             market_id = market_data.get('market_id') or market_data.get('id')
             price = market_data.get('yes_price', 0.5)
             
+            # Debug logging
+            if not market_id:
+                logger.warning(f"Missing market_id in data: {list(market_data.keys())[:5]}")
+                return None
+            
             # Skip if already have position in this market
             if market_id in self.positions:
                 return None
@@ -469,6 +474,11 @@ class BacktestEngine:
             # Price must be in tradeable range
             if price < 0.05 or price > 0.95:
                 return None
+            
+            # Log every 100th attempt for debugging
+            import random as r2
+            if r2.random() < 0.01:
+                logger.info(f"Strategy check: {strategy_name}, price={price}, capital={self.current_capital}")
             
             # Check if we can afford a position
             available_capital = self.current_capital * 0.8
