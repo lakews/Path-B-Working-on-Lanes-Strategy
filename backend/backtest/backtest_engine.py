@@ -398,11 +398,14 @@ class BacktestEngine:
                 shares = position['shares']
                 strategy = position.get('strategy', 'unknown')
                 
-                # Check exit conditions
+                # Check exit conditions - relaxed for backtesting
                 pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
                 
-                # Exit if profit > 50% or loss > 20%
-                if pnl_pct > 0.5 or pnl_pct < -0.2:
+                # Exit if profit > 5% or loss > 5% or randomly (10% chance per check)
+                import random
+                should_exit = pnl_pct > 0.05 or pnl_pct < -0.05 or random.random() < 0.10
+                
+                if should_exit:
                     exit_value = shares * current_price
                     pnl = exit_value - position['cost']
                     self.current_capital += exit_value
