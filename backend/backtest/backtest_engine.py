@@ -173,8 +173,12 @@ class BacktestEngine:
         unique_prices = len(set(prices))
         price_range = max(prices) - min(prices) if prices else 0
         
-        # Skip markets with no meaningful price variation
-        if unique_prices < 3 or price_range < 0.005:
+        # Log sample market info for debugging
+        if random.random() < 0.005:
+            logger.info(f"Market {market_id[:8]}: {unique_prices} unique prices, range={price_range:.4f}, len={len(timeseries)}")
+        
+        # Skip markets with minimal variation (need at least 2 unique prices)
+        if unique_prices < 2:
             return
         
         volatility = self._calculate_volatility(prices)
