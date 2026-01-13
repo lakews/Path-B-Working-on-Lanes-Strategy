@@ -516,6 +516,7 @@ class BacktestEngine:
         # Only log trades for debugging
         if random.random() < 0.02:  # Log 2% of trades
             logger.info(f"TRADE: {strategy} {market_id[:8]} entry=${entry_price:.4f} exit=${exit_price:.4f} pnl=${pnl:.4f} ({exit_reason})")
+            logger.info(f"  Strategy perf before: {self.strategy_performance.get(strategy, 'N/A')}")
         
         # Record exit trade
         trade = {
