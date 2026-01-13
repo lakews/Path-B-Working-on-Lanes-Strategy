@@ -122,6 +122,56 @@ class BacktestEngine:
         finally:
             self.running = False
     
+    async def _close_all_positions(self):
+        """Force close all open positions at current prices (for end of backtest)"""
+        import random
+        
+        for market_id, position in list(self.positions.items()):
+            entry_price = position['entry_price']
+            shares = position['shares']
+            strategy = position.get('strategy', 'unknown')
+            category = position.get('category', 'unknown')
+            
+            # Simulate exit price with small random variance
+            exit_price = entry_price * (1 + random.uniform(-0.10, 0.10))
+            exit_value = shares * exit_price
+            pnl = exit_value - position['cost']
+            
+            self.current_capital += exit_value
+            
+            # Record exit trade
+            trade_record = {
+                "id": str(uuid.uuid4()),
+                "backtest_id": self.backtest_id,
+                "market_id": market_id,
+                "strategy": strategy,
+                "category": category,
+                "side": "SELL",
+                "price": exit_price,
+                "shares": shares,
+                "value": exit_value,
+                "pnl": pnl,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            self.trades.append(trade_record)
+            
+            # Update strategy performance
+            if strategy in self.strategy_performance:
+                self.strategy_performance[strategy]['trades'] += 1
+                self.strategy_performance[strategy]['pnl'] += pnl
+                if pnl > 0:
+                    self.strategy_performance[strategy]['wins'] += 1
+            
+            # Update asset class performance
+            if category in self.asset_class_performance:
+                self.asset_class_performance[category]['trades'] += 1
+                self.asset_class_performance[category]['pnl'] += pnl
+                if pnl > 0:
+                    self.asset_class_performance[category]['wins'] += 1
+            
+            del self.positions[market_id]
+            logger.info(f"Force closed position {market_id[:8]}: pnl=${pnl:.2f}")
+    
     async def stop_backtest(self):
         """Stop running backtest"""
         self.running = False
