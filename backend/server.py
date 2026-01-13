@@ -74,9 +74,11 @@ async def root():
 @api_router.get("/status", response_model=SystemStatus)
 async def get_system_status():
     """Get system status and configuration"""
+    global trading_mode
     return SystemStatus(
         status="running" if trading_bot and trading_bot.running else "stopped",
         bot_running=trading_bot.running if trading_bot else False,
+        trading_mode=trading_mode,
         configuration={
             "initial_capital": config.INITIAL_CAPITAL,
             "deployed_capital": config.DEPLOYED_CAPITAL,
