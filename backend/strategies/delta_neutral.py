@@ -40,7 +40,10 @@ class DeltaNeutralStrategy:
             
             spread = abs(yes_price + no_price - 1.0)
             
-            if spread < self.target_spread:
+            # Use spread calibrator to determine optimal spread threshold
+            optimal_spread = await self.spread_calibrator.get_spread_for_market(market_data)
+            
+            if spread < optimal_spread:
                 return None
             
             signal = await self.signal_fusion.generate_trading_signal(market_data)
