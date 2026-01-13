@@ -81,6 +81,7 @@ function App() {
     await fetchStatus();
     
     toast.info(`Switched to ${pendingMode} mode`);
+  };
 
   return (
     <BrowserRouter>
