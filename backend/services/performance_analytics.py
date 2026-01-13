@@ -254,7 +254,7 @@ class PerformanceAnalytics:
     async def _get_all_trades(self) -> List[Dict]:
         """Get all trades"""
         try:
-            cursor = self.db.trades.find({})
+            cursor = self.db.trades.find({}, {"_id": 0})
             return await cursor.to_list(length=10000)
         except Exception as e:
             logger.error(f"Error getting trades: {e}")
@@ -263,7 +263,7 @@ class PerformanceAnalytics:
     async def _get_all_positions(self) -> List[Dict]:
         """Get all open positions"""
         try:
-            cursor = self.db.positions.find({})
+            cursor = self.db.positions.find({}, {"_id": 0})
             return await cursor.to_list(length=1000)
         except Exception as e:
             logger.error(f"Error getting positions: {e}")
