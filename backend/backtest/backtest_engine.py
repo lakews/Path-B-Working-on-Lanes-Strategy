@@ -203,14 +203,18 @@ class BacktestEngine:
             # Update existing positions with current prices
             await self._update_positions_with_tracking(market_data)
             
-            # Get signals for RL learning
-            signals = await self.signal_fusion.get_fused_signals({
-                "market_id": market_data.get("id"),
+            # Get signals for RL learning using generate_trading_signal
+            signal_result = await self.signal_fusion.generate_trading_signal({
+                "id": market_data.get("id"),
+                "question": market_data.get("question", ""),
+                "category": category,
                 "yes_price": market_data.get("yes_price", 0.5),
                 "no_price": market_data.get("no_price", 0.5),
                 "volume": market_data.get("volume", 0),
                 "liquidity": market_data.get("liquidity", 0)
             })
+            
+            signals = signal_result.get("signals", {})
             
             # Get RL action recommendation
             rl_action, rl_confidence = await self.rl_engine.get_optimal_action(market_data, signals)
