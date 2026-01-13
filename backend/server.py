@@ -79,7 +79,9 @@ async def get_system_status():
             "max_position_size": config.MAX_POSITION_SIZE,
             "trades_per_10min": config.TRADES_PER_10MIN,
             "max_drawdown_pct": config.MAX_DRAWDOWN_PCT,
-            "kelly_fraction": config.KELLY_FRACTION
+            "kelly_fraction": config.KELLY_FRACTION,
+            "min_kelly_fraction": config.MIN_KELLY_FRACTION,
+            "max_kelly_fraction": config.MAX_KELLY_FRACTION
         },
         timestamp=datetime.now(timezone.utc).isoformat()
     )
