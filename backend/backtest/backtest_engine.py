@@ -168,6 +168,11 @@ class BacktestEngine:
         prices = [s.get("yes_price", 0.5) for s in timeseries]
         volumes = [s.get("volume", 0) for s in timeseries]
         
+        # Check if there's actual price movement
+        price_range = max(prices) - min(prices) if prices else 0
+        if price_range < 0.01:  # Less than 1% movement - skip this market
+            return
+        
         volatility = self._calculate_volatility(prices)
         trend = self._calculate_trend(prices)
         avg_volume = np.mean(volumes) if volumes else 0
