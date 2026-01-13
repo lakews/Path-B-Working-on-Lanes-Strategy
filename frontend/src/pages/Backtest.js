@@ -459,8 +459,8 @@ const Backtest = () => {
 
             {/* Strategy Breakdown */}
             <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Strategy Performance</h3>
-              {results.strategy_results ? (
+              <h3 className="text-lg font-semibold text-white mb-4">Performance by Strategy</h3>
+              {results.strategy_results && Object.keys(results.strategy_results).length > 0 ? (
                 <div className="space-y-3">
                   {Object.entries(results.strategy_results || {}).map(([strategy, data]) => {
                     const info = STRATEGY_INFO[strategy] || { name: strategy, color: '#666' };
@@ -490,6 +490,116 @@ const Backtest = () => {
               )}
             </div>
           </div>
+
+          {/* Asset Class Performance & RL Learning Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Asset Class Breakdown */}
+            <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Performance by Asset Class</h3>
+              {results.asset_class_results && Object.keys(results.asset_class_results).length > 0 ? (
+                <div className="space-y-3">
+                  {Object.entries(results.asset_class_results || {}).map(([category, data], idx) => {
+                    const colors = ['#06b6d4', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444'];
+                    return (
+                      <div key={category} className="p-3 rounded-lg bg-white/5">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[idx % colors.length] }} />
+                            <span className="text-sm text-white capitalize">{category}</span>
+                          </div>
+                          <span className={`text-sm font-bold ${data.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {data.pnl >= 0 ? '+' : ''}${data.pnl?.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-white/60">
+                          <span>{data.trades} trades</span>
+                          <span>{((data.win_rate || 0) * 100).toFixed(1)}% win rate</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-white/40">
+                  No asset class breakdown available
+                </div>
+              )}
+            </div>
+
+            {/* RL Learning Stats */}
+            <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/20 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-purple-400" />
+                AI Model Learning
+              </h3>
+              {results.rl_learning_stats ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-white/70">
+                    The RL model has learned from this backtest and improved its decision-making.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Training Iterations</p>
+                      <p className="text-xl font-bold text-purple-400">{results.rl_learning_stats.total_iterations || 0}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Exploration Rate</p>
+                      <p className="text-xl font-bold text-purple-400">{((results.rl_learning_stats.epsilon || 0) * 100).toFixed(1)}%</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Avg Reward (Last 100)</p>
+                      <p className={`text-xl font-bold ${(results.rl_learning_stats.avg_reward_100 || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {(results.rl_learning_stats.avg_reward_100 || 0).toFixed(4)}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Experience Buffer</p>
+                      <p className="text-xl font-bold text-cyan-400">{results.rl_learning_stats.buffer_size || 0}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-purple-400/80 mt-2">
+                    💡 Run more backtests to continue training the model. Lower epsilon means more exploitation of learned patterns.
+                  </p>
+                </div>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-white/40">
+                  RL learning stats will appear after backtest
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Data Summary Used */}
+          {results.data_summary && (
+            <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+              <h4 className="text-sm font-semibold text-white mb-3">Data Used in This Backtest</h4>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div>
+                  <span className="text-white/50">Snapshots:</span>
+                  <span className="text-white ml-2">{results.data_summary.total_snapshots?.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-white/50">Markets:</span>
+                  <span className="text-white ml-2">{results.data_summary.unique_markets}</span>
+                </div>
+                <div>
+                  <span className="text-white/50">Date Range:</span>
+                  <span className="text-white ml-2">
+                    {results.data_summary.date_range?.start ? new Date(results.data_summary.date_range.start).toLocaleDateString() : 'N/A'} - {results.data_summary.date_range?.end ? new Date(results.data_summary.date_range.end).toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
+                {results.data_summary.categories && (
+                  <div className="flex gap-2">
+                    {Object.entries(results.data_summary.categories).map(([cat, count]) => (
+                      <span key={cat} className="px-2 py-0.5 rounded bg-white/10 text-white/70 text-xs">
+                        {cat}: {count}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Summary Card */}
           <div className={`rounded-xl border p-6 ${
