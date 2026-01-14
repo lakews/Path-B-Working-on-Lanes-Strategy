@@ -333,28 +333,76 @@ class BacktestEngine:
             logger.error(f"Error preloading AI signals: {e}")
     
     async def _get_market_timeseries(self, start_date: str, end_date: str) -> Dict[str, List[Dict]]:
-        """Get historical data grouped by market_id as timeseries"""
+    async def _get_market_timeseries(self, start_date: str, end_date: str, data_source: str = "auto") -> Dict[str, List[Dict]]:
+        """Get historical data grouped by market_id as timeseries
+        
+        Args:
+            data_source: Data source mode
+                - auto: Best available (prefers real prices)
+                - real: Only real price history
+                - snapshots: Only historical snapshots
+                - live: Not supported in backtest (falls back to auto)
+                - hybrid: Combine both sources
+        """
         try:
-            cursor = self.db.historical_data.find(
-                {"timestamp": {"$gte": start_date, "$lte": end_date}},
-                {"_id": 0}
-            ).sort("timestamp", 1)
-            
-            snapshots = await cursor.to_list(length=100000)
-            
-            # Group by market_id
             market_timeseries = {}
-            for snap in snapshots:
-                market_id = snap.get("market_id")
-                if not market_id:
-                    continue
-                if market_id not in market_timeseries:
-                    market_timeseries[market_id] = []
-                market_timeseries[market_id].append(snap)
+            
+            if data_source in ["auto", "real", "hybrid"]:
+                # Try to get real price history data first
+                price_cursor = self.db.price_history.find(
+                    {"timestamp": {"$gte": start_date, "$lte": end_date}},
+                    {"_id": 0}
+                ).sort("timestamp", 1)
+                
+                price_snapshots = await price_cursor.to_list(length=100000)
+                
+                for snap in price_snapshots:
+                    market_id = snap.get("market_id")
+                    if not market_id:
+                        continue
+                    if market_id not in market_timeseries:
+                        market_timeseries[market_id] = []
+                    snap["source"] = "price_history"  # Mark as real data
+                    market_timeseries[market_id].append(snap)
+                
+                logger.info(f"Loaded {len(price_snapshots)} real price history points")
+            
+            if data_source in ["auto", "snapshots", "hybrid"] or (data_source == "real" and not market_timeseries):
+                # Get historical snapshots
+                cursor = self.db.historical_data.find(
+                    {"timestamp": {"$gte": start_date, "$lte": end_date}},
+                    {"_id": 0}
+                ).sort("timestamp", 1)
+                
+                snapshots = await cursor.to_list(length=100000)
+                
+                for snap in snapshots:
+                    market_id = snap.get("market_id")
+                    if not market_id:
+                        continue
+                    
+                    # For "real" mode, skip if we already have real data for this market
+                    if data_source == "real" and market_id in market_timeseries:
+                        continue
+                    
+                    # For "snapshots" mode, use all snapshots
+                    # For "hybrid"/"auto", add to existing data
+                    if market_id not in market_timeseries:
+                        market_timeseries[market_id] = []
+                    
+                    snap["source"] = "snapshot"
+                    market_timeseries[market_id].append(snap)
+                
+                logger.info(f"Loaded {len(snapshots)} snapshot data points")
             
             # Sort each market's timeseries by timestamp
             for market_id in market_timeseries:
                 market_timeseries[market_id].sort(key=lambda x: x.get("timestamp", ""))
+            
+            # Log data source summary
+            real_count = sum(1 for m in market_timeseries.values() for s in m if s.get("source") == "price_history")
+            snapshot_count = sum(1 for m in market_timeseries.values() for s in m if s.get("source") == "snapshot")
+            logger.info(f"Data source breakdown: {real_count} real prices, {snapshot_count} snapshots (mode: {data_source})")
             
             return market_timeseries
             
