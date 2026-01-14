@@ -133,9 +133,10 @@ class BacktestEngine:
             logger.info(f"Enabled strategies: {strategies}")
             logger.info(f"Enabled asset classes: {asset_classes or 'ALL'}")
             logger.info(f"Using tuned params: {use_tuned_params}")
+            logger.info(f"Data source mode: {data_source}")
             
-            # Get historical data grouped by market
-            market_timeseries = await self._get_market_timeseries(start_date, end_date)
+            # Get historical data grouped by market based on data source
+            market_timeseries = await self._get_market_timeseries(start_date, end_date, data_source)
             
             if not market_timeseries:
                 return {"error": "No historical data found"}
