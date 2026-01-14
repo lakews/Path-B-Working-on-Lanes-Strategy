@@ -44,6 +44,8 @@ const Backtest = () => {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [historicalStats, setHistoricalStats] = useState(null);
+  const [priceHistoryStats, setPriceHistoryStats] = useState(null);
+  const [collectingPrices, setCollectingPrices] = useState(false);
   const [progress, setProgress] = useState(0);
   
   // History & Comparison State
