@@ -317,15 +317,18 @@ const Dashboard = () => {
               {/* Status Badge */}
               <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm ${
                 tradingMode === 'live' ? 'bg-green-500/20 border border-green-500/40 text-green-400' :
+                tradingMode === 'paper' ? 'bg-blue-500/20 border border-blue-500/40 text-blue-400' :
                 tradingMode === 'backtest' ? 'bg-orange-500/20 border border-orange-500/40 text-orange-400' :
                 'bg-slate-700/50 border border-white/10 text-white/50'
               }`} data-testid="current-mode-display">
                 <div className={`w-2 h-2 rounded-full ${
                   tradingMode === 'live' ? 'bg-green-400 animate-pulse' :
+                  tradingMode === 'paper' ? 'bg-blue-400 animate-pulse' :
                   tradingMode === 'backtest' ? 'bg-orange-400 animate-pulse' :
                   'bg-white/30'
                 }`} />
-                {tradingMode === 'live' ? 'LIVE TRADING' :
+                {tradingMode === 'live' ? '🔴 LIVE TRADING' :
+                 tradingMode === 'paper' ? '📝 PAPER TRADING' :
                  tradingMode === 'backtest' ? 'BACKTESTING' : 'ENGINE STOPPED'}
               </div>
               
