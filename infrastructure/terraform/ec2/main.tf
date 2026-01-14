@@ -25,80 +25,10 @@ provider "aws" {
 }
 
 # =============================================
-# VARIABLES
+# VARIABLES (now in variables.tf)
 # =============================================
 
-variable "aws_region" {
-  description = "AWS region for resources"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "environment" {
-  description = "Environment name"
-  type        = string
-  default     = "production"
-}
-
-variable "instance_type" {
-  description = "EC2 instance type"
-  type        = string
-  default     = "t3.medium"  # 2 vCPU, 4GB RAM - good for trading engine
-}
-
-variable "key_name" {
-  description = "SSH key pair name (create in AWS Console first)"
-  type        = string
-}
-
-variable "mongodb_uri" {
-  description = "MongoDB Atlas connection string"
-  type        = string
-  sensitive   = true
-}
-
-variable "polymarket_api_key" {
-  description = "Polymarket API key"
-  type        = string
-  sensitive   = true
-}
-
-variable "polymarket_api_secret" {
-  description = "Polymarket API secret"
-  type        = string
-  sensitive   = true
-}
-
-variable "polymarket_api_passphrase" {
-  description = "Polymarket API passphrase"
-  type        = string
-  sensitive   = true
-}
-
-variable "wallet_private_key" {
-  description = "Wallet private key for trading"
-  type        = string
-  sensitive   = true
-}
-
-variable "sendgrid_api_key" {
-  description = "SendGrid API key (optional)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "alert_email" {
-  description = "Email for trading alerts"
-  type        = string
-  default     = ""
-}
-
-variable "domain_name" {
-  description = "Domain name (optional, for SSL)"
-  type        = string
-  default     = ""
-}
+# See variables.tf for all variable definitions
 
 # =============================================
 # DATA SOURCES
