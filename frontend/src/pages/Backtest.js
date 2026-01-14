@@ -92,6 +92,7 @@ const Backtest = () => {
   const [priceHistoryStats, setPriceHistoryStats] = useState(null);
   const [collectingPrices, setCollectingPrices] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [liveRLStats, setLiveRLStats] = useState(null); // Live RL stats independent of backtest
   
   // History & Comparison State
   const [history, setHistory] = useState([]);
@@ -115,14 +116,28 @@ const Backtest = () => {
     data_source: 'auto'
   });
 
+  // Fetch live RL stats
+  const fetchLiveRLStats = async () => {
+    try {
+      const response = await axios.get(`${API}/rl/detailed-stats`);
+      if (response.data && response.data.rl_stats) {
+        setLiveRLStats(response.data.rl_stats);
+      }
+    } catch (e) {
+      console.error('Error fetching RL stats:', e);
+    }
+  };
+
   useEffect(() => {
     checkStatus();
     fetchLatestResults();
     fetchHistoricalStats();
     fetchPriceHistoryStats();
     fetchBacktestHistory();
+    fetchLiveRLStats(); // Fetch live RL stats on mount
     const interval = setInterval(() => {
       checkStatus();
+      fetchLiveRLStats(); // Keep RL stats updated
       if (backtestRunning) {
         fetchLatestResults();
         setProgress(prev => Math.min(prev + 5, 95));
