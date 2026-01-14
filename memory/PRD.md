@@ -31,7 +31,15 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Toggle cards with icons and descriptions
   - Summary bar showing active strategies/classes count
   - Selections persist to MongoDB database
-  - Changes apply to both Live Trading and Backtesting
+  - Tab renamed to "Asset Class - Strategy"
+
+- ✅ **Enhanced Backtest Performance Breakdown**
+  - **Strategy P&L Comparison Chart**: Vertical bar chart comparing all strategies
+  - **Strategy Performance Table**: Detailed table with columns:
+    - Strategy name, P&L, Trades, Win Rate, Avg Win, Avg Loss, Profit Factor, Status
+  - **Asset Class P&L Chart**: Horizontal bar chart showing P&L by category
+  - **Asset Class Detail Cards**: Grid of cards sorted by P&L with trades and win rate
+  - Color-coded status indicators (Profitable=green, Loss=red)
 
 - ✅ **Configuration Persistence**
   - User preferences stored in `user_config` collection
