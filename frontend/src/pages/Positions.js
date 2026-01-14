@@ -240,50 +240,12 @@ const Positions = () => {
           </p>
         </div>
         
-        {/* Quick Actions - Filters and Sort */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Quick Actions - Sort Only */}
+        <div className="flex items-center gap-3">
           {/* WebSocket Status */}
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${wsConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
             {wsConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
             <span className="text-xs font-medium">{wsConnected ? 'Live' : 'Offline'}</span>
-          </div>
-          
-          {/* Strategy Filter - All 4 strategies */}
-          <div className="relative">
-            <select
-              value={filterStrategy}
-              onChange={(e) => setFilterStrategy(e.target.value)}
-              className="appearance-none bg-slate-800 border border-white/20 rounded-lg px-4 py-2 pr-10 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 cursor-pointer min-w-[200px]"
-              style={{ colorScheme: 'dark' }}
-              data-testid="strategy-filter"
-            >
-              <option value="all" className="bg-slate-800 text-white py-2">All Strategies</option>
-              {ALL_STRATEGIES.map(s => (
-                <option key={s.value} value={s.value} className="bg-slate-800 text-white py-2">
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
-          </div>
-          
-          {/* Asset Class Filter */}
-          <div className="relative">
-            <select
-              value={filterAssetClass}
-              onChange={(e) => setFilterAssetClass(e.target.value)}
-              className="appearance-none bg-slate-800 border border-white/20 rounded-lg px-4 py-2 pr-10 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 cursor-pointer min-w-[160px]"
-              style={{ colorScheme: 'dark' }}
-              data-testid="asset-class-filter"
-            >
-              <option value="all" className="bg-slate-800 text-white py-2">All Asset Classes</option>
-              {ALL_ASSET_CLASSES.map(a => (
-                <option key={a.value} value={a.value} className="bg-slate-800 text-white py-2">
-                  {a.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
           </div>
           
           {/* Sort By */}
@@ -311,38 +273,107 @@ const Positions = () => {
           >
             {sortOrder === 'desc' ? <ChevronDown className="w-5 h-5" /> : <ChevronUp className="w-5 h-5" />}
           </button>
-          
-          {/* Clear Filters */}
-          {(filterStrategy !== 'all' || filterAssetClass !== 'all') && (
-            <button
-              onClick={() => { setFilterStrategy('all'); setFilterAssetClass('all'); }}
-              className="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/30 transition"
-            >
-              Clear Filters
-            </button>
-          )}
         </div>
       </div>
-      
-      {/* Active Filters Display */}
-      {(filterStrategy !== 'all' || filterAssetClass !== 'all') && (
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-white/50">Active Filters:</span>
-          {filterStrategy !== 'all' && (
-            <span className="px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-              {ALL_STRATEGIES.find(s => s.value === filterStrategy)?.label || filterStrategy}
-            </span>
-          )}
-          {filterAssetClass !== 'all' && (
-            <span className="px-2 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
-              {ALL_ASSET_CLASSES.find(a => a.value === filterAssetClass)?.label || filterAssetClass}
-            </span>
-          )}
-          <span className="text-white/40">
-            → {filteredPositions.length} position{filteredPositions.length !== 1 ? 's' : ''}
-          </span>
+
+      {/* Multi-Select Filters - Pill/Tag Style */}
+      <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-4">
+        {/* Strategy Multi-Select */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-white/70">Filter by Strategy</span>
+            {selectedStrategies.length > 0 && (
+              <button 
+                onClick={() => setSelectedStrategies([])}
+                className="text-xs text-cyan-400 hover:text-cyan-300"
+              >
+                Clear ({selectedStrategies.length})
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2" data-testid="strategy-pills">
+            {ALL_STRATEGIES.map(strategy => {
+              const isSelected = selectedStrategies.includes(strategy.value);
+              return (
+                <button
+                  key={strategy.value}
+                  onClick={() => toggleStrategy(strategy.value)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    isSelected 
+                      ? 'text-white shadow-lg' 
+                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80 border border-white/10'
+                  }`}
+                  style={isSelected ? { backgroundColor: strategy.color, boxShadow: `0 0 12px ${strategy.color}40` } : {}}
+                  data-testid={`strategy-pill-${strategy.value}`}
+                >
+                  {strategy.label}
+                  {isSelected && <span className="ml-1.5">✓</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      )}
+
+        {/* Asset Class Multi-Select */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-white/70">Filter by Asset Class</span>
+            {selectedAssetClasses.length > 0 && (
+              <button 
+                onClick={() => setSelectedAssetClasses([])}
+                className="text-xs text-purple-400 hover:text-purple-300"
+              >
+                Clear ({selectedAssetClasses.length})
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2" data-testid="asset-class-pills">
+            {ALL_ASSET_CLASSES.map(asset => {
+              const isSelected = selectedAssetClasses.includes(asset.value);
+              return (
+                <button
+                  key={asset.value}
+                  onClick={() => toggleAssetClass(asset.value)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    isSelected 
+                      ? 'text-white shadow-lg' 
+                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80 border border-white/10'
+                  }`}
+                  style={isSelected ? { backgroundColor: asset.color, boxShadow: `0 0 12px ${asset.color}40` } : {}}
+                  data-testid={`asset-pill-${asset.value}`}
+                >
+                  {asset.label}
+                  {isSelected && <span className="ml-1.5">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Active Filters Summary & Clear All */}
+        {hasActiveFilters && (
+          <div className="flex items-center justify-between pt-3 border-t border-white/10">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-white/50">Showing:</span>
+              <span className="text-white font-medium">{filteredPositions.length}</span>
+              <span className="text-white/50">of {positions.length} positions</span>
+              {selectedStrategies.length > 0 && (
+                <span className="text-cyan-400">• {selectedStrategies.length} strateg{selectedStrategies.length === 1 ? 'y' : 'ies'}</span>
+              )}
+              {selectedAssetClasses.length > 0 && (
+                <span className="text-purple-400">• {selectedAssetClasses.length} asset class{selectedAssetClasses.length === 1 ? '' : 'es'}</span>
+              )}
+            </div>
+            <button
+              onClick={clearAllFilters}
+              className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/30 transition flex items-center gap-1"
+            >
+              <X className="w-3 h-3" />
+              Clear All Filters
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Portfolio Overview Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
