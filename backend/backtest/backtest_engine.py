@@ -338,8 +338,8 @@ class BacktestEngine:
         Args:
             data_source: Data source mode
                 - auto: Best available (prefers real prices)
-                - real: Only real price history
-                - snapshots: Only historical snapshots
+                - real: Only real price history (source='price_history' in historical_data)
+                - snapshots: Only historical snapshots (source!='price_history')
                 - live: Fetch current live prices from Polymarket API
                 - hybrid: Combine both sources
         """
@@ -381,30 +381,56 @@ class BacktestEngine:
                     self.live_data_points = len(market_timeseries)
                     return market_timeseries
             
+            # All data is in historical_data collection - filter by source field
+            # source='price_history' = real tick-level data from Polymarket CLOB
+            # source=null or other = snapshot data
+            
             if data_source in ["auto", "real", "hybrid"]:
-                # Try to get real price history data first
-                price_cursor = self.db.price_history.find(
-                    {"timestamp": {"$gte": start_date, "$lte": end_date}},
+                # Get real price history data from historical_data collection
+                # Real data has source='price_history' field
+                real_cursor = self.db.historical_data.find(
+                    {
+                        "timestamp": {"$gte": start_date, "$lte": end_date},
+                        "source": "price_history"  # Filter for real price data
+                    },
                     {"_id": 0}
                 ).sort("timestamp", 1)
                 
-                price_snapshots = await price_cursor.to_list(length=100000)
+                real_snapshots = await real_cursor.to_list(length=100000)
                 
-                for snap in price_snapshots:
+                for snap in real_snapshots:
                     market_id = snap.get("market_id")
                     if not market_id:
                         continue
                     if market_id not in market_timeseries:
                         market_timeseries[market_id] = []
-                    snap["source"] = "price_history"  # Mark as real data
+                    # Keep the existing source field (price_history)
                     market_timeseries[market_id].append(snap)
                 
-                logger.info(f"Loaded {len(price_snapshots)} real price history points")
+                logger.info(f"Loaded {len(real_snapshots)} real price history points from historical_data")
             
             if data_source in ["auto", "snapshots", "hybrid"] or (data_source == "real" and not market_timeseries):
-                # Get historical snapshots
+                # Get snapshot data (documents without source='price_history')
+                snapshot_query = {
+                    "timestamp": {"$gte": start_date, "$lte": end_date}
+                }
+                
+                # For snapshots mode, only get non-price_history data
+                if data_source == "snapshots":
+                    snapshot_query["$or"] = [
+                        {"source": {"$exists": False}},
+                        {"source": {"$ne": "price_history"}}
+                    ]
+                elif data_source in ["auto", "hybrid"]:
+                    # For auto/hybrid, get all data but we already have real data
+                    # So only get data for markets we don't have yet, or additional snapshots
+                    snapshot_query["$or"] = [
+                        {"source": {"$exists": False}},
+                        {"source": {"$ne": "price_history"}}
+                    ]
+                
                 cursor = self.db.historical_data.find(
-                    {"timestamp": {"$gte": start_date, "$lte": end_date}},
+                    snapshot_query,
                     {"_id": 0}
                 ).sort("timestamp", 1)
                 
@@ -415,16 +441,15 @@ class BacktestEngine:
                     if not market_id:
                         continue
                     
-                    # For "real" mode, skip if we already have real data for this market
-                    if data_source == "real" and market_id in market_timeseries:
-                        continue
-                    
-                    # For "snapshots" mode, use all snapshots
-                    # For "hybrid"/"auto", add to existing data
+                    # For "real" mode fallback, use all data if no real data found
+                    # For "snapshots" mode, use all non-real data
+                    # For "hybrid"/"auto", combine with real data
                     if market_id not in market_timeseries:
                         market_timeseries[market_id] = []
                     
-                    snap["source"] = "snapshot"
+                    # Mark as snapshot if no source field
+                    if not snap.get("source"):
+                        snap["source"] = "snapshot"
                     market_timeseries[market_id].append(snap)
                 
                 logger.info(f"Loaded {len(snapshots)} snapshot data points")
@@ -435,7 +460,7 @@ class BacktestEngine:
             
             # Log data source summary
             real_count = sum(1 for m in market_timeseries.values() for s in m if s.get("source") == "price_history")
-            snapshot_count = sum(1 for m in market_timeseries.values() for s in m if s.get("source") == "snapshot")
+            snapshot_count = sum(1 for m in market_timeseries.values() for s in m if s.get("source") in ["snapshot", None] or s.get("source") != "price_history" and s.get("source") != "live_api")
             live_count = sum(1 for m in market_timeseries.values() for s in m if s.get("source") == "live_api")
             logger.info(f"Data source breakdown: {real_count} real prices, {snapshot_count} snapshots, {live_count} live (mode: {data_source})")
             
