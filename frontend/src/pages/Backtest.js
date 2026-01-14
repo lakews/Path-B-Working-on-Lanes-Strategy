@@ -714,6 +714,109 @@ const Backtest = () => {
                 </div>
               </div>
 
+              {/* Returns Distribution Chart */}
+              {results.returns_distribution && results.returns_distribution.bins && results.returns_distribution.bins.length > 0 && (
+                <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="returns-distribution">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-cyan-400" />
+                      Returns Distribution
+                    </h3>
+                    {results.returns_distribution.stats && (
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="text-white/50">Mean: <span className={results.returns_distribution.stats.mean >= 0 ? 'text-green-400' : 'text-red-400'}>{results.returns_distribution.stats.mean?.toFixed(2)}%</span></span>
+                        <span className="text-white/50">Median: <span className="text-cyan-400">{results.returns_distribution.stats.median?.toFixed(2)}%</span></span>
+                        <span className="text-white/50">Std Dev: <span className="text-purple-400">{results.returns_distribution.stats.std?.toFixed(2)}%</span></span>
+                      </div>
+                    )}
+                  </div>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={results.returns_distribution.bins.filter(b => b.count > 0)}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                      <XAxis 
+                        dataKey="label" 
+                        stroke="rgba(255,255,255,0.5)" 
+                        tick={{ fontSize: 9, angle: -45, textAnchor: 'end' }}
+                        height={60}
+                      />
+                      <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} label={{ value: 'Trades', angle: -90, position: 'insideLeft', fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} />
+                      <Tooltip 
+                        contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px'}}
+                        formatter={(value, name) => [`${value} trades`, 'Count']}
+                      />
+                      <ReferenceLine x="0% to 2%" stroke="#10b981" strokeDasharray="3 3" />
+                      <Bar dataKey="count" name="Trades">
+                        {results.returns_distribution.bins.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.min >= 0 ? '#10b981' : '#ef4444'}
+                            fillOpacity={0.7}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  {results.returns_distribution.stats && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-white/10">
+                      <div className="text-center">
+                        <p className="text-xs text-white/50">Positive Returns</p>
+                        <p className="text-lg font-bold text-green-400">{results.returns_distribution.stats.positive_returns}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-white/50">Negative Returns</p>
+                        <p className="text-lg font-bold text-red-400">{results.returns_distribution.stats.negative_returns}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-white/50">Skewness</p>
+                        <p className={`text-lg font-bold ${results.returns_distribution.stats.skewness > 0 ? 'text-green-400' : 'text-yellow-400'}`}>
+                          {results.returns_distribution.stats.skewness?.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-white/40">{results.returns_distribution.stats.skewness > 0 ? 'Right-skewed (good)' : 'Left-skewed'}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-white/50">Kurtosis</p>
+                        <p className="text-lg font-bold text-purple-400">{results.returns_distribution.stats.kurtosis?.toFixed(2)}</p>
+                        <p className="text-xs text-white/40">{results.returns_distribution.stats.kurtosis > 0 ? 'Fat tails' : 'Thin tails'}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Data Quality Card */}
+              {results.data_quality && (
+                <div className={`rounded-xl border p-4 ${
+                  results.data_quality.data_source === 'real' 
+                    ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/20'
+                    : 'bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/20'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Database className={`w-5 h-5 ${results.data_quality.data_source === 'real' ? 'text-green-400' : 'text-yellow-400'}`} />
+                      <div>
+                        <h4 className="text-sm font-semibold text-white">Data Quality: {results.data_quality.data_source === 'real' ? 'Real Price Data' : 'Simulated Price Data'}</h4>
+                        <p className="text-xs text-white/60">
+                          {results.data_quality.real_price_data_points?.toLocaleString()} real price points | {results.data_quality.simulated_price_data_points?.toLocaleString()} simulated
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-2xl font-bold ${results.data_quality.real_data_percentage > 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+                        {results.data_quality.real_data_percentage}%
+                      </p>
+                      <p className="text-xs text-white/50">Real Data</p>
+                    </div>
+                  </div>
+                  {results.data_quality.data_source === 'simulated' && (
+                    <div className="mt-3 p-2 rounded bg-yellow-500/10 border border-yellow-500/20">
+                      <p className="text-xs text-yellow-400">
+                        ⚠️ This backtest used simulated prices. Click "Fetch Real Prices" above to collect actual market data for more accurate results.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Data Summary Used */}
               {results.data_summary && (
                 <div className="rounded-xl bg-white/5 border border-white/10 p-4">
