@@ -790,8 +790,39 @@ class PaperTrader:
             "returns_distribution": returns_distribution,
             "equity_curve": self.equity_curve[-100:],  # Last 100 points
             "enabled_strategies": self.enabled_strategies,
-            "enabled_asset_classes": self.enabled_asset_classes
+            "enabled_asset_classes": self.enabled_asset_classes,
+            "continuous_mode": self.continuous_mode,
+            "graceful_stop": self.graceful_stop,
+            "ai_learning": {
+                "rl_updates_this_session": len(self.closed_trades),
+                "learning_active": self.running,
+                "signals_used": ["volatility", "sentiment", "sharp_alignment"],
+                "strategies_learning": self.enabled_strategies
+            }
         }
+    
+    async def get_ai_stats(self) -> Dict:
+        """Get detailed AI/ML statistics for the paper trading session"""
+        try:
+            rl_stats = await self.rl_engine.get_training_stats()
+            return {
+                "rl_stats": rl_stats,
+                "session_learning": {
+                    "trades_fed_to_rl": len(self.closed_trades),
+                    "total_reward_signals": sum(t.get('reward_signal', 0) for t in self.closed_trades),
+                    "avg_reward": sum(t.get('reward_signal', 0) for t in self.closed_trades) / max(len(self.closed_trades), 1),
+                    "positive_rewards": sum(1 for t in self.closed_trades if t.get('reward_signal', 0) > 0),
+                    "negative_rewards": sum(1 for t in self.closed_trades if t.get('reward_signal', 0) < 0)
+                },
+                "signal_usage": {
+                    "volatility_signals": self.total_trades,
+                    "sentiment_signals": self.total_trades,
+                    "sharp_signals": self.total_trades
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting AI stats: {e}")
+            return {}
     
     def _calculate_returns_distribution(self) -> Dict:
         """Calculate returns distribution histogram like backtest"""
