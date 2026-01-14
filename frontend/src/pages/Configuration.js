@@ -281,6 +281,170 @@ const Configuration = () => {
         </div>
       )}
 
+      {/* Asset Classes Tab */}
+      {activeTab === 'assets' && (
+        <div className="space-y-6">
+          {/* Strategies Section */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Trading Strategies</h3>
+                  <p className="text-xs text-white/50">Select strategies to use for live trading & backtesting</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-white/60">{config.enabled_strategies?.length || 0}/{STRATEGIES.length} enabled</span>
+                <button onClick={selectAllStrategies} className="px-3 py-1 rounded-lg bg-white/10 text-white/60 text-xs hover:bg-white/20 transition">
+                  Select All
+                </button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {STRATEGIES.map((strategy) => {
+                const isEnabled = config.enabled_strategies?.includes(strategy.id);
+                const Icon = strategy.icon;
+                return (
+                  <div
+                    key={strategy.id}
+                    onClick={() => toggleStrategy(strategy.id)}
+                    data-testid={`strategy-${strategy.id}`}
+                    className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      isEnabled
+                        ? `bg-${strategy.color}-500/10 border-${strategy.color}-500/50 shadow-lg shadow-${strategy.color}-500/10`
+                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                        isEnabled ? `bg-${strategy.color}-500/20` : 'bg-white/10'
+                      }`}>
+                        <Icon className={`w-6 h-6 ${isEnabled ? `text-${strategy.color}-400` : 'text-white/40'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className={`font-semibold ${isEnabled ? 'text-white' : 'text-white/60'}`}>
+                            {strategy.label}
+                          </h4>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                            isEnabled ? 'bg-green-500' : 'bg-white/10'
+                          }`}>
+                            {isEnabled ? <Check className="w-4 h-4 text-white" /> : <X className="w-4 h-4 text-white/40" />}
+                          </div>
+                        </div>
+                        <p className="text-xs text-white/50 mt-1">{strategy.description}</p>
+                        <div className="flex items-center gap-4 mt-2">
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            strategy.risk === 'Low' ? 'bg-green-500/20 text-green-400' :
+                            strategy.risk === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {strategy.risk} Risk
+                          </span>
+                          <span className="text-xs text-white/40">Expected: {strategy.expectedReturn}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Asset Classes Section */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                  <Layers className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Asset Classes</h3>
+                  <p className="text-xs text-white/50">Select market categories to trade</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-white/60">{config.enabled_asset_classes?.length || 0}/{ASSET_CLASSES.length} enabled</span>
+                <button onClick={selectAllAssetClasses} className="px-3 py-1 rounded-lg bg-white/10 text-white/60 text-xs hover:bg-white/20 transition">
+                  Select All
+                </button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ASSET_CLASSES.map((asset) => {
+                const isEnabled = config.enabled_asset_classes?.includes(asset.id);
+                const Icon = asset.icon;
+                return (
+                  <div
+                    key={asset.id}
+                    onClick={() => toggleAssetClass(asset.id)}
+                    data-testid={`asset-${asset.id}`}
+                    className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      isEnabled
+                        ? `bg-${asset.color}-500/10 border-${asset.color}-500/50`
+                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        isEnabled ? `bg-${asset.color}-500/20` : 'bg-white/10'
+                      }`}>
+                        <Icon className={`w-5 h-5 ${isEnabled ? `text-${asset.color}-400` : 'text-white/40'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className={`font-semibold ${isEnabled ? 'text-white' : 'text-white/60'}`}>
+                            {asset.label}
+                          </h4>
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                            isEnabled ? 'bg-green-500' : 'bg-white/10'
+                          }`}>
+                            {isEnabled && <Check className="w-3 h-3 text-white" />}
+                          </div>
+                        </div>
+                        <p className="text-xs text-white/50 mt-0.5">{asset.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Summary */}
+          <div className="rounded-xl bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-white/10 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <div>
+                  <p className="text-xs text-white/50">Active Strategies</p>
+                  <p className="text-lg font-bold text-cyan-400">{config.enabled_strategies?.length || 0}</p>
+                </div>
+                <div className="w-px h-8 bg-white/10" />
+                <div>
+                  <p className="text-xs text-white/50">Active Asset Classes</p>
+                  <p className="text-lg font-bold text-purple-400">{config.enabled_asset_classes?.length || 0}</p>
+                </div>
+                <div className="w-px h-8 bg-white/10" />
+                <div>
+                  <p className="text-xs text-white/50">Trading Scope</p>
+                  <p className="text-sm text-white/80">
+                    {config.enabled_strategies?.join(', ').substring(0, 40)}...
+                  </p>
+                </div>
+              </div>
+              <div className="text-xs text-white/40">
+                Changes apply to both Live Trading and Backtesting
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl bg-slate-800/50 border border-white/10 p-6">
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Info className="w-4 h-4 text-cyan-400" />Configuration Tips</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
