@@ -24,7 +24,7 @@ class AlertService:
     """SendGrid-based alert system for trading notifications"""
     
     def __init__(self):
-        self.db = get_db()
+        self._db = None
         self.sendgrid_api_key = os.environ.get('SENDGRID_API_KEY')
         self.sender_email = os.environ.get('ALERT_SENDER_EMAIL', 'alerts@apextrader.com')
         self.enabled = bool(self.sendgrid_api_key)
@@ -52,6 +52,13 @@ class AlertService:
             logger.info("AlertService initialized with SendGrid")
         else:
             logger.warning("AlertService: SendGrid API key not configured - alerts disabled")
+    
+    @property
+    def db(self):
+        """Lazy database connection"""
+        if self._db is None:
+            self._db = get_db()
+        return self._db
     
     def _can_send_alert(self, alert_type: str) -> bool:
         """Check if alert is allowed (cooldown period)"""
