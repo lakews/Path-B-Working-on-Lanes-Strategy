@@ -1,0 +1,49 @@
+{
+  "summary": "Completed testing of P1 (AI signals in trading logic), P2 (WebSocket integration), and P3 (Documentation). All core features working: AI signals (sentiment, whale tracking) are integrated into backtest strategy selection, WebSocket endpoint at /ws works locally (not through external proxy as expected), health endpoint returns healthy, backtest results include ai_signals_stats with sentiment_signals_used, whale_signals_used, avg_sentiment, avg_whale_activity, bullish/bearish whale counts. Frontend displays AI Signal Integration section correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/ws", "issue": "WebSocket not accessible through external proxy (expected behavior per main agent note)", "priority": "LOW"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_ai_signals_websocket.py",
+    "/app/tests/test_apex_trader_api.py",
+    "/app/tests/test_backtest_history_compare.py",
+    "/app/tests/test_rl_engine_api.py",
+    "/app/tests/test_spread_calibrator_historical.py",
+    "/app/test_reports/pytest/pytest_results_iteration5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "BacktestEngine._select_best_strategy() correctly uses sentiment_score, sentiment_confidence, whale_activity, and whale_direction to adjust strategy scores",
+    "BacktestEngine._preload_ai_signals() loads sentiment and whale signals from database cache, generates heuristic signals for uncached markets",
+    "AI signals influence position sizing via ai_confidence calculation (sentiment + whale confidence)",
+    "WebSocketConnectionManager class properly manages connections with connect/disconnect/broadcast methods",
+    "/ws endpoint sends initial 'connected' message with trading_mode, bot_running, total_pnl, open_positions",
+    "WebSocket supports ping/pong heartbeat and get_update commands",
+    "ai_signals_stats in backtest results includes: sentiment_signals_used, whale_signals_used, avg_sentiment, avg_whale_activity, bullish_whale_markets, bearish_whale_markets",
+    "Documentation files exist: API_REFERENCE.md, ARCHITECTURE.md, OPERATIONS.md"
+  ],
+  "updated_files": [
+    "/app/tests/test_ai_signals_websocket.py"
+  ],
+  "success_rate": {
+    "backend": "95% (86/91 tests passed - 4 failures in educational_analysis tests from previous iteration, 1 skipped WebSocket async test)",
+    "frontend": "100% (AI Signal Integration section verified with all 6 stats displayed)"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "Existing backtest results used for testing",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "P1/P2/P3 features tested and working. New test file: /app/tests/test_ai_signals_websocket.py (16 tests for AI signals and WebSocket). Key findings: 1) ai_signals_stats present in backtest results with sentiment_signals_used=50, whale_signals_used=50, avg_sentiment=0.49, avg_whale_activity=0.50, bullish_whale_markets=13, bearish_whale_markets=16. 2) WebSocket works locally at ws://localhost:8001/ws but not through external proxy (expected). 3) _select_best_strategy uses sentiment and whale data to adjust strategy scores. 4) Frontend AI Signal Integration section displays all stats correctly. 4 test failures are from previous iteration's educational_analysis tests (not related to current P1/P2/P3 scope).",
+  "mocked_apis": {
+    "whale_tracker": "Uses simulated whale activity based on volume spikes (not real large trade data)",
+    "sentiment_analyzer": "Uses heuristic signals when Finnhub API is not available"
+  }
+}
