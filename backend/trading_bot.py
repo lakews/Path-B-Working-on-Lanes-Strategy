@@ -1,11 +1,14 @@
 import asyncio
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
 from datetime import datetime, timezone
 from database import get_db
 from services.market_data_service import MarketDataService
 from data.historical_collector import HistoricalDataCollector
 from ml.sharp_detector import SharpDetector
+from ml.rl_engine import RLAdaptiveEngine
+from ml.volatility_predictor import VolatilityPredictor
+from ml.sentiment_fusion import SentimentFusionEngine
 from strategies.delta_neutral import DeltaNeutralStrategy
 from strategies.volatility_exploitation import VolatilityExploitationStrategy
 from strategies.alpha_directional import AlphaDirectionalStrategy
@@ -17,16 +20,22 @@ from config import config
 logger = logging.getLogger(__name__)
 
 class ApexTrader:
-    """Main APEX TRADER orchestrator
+    """Main APEX TRADER orchestrator with full RL integration
     Coordinates all AI modules, strategies, and execution
     """
     
-    def __init__(self):
+    def __init__(self, paper_mode: bool = False):
         self.db = get_db()
         self.market_data_service = MarketDataService()
         self.historical_collector = HistoricalDataCollector()
         self.sharp_detector = SharpDetector()
         
+        # ML Engines
+        self.rl_engine = RLAdaptiveEngine()
+        self.volatility_predictor = VolatilityPredictor()
+        self.sentiment_fusion = SentimentFusionEngine()
+        
+        # Trading Strategies
         self.delta_neutral_strategy = DeltaNeutralStrategy()
         self.volatility_strategy = VolatilityExploitationStrategy()
         self.alpha_strategy = AlphaDirectionalStrategy()
@@ -36,18 +45,29 @@ class ApexTrader:
         self.risk_ctrl = RiskController()
         
         self.running = False
+        self.paper_mode = paper_mode
         self.trade_interval = config.TRADE_INTERVAL_SECONDS
+        
+        # Performance tracking for RL feedback
+        self.pending_trades: Dict[str, Dict] = {}  # market_id -> trade info
+        
+        logger.info(f"ApexTrader initialized - Paper Mode: {paper_mode}")
         
     async def start(self):
         """Start APEX TRADER system"""
         try:
             self.running = True
-            logger.info("Starting APEX TRADER...")
+            mode_str = "PAPER" if self.paper_mode else "LIVE"
+            logger.info(f"Starting APEX TRADER in {mode_str} mode...")
+            
+            # Load RL model
+            await self.rl_engine.load_model()
             
             await asyncio.gather(
                 self._trading_loop(),
                 self._monitoring_loop(),
                 self._sharp_detection_loop(),
+                self._rl_learning_loop(),
                 self.historical_collector.start_collection()
             )
             
@@ -59,10 +79,14 @@ class ApexTrader:
         """Stop APEX TRADER system"""
         self.running = False
         await self.historical_collector.stop_collection()
+        
+        # Save RL model on stop
+        await self.rl_engine.save_model()
+        
         logger.info("APEX TRADER stopped")
     
     async def _trading_loop(self):
-        """Main trading loop - executes strategies"""
+        """Main trading loop - executes strategies with RL guidance"""
         logger.info(f"Trading loop started. Target: {config.TRADES_PER_10MIN} trades/10min")
         
         while self.running:
@@ -71,7 +95,6 @@ class ApexTrader:
                 
                 for market_data in markets:
                     await self._evaluate_and_trade(market_data)
-                    
                     await asyncio.sleep(self.trade_interval)
                 
                 if not markets:
@@ -82,63 +105,247 @@ class ApexTrader:
                 await asyncio.sleep(5)
     
     async def _evaluate_and_trade(self, market_data: Dict):
-        """Evaluate market and execute appropriate strategy"""
+        """Evaluate market and execute appropriate strategy with RL input"""
         try:
             market_id = market_data.get('id')
             
+            # Check existing position
             existing_position = await self.position_mgr.get_position(market_id)
             
             if existing_position:
                 await self._manage_existing_position(existing_position, market_data)
                 return
             
-            result = await self.volatility_strategy.execute_strategy(market_data)
-            if result:
-                logger.info(f"Volatility trade executed: {market_id}")
+            # Get ML signals
+            signals = await self._get_ml_signals(market_data)
+            
+            # Get RL recommendation
+            rl_action, rl_confidence = await self.rl_engine.get_optimal_action(market_data, signals)
+            
+            # Skip if RL says wait or low confidence
+            if rl_action == 'WAIT' or rl_confidence < 0.35:
                 return
             
-            result = await self.alpha_strategy.execute_strategy(market_data)
-            if result:
-                logger.info(f"Alpha-directional trade executed: {market_id}")
-                return
+            # Get strategy confidence from RL
+            strategy_confidences = await self._get_strategy_confidences(market_data, signals)
             
-            result = await self.arbitrage_strategy.execute_strategy(market_data)
-            if result:
-                logger.info(f"Arbitrage trade executed: {market_id}")
-                return
+            # Execute best strategy based on RL guidance
+            result = None
+            best_strategy = max(strategy_confidences, key=strategy_confidences.get)
             
-            result = await self.delta_neutral_strategy.execute_strategy(market_data)
-            if result:
-                logger.info(f"Delta-neutral trade executed: {market_id}")
-                return
-                
+            if best_strategy == 'volatility_exploitation' and strategy_confidences[best_strategy] > 0.4:
+                result = await self._execute_with_rl(
+                    self.volatility_strategy, market_data, signals, rl_action, rl_confidence
+                )
+                if result:
+                    logger.info(f"Volatility trade executed: {market_id} (RL: {rl_action}, conf: {rl_confidence:.2f})")
+                    return
+            
+            if best_strategy == 'alpha_directional' and strategy_confidences[best_strategy] > 0.4:
+                result = await self._execute_with_rl(
+                    self.alpha_strategy, market_data, signals, rl_action, rl_confidence
+                )
+                if result:
+                    logger.info(f"Alpha-directional trade executed: {market_id} (RL: {rl_action})")
+                    return
+            
+            if best_strategy == 'arbitrage' and strategy_confidences[best_strategy] > 0.4:
+                result = await self._execute_with_rl(
+                    self.arbitrage_strategy, market_data, signals, rl_action, rl_confidence
+                )
+                if result:
+                    logger.info(f"Arbitrage trade executed: {market_id}")
+                    return
+            
+            if best_strategy == 'delta_neutral' and strategy_confidences[best_strategy] > 0.4:
+                result = await self._execute_with_rl(
+                    self.delta_neutral_strategy, market_data, signals, rl_action, rl_confidence
+                )
+                if result:
+                    logger.info(f"Delta-neutral trade executed: {market_id}")
+                    return
+                    
         except Exception as e:
             logger.error(f"Error evaluating market: {e}")
     
+    async def _execute_with_rl(self, strategy, market_data: Dict, signals: Dict, 
+                               rl_action: str, rl_confidence: float) -> Optional[Dict]:
+        """Execute strategy with RL-informed position sizing"""
+        try:
+            market_id = market_data.get('id')
+            
+            if self.paper_mode:
+                # Paper mode - simulate execution
+                result = await strategy.evaluate_opportunity(market_data)
+                if result and result.get('should_trade'):
+                    # Record pending trade for RL feedback
+                    self.pending_trades[market_id] = {
+                        'entry_price': market_data.get('yes_price', 0.5),
+                        'entry_time': datetime.now(timezone.utc).isoformat(),
+                        'strategy': strategy.__class__.__name__,
+                        'rl_action': rl_action,
+                        'rl_confidence': rl_confidence,
+                        'signals': signals
+                    }
+                    
+                    # Log paper trade
+                    await self.db.paper_trades.insert_one({
+                        "market_id": market_id,
+                        "type": "entry",
+                        "strategy": strategy.__class__.__name__,
+                        "rl_action": rl_action,
+                        "rl_confidence": rl_confidence,
+                        "price": market_data.get('yes_price', 0.5),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "paper_mode": True
+                    })
+                    
+                    return result
+            else:
+                # Live mode - actual execution
+                result = await strategy.execute_strategy(market_data)
+                if result:
+                    # Record for RL feedback
+                    self.pending_trades[market_id] = {
+                        'entry_price': market_data.get('yes_price', 0.5),
+                        'entry_time': datetime.now(timezone.utc).isoformat(),
+                        'strategy': strategy.__class__.__name__,
+                        'rl_action': rl_action,
+                        'rl_confidence': rl_confidence
+                    }
+                return result
+                
+        except Exception as e:
+            logger.error(f"Error executing with RL: {e}")
+            return None
+    
+    async def _get_ml_signals(self, market_data: Dict) -> Dict:
+        """Aggregate ML signals for trading decision"""
+        signals = {
+            'volatility': 0.02,
+            'sentiment': 0.5,
+            'sharp_alignment': 0.5,
+            'whale_activity': 0.0
+        }
+        
+        try:
+            # Volatility prediction
+            vol_pred = await self.volatility_predictor.predict(market_data)
+            signals['volatility'] = vol_pred.get('predicted_volatility', 0.02)
+        except Exception as e:
+            logger.debug(f"Volatility prediction error: {e}")
+        
+        try:
+            # Sentiment fusion
+            sentiment = await self.sentiment_fusion.get_fused_sentiment(market_data.get('id'))
+            signals['sentiment'] = sentiment.get('fused_score', 0.5)
+        except Exception as e:
+            logger.debug(f"Sentiment fusion error: {e}")
+        
+        try:
+            # Sharp trader alignment
+            sharp = await self.sharp_detector.get_alignment_signal(market_data.get('id'))
+            signals['sharp_alignment'] = sharp.get('alignment_score', 0.5)
+        except Exception as e:
+            logger.debug(f"Sharp detection error: {e}")
+        
+        return signals
+    
+    async def _get_strategy_confidences(self, market_data: Dict, signals: Dict) -> Dict[str, float]:
+        """Get RL-based confidence for each strategy"""
+        confidences = {}
+        
+        for strategy_name in ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']:
+            try:
+                conf = await self.rl_engine.get_strategy_confidence(strategy_name, market_data)
+                confidences[strategy_name] = conf
+            except:
+                confidences[strategy_name] = 0.25  # Default equal weight
+        
+        return confidences
+    
     async def _manage_existing_position(self, position: Dict, market_data: Dict):
-        """Manage existing position - check for exit conditions"""
+        """Manage existing position with RL-guided exit decisions"""
         try:
             current_price = market_data.get('yes_price', 0.5)
             entry_price = position['avg_price']
+            market_id = market_data.get('id')
             
             profit_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
             
-            should_exit = False
+            # Get RL exit recommendation
+            signals = await self._get_ml_signals(market_data)
+            rl_action, rl_confidence = await self.rl_engine.get_optimal_action(market_data, signals)
             
+            should_exit = False
+            exit_reason = None
+            
+            # Target profit reached
             if profit_pct > 0.50:
                 should_exit = True
+                exit_reason = "target_profit"
                 logger.info(f"Exiting position - target profit reached: {profit_pct:.2%}")
             
+            # Stop loss
             elif profit_pct < -0.20:
                 should_exit = True
+                exit_reason = "stop_loss"
                 logger.info(f"Exiting position - stop loss: {profit_pct:.2%}")
             
+            # RL recommends exit with high confidence
+            elif 'SELL' in rl_action and rl_confidence > 0.7:
+                should_exit = True
+                exit_reason = "rl_exit_signal"
+                logger.info(f"Exiting position - RL signal: {rl_action} ({rl_confidence:.2f})")
+            
             if should_exit:
-                pnl = await self.position_mgr.close_position(position['id'], current_price)
-                logger.info(f"Position closed with PnL: ${pnl:.2f}")
+                # Calculate reward for RL
+                reward = self._calculate_trade_reward(profit_pct, exit_reason)
+                
+                # Feed reward to RL engine
+                await self.rl_engine.update_from_reward(market_id, reward)
+                
+                # Close position
+                if not self.paper_mode:
+                    pnl = await self.position_mgr.close_position(position['id'], current_price)
+                    logger.info(f"Position closed with PnL: ${pnl:.2f}")
+                else:
+                    # Paper mode - log the exit
+                    await self.db.paper_trades.insert_one({
+                        "market_id": market_id,
+                        "type": "exit",
+                        "exit_reason": exit_reason,
+                        "entry_price": entry_price,
+                        "exit_price": current_price,
+                        "pnl_pct": profit_pct,
+                        "rl_reward": reward,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "paper_mode": True
+                    })
+                
+                # Remove from pending trades
+                if market_id in self.pending_trades:
+                    del self.pending_trades[market_id]
                 
         except Exception as e:
             logger.error(f"Error managing position: {e}")
+    
+    def _calculate_trade_reward(self, pnl_pct: float, exit_reason: str) -> float:
+        """Calculate reward signal for RL based on trade outcome"""
+        import numpy as np
+        
+        # Base reward from P&L
+        reward = pnl_pct * 10
+        
+        # Bonuses/penalties based on exit reason
+        if exit_reason == "target_profit":
+            reward += 0.5
+        elif exit_reason == "stop_loss":
+            reward -= 0.2
+        elif exit_reason == "rl_exit_signal":
+            reward += 0.3 if pnl_pct > 0 else -0.1
+        
+        return np.clip(reward, -2.0, 2.0)
     
     async def _monitoring_loop(self):
         """Monitor performance and update metrics"""
@@ -177,6 +384,24 @@ class ApexTrader:
                 
             except Exception as e:
                 logger.error(f"Error in sharp detection: {e}")
+                await asyncio.sleep(300)
+    
+    async def _rl_learning_loop(self):
+        """Periodic RL learning from experience replay"""
+        while self.running:
+            try:
+                # Train from replay buffer
+                await self.rl_engine.train_from_replay()
+                
+                # Periodically save model
+                await self.rl_engine.save_model()
+                
+                logger.info("RL model trained and saved")
+                
+                await asyncio.sleep(300)  # Every 5 minutes
+                
+            except Exception as e:
+                logger.error(f"Error in RL learning loop: {e}")
                 await asyncio.sleep(300)
     
     async def _get_active_markets(self) -> List[Dict]:
