@@ -15,6 +15,7 @@ const API = `${BACKEND_URL}/api`;
 // Data Source Options
 const DATA_SOURCE_OPTIONS = [
   { id: 'auto', name: 'Auto (Best Available)', desc: 'Real prices → Snapshots → Simulated (uses highest quality available for each market)', icon: '🔄' },
+  { id: 'live', name: 'Live Market Data', desc: 'Connects to Polymarket API for real-time current prices. Best for testing with live markets', icon: '🔴' },
   { id: 'real', name: 'Real Price History', desc: 'Tick-level Polymarket CLOB data. Most accurate but may have gaps for newer markets', icon: '📈' },
   { id: 'snapshots', name: 'Historical Snapshots', desc: 'Periodic market snapshots (every few minutes). Faster processing, less granular', icon: '📸' },
   { id: 'hybrid', name: 'Hybrid Mode', desc: 'Real prices where available + simulated fills for gaps. Good balance of accuracy', icon: '🔀' }
