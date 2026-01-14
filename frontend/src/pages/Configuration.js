@@ -53,8 +53,34 @@ const Configuration = () => {
   };
 
   const resetToDefaults = () => {
-    setConfig({ trades_per_10min: 500, initial_capital: 100, capital_deployment_pct: 80, max_position_size_pct: 3, kelly_fraction: 0.25, max_drawdown_pct: 3 });
+    setConfig({ trades_per_10min: 500, initial_capital: 100, capital_deployment_pct: 80, max_position_size_pct: 3, kelly_fraction: 0.25, max_drawdown_pct: 3, enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'] });
     toast.info('Reset to defaults');
+  };
+
+  const toggleAssetClass = (assetId) => {
+    setConfig(prev => {
+      const current = prev.enabled_asset_classes || [];
+      if (current.includes(assetId)) {
+        // Don't allow disabling all - must have at least one
+        if (current.length === 1) {
+          toast.error('Must have at least one asset class enabled');
+          return prev;
+        }
+        return { ...prev, enabled_asset_classes: current.filter(id => id !== assetId) };
+      } else {
+        return { ...prev, enabled_asset_classes: [...current, assetId] };
+      }
+    });
+  };
+
+  const selectAllAssetClasses = () => {
+    setConfig(prev => ({ ...prev, enabled_asset_classes: ASSET_CLASSES.map(a => a.id) }));
+  };
+
+  const selectNoneAssetClasses = () => {
+    // Keep at least finance enabled
+    setConfig(prev => ({ ...prev, enabled_asset_classes: ['finance'] }));
+    toast.info('Kept Finance enabled (minimum 1 required)');
   };
 
   const deployedCapital = (config.initial_capital * (config.capital_deployment_pct || 80) / 100);
