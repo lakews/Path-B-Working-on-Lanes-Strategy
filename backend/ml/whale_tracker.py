@@ -223,7 +223,6 @@ class WhaleTracker:
         """
         try:
             market_id = market_data.get('id', '')
-            volume = market_data.get('volume', 0)
             volume_24h = market_data.get('volume24hr', 0)
             liquidity = market_data.get('liquidity', 0)
             yes_price = market_data.get('yes_price', 0.5)
