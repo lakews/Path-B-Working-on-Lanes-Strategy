@@ -112,6 +112,8 @@ class BacktestEngine:
             self.asset_class_performance = {}
             self.real_price_data_used = 0
             self.simulated_price_data_used = 0
+            self.sentiment_cache = {}  # Reset AI signal caches
+            self.whale_cache = {}
             
             # Store enabled asset classes for filtering
             self.enabled_asset_classes = asset_classes
