@@ -356,7 +356,7 @@ const PaperTrading = () => {
               <MetricCard
                 title="Capital"
                 value={`$${(status.current_capital || 0).toFixed(0)}`}
-                subtitle={`Initial: $${status.initial_capital}`}
+                subtitle={status.initial_capital ? `Initial: $${status.initial_capital}` : 'Not started'}
                 icon={Wallet}
                 color="blue"
               />
