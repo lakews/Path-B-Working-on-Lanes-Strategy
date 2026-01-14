@@ -255,37 +255,3 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
     InstanceId = aws_instance.apex_trader.id
   }
 }
-
-# =============================================
-# OUTPUTS
-# =============================================
-
-output "public_ip" {
-  description = "Public IP address of the server"
-  value       = aws_eip.apex_trader.public_ip
-}
-
-output "public_dns" {
-  description = "Public DNS name"
-  value       = aws_instance.apex_trader.public_dns
-}
-
-output "ssh_command" {
-  description = "SSH command to connect"
-  value       = "ssh -i ~/.ssh/${var.key_name}.pem ubuntu@${aws_eip.apex_trader.public_ip}"
-}
-
-output "frontend_url" {
-  description = "Frontend URL"
-  value       = "http://${aws_eip.apex_trader.public_ip}"
-}
-
-output "backend_api_url" {
-  description = "Backend API URL"
-  value       = "http://${aws_eip.apex_trader.public_ip}/api"
-}
-
-output "instance_id" {
-  description = "EC2 Instance ID"
-  value       = aws_instance.apex_trader.id
-}
