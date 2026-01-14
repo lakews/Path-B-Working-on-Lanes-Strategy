@@ -257,6 +257,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Key API Endpoints
 - `GET /api/status` - System status and trading mode
+- `GET /api/health` - Health check
 - `GET /api/trades/stats` - Trade frequency statistics
 - `GET /api/performance` - Performance metrics
 - `GET /api/positions` - Open positions
@@ -264,16 +265,21 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - `GET /api/analytics` - Comprehensive analytics
 - `GET /api/historical/stats` - Historical data statistics
 - `POST /api/historical/collect` - Trigger snapshot collection
-- `POST /api/historical/collect-prices` - **NEW** Collect tick-level price history
-- `GET /api/historical/price-stats` - **NEW** Real price data statistics
+- `POST /api/historical/collect-prices` - Collect tick-level price history
+- `GET /api/historical/price-stats` - Real price data statistics
 - `GET /api/rl/stats` - RL engine training statistics
 - `POST /api/rl/train` - Trigger RL batch training
 - `GET /api/backtest/history` - Get list of past backtests
-- `GET /api/backtest/results` - Get latest or specific backtest results (includes returns_distribution, data_quality)
+- `GET /api/backtest/results` - Get latest or specific backtest results
 - `POST /api/backtest/compare` - Compare multiple backtests with educational analysis
 - `DELETE /api/backtest/{id}` - Delete a backtest
 - `POST /api/bot/start` - Start live trading
 - `POST /api/bot/stop` - Stop live trading
+- `GET /api/sentiment/analyze` - Analyze market sentiment
+- `GET /api/whale/detect` - Detect whale activity
+- `POST /api/tuning/strategy` - Tune single strategy
+- `POST /api/tuning/all` - Tune all strategies
+- `WS /ws` - WebSocket real-time updates
 
 ## Architecture
 ```
