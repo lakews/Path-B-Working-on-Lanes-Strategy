@@ -151,24 +151,43 @@ const Dashboard = () => {
   };
 
   const setMode = async (mode) => {
-    if (mode === 'live' && status?.trading_mode !== 'live') {
-      if (status?.trading_mode === 'backtest') {
-        await axios.post(`${API}/backtest/stop`).catch(() => {});
+    try {
+      if (mode === 'live') {
+        // First stop any running processes
+        if (status?.trading_mode === 'backtest') {
+          await axios.post(`${API}/backtest/stop`).catch(() => {});
+        }
+        // Enable live mode
+        await axios.post(`${API}/mode/live`);
+        await startBot();
+      } else if (mode === 'paper') {
+        // First stop any running processes
+        if (status?.bot_running) {
+          await stopBot();
+        }
+        if (status?.trading_mode === 'backtest') {
+          await axios.post(`${API}/backtest/stop`).catch(() => {});
+        }
+        // Enable paper trading mode
+        await axios.post(`${API}/mode/paper`);
+        await startBot();
+      } else if (mode === 'backtest' && status?.trading_mode !== 'backtest') {
+        if (status?.bot_running) {
+          await stopBot();
+        }
+      } else if (mode === 'stopped') {
+        if (status?.bot_running) {
+          await stopBot();
+        }
+        if (status?.trading_mode === 'backtest') {
+          await axios.post(`${API}/backtest/stop`).catch(() => {});
+        }
+        await axios.post(`${API}/mode/stop`);
       }
-      await startBot();
-    } else if (mode === 'backtest' && status?.trading_mode !== 'backtest') {
-      if (status?.bot_running) {
-        await stopBot();
-      }
-    } else if (mode === 'stopped') {
-      if (status?.bot_running) {
-        await stopBot();
-      }
-      if (status?.trading_mode === 'backtest') {
-        await axios.post(`${API}/backtest/stop`).catch(() => {});
-      }
+      fetchData();
+    } catch (e) {
+      console.error('Failed to set mode:', e);
     }
-    fetchData();
   };
 
   const triggerDataCollection = async () => {
