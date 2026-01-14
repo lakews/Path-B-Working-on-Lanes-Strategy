@@ -209,44 +209,109 @@ const Positions = () => {
           </p>
         </div>
         
-        {/* Quick Actions */}
-        <div className="flex items-center gap-3">
+        {/* Quick Actions - Filters and Sort */}
+        <div className="flex flex-wrap items-center gap-3">
           {/* WebSocket Status */}
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${wsConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
             {wsConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
             <span className="text-xs font-medium">{wsConnected ? 'Live' : 'Offline'}</span>
           </div>
           
-          <select
-            value={filterStrategy}
-            onChange={(e) => setFilterStrategy(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
-          >
-            <option value="all">All Strategies</option>
-            {uniqueStrategies.map(s => (
-              <option key={s} value={s}>{s?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
-            ))}
-          </select>
+          {/* Strategy Filter - All 4 strategies */}
+          <div className="relative">
+            <select
+              value={filterStrategy}
+              onChange={(e) => setFilterStrategy(e.target.value)}
+              className="appearance-none bg-slate-800 border border-white/20 rounded-lg px-4 py-2 pr-10 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 cursor-pointer min-w-[200px]"
+              style={{ colorScheme: 'dark' }}
+              data-testid="strategy-filter"
+            >
+              <option value="all" className="bg-slate-800 text-white py-2">All Strategies</option>
+              {ALL_STRATEGIES.map(s => (
+                <option key={s.value} value={s.value} className="bg-slate-800 text-white py-2">
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+          </div>
           
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
-          >
-            <option value="pnl">Sort by P&L</option>
-            <option value="value">Sort by Value</option>
-            <option value="pnlPct">Sort by P&L %</option>
-            <option value="time">Sort by Time</option>
-          </select>
+          {/* Asset Class Filter */}
+          <div className="relative">
+            <select
+              value={filterAssetClass}
+              onChange={(e) => setFilterAssetClass(e.target.value)}
+              className="appearance-none bg-slate-800 border border-white/20 rounded-lg px-4 py-2 pr-10 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 cursor-pointer min-w-[160px]"
+              style={{ colorScheme: 'dark' }}
+              data-testid="asset-class-filter"
+            >
+              <option value="all" className="bg-slate-800 text-white py-2">All Asset Classes</option>
+              {ALL_ASSET_CLASSES.map(a => (
+                <option key={a.value} value={a.value} className="bg-slate-800 text-white py-2">
+                  {a.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+          </div>
           
+          {/* Sort By */}
+          <div className="relative">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="appearance-none bg-slate-800 border border-white/20 rounded-lg px-4 py-2 pr-10 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 cursor-pointer min-w-[140px]"
+              style={{ colorScheme: 'dark' }}
+              data-testid="sort-filter"
+            >
+              <option value="pnl" className="bg-slate-800 text-white py-2">Sort by P&L</option>
+              <option value="value" className="bg-slate-800 text-white py-2">Sort by Value</option>
+              <option value="pnlPct" className="bg-slate-800 text-white py-2">Sort by P&L %</option>
+              <option value="time" className="bg-slate-800 text-white py-2">Sort by Time</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+          </div>
+          
+          {/* Sort Order Toggle */}
           <button
             onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-            className="bg-white/5 border border-white/10 rounded-lg p-2 text-white hover:bg-white/10 transition"
+            className="bg-slate-800 border border-white/20 rounded-lg p-2 text-white hover:bg-slate-700 hover:border-white/30 transition"
+            title={sortOrder === 'desc' ? 'Descending' : 'Ascending'}
           >
             {sortOrder === 'desc' ? <ChevronDown className="w-5 h-5" /> : <ChevronUp className="w-5 h-5" />}
           </button>
+          
+          {/* Clear Filters */}
+          {(filterStrategy !== 'all' || filterAssetClass !== 'all') && (
+            <button
+              onClick={() => { setFilterStrategy('all'); setFilterAssetClass('all'); }}
+              className="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/30 transition"
+            >
+              Clear Filters
+            </button>
+          )}
         </div>
       </div>
+      
+      {/* Active Filters Display */}
+      {(filterStrategy !== 'all' || filterAssetClass !== 'all') && (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-white/50">Active Filters:</span>
+          {filterStrategy !== 'all' && (
+            <span className="px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              {ALL_STRATEGIES.find(s => s.value === filterStrategy)?.label || filterStrategy}
+            </span>
+          )}
+          {filterAssetClass !== 'all' && (
+            <span className="px-2 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+              {ALL_ASSET_CLASSES.find(a => a.value === filterAssetClass)?.label || filterAssetClass}
+            </span>
+          )}
+          <span className="text-white/40">
+            → {filteredPositions.length} position{filteredPositions.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+      )}
 
       {/* Portfolio Overview Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
