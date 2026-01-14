@@ -335,8 +335,19 @@ const Backtest = () => {
                 </div>
               </div>
             </div>
-            <div className="text-xs text-blue-400">
-              {historicalStats.collector_running ? '● Collecting' : '○ Idle'}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={collectPriceHistory}
+                disabled={collectingPrices}
+                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-medium hover:bg-cyan-500/30 transition disabled:opacity-50 flex items-center gap-2"
+                data-testid="collect-prices-btn"
+              >
+                <Download className={`w-3 h-3 ${collectingPrices ? 'animate-spin' : ''}`} />
+                {collectingPrices ? 'Collecting...' : 'Fetch Real Prices'}
+              </button>
+              <div className="text-xs text-blue-400">
+                {historicalStats.collector_running ? '● Collecting' : '○ Idle'}
+              </div>
             </div>
           </div>
         </div>
