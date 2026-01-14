@@ -68,12 +68,21 @@ class BacktestEngine:
         self,
         start_date: str,
         end_date: str,
-        strategies: Optional[List[str]] = None
+        strategies: Optional[List[str]] = None,
+        asset_classes: Optional[List[str]] = None
     ) -> Dict:
         """Run backtest with HFT-style position management"""
         try:
             self.running = True
             self.backtest_id = str(uuid.uuid4())
+            
+            # Load user config from database if not provided
+            if strategies is None or asset_classes is None:
+                user_config = await self._load_user_config()
+                if strategies is None:
+                    strategies = user_config.get("enabled_strategies", list(self.strategies.keys()))
+                if asset_classes is None:
+                    asset_classes = user_config.get("enabled_asset_classes", None)
             
             # Reset state
             self.current_capital = self.initial_capital
@@ -86,7 +95,12 @@ class BacktestEngine:
             self.real_price_data_used = 0
             self.simulated_price_data_used = 0
             
+            # Store enabled asset classes for filtering
+            self.enabled_asset_classes = asset_classes
+            
             logger.info(f"Starting HFT backtest {self.backtest_id}: {start_date} to {end_date}")
+            logger.info(f"Enabled strategies: {strategies}")
+            logger.info(f"Enabled asset classes: {asset_classes or 'ALL'}")
             
             # Get historical data grouped by market
             market_timeseries = await self._get_market_timeseries(start_date, end_date)
@@ -94,10 +108,24 @@ class BacktestEngine:
             if not market_timeseries:
                 return {"error": "No historical data found"}
             
+            # Filter by asset class if specified
+            if asset_classes:
+                filtered_timeseries = {}
+                for market_id, timeseries in market_timeseries.items():
+                    if timeseries and timeseries[0].get("category", "unknown") in asset_classes:
+                        filtered_timeseries[market_id] = timeseries
+                market_timeseries = filtered_timeseries
+                logger.info(f"Filtered to {len(market_timeseries)} markets in enabled asset classes")
+            
+            if not market_timeseries:
+                return {"error": "No markets found in enabled asset classes"}
+            
             data_summary = {
                 "total_snapshots": sum(len(v) for v in market_timeseries.values()),
                 "unique_markets": len(market_timeseries),
-                "date_range": {"start": start_date, "end": end_date}
+                "date_range": {"start": start_date, "end": end_date},
+                "enabled_strategies": strategies,
+                "enabled_asset_classes": asset_classes or "all"
             }
             
             logger.info(f"Loaded {data_summary['total_snapshots']} snapshots across {data_summary['unique_markets']} markets")
