@@ -1,7 +1,7 @@
 # AWS Configuration
 aws_region    = "us-east-1"
 environment   = "production"
-instance_type = "t2.micro"
+instance_type = "t3.medium"
 key_name      = "apex-key"
 
 # SSH Access - Restrict to your IP for security (0.0.0.0/0 = open to all)
