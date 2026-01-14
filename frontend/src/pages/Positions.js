@@ -186,11 +186,15 @@ const Positions = () => {
   const concentrationRisk = totalValue > 0 ? (largestPosition / totalValue * 100) : 0;
   const avgPositionSize = positions.length > 0 ? totalValue / positions.length : 0;
 
-  // Filter and sort positions - support combination filtering
+  // Filter and sort positions - support multi-select filtering
   const filteredPositions = positions
     .filter(p => {
-      const strategyMatch = filterStrategy === 'all' || p.strategy === filterStrategy;
-      const assetMatch = filterAssetClass === 'all' || p.category === filterAssetClass || p.asset_class === filterAssetClass;
+      // If no strategies selected, show all; otherwise check if position's strategy is in selected list
+      const strategyMatch = selectedStrategies.length === 0 || selectedStrategies.includes(p.strategy);
+      // If no asset classes selected, show all; otherwise check if position's category is in selected list
+      const assetMatch = selectedAssetClasses.length === 0 || 
+        selectedAssetClasses.includes(p.category) || 
+        selectedAssetClasses.includes(p.asset_class);
       return strategyMatch && assetMatch;
     })
     .sort((a, b) => {
@@ -221,6 +225,8 @@ const Positions = () => {
 
   const uniqueStrategies = [...new Set(positions.map(p => p.strategy).filter(Boolean))];
   const uniqueAssetClasses = [...new Set(positions.map(p => p.category || p.asset_class).filter(Boolean))];
+  
+  const hasActiveFilters = selectedStrategies.length > 0 || selectedAssetClasses.length > 0;
 
   return (
     <div className="space-y-6" data-testid="positions-page">
