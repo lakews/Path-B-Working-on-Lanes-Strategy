@@ -173,7 +173,7 @@ class BacktestEngine:
         
         category = timeseries[0].get("category", "unknown")
         if category not in self.asset_class_performance:
-            self.asset_class_performance[category] = {"trades": 0, "wins": 0, "pnl": 0.0}
+            self.asset_class_performance[category] = {"trades": 0, "wins": 0, "losses": 0, "pnl": 0.0, "total_wins_pnl": 0.0, "total_losses_pnl": 0.0}
         
         # Check if we have real price data (source = "price_history")
         has_real_prices = any(s.get("source") == "price_history" for s in timeseries)
