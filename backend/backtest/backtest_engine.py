@@ -357,16 +357,48 @@ class BacktestEngine:
                         if not market_id:
                             continue
                         
+                        # Infer category from question if not provided
+                        question = market.get("question", "").lower()
+                        category = market.get("category") or market.get("groupItemTitle", "")
+                        if not category:
+                            # Infer category from question keywords
+                            if any(kw in question for kw in ["trump", "biden", "election", "vote", "congress", "senate", "president", "governor", "democrat", "republican"]):
+                                category = "politics"
+                            elif any(kw in question for kw in ["bitcoin", "eth", "crypto", "btc", "ethereum", "solana", "coin"]):
+                                category = "crypto"
+                            elif any(kw in question for kw in ["stock", "price", "market", "fed", "rate", "gdp", "inflation", "economy", "earnings"]):
+                                category = "finance"
+                            elif any(kw in question for kw in ["movie", "show", "album", "nfl", "nba", "game", "sports", "oscar", "grammy", "award"]):
+                                category = "entertainment"
+                            elif any(kw in question for kw in ["climate", "weather", "temperature", "science", "nasa", "ai", "technology"]):
+                                category = "science"
+                            else:
+                                category = "politics"  # Default to politics for Polymarket
+                        
+                        # Parse outcome prices
+                        outcome_prices = market.get("outcomePrices")
+                        if isinstance(outcome_prices, str):
+                            try:
+                                import json as json_module
+                                outcome_prices = json_module.loads(outcome_prices)
+                            except:
+                                outcome_prices = [0.5, 0.5]
+                        elif not isinstance(outcome_prices, list):
+                            outcome_prices = [0.5, 0.5]
+                        
+                        yes_price = float(outcome_prices[0]) if outcome_prices and len(outcome_prices) > 0 else 0.5
+                        no_price = float(outcome_prices[1]) if outcome_prices and len(outcome_prices) > 1 else 0.5
+                        
                         # Create a snapshot from live data
                         live_snapshot = {
                             "market_id": market_id,
                             "timestamp": current_time,
-                            "yes_price": market.get("outcomePrices", [0.5, 0.5])[0] if isinstance(market.get("outcomePrices"), list) else 0.5,
-                            "no_price": market.get("outcomePrices", [0.5, 0.5])[1] if isinstance(market.get("outcomePrices"), list) and len(market.get("outcomePrices", [])) > 1 else 0.5,
+                            "yes_price": yes_price,
+                            "no_price": no_price,
                             "volume": float(market.get("volume", 0) or 0),
                             "liquidity": float(market.get("liquidity", 0) or 0),
                             "question": market.get("question", ""),
-                            "category": market.get("groupItemTitle", "") or market.get("category", ""),
+                            "category": category,
                             "source": "live_api",
                             "spread": market.get("spread", 0)
                         }
