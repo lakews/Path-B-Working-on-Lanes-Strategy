@@ -142,7 +142,7 @@ class RLAdaptiveEngine:
             # Normalize: 0 = expired, 1 = more than 30 days
             normalized = min(max(time_remaining / (30 * 24 * 3600), 0), 1)
             return normalized
-        except Exception as e:
+        except Exception:
             return 1.0
     
     def _get_portfolio_exposure(self) -> float:
@@ -150,7 +150,7 @@ class RLAdaptiveEngine:
         try:
             # Placeholder - would calculate actual exposure
             return 0.5
-        except Exception as e:
+        except Exception:
             return 0.5
     
     async def update_from_reward(self, market_id: str, reward: float):
