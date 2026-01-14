@@ -1607,9 +1607,15 @@ strategy_optimizer: Optional[StrategyOptimizer] = None
 async def start_paper_trading(
     background_tasks: BackgroundTasks,
     initial_capital: float = 10000.0,
+    continuous_mode: bool = False,
     username: str = Depends(verify_credentials)
 ):
-    """Start paper trading session with RL learning"""
+    """Start paper trading session with RL learning
+    
+    Args:
+        initial_capital: Starting capital for paper trading
+        continuous_mode: If True, runs indefinitely until manually stopped
+    """
     global paper_trader, trading_mode
     
     if trading_bot and trading_bot.running:
@@ -1625,7 +1631,7 @@ async def start_paper_trading(
         )
     
     try:
-        paper_trader = PaperTrader(initial_capital=initial_capital)
+        paper_trader = PaperTrader(initial_capital=initial_capital, continuous_mode=continuous_mode)
         background_tasks.add_task(paper_trader.start)
         trading_mode = "paper"
         
@@ -1633,6 +1639,7 @@ async def start_paper_trading(
             "message": "Paper trading started",
             "session_id": paper_trader.session_id,
             "initial_capital": initial_capital,
+            "continuous_mode": continuous_mode,
             "mode": "paper"
         }
     except Exception as e:
@@ -1643,8 +1650,16 @@ async def start_paper_trading(
         )
 
 @api_router.post("/paper/stop")
-async def stop_paper_trading(username: str = Depends(verify_credentials)):
-    """Stop paper trading and save results"""
+async def stop_paper_trading(
+    graceful: bool = False,
+    username: str = Depends(verify_credentials)
+):
+    """Stop paper trading and save results
+    
+    Args:
+        graceful: If True, stop accepting new trades but let existing positions
+                 close naturally according to strategy rules (take profit/stop loss)
+    """
     global paper_trader, trading_mode
     
     if not paper_trader or not paper_trader.running:
@@ -1654,7 +1669,7 @@ async def stop_paper_trading(username: str = Depends(verify_credentials)):
         )
     
     try:
-        await paper_trader.stop()
+        await paper_trader.stop(graceful=graceful)
         trading_mode = "stopped"
         
         status = paper_trader.get_status()
