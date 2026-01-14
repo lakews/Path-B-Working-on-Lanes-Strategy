@@ -963,68 +963,81 @@ const Backtest = () => {
                 </ResponsiveContainer>
               </div>
 
-              {/* AI Model Learning Stats - Enhanced */}
+              {/* AI Model Learning Stats - Enhanced (Uses Live RL Stats) */}
               <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/20 p-6">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <Brain className="w-5 h-5 text-purple-400" />
                   AI Model Learning
-                  <span className="text-xs text-white/40 ml-2">(Reinforcement Learning Engine)</span>
+                  <span className="text-xs text-white/40 ml-2">(Reinforcement Learning Engine - Live Stats)</span>
+                  {liveRLStats && liveRLStats.total_iterations > 0 && (
+                    <span className="ml-auto px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-400">Active</span>
+                  )}
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <InfoTooltip text={METRIC_TOOLTIPS.training_iterations}>
                       <p className="text-xs text-white/50 mb-1">Training Iterations</p>
                     </InfoTooltip>
-                    <p className="text-xl font-bold text-purple-400">{results.rl_learning_stats?.total_iterations || 0}</p>
+                    <p className="text-xl font-bold text-purple-400">{liveRLStats?.total_iterations || 0}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <InfoTooltip text={METRIC_TOOLTIPS.exploration_rate}>
                       <p className="text-xs text-white/50 mb-1">Exploration Rate</p>
                     </InfoTooltip>
-                    <p className="text-xl font-bold text-purple-400">{((results.rl_learning_stats?.epsilon || 0.15) * 100).toFixed(1)}%</p>
+                    <p className="text-xl font-bold text-purple-400">{((liveRLStats?.epsilon || 0.15) * 100).toFixed(1)}%</p>
                   </div>
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <InfoTooltip text={METRIC_TOOLTIPS.avg_reward}>
                       <p className="text-xs text-white/50 mb-1">Avg Reward (Last 100)</p>
                     </InfoTooltip>
-                    <p className={`text-xl font-bold ${(results.rl_learning_stats?.avg_reward_100 || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {(results.rl_learning_stats?.avg_reward_100 || 0).toFixed(4)}
+                    <p className={`text-xl font-bold ${(liveRLStats?.avg_reward_100 || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {(liveRLStats?.avg_reward_100 || 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <InfoTooltip text={METRIC_TOOLTIPS.experience_buffer}>
                       <p className="text-xs text-white/50 mb-1">Experience Buffer</p>
                     </InfoTooltip>
-                    <p className="text-xl font-bold text-cyan-400">{results.rl_learning_stats?.buffer_size || 0}</p>
+                    <p className="text-xl font-bold text-cyan-400">{liveRLStats?.buffer_size || 0}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <InfoTooltip text={METRIC_TOOLTIPS.q_table_usage}>
                       <p className="text-xs text-white/50 mb-1">Q-Table Usage</p>
                     </InfoTooltip>
-                    <p className="text-xl font-bold text-yellow-400">{(results.rl_learning_stats?.q_table_nonzero_pct || 0).toFixed(1)}%</p>
+                    <p className="text-xl font-bold text-yellow-400">{(liveRLStats?.q_table_nonzero_pct || 0).toFixed(2)}%</p>
                   </div>
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <InfoTooltip text="Probability of positive reward from recent actions">
                       <p className="text-xs text-white/50 mb-1">Positive Rate</p>
                     </InfoTooltip>
-                    <p className="text-xl font-bold text-green-400">{((results.rl_learning_stats?.positive_rate || 0) * 100).toFixed(1)}%</p>
+                    <p className="text-xl font-bold text-green-400">{((liveRLStats?.positive_rate || 0) * 100).toFixed(1)}%</p>
                   </div>
                 </div>
                 
                 {/* Action Distribution */}
-                {results.rl_learning_stats?.action_distribution && (
+                {liveRLStats?.action_distribution && (
                   <div className="mt-4 p-4 rounded-lg bg-white/5 border border-white/10">
                     <InfoTooltip text={METRIC_TOOLTIPS.action_distribution}>
                       <p className="text-xs text-white/50 mb-3">Action Distribution (Q-Table Preferred Actions)</p>
                     </InfoTooltip>
                     <div className="flex flex-wrap gap-2">
-                      {Object.entries(results.rl_learning_stats.action_distribution).map(([action, count]) => (
+                      {Object.entries(liveRLStats.action_distribution).map(([action, count]) => (
                         <div key={action} className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
                           <span className="text-xs text-purple-300">{action}: </span>
-                          <span className="text-sm font-bold text-purple-400">{count}</span>
+                          <span className="text-sm font-bold text-purple-400">{count.toLocaleString()}</span>
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+                
+                {/* Training Instructions */}
+                {(!liveRLStats || liveRLStats.total_iterations === 0) && (
+                  <div className="mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                    <p className="text-sm text-yellow-400 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      RL Model not yet trained. Run backtests to generate training data, then the model learns automatically.
+                    </p>
                   </div>
                 )}
               </div>
