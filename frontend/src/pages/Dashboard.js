@@ -25,9 +25,8 @@ const Dashboard = () => {
   const [trainingRL, setTrainingRL] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const tradesFeedRef = useRef(null);
-  const initialFetchDone = useRef(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [perfRes, posRes, tradesRes, statsRes, statusRes, rlRes, histRes] = await Promise.all([
         axios.get(`${API}/performance`),
@@ -51,17 +50,14 @@ const Dashboard = () => {
       console.error('Error fetching data:', e);
       setLoading(false);
     }
-  };
+  }, []);
 
   // Initial fetch and polling
   useEffect(() => {
-    if (!initialFetchDone.current) {
-      initialFetchDone.current = true;
-      fetchData();
-    }
+    fetchData();
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchData]);
 
   // WebSocket connection
   useEffect(() => {
@@ -84,19 +80,17 @@ const Dashboard = () => {
     return () => { if (ws) ws.close(); };
   }, []);
 
-  // Track P&L history for chart - using ref to avoid lint warning
+  // Track P&L history for chart
   const prevPnlRef = useRef(null);
   useEffect(() => {
     const currentPnl = tradeStats?.total_pnl;
     if (currentPnl !== undefined && currentPnl !== prevPnlRef.current) {
       prevPnlRef.current = currentPnl;
-      setPnlHistory(prev => {
-        const newEntry = {
-          time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-          pnl: currentPnl
-        };
-        return [...prev, newEntry].slice(-30);
-      });
+      const newEntry = {
+        time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+        pnl: currentPnl
+      };
+      setPnlHistory(prev => [...prev, newEntry].slice(-30));
     }
   }, [tradeStats?.total_pnl]);
 
