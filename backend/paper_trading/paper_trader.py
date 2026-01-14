@@ -120,15 +120,38 @@ class PaperTrader:
         await asyncio.gather(
             self._trading_loop(),
             self._position_monitoring_loop(),
-            self._learning_loop()
+            self._learning_loop(),
+            self._continuous_mode_handler()
         )
     
-    async def stop(self):
-        """Stop paper trading and save final results"""
-        self.running = False
+    async def stop(self, graceful: bool = False):
+        """Stop paper trading and save final results
         
-        # Close all open positions at current prices
-        await self._close_all_positions()
+        Args:
+            graceful: If True, stop accepting new trades but let existing positions
+                     close naturally according to strategy rules (take profit/stop loss)
+        """
+        if graceful:
+            self.graceful_stop = True
+            self.stop_requested = True
+            logger.info("Graceful stop initiated - waiting for positions to close naturally")
+            
+            # Wait for all positions to close (with timeout)
+            max_wait = 300  # 5 minutes max
+            waited = 0
+            while self.paper_positions and waited < max_wait:
+                await asyncio.sleep(5)
+                waited += 5
+                logger.info(f"Graceful stop: {len(self.paper_positions)} positions remaining")
+            
+            if self.paper_positions:
+                logger.warning(f"Timeout waiting for graceful close - forcing close of {len(self.paper_positions)} positions")
+                await self._close_all_positions()
+        else:
+            # Immediate stop - close all positions at current prices
+            await self._close_all_positions()
+        
+        self.running = False
         
         # Save session results
         await self._save_session_results()
@@ -138,11 +161,25 @@ class PaperTrader:
         
         logger.info(f"Paper Trading Stopped - Total PnL: ${self.total_pnl:.2f}")
     
+    async def _continuous_mode_handler(self):
+        """Handle continuous mode - auto-restart sessions"""
+        while self.running:
+            try:
+                if self.continuous_mode and not self.stop_requested:
+                    # Check if session should auto-restart (e.g., after certain conditions)
+                    # For now, continuous mode just keeps running indefinitely
+                    pass
+                await asyncio.sleep(60)
+            except Exception as e:
+                logger.error(f"Error in continuous mode handler: {e}")
+                await asyncio.sleep(60)
+    
     async def _init_session(self):
         """Initialize paper trading session in database"""
         session_doc = {
             "session_id": self.session_id,
             "type": "paper_trading",
+            "continuous_mode": self.continuous_mode,
             "initial_capital": self.initial_capital,
             "start_time": datetime.now(timezone.utc).isoformat(),
             "status": "running",
