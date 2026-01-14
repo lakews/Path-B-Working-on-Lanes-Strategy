@@ -364,6 +364,9 @@ class PaperTrader:
             
             pnl_pct = pnl / size if size > 0 else 0
             
+            # Track return for distribution
+            self.trade_returns.append(pnl_pct * 100)  # Store as percentage
+            
             # Update metrics
             self.total_pnl += pnl
             self.current_capital += size + pnl
@@ -379,17 +382,24 @@ class PaperTrader:
             if is_win:
                 self.winning_trades += 1
             
-            # Update strategy stats
+            # Update strategy stats with full metrics
             if strategy in self.strategy_stats:
                 self.strategy_stats[strategy]['pnl'] += pnl
                 if is_win:
                     self.strategy_stats[strategy]['wins'] += 1
+                    self.strategy_stats[strategy]['gross_profit'] += pnl
+                else:
+                    self.strategy_stats[strategy]['gross_loss'] += abs(pnl)
             
-            # Update asset class stats
-            if asset_class in self.asset_class_stats:
-                self.asset_class_stats[asset_class]['pnl'] += pnl
-                if is_win:
-                    self.asset_class_stats[asset_class]['wins'] += 1
+            # Update asset class stats with full metrics
+            if asset_class not in self.asset_class_stats:
+                self.asset_class_stats[asset_class] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
+            self.asset_class_stats[asset_class]['pnl'] += pnl
+            if is_win:
+                self.asset_class_stats[asset_class]['wins'] += 1
+                self.asset_class_stats[asset_class]['gross_profit'] += pnl
+            else:
+                self.asset_class_stats[asset_class]['gross_loss'] += abs(pnl)
             
             # Calculate reward for RL
             reward = self._calculate_rl_reward(pnl_pct, is_win, exit_reason)
