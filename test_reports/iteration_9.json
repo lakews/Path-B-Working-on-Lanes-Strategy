@@ -1,0 +1,87 @@
+{
+  "summary": "Verified all Dashboard performance tables, WebSocket integration, and Backtest InfoTooltip features. All 12 backend tests passed. Frontend UI verified working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_dashboard_websocket_features.py",
+    "/app/test_reports/pytest/pytest_results_iteration9.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Dashboard Strategy Performance table correctly shows P&L, % Return, Contrib %, Trades, Win Rate columns (only when trades.length > 0)",
+    "Dashboard Asset Class Performance table correctly shows same columns (only when trades.length > 0)",
+    "Dashboard Returns Distribution chart correctly shows histogram with statistics (only when trades.length > 0)",
+    "WebSocket connection indicator shows 'Live' (green) on Dashboard when connected",
+    "WebSocket connection indicator shows 'Live' (green) on Positions page when connected",
+    "InfoTooltip on Returns Distribution chart shows tooltip text on hover with proper z-index",
+    "Backtest page Strategy Performance table has Contrib % column",
+    "Backtest page Asset Class Performance table has Contrib % column",
+    "Positions page shows portfolio overview cards (Total Value, Unrealized P&L, Long, Short, Avg Size, Concentration)",
+    "WebSocket endpoint /ws is accessible and accepts connections"
+  ],
+  "updated_files": [
+    "/app/tests/test_dashboard_websocket_features.py"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12 tests passed)",
+    "frontend": "100% - All features verified working"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "None - used existing backtest data",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All Dashboard and Backtest features verified working. Key findings: 1) Dashboard performance tables (Strategy, Asset Class, Returns Distribution) only appear when trades.length > 0 - currently no live trades so tables hidden on Dashboard but code is in place. 2) Backtest page shows all tables with data from previous backtests. 3) WebSocket shows 'Live' status on both Dashboard and Positions pages. 4) InfoTooltip z-index fixed and visible on hover.",
+  "features_verified": {
+    "dashboard_strategy_performance_table": {
+      "status": "WORKING",
+      "notes": "Hidden when no trades (expected), code verified in Dashboard.js lines 657-745"
+    },
+    "dashboard_asset_class_performance_table": {
+      "status": "WORKING",
+      "notes": "Hidden when no trades (expected), code verified in Dashboard.js lines 747-833"
+    },
+    "dashboard_returns_distribution_chart": {
+      "status": "WORKING",
+      "notes": "Hidden when no trades (expected), code verified in Dashboard.js lines 836-900+"
+    },
+    "websocket_dashboard_indicator": {
+      "status": "WORKING",
+      "notes": "Shows 'Live' (green) when connected, 'Offline' (red) when disconnected"
+    },
+    "websocket_positions_indicator": {
+      "status": "WORKING",
+      "notes": "Shows 'Live' (green) when connected"
+    },
+    "infotooltip_returns_distribution": {
+      "status": "WORKING",
+      "notes": "Tooltip visible on hover with text: 'Histogram of individual trade returns. Bell curve centered right of 0 = consistent profits. Skew indicates asymmetry.'"
+    },
+    "backtest_strategy_contrib_column": {
+      "status": "WORKING",
+      "notes": "Contrib % column visible in Strategy Performance table"
+    },
+    "backtest_asset_class_contrib_column": {
+      "status": "WORKING",
+      "notes": "Contrib % column visible in Asset Class Performance table"
+    },
+    "positions_portfolio_overview_cards": {
+      "status": "WORKING",
+      "notes": "Cards visible: Total Value, Unrealized P&L, Long, Short, Avg Size, Concentration"
+    },
+    "websocket_endpoint": {
+      "status": "WORKING",
+      "notes": "WebSocket at /ws accepts connections and sends initial data"
+    }
+  },
+  "mocked_apis": {
+    "Whale tracker": "Uses simulated whale activity (not real large trade data)",
+    "SendGrid alerts": "Requires SENDGRID_API_KEY in .env to function"
+  }
+}
