@@ -1135,6 +1135,111 @@ const PaperTrading = () => {
               </p>
             </div>
           </div>
+
+          {/* AI Session Learning Stats */}
+          {aiStats?.session_learning && (
+            <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                  Session Learning Progress
+                </h3>
+                <button
+                  onClick={trainRLFromSession}
+                  disabled={!running}
+                  className="px-4 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-400 hover:bg-purple-500/30 disabled:opacity-50 flex items-center gap-2 text-sm"
+                >
+                  <Brain className="w-4 h-4" />
+                  Force Train Now
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="text-center p-3 rounded-lg bg-white/5">
+                  <p className="text-xs text-white/50">Trades Fed to RL</p>
+                  <p className="text-xl font-bold text-cyan-400">{aiStats.session_learning.trades_fed_to_rl}</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-white/5">
+                  <p className="text-xs text-white/50">Total Reward Signals</p>
+                  <p className={`text-xl font-bold ${aiStats.session_learning.total_reward_signals >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {aiStats.session_learning.total_reward_signals?.toFixed(2)}
+                  </p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-white/5">
+                  <p className="text-xs text-white/50">Avg Reward</p>
+                  <p className={`text-xl font-bold ${aiStats.session_learning.avg_reward >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {aiStats.session_learning.avg_reward?.toFixed(3)}
+                  </p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-white/5">
+                  <p className="text-xs text-white/50">Positive Rewards</p>
+                  <p className="text-xl font-bold text-green-400">{aiStats.session_learning.positive_rewards}</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-white/5">
+                  <p className="text-xs text-white/50">Negative Rewards</p>
+                  <p className="text-xl font-bold text-red-400">{aiStats.session_learning.negative_rewards}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* AI Signal Usage */}
+          {aiStats?.signal_usage && (
+            <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
+                <Activity className="w-5 h-5 text-cyan-400" />
+                AI Signal Integration
+                <span className="text-xs text-white/40 ml-2">(Signals used for trade decisions)</span>
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-4 rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20">
+                  <p className="text-xs text-white/50 mb-1">Volatility Signals</p>
+                  <p className="text-2xl font-bold text-purple-400">{aiStats.signal_usage.volatility_signals}</p>
+                  <p className="text-xs text-white/40 mt-1">Market volatility predictions</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20">
+                  <p className="text-xs text-white/50 mb-1">Sentiment Signals</p>
+                  <p className="text-2xl font-bold text-cyan-400">{aiStats.signal_usage.sentiment_signals}</p>
+                  <p className="text-xs text-white/40 mt-1">Social sentiment analysis</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20">
+                  <p className="text-xs text-white/50 mb-1">Sharp Trader Signals</p>
+                  <p className="text-2xl font-bold text-orange-400">{aiStats.signal_usage.sharp_signals}</p>
+                  <p className="text-xs text-white/40 mt-1">Professional trader tracking</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Learning Status Info */}
+          <div className="rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 p-6">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              Continuous Learning Status
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+                <div className={`w-3 h-3 rounded-full ${running ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+                <div>
+                  <p className="text-white text-sm font-medium">RL Learning</p>
+                  <p className="text-xs text-white/40">{running ? 'Active - Learning from every trade' : 'Inactive'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+                <div className={`w-3 h-3 rounded-full ${running ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+                <div>
+                  <p className="text-white text-sm font-medium">Strategy Optimization</p>
+                  <p className="text-xs text-white/40">{running ? 'Data collection active' : 'Run optimizer after session'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+                <div className={`w-3 h-3 rounded-full ${running ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+                <div>
+                  <p className="text-white text-sm font-medium">Model Saving</p>
+                  <p className="text-xs text-white/40">{running ? 'Auto-saves every 10 trades' : 'Saved on stop'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
