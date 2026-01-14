@@ -67,24 +67,42 @@ class TestBacktestDataSourceFix:
     
     def test_backtest_real_data_percentage_above_90(self):
         """CRITICAL: Test that backtest with data_source='real' shows >90% real data (was 0% before fix)"""
-        # Start backtest with real data source
-        start_response = requests.post(
-            f"{BASE_URL}/api/backtest/start",
-            params={
-                "start_date": "2026-01-07T00:00:00Z",
-                "end_date": "2026-01-14T23:59:59Z",
-                "data_source": "real"
-            }
-        )
-        assert start_response.status_code == 200
-        
-        # Wait for backtest to complete
-        time.sleep(15)
-        
-        # Get results
+        # Check if a backtest is already running or completed with 'real' mode
         results_response = requests.get(f"{BASE_URL}/api/backtest/results")
-        assert results_response.status_code == 200
         results = results_response.json()
+        
+        # If current results are not from 'real' mode, start a new backtest
+        if results.get("data_quality", {}).get("data_source_mode") != "real":
+            # Start backtest with real data source
+            start_response = requests.post(
+                f"{BASE_URL}/api/backtest/start",
+                params={
+                    "start_date": "2026-01-07T00:00:00Z",
+                    "end_date": "2026-01-14T23:59:59Z",
+                    "data_source": "real"
+                }
+            )
+            # If 400, backtest is already running - wait and retry
+            if start_response.status_code == 400:
+                time.sleep(20)
+                start_response = requests.post(
+                    f"{BASE_URL}/api/backtest/start",
+                    params={
+                        "start_date": "2026-01-07T00:00:00Z",
+                        "end_date": "2026-01-14T23:59:59Z",
+                        "data_source": "real"
+                    }
+                )
+            assert start_response.status_code == 200
+            
+            # Wait for backtest to complete
+            time.sleep(15)
+            
+            # Get results
+            results_response = requests.get(f"{BASE_URL}/api/backtest/results")
+            results = results_response.json()
+        
+        assert results_response.status_code == 200
         
         # Verify data quality metrics
         data_quality = results.get("data_quality", {})
