@@ -97,6 +97,7 @@ const Backtest = () => {
   const [progress, setProgress] = useState(0);
   const [liveRLStats, setLiveRLStats] = useState(null); // Live RL stats independent of backtest
   const [trainingRL, setTrainingRL] = useState(false); // RL training state
+  const [autoTrainRL, setAutoTrainRL] = useState(false); // Auto-train RL after backtest
   
   // History & Comparison State
   const [history, setHistory] = useState([]);
