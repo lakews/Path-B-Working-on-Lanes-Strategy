@@ -1182,57 +1182,79 @@ const Backtest = () => {
                 )}
                 
                 {/* Training Instructions & Train Button */}
-                <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  {(!liveRLStats || liveRLStats.total_iterations === 0) && (
-                    <div className="flex-1 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                      <p className="text-sm text-yellow-400 flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4" />
-                        RL Model not yet trained. Click &quot;Train RL Now&quot; or enable Auto-Train.
-                      </p>
-                    </div>
-                  )}
+                <div className="mt-4 space-y-3">
+                  {/* Explanation Box */}
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <p className="text-xs text-blue-400">
+                      💡 <strong>How RL Training Works:</strong> Training teaches the model patterns from past backtests. 
+                      To see improved P&L, run a <strong>new backtest</strong> after training - the RL model will then influence trading decisions.
+                    </p>
+                  </div>
                   
-                  {/* Auto-Train Toggle */}
-                  <button
-                    onClick={() => setAutoTrainRL(!autoTrainRL)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition ${
-                      autoTrainRL 
-                        ? 'bg-green-500/20 border border-green-500/40 text-green-400' 
-                        : 'bg-white/5 border border-white/10 text-white/60 hover:text-white'
-                    }`}
-                    data-testid="auto-train-toggle"
-                  >
-                    <div className={`w-3 h-3 rounded-full ${autoTrainRL ? 'bg-green-400' : 'bg-white/30'}`} />
-                    Auto-Train
-                  </button>
-                  
-                  {/* Manual Train Button */}
-                  <button
-                    onClick={trainRLNow}
-                    disabled={trainingRL || history.length === 0}
-                    className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-bold hover:from-purple-600 hover:to-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
-                    data-testid="train-rl-btn"
-                  >
-                    {trainingRL ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        Training ({history.length})...
-                      </>
-                    ) : (
-                      <>
-                        <Brain className="w-4 h-4" />
-                        Train RL Now ({history.length} backtests)
-                      </>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    {(!liveRLStats || liveRLStats.total_iterations === 0) && (
+                      <div className="flex-1 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                        <p className="text-sm text-yellow-400 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4" />
+                          RL Model not yet trained. Train now to improve future backtests.
+                        </p>
+                      </div>
                     )}
-                  </button>
+                    
+                    {/* Auto-Train Toggle */}
+                    <button
+                      onClick={() => setAutoTrainRL(!autoTrainRL)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition ${
+                        autoTrainRL 
+                          ? 'bg-green-500/20 border border-green-500/40 text-green-400' 
+                          : 'bg-white/5 border border-white/10 text-white/60 hover:text-white'
+                      }`}
+                      data-testid="auto-train-toggle"
+                    >
+                      <div className={`w-3 h-3 rounded-full ${autoTrainRL ? 'bg-green-400' : 'bg-white/30'}`} />
+                      Auto-Train
+                    </button>
+                    
+                    {/* Manual Train Button */}
+                    <button
+                      onClick={trainRLNow}
+                      disabled={trainingRL || history.length === 0}
+                      className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-bold hover:from-purple-600 hover:to-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+                      data-testid="train-rl-btn"
+                    >
+                      {trainingRL ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Training ({history.length})...
+                        </>
+                      ) : (
+                        <>
+                          <Brain className="w-4 h-4" />
+                          Train RL ({history.length} backtests)
+                        </>
+                      )}
+                    </button>
+                    
+                    {/* Run New Backtest Button (after training) */}
+                    {liveRLStats && liveRLStats.total_iterations > 0 && !backtestRunning && (
+                      <button
+                        onClick={startBacktest}
+                        className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-bold hover:from-cyan-600 hover:to-blue-700 transition flex items-center justify-center gap-2 whitespace-nowrap"
+                        data-testid="run-with-rl-btn"
+                      >
+                        <Play className="w-4 h-4" />
+                        Run Backtest with RL
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Auto-Train Info */}
+                  {autoTrainRL && (
+                    <p className="text-xs text-green-400/70">
+                      ✓ RL will automatically learn from each new backtest when it completes
+                    </p>
+                  )}
                 </div>
-                
-                {/* Auto-Train Info */}
-                {autoTrainRL && (
-                  <p className="mt-2 text-xs text-green-400/70">
-                    ✓ RL will automatically learn from each new backtest when it completes
-                  </p>
-                )}
               </div>
 
               {/* AI Signals Integration Stats - Enhanced with Tooltips */}
