@@ -149,6 +149,9 @@ class BacktestEngine:
             
             logger.info(f"Loaded {data_summary['total_snapshots']} snapshots across {data_summary['unique_markets']} markets")
             
+            # Pre-load AI signals for all markets (batch for efficiency)
+            await self._preload_ai_signals(list(market_timeseries.keys())[:200])  # Cap at 200 for performance
+            
             # Process each market's timeseries
             enabled_strategies = strategies or list(self.strategies.keys())
             processed = 0
