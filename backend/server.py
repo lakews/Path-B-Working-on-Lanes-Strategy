@@ -1378,6 +1378,49 @@ async def stop_tuning():
             content={"message": f"Failed to stop tuning: {str(e)}"}
         )
 
+# =============================================
+# WEBSOCKET ENDPOINT FOR REAL-TIME UPDATES
+# =============================================
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time trading updates.
+    Clients connect to receive live trade feeds, P&L updates, and backtest progress.
+    """
+    await ws_manager.connect(websocket)
+    try:
+        # Send initial state on connection
+        initial_data = await ws_manager._gather_update_data()
+        initial_data["type"] = "connected"
+        await websocket.send_json(initial_data)
+        
+        # Keep connection alive and listen for client messages
+        while True:
+            try:
+                # Wait for messages from client (ping/pong or commands)
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30)
+                
+                if data == "ping":
+                    await websocket.send_json({"type": "pong", "timestamp": datetime.now(timezone.utc).isoformat()})
+                elif data == "get_update":
+                    update = await ws_manager._gather_update_data()
+                    await websocket.send_json(update)
+                    
+            except asyncio.TimeoutError:
+                # Send heartbeat
+                try:
+                    await websocket.send_json({"type": "heartbeat", "timestamp": datetime.now(timezone.utc).isoformat()})
+                except Exception:
+                    break
+                    
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        ws_manager.disconnect(websocket)
+
 # Include the router in the main app
 app.include_router(api_router)
 
