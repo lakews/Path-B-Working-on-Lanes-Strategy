@@ -1035,22 +1035,22 @@ const Backtest = () => {
                   </div>
                 </div>
               )}
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis dataKey="timestamp" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
-                      <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
-                      <Tooltip 
-                        contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '12px'}}
-                        labelStyle={{color: 'rgba(255,255,255,0.7)', marginBottom: '4px'}}
-                        itemStyle={{color: '#06b6d4'}}
-                        formatter={(value, name) => [`$${Number(value).toFixed(2)}`, 'Equity']}
-                        labelFormatter={(label) => `Time: ${label}`}
-                      />
-                      <Area type="monotone" dataKey="equity" stroke="#06b6d4" strokeWidth={2} fill="url(#equityGradient)" name="Equity" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+            </>
+          )}
 
-                {/* Strategy Performance Chart */}
+          {/* No Results State */}
+          {!results && !backtestRunning && (
+            <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-12 text-center">
+              <BarChart3 className="w-16 h-16 text-white/20 mx-auto mb-4" />
+              <p className="text-white/60 text-lg">No backtest results yet</p>
+              <p className="text-white/40 text-sm mt-2">Configure your parameters and run a backtest to see performance metrics</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* HISTORY TAB */}
+      {activeTab === 'history' && (
                 <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
                   <h3 className="text-lg font-semibold text-white mb-4">Strategy P&L Comparison</h3>
                   {results.strategy_results && Object.keys(results.strategy_results).length > 0 ? (
