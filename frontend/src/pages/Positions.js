@@ -161,9 +161,13 @@ const Positions = () => {
   const concentrationRisk = totalValue > 0 ? (largestPosition / totalValue * 100) : 0;
   const avgPositionSize = positions.length > 0 ? totalValue / positions.length : 0;
 
-  // Filter and sort positions
+  // Filter and sort positions - support combination filtering
   const filteredPositions = positions
-    .filter(p => filterStrategy === 'all' || p.strategy === filterStrategy)
+    .filter(p => {
+      const strategyMatch = filterStrategy === 'all' || p.strategy === filterStrategy;
+      const assetMatch = filterAssetClass === 'all' || p.category === filterAssetClass || p.asset_class === filterAssetClass;
+      return strategyMatch && assetMatch;
+    })
     .sort((a, b) => {
       let aVal, bVal;
       switch (sortBy) {
@@ -190,7 +194,8 @@ const Positions = () => {
       return sortOrder === 'desc' ? bVal - aVal : aVal - bVal;
     });
 
-  const uniqueStrategies = [...new Set(positions.map(p => p.strategy))];
+  const uniqueStrategies = [...new Set(positions.map(p => p.strategy).filter(Boolean))];
+  const uniqueAssetClasses = [...new Set(positions.map(p => p.category || p.asset_class).filter(Boolean))];
 
   return (
     <div className="space-y-6" data-testid="positions-page">
