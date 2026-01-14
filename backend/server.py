@@ -1694,6 +1694,21 @@ async def get_paper_trading_status():
     
     return paper_trader.get_status()
 
+@api_router.get("/paper/ai-stats")
+async def get_paper_ai_stats():
+    """Get AI/ML statistics for paper trading session"""
+    global paper_trader
+    
+    if not paper_trader:
+        return {"message": "No paper trading session", "ai_stats": {}}
+    
+    try:
+        ai_stats = await paper_trader.get_ai_stats()
+        return {"ai_stats": ai_stats}
+    except Exception as e:
+        logger.error(f"Error getting AI stats: {e}")
+        return {"message": str(e), "ai_stats": {}}
+
 @api_router.get("/paper/positions")
 async def get_paper_positions():
     """Get current open paper positions"""
