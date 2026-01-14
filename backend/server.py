@@ -173,12 +173,13 @@ async def start_backtest(
     start_date: str,
     end_date: str,
     strategies: Optional[List[str]] = Query(default=None),
-    asset_classes: Optional[List[str]] = Query(default=None)
+    asset_classes: Optional[List[str]] = Query(default=None),
+    use_tuned_params: bool = True
 ):
     """Start backtesting with optional strategy and asset class filters"""
     global backtest_engine, trading_mode, user_config
     
-    logger.info(f"Backtest start request: strategies={strategies}, asset_classes={asset_classes}")
+    logger.info(f"Backtest start request: strategies={strategies}, asset_classes={asset_classes}, use_tuned={use_tuned_params}")
     
     if trading_bot and trading_bot.running:
         return JSONResponse(
@@ -204,11 +205,11 @@ async def start_backtest(
         if asset_classes is None:
             asset_classes = user_config.get("enabled_asset_classes")
         
-        logger.info(f"Running backtest with strategies={strategies}, asset_classes={asset_classes}")
+        logger.info(f"Running backtest with strategies={strategies}, asset_classes={asset_classes}, use_tuned={use_tuned_params}")
         
         # Run backtest in background
         async def run_backtest_task():
-            await backtest_engine.run_backtest(start_date, end_date, strategies, asset_classes)
+            await backtest_engine.run_backtest(start_date, end_date, strategies, asset_classes, use_tuned_params)
         
         background_tasks.add_task(run_backtest_task)
         
@@ -218,7 +219,8 @@ async def start_backtest(
             "start_date": start_date,
             "end_date": end_date,
             "strategies": strategies,
-            "asset_classes": asset_classes
+            "asset_classes": asset_classes,
+            "using_tuned_params": use_tuned_params
         }
     except Exception as e:
         logger.error(f"Error starting backtest: {e}")
