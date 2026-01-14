@@ -1,0 +1,32 @@
+# APEX TRADER - Terraform Variables
+# Copy this file to terraform.tfvars and fill in your values
+
+# AWS Configuration
+aws_region  = "us-east-1"
+environment = "production"
+app_name    = "apex-trader"
+
+# Optional: Custom domain (leave empty to use ALB DNS)
+domain_name = ""
+
+# Database (MongoDB Atlas recommended for production)
+# Get connection string from MongoDB Atlas dashboard
+mongodb_atlas_uri = "mongodb+srv://username:password@cluster.mongodb.net/apex_trader?retryWrites=true&w=majority"
+
+# SendGrid API Key for email alerts
+# Get from: https://app.sendgrid.com/settings/api_keys
+sendgrid_api_key = ""
+
+# Finnhub API Key for sentiment analysis
+# Get from: https://finnhub.io/register
+finnhub_api_key = ""
+
+# Polymarket API Credentials
+# Get from: Polymarket developer portal
+polymarket_api_key        = ""
+polymarket_api_secret     = ""
+polymarket_api_passphrase = ""
+
+# Wallet Private Key for trading
+# WARNING: Never commit this value to version control!
+wallet_private_key = ""
