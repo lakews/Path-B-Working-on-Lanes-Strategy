@@ -65,6 +65,13 @@ class StrategyTuner:
             'max_drawdown': 0.10  # Lower is better
         }
     
+    @property
+    def db(self):
+        if self._db is None:
+            from database import get_db
+            self._db = get_db()
+        return self._db
+    
     async def tune_strategy(
         self,
         strategy_name: str,
