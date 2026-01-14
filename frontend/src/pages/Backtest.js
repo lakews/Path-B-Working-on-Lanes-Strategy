@@ -730,44 +730,61 @@ const Backtest = () => {
           {/* Results Section */}
           {results && (
             <>
-              {/* Data Summary Bar at Top */}
+              {/* Data Summary Bar at Top - Enhanced */}
               <div className="rounded-xl bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-white/10 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
                       <Database className="w-4 h-4 text-cyan-400" />
-                      <span className="text-sm text-white/70">Data Sources:</span>
+                      <span className="text-sm text-white/70">Data Pulled:</span>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {results.data_quality?.live_data_points > 0 && (
+                        <div className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                          <span className="text-xs text-red-400 font-medium">
+                            🔴 {results.data_quality?.live_data_points?.toLocaleString() || 0} Live Markets
+                          </span>
+                        </div>
+                      )}
                       <div className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20">
                         <span className="text-xs text-green-400 font-medium">
-                          {results.data_quality?.real_price_data_points?.toLocaleString() || 0} Real Prices
+                          📈 {results.data_quality?.real_price_data_points?.toLocaleString() || 0} Real Prices
                         </span>
                       </div>
                       <div className="px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                         <span className="text-xs text-yellow-400 font-medium">
-                          {results.data_quality?.simulated_price_data_points?.toLocaleString() || 0} Simulated
+                          🔄 {results.data_quality?.simulated_price_data_points?.toLocaleString() || 0} Simulated
                         </span>
                       </div>
                       <div className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
                         <span className="text-xs text-blue-400 font-medium">
-                          {results.data_summary?.total_snapshots?.toLocaleString() || 0} Snapshots
+                          📸 {results.data_summary?.total_snapshots?.toLocaleString() || 0} Snapshots
                         </span>
                       </div>
                       <div className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
                         <span className="text-xs text-purple-400 font-medium">
-                          {results.data_summary?.unique_markets || 0} Markets
+                          🎯 {results.data_summary?.unique_markets || 0} Markets
+                        </span>
+                      </div>
+                      <div className="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                        <span className="text-xs text-cyan-400 font-medium">
+                          📊 {results.total_trades || 0} Trades
                         </span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
-                      results.data_quality?.real_data_percentage > 50 
-                        ? 'bg-green-500/20 text-green-400' 
-                        : 'bg-yellow-500/20 text-yellow-400'
+                      results.data_quality?.live_data_percentage > 0 
+                        ? 'bg-red-500/20 text-red-400'
+                        : results.data_quality?.real_data_percentage > 50 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-yellow-500/20 text-yellow-400'
                     }`}>
-                      {results.data_quality?.real_data_percentage || 0}% Real Data
+                      {results.data_quality?.live_data_percentage > 0 
+                        ? `${results.data_quality?.live_data_percentage}% Live`
+                        : `${results.data_quality?.real_data_percentage || 0}% Real`
+                      }
                     </span>
                     <span className="px-3 py-1.5 rounded-lg bg-white/10 text-xs text-white/60">
                       Mode: {results.data_quality?.data_source_mode || 'auto'}
