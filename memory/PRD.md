@@ -242,16 +242,18 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 ## Backlog
 
 ### P1 - High Priority
-- [ ] **Refine Trading Strategies for Profitability** - Re-evaluate with high-quality real data
-- [ ] **Implement Full ML Model Logic** - Complete sentiment_analyzer, sharp_detector integration
+- [x] ~~**Wire AI Signals into Trading Logic**~~ - COMPLETED (Jan 14, 2026)
+- [x] ~~**Refine Trading Strategies for Profitability**~~ - COMPLETED (Delta-Neutral fixed, AI integration)
+- [ ] **Further RL/ML Refinement** - Deep RL integration with performance data
 
 ### P2 - Medium Priority
 - [ ] **AWS Infrastructure as Code** - Terraform/CloudFormation deployment
-- [ ] **Comprehensive Documentation** - API references, architecture diagrams, runbooks
+- [x] ~~**WebSocket Integration**~~ - COMPLETED (Jan 14, 2026)
+- [x] ~~**Comprehensive Documentation**~~ - COMPLETED (API_REFERENCE.md, ARCHITECTURE.md, OPERATIONS.md)
 
 ### P3 - Lower Priority
-- [ ] **WebSocket Integration** - Real-time trade updates without polling
 - [ ] **Alerts System** - Email/SMS notifications for risk events
+- [ ] **Mobile-responsive Dashboard** - Optimize for mobile devices
 
 ## Key API Endpoints
 - `GET /api/status` - System status and trading mode
