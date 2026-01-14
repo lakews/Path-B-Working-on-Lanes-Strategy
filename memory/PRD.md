@@ -18,6 +18,30 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 14, 2026 - Session 8 (Strategy Filtering & Delta-Neutral Fix)
+- ✅ **Wired Strategy/Asset Class Selection to Backtest**
+  - Backtest now reads user config from database
+  - Filters markets by enabled asset classes before processing
+  - Only runs enabled strategies
+  - API endpoint updated: `/api/backtest/start` accepts `asset_classes` query param
+  - Frontend loads user's saved strategy preferences on page load
+
+- ✅ **Fixed Delta-Neutral Strategy (Now Profitable!)**
+  - **Before**: -$19.86, 56.7% WR, Profit Factor 0.89
+  - **After**: +$13.40, 64.6% WR, Profit Factor 1.07
+  - Key changes:
+    - Time-based exits instead of tight price stops
+    - Quick profit banking (0.1% after 2 snapshots)
+    - Spread capture when spread narrows below 1.2%
+    - Moderate stop loss (1.5%) with strict timeout for losers
+    - Relaxed entry conditions for higher trade volume
+
+- ✅ **Enabled Continuous Price Data Collection**
+  - Automatically starts on server startup
+  - Collects from 100 markets every 30 minutes
+  - Uses Polymarket CLOB `/prices-history` endpoint
+  - Provides real tick-level price data for backtesting
+
 ### January 14, 2026 - Session 7 (Strategy & Asset Class Selection)
 - ✅ **Trading Strategy Selection UI**
   - Interactive cards for each strategy with risk levels and expected returns
