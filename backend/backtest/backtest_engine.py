@@ -356,7 +356,7 @@ class BacktestEngine:
             return  # Need enough data points
         
         category = timeseries[0].get("category", "unknown")
-        question = timeseries[0].get("question", "")
+        # question is available for future use (e.g., semantic analysis)
         
         if category not in self.asset_class_performance:
             self.asset_class_performance[category] = {"trades": 0, "wins": 0, "losses": 0, "pnl": 0.0, "total_wins_pnl": 0.0, "total_losses_pnl": 0.0}
