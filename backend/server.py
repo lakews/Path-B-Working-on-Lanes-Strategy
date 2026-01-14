@@ -1478,10 +1478,12 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    global trading_bot, historical_collector
+    global trading_bot, historical_collector, ws_manager
     if trading_bot and trading_bot.running:
         await trading_bot.stop()
     if historical_collector and historical_collector.price_history_running:
         await historical_collector.stop_price_history_collection()
+    if ws_manager:
+        await ws_manager.stop_broadcast_loop()
     await close_db()
     logger.info("APEX TRADER API Shutdown")
