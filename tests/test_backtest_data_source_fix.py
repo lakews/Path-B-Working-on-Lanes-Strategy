@@ -306,8 +306,15 @@ class TestBacktestHistory:
         response = requests.get(f"{BASE_URL}/api/backtest/history", params={"limit": 10})
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        print(f"Backtest history contains {len(data)} items")
+        # History endpoint returns {"count": N, "history": [...]}
+        if isinstance(data, dict):
+            assert "history" in data
+            history = data.get("history", [])
+            assert isinstance(history, list)
+            print(f"Backtest history contains {len(history)} items")
+        else:
+            assert isinstance(data, list)
+            print(f"Backtest history contains {len(data)} items")
     
     def test_backtest_history_contains_data_source_mode(self):
         """Test backtest history items contain data_source_mode"""
@@ -315,9 +322,15 @@ class TestBacktestHistory:
         assert response.status_code == 200
         data = response.json()
         
-        if len(data) > 0:
+        # Handle both formats
+        if isinstance(data, dict):
+            history = data.get("history", [])
+        else:
+            history = data
+        
+        if len(history) > 0:
             # Check first item has data_source_mode
-            first_item = data[0]
+            first_item = history[0]
             # data_source_mode might be in data_quality or at top level
             has_data_source = (
                 "data_source_mode" in first_item or 
