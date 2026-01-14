@@ -18,6 +18,26 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 14, 2026 - Session 7 (Strategy & Asset Class Selection)
+- ✅ **Trading Strategy Selection UI**
+  - Interactive cards for each strategy with risk levels and expected returns
+  - Toggle on/off with visual feedback (green checkmark / X icon)
+  - Risk badges: Low (green), Medium (yellow), High (red)
+  - Expected return ranges displayed
+  - "Select All" button for quick enabling
+
+- ✅ **Asset Class Selection UI**
+  - 6 asset categories: Finance, Politics, Sports, Crypto, Entertainment, Science & Tech
+  - Toggle cards with icons and descriptions
+  - Summary bar showing active strategies/classes count
+  - Selections persist to MongoDB database
+  - Changes apply to both Live Trading and Backtesting
+
+- ✅ **Configuration Persistence**
+  - User preferences stored in `user_config` collection
+  - Auto-loaded on server startup
+  - Real-time updates via `/api/config/update`
+
 ### January 14, 2026 - Session 6 (High-Fidelity Data Collection & Returns Distribution)
 - ✅ **P0: Fixed Historical Data Collection (REAL PRICE DATA)**
   - Discovered Polymarket CLOB API has `/prices-history` endpoint for tick-level data
