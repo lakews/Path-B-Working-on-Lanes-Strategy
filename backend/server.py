@@ -1435,7 +1435,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Initialize database connection on startup"""
-    global user_config
+    global user_config, ws_manager
     await connect_db()
     
     # Load saved user config from database
@@ -1458,7 +1458,6 @@ async def startup_event():
             historical_collector = HistoricalDataCollector()
         
         # Start background task for continuous price collection (every 30 minutes)
-        import asyncio
         asyncio.create_task(historical_collector.start_price_history_collection(
             interval_minutes=30,
             market_limit=100
@@ -1466,6 +1465,13 @@ async def startup_event():
         logger.info("Started continuous price history collection (30 min interval, 100 markets)")
     except Exception as e:
         logger.warning(f"Could not start continuous price collection: {e}")
+    
+    # Start WebSocket broadcast loop
+    try:
+        asyncio.create_task(ws_manager.start_broadcast_loop())
+        logger.info("Started WebSocket broadcast loop")
+    except Exception as e:
+        logger.warning(f"Could not start WebSocket broadcast: {e}")
     
     logger.info("APEX TRADER API Started")
 
