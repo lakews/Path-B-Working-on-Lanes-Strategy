@@ -16,6 +16,9 @@ from services.performance_analytics import PerformanceAnalytics
 from backtest.backtest_engine import BacktestEngine
 from data.historical_collector import HistoricalDataCollector
 from ml.rl_engine import RLAdaptiveEngine
+from ml.social_sentiment import social_sentiment_analyzer
+from ml.whale_tracker import whale_tracker
+from ml.strategy_tuner import strategy_tuner
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
