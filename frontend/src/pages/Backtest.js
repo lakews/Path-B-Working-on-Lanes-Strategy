@@ -874,6 +874,46 @@ const Backtest = () => {
                 )}
               </div>
 
+              {/* AI Signals Integration Stats */}
+              {results.ai_signals_stats && (
+                <div className="rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 p-6" data-testid="ai-signals-stats">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-cyan-400" />
+                    AI Signal Integration
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Sentiment Signals</p>
+                      <p className="text-xl font-bold text-cyan-400">{results.ai_signals_stats.sentiment_signals_used || 0}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Whale Signals</p>
+                      <p className="text-xl font-bold text-orange-400">{results.ai_signals_stats.whale_signals_used || 0}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Avg Sentiment</p>
+                      <p className={`text-xl font-bold ${(results.ai_signals_stats.avg_sentiment || 0.5) > 0.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                        {((results.ai_signals_stats.avg_sentiment || 0.5) * 100).toFixed(0)}%
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Avg Whale Activity</p>
+                      <p className="text-xl font-bold text-orange-400">
+                        {((results.ai_signals_stats.avg_whale_activity || 0) * 100).toFixed(0)}%
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Bullish Whales</p>
+                      <p className="text-xl font-bold text-green-400">{results.ai_signals_stats.bullish_whale_markets || 0}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Bearish Whales</p>
+                      <p className="text-xl font-bold text-red-400">{results.ai_signals_stats.bearish_whale_markets || 0}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Returns Distribution Chart */}
               {results.returns_distribution && results.returns_distribution.bins && results.returns_distribution.bins.length > 0 && (
                 <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="returns-distribution">
