@@ -323,10 +323,23 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Lines 1063-1176: Orphaned tooltip and table code mixed into History tab
   - Lines 1741-2732: Duplicate component code after export statement
 - ✅ Fixed: JSX escape warnings for quotes and apostrophes
-- ✅ Verified: AI Model Learning section populates correctly (was showing 0s because model not trained yet - expected behavior)
+- ✅ Fixed: Dropdown options not visible - Added `colorScheme: 'dark'` and explicit bg classes
+- ✅ Fixed: Returns Distribution chart empty - Changed dataKey from `range` to `label`, filter bins with count > 0
+- ✅ Fixed: Returns Distribution positioned above Equity Curve (user request)
+- ✅ Fixed: Data Source dropdown moved to Data Sources header box (user request)
+- ✅ Fixed: AI Model Learning shows live stats via `/api/rl/detailed-stats` instead of stale backtest data
+- ✅ Added: "Active" badge when RL model is trained
+- ✅ Added: Training instructions when RL model not yet trained
 - ✅ Verified: All 4 tabs working (Results, History, Compare & Analyze, Learn)
 - ✅ Verified: Deep Dive Modal opens correctly from history items
 - ✅ Verified: Strategy Tuning page displays parameter transparency
+
+## How to Activate RL Model
+The RL model learns from completed backtests. To train it:
+1. Run backtests (the model starts with 0 iterations)
+2. Model automatically learns from each backtest via `/api/rl/learn-from-backtest/{backtest_id}`
+3. As more backtests complete, Training Iterations increase and Q-Table populates
+4. Current status: 29 iterations trained, model is "Active"
 
 ## Key API Endpoints
 - `GET /api/status` - System status and trading mode
