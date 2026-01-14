@@ -639,65 +639,402 @@ const Backtest = () => {
           {/* Results Section */}
           {results && (
             <>
-              {/* Key Metrics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                <MetricCard
-                  icon={DollarSign}
-                  label="Total Return"
-                  value={`${results.total_return_pct >= 0 ? '+' : ''}${results.total_return_pct?.toFixed(2)}%`}
-                  subValue={`$${results.total_pnl?.toFixed(2)}`}
-                  color={results.total_pnl >= 0 ? 'green' : 'red'}
-                />
-                <MetricCard
-                  icon={Target}
-                  label="Win Rate"
-                  value={`${((results.win_rate || 0) * 100).toFixed(1)}%`}
-                  subValue={`${results.winning_trades}W / ${results.losing_trades}L`}
-                  color="cyan"
-                />
-                <MetricCard
-                  icon={TrendingUp}
-                  label="Sharpe Ratio"
-                  value={results.sharpe_ratio?.toFixed(2) || '0.00'}
-                  subValue="Risk-adjusted"
-                  color="purple"
-                />
-                <MetricCard
-                  icon={AlertTriangle}
-                  label="Max Drawdown"
-                  value={`${((results.max_drawdown || 0) * 100).toFixed(2)}%`}
-                  subValue="Peak to trough"
-                  color="orange"
-                />
-                <MetricCard
-                  icon={Activity}
-                  label="Total Trades"
-                  value={results.total_trades || 0}
-                  subValue={`${dateDiff} days`}
-                  color="blue"
-                />
-                <MetricCard
-                  icon={Award}
-                  label="Profit Factor"
-                  value={results.profit_factor?.toFixed(2) || '0.00'}
-                  subValue={results.profit_factor > 1.5 ? 'Excellent' : 'Target: >1.5'}
-                  color={results.profit_factor > 1.5 ? 'green' : 'yellow'}
-                />
+              {/* Data Summary Bar at Top */}
+              <div className="rounded-xl bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-white/10 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-4 h-4 text-cyan-400" />
+                      <span className="text-sm text-white/70">Data Sources:</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <span className="text-xs text-green-400 font-medium">
+                          {results.data_quality?.real_price_data_points?.toLocaleString() || 0} Real Prices
+                        </span>
+                      </div>
+                      <div className="px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                        <span className="text-xs text-yellow-400 font-medium">
+                          {results.data_quality?.simulated_price_data_points?.toLocaleString() || 0} Simulated
+                        </span>
+                      </div>
+                      <div className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <span className="text-xs text-blue-400 font-medium">
+                          {results.data_summary?.total_snapshots?.toLocaleString() || 0} Snapshots
+                        </span>
+                      </div>
+                      <div className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                        <span className="text-xs text-purple-400 font-medium">
+                          {results.data_summary?.unique_markets || 0} Markets
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                      results.data_quality?.real_data_percentage > 50 
+                        ? 'bg-green-500/20 text-green-400' 
+                        : 'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {results.data_quality?.real_data_percentage || 0}% Real Data
+                    </span>
+                    <span className="px-3 py-1.5 rounded-lg bg-white/10 text-xs text-white/60">
+                      Mode: {results.data_quality?.data_source_mode || 'auto'}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Charts Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Equity Curve */}
-                <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="equity-curve">
-                  <h3 className="text-lg font-semibold text-white mb-4">Equity Curve</h3>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <AreaChart data={results.equity_curve || []}>
-                      <defs>
-                        <linearGradient id="equityGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
+              {/* Key Metrics with Tooltips */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <DollarSign className={`w-4 h-4 ${results.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`} />
+                    <span className="text-xs text-white/50">Total Return</span>
+                  </div>
+                  <p className={`text-2xl font-bold ${results.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {results.total_return_pct >= 0 ? '+' : ''}{results.total_return_pct?.toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-white/40">${results.total_pnl?.toFixed(2)}</p>
+                </div>
+                
+                <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <InfoTooltip text={METRIC_TOOLTIPS.win_rate}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="w-4 h-4 text-cyan-400" />
+                      <span className="text-xs text-white/50">Win Rate</span>
+                    </div>
+                  </InfoTooltip>
+                  <p className="text-2xl font-bold text-cyan-400">{((results.win_rate || 0) * 100).toFixed(1)}%</p>
+                  <p className="text-xs text-white/40">{results.winning_trades}W / {results.losing_trades}L</p>
+                </div>
+                
+                <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <InfoTooltip text={METRIC_TOOLTIPS.sharpe_ratio}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="w-4 h-4 text-purple-400" />
+                      <span className="text-xs text-white/50">Sharpe Ratio</span>
+                    </div>
+                  </InfoTooltip>
+                  <p className="text-2xl font-bold text-purple-400">{results.sharpe_ratio?.toFixed(2) || '0.00'}</p>
+                  <p className="text-xs text-white/40">Risk-adjusted return</p>
+                </div>
+                
+                <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <InfoTooltip text={METRIC_TOOLTIPS.max_drawdown}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="w-4 h-4 text-orange-400" />
+                      <span className="text-xs text-white/50">Max Drawdown</span>
+                    </div>
+                  </InfoTooltip>
+                  <p className="text-2xl font-bold text-orange-400">-{((results.max_drawdown || 0) * 100).toFixed(2)}%</p>
+                  <p className="text-xs text-white/40">Peak to trough</p>
+                </div>
+                
+                <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs text-white/50">Total Trades</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-400">{results.total_trades || 0}</p>
+                  <p className="text-xs text-white/40">{dateDiff} days</p>
+                </div>
+                
+                <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <InfoTooltip text={METRIC_TOOLTIPS.profit_factor}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Award className={`w-4 h-4 ${results.profit_factor > 1.5 ? 'text-green-400' : 'text-yellow-400'}`} />
+                      <span className="text-xs text-white/50">Profit Factor</span>
+                    </div>
+                  </InfoTooltip>
+                  <p className={`text-2xl font-bold ${results.profit_factor > 1.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                    {results.profit_factor?.toFixed(2) || '0.00'}
+                  </p>
+                  <p className="text-xs text-white/40">{results.profit_factor > 1.5 ? 'Excellent' : 'Target: >1.5'}</p>
+                </div>
+              </div>
+
+              {/* Strategy & Asset Class Tables Side by Side */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {/* Strategy Performance Table */}
+                <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-yellow-400" />
+                    Strategy Performance
+                  </h3>
+                  {results.strategy_results && Object.keys(results.strategy_results).length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-white/10">
+                            <th className="text-left text-xs text-white/50 font-medium py-2 px-2">Strategy</th>
+                            <th className="text-right text-xs text-white/50 font-medium py-2 px-2">P&L</th>
+                            <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Trades</th>
+                            <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Win Rate</th>
+                            <th className="text-right text-xs text-white/50 font-medium py-2 px-2">PF</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(results.strategy_results || {}).map(([strategy, data]) => {
+                            const info = STRATEGY_INFO[strategy] || { name: strategy, color: '#666' };
+                            const isPositive = data.pnl >= 0;
+                            return (
+                              <tr key={strategy} className="border-b border-white/5 hover:bg-white/5">
+                                <td className="py-2 px-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: info.color }} />
+                                    <span className="text-sm text-white">{info.name}</span>
+                                  </div>
+                                </td>
+                                <td className={`text-right py-2 px-2 font-bold text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                  {isPositive ? '+' : ''}${data.pnl?.toFixed(2)}
+                                </td>
+                                <td className="text-right text-sm text-white/70 py-2 px-2">{data.trades}</td>
+                                <td className={`text-right text-sm py-2 px-2 ${(data.win_rate || 0) >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {((data.win_rate || 0) * 100).toFixed(1)}%
+                                </td>
+                                <td className={`text-right text-sm py-2 px-2 ${(data.profit_factor || 0) >= 1.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                  {(data.profit_factor || 0).toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="h-32 flex items-center justify-center text-white/40">No strategy data</div>
+                  )}
+                </div>
+
+                {/* Asset Class Performance Table */}
+                <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-purple-400" />
+                    Asset Class Performance
+                  </h3>
+                  {results.asset_class_results && Object.keys(results.asset_class_results).length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-white/10">
+                            <th className="text-left text-xs text-white/50 font-medium py-2 px-2">Asset Class</th>
+                            <th className="text-right text-xs text-white/50 font-medium py-2 px-2">P&L</th>
+                            <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Trades</th>
+                            <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Win Rate</th>
+                            <th className="text-right text-xs text-white/50 font-medium py-2 px-2">PF</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(results.asset_class_results || {})
+                            .sort((a, b) => b[1].pnl - a[1].pnl)
+                            .map(([category, data]) => {
+                              const isPositive = data.pnl >= 0;
+                              return (
+                                <tr key={category} className="border-b border-white/5 hover:bg-white/5">
+                                  <td className="py-2 px-2">
+                                    <span className="text-sm text-white capitalize">{category}</span>
+                                  </td>
+                                  <td className={`text-right py-2 px-2 font-bold text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                    {isPositive ? '+' : ''}${data.pnl?.toFixed(2)}
+                                  </td>
+                                  <td className="text-right text-sm text-white/70 py-2 px-2">{data.trades}</td>
+                                  <td className={`text-right text-sm py-2 px-2 ${(data.win_rate || 0) >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {((data.win_rate || 0) * 100).toFixed(1)}%
+                                  </td>
+                                  <td className={`text-right text-sm py-2 px-2 ${(data.profit_factor || 0) >= 1.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                    {(data.profit_factor || 0).toFixed(2)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="h-32 flex items-center justify-center text-white/40">No asset class data</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Equity Curve - Full Width */}
+              <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="equity-curve">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-cyan-400" />
+                  Equity Curve
+                  <span className="text-xs text-white/40 ml-2">({results.equity_curve?.length || 0} data points)</span>
+                </h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={results.equity_curve || []}>
+                    <defs>
+                      <linearGradient id="equityGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis dataKey="trade_num" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} label={{ value: 'Trade #', position: 'insideBottom', offset: -5, fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} />
+                    <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} domain={['dataMin - 10', 'dataMax + 10']} />
+                    <Tooltip 
+                      contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '12px'}}
+                      labelStyle={{color: 'rgba(255,255,255,0.7)', marginBottom: '4px'}}
+                      formatter={(value, name) => [`$${Number(value).toFixed(2)}`, name === 'equity' ? 'Equity' : name]}
+                      labelFormatter={(label) => `Trade #${label}`}
+                    />
+                    <Area type="monotone" dataKey="equity" stroke="#06b6d4" strokeWidth={2} fill="url(#equityGradient)" name="Equity" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Returns Distribution */}
+              {results.returns_distribution && results.returns_distribution.bins && results.returns_distribution.bins.length > 0 && (
+                <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="returns-distribution">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-purple-400" />
+                      Returns Distribution
+                    </h3>
+                    {results.returns_distribution.stats && (
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="text-white/50">Mean: <span className={results.returns_distribution.stats.mean >= 0 ? 'text-green-400' : 'text-red-400'}>{results.returns_distribution.stats.mean?.toFixed(2)}%</span></span>
+                        <span className="text-white/50">Median: <span className="text-cyan-400">{results.returns_distribution.stats.median?.toFixed(2)}%</span></span>
+                        <span className="text-white/50">Std Dev: <span className="text-purple-400">{results.returns_distribution.stats.std?.toFixed(2)}%</span></span>
+                      </div>
+                    )}
+                  </div>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={results.returns_distribution.bins}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                      <XAxis dataKey="range" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 9 }} />
+                      <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
+                      <Tooltip 
+                        contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px'}}
+                        formatter={(value) => [value, 'Trades']}
+                      />
+                      <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* AI Model Learning Stats - Enhanced */}
+              <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/20 p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  AI Model Learning
+                  <span className="text-xs text-white/40 ml-2">(Reinforcement Learning Engine)</span>
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <InfoTooltip text={METRIC_TOOLTIPS.training_iterations}>
+                      <p className="text-xs text-white/50 mb-1">Training Iterations</p>
+                    </InfoTooltip>
+                    <p className="text-xl font-bold text-purple-400">{results.rl_learning_stats?.total_iterations || 0}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <InfoTooltip text={METRIC_TOOLTIPS.exploration_rate}>
+                      <p className="text-xs text-white/50 mb-1">Exploration Rate</p>
+                    </InfoTooltip>
+                    <p className="text-xl font-bold text-purple-400">{((results.rl_learning_stats?.epsilon || 0.15) * 100).toFixed(1)}%</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <InfoTooltip text={METRIC_TOOLTIPS.avg_reward}>
+                      <p className="text-xs text-white/50 mb-1">Avg Reward (Last 100)</p>
+                    </InfoTooltip>
+                    <p className={`text-xl font-bold ${(results.rl_learning_stats?.avg_reward_100 || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {(results.rl_learning_stats?.avg_reward_100 || 0).toFixed(4)}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <InfoTooltip text={METRIC_TOOLTIPS.experience_buffer}>
+                      <p className="text-xs text-white/50 mb-1">Experience Buffer</p>
+                    </InfoTooltip>
+                    <p className="text-xl font-bold text-cyan-400">{results.rl_learning_stats?.buffer_size || 0}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <InfoTooltip text={METRIC_TOOLTIPS.q_table_usage}>
+                      <p className="text-xs text-white/50 mb-1">Q-Table Usage</p>
+                    </InfoTooltip>
+                    <p className="text-xl font-bold text-yellow-400">{(results.rl_learning_stats?.q_table_nonzero_pct || 0).toFixed(1)}%</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <InfoTooltip text="Probability of positive reward from recent actions">
+                      <p className="text-xs text-white/50 mb-1">Positive Rate</p>
+                    </InfoTooltip>
+                    <p className="text-xl font-bold text-green-400">{((results.rl_learning_stats?.positive_rate || 0) * 100).toFixed(1)}%</p>
+                  </div>
+                </div>
+                
+                {/* Action Distribution */}
+                {results.rl_learning_stats?.action_distribution && (
+                  <div className="mt-4 p-4 rounded-lg bg-white/5 border border-white/10">
+                    <InfoTooltip text={METRIC_TOOLTIPS.action_distribution}>
+                      <p className="text-xs text-white/50 mb-3">Action Distribution (Q-Table Preferred Actions)</p>
+                    </InfoTooltip>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(results.rl_learning_stats.action_distribution).map(([action, count]) => (
+                        <div key={action} className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                          <span className="text-xs text-purple-300">{action}: </span>
+                          <span className="text-sm font-bold text-purple-400">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* AI Signals Integration Stats - Enhanced with Tooltips */}
+              {results.ai_signals_stats && (
+                <div className="rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 p-6" data-testid="ai-signals-stats">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-cyan-400" />
+                    AI Signal Integration
+                    <span className="text-xs text-white/40 ml-2">(Sentiment & Whale Tracking)</span>
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                      <InfoTooltip text={METRIC_TOOLTIPS.sentiment_signals}>
+                        <p className="text-xs text-white/50 mb-1">Sentiment Signals</p>
+                      </InfoTooltip>
+                      <p className="text-xl font-bold text-cyan-400">{results.ai_signals_stats.sentiment_signals_used || 0}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                      <InfoTooltip text={METRIC_TOOLTIPS.whale_signals}>
+                        <p className="text-xs text-white/50 mb-1">Whale Signals</p>
+                      </InfoTooltip>
+                      <p className="text-xl font-bold text-orange-400">{results.ai_signals_stats.whale_signals_used || 0}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                      <InfoTooltip text={METRIC_TOOLTIPS.avg_sentiment}>
+                        <p className="text-xs text-white/50 mb-1">Avg Sentiment</p>
+                      </InfoTooltip>
+                      <p className={`text-xl font-bold ${(results.ai_signals_stats.avg_sentiment || 0.5) > 0.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                        {((results.ai_signals_stats.avg_sentiment || 0.5) * 100).toFixed(0)}%
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                      <InfoTooltip text={METRIC_TOOLTIPS.avg_whale_activity}>
+                        <p className="text-xs text-white/50 mb-1">Avg Whale Activity</p>
+                      </InfoTooltip>
+                      <p className="text-xl font-bold text-orange-400">
+                        {((results.ai_signals_stats.avg_whale_activity || 0) * 100).toFixed(0)}%
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                      <InfoTooltip text={METRIC_TOOLTIPS.bullish_whales}>
+                        <p className="text-xs text-white/50 mb-1">Bullish Whales</p>
+                      </InfoTooltip>
+                      <p className="text-xl font-bold text-green-400">{results.ai_signals_stats.bullish_whale_markets || 0}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                      <InfoTooltip text={METRIC_TOOLTIPS.bearish_whales}>
+                        <p className="text-xs text-white/50 mb-1">Bearish Whales</p>
+                      </InfoTooltip>
+                      <p className="text-xl font-bold text-red-400">{results.ai_signals_stats.bearish_whale_markets || 0}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                       <XAxis dataKey="timestamp" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
                       <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
