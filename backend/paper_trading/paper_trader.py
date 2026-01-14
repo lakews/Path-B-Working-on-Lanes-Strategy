@@ -485,8 +485,8 @@ class PaperTrader:
             
             # Get sentiment
             try:
-                sentiment = await self.sentiment_fusion.get_fused_sentiment(market_data.get('id'))
-                signals['sentiment'] = sentiment.get('fused_score', 0.5)
+                sentiment = await self.signal_fusion.get_fused_signal(market_data.get('id'), market_data)
+                signals['sentiment'] = sentiment.get('sentiment', 0.5)
             except:
                 pass
             
