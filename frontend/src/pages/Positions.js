@@ -188,6 +188,12 @@ const Positions = () => {
         
         {/* Quick Actions */}
         <div className="flex items-center gap-3">
+          {/* WebSocket Status */}
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${wsConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+            {wsConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+            <span className="text-xs font-medium">{wsConnected ? 'Live' : 'Offline'}</span>
+          </div>
+          
           <select
             value={filterStrategy}
             onChange={(e) => setFilterStrategy(e.target.value)}
