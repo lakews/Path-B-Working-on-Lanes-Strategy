@@ -544,10 +544,16 @@ const Backtest = () => {
                           </span>
                         </div>
                       </div>
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                        config.strategies.includes(id) ? 'border-cyan-500 bg-cyan-500' : 'border-white/30'
+                      <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                        config.strategies.includes(id) 
+                          ? 'border-cyan-500 bg-cyan-500 shadow-lg shadow-cyan-500/30' 
+                          : 'border-white/30 hover:border-white/50'
                       }`}>
-                        {config.strategies.includes(id) && <CheckCircle className="w-3 h-3 text-white" />}
+                        {config.strategies.includes(id) && (
+                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
                       </div>
                     </div>
                   </button>
