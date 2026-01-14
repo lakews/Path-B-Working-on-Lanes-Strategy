@@ -676,8 +676,49 @@ class PaperTrader:
             return []
     
     def get_status(self) -> Dict:
-        """Get current paper trading status"""
+        """Get current paper trading status with full analytics"""
         win_rate = self.winning_trades / max(self.total_trades, 1)
+        
+        # Calculate strategy results with profit factors (like backtest)
+        strategy_results = {}
+        for strategy, stats in self.strategy_stats.items():
+            trades = stats.get('trades', 0)
+            wins = stats.get('wins', 0)
+            pnl = stats.get('pnl', 0)
+            gross_profit = stats.get('gross_profit', 0)
+            gross_loss = stats.get('gross_loss', 0)
+            
+            strategy_results[strategy] = {
+                'trades': trades,
+                'wins': wins,
+                'pnl': pnl,
+                'win_rate': wins / trades if trades > 0 else 0,
+                'profit_factor': gross_profit / gross_loss if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
+                'gross_profit': gross_profit,
+                'gross_loss': gross_loss
+            }
+        
+        # Calculate asset class results with profit factors
+        asset_class_results = {}
+        for asset_class, stats in self.asset_class_stats.items():
+            trades = stats.get('trades', 0)
+            wins = stats.get('wins', 0)
+            pnl = stats.get('pnl', 0)
+            gross_profit = stats.get('gross_profit', 0)
+            gross_loss = stats.get('gross_loss', 0)
+            
+            asset_class_results[asset_class] = {
+                'trades': trades,
+                'wins': wins,
+                'pnl': pnl,
+                'win_rate': wins / trades if trades > 0 else 0,
+                'profit_factor': gross_profit / gross_loss if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
+                'gross_profit': gross_profit,
+                'gross_loss': gross_loss
+            }
+        
+        # Calculate returns distribution
+        returns_distribution = self._calculate_returns_distribution()
         
         return {
             "session_id": self.session_id,
@@ -691,9 +732,67 @@ class PaperTrader:
             "win_rate": win_rate,
             "max_drawdown": self.max_drawdown,
             "open_positions": len(self.paper_positions),
-            "strategy_stats": self.strategy_stats,
-            "asset_class_stats": self.asset_class_stats
+            "strategy_results": strategy_results,
+            "asset_class_results": asset_class_results,
+            "returns_distribution": returns_distribution,
+            "equity_curve": self.equity_curve[-100:],  # Last 100 points
+            "enabled_strategies": self.enabled_strategies,
+            "enabled_asset_classes": self.enabled_asset_classes
         }
+    
+    def _calculate_returns_distribution(self) -> Dict:
+        """Calculate returns distribution histogram like backtest"""
+        if not self.trade_returns:
+            return {"bins": [], "stats": {}}
+        
+        # Create histogram bins
+        bins = []
+        bin_edges = [-50, -20, -15, -10, -5, -2, 0, 2, 5, 10, 15, 20, 50]
+        
+        for i in range(len(bin_edges) - 1):
+            min_val = bin_edges[i]
+            max_val = bin_edges[i + 1]
+            count = sum(1 for r in self.trade_returns if min_val <= r < max_val)
+            bins.append({
+                "min": min_val,
+                "max": max_val,
+                "label": f"{min_val}% to {max_val}%",
+                "count": count
+            })
+        
+        # Calculate stats
+        returns_array = np.array(self.trade_returns)
+        stats = {
+            "mean": float(np.mean(returns_array)),
+            "median": float(np.median(returns_array)),
+            "std": float(np.std(returns_array)),
+            "positive_returns": sum(1 for r in self.trade_returns if r > 0),
+            "negative_returns": sum(1 for r in self.trade_returns if r < 0),
+            "skewness": float(self._calculate_skewness(returns_array)),
+            "kurtosis": float(self._calculate_kurtosis(returns_array))
+        }
+        
+        return {"bins": bins, "stats": stats}
+    
+    def _calculate_skewness(self, data: np.ndarray) -> float:
+        """Calculate skewness of returns"""
+        if len(data) < 3:
+            return 0.0
+        mean = np.mean(data)
+        std = np.std(data)
+        if std == 0:
+            return 0.0
+        return float(np.mean(((data - mean) / std) ** 3))
+    
+    def _calculate_kurtosis(self, data: np.ndarray) -> float:
+        """Calculate kurtosis of returns"""
+        if len(data) < 4:
+            return 0.0
+        mean = np.mean(data)
+        std = np.std(data)
+        if std == 0:
+            return 0.0
+        return float(np.mean(((data - mean) / std) ** 4) - 3)
     
     def get_positions(self) -> List[Dict]:
         """Get current open paper positions"""
