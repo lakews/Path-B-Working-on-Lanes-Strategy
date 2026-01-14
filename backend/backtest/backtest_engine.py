@@ -332,7 +332,6 @@ class BacktestEngine:
         except Exception as e:
             logger.error(f"Error preloading AI signals: {e}")
     
-    async def _get_market_timeseries(self, start_date: str, end_date: str) -> Dict[str, List[Dict]]:
     async def _get_market_timeseries(self, start_date: str, end_date: str, data_source: str = "auto") -> Dict[str, List[Dict]]:
         """Get historical data grouped by market_id as timeseries
         
