@@ -435,19 +435,23 @@ const Backtest = () => {
             <div className="flex items-center gap-4">
               {/* Data Source Selector - Moved here */}
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-blue-400" />
-                <select
-                  value={config.data_source}
-                  onChange={(e) => setConfig({...config, data_source: e.target.value})}
-                  disabled={backtestRunning}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 border border-blue-500/30 text-white text-xs font-medium focus:outline-none focus:border-cyan-500"
-                  data-testid="data-source-select-header"
-                  style={{ colorScheme: 'dark' }}
-                >
-                  {DATA_SOURCE_OPTIONS.map(opt => (
-                    <option key={opt.id} value={opt.id} className="bg-slate-800 text-white">{opt.icon} {opt.name}</option>
-                  ))}
-                </select>
+                <InfoTooltip text={METRIC_TOOLTIPS.data_source}>
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-blue-400" />
+                    <select
+                      value={config.data_source}
+                      onChange={(e) => setConfig({...config, data_source: e.target.value})}
+                      disabled={backtestRunning}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 border border-blue-500/30 text-white text-xs font-medium focus:outline-none focus:border-cyan-500"
+                      data-testid="data-source-select-header"
+                      style={{ colorScheme: 'dark' }}
+                    >
+                      {DATA_SOURCE_OPTIONS.map(opt => (
+                        <option key={opt.id} value={opt.id} className="bg-slate-800 text-white">{opt.icon} {opt.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </InfoTooltip>
               </div>
               <button
                 onClick={collectPriceHistory}
