@@ -131,3 +131,8 @@ infrastructure/terraform/ec2/.terraform/providers/registry.terraform.io/hashicor
 # Environment files
 *.env
 *.env.*
+-e 
+# Environment files
+*.env
+*.env.*
+frontend/node_modules/.cache/default-development/10.pack
