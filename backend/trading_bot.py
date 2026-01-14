@@ -236,11 +236,11 @@ class ApexTrader:
             logger.debug(f"Volatility prediction error: {e}")
         
         try:
-            # Sentiment fusion
-            sentiment = await self.sentiment_fusion.get_fused_sentiment(market_data.get('id'))
-            signals['sentiment'] = sentiment.get('fused_score', 0.5)
+            # Signal fusion (sentiment + other signals)
+            fused = await self.signal_fusion.get_fused_signal(market_data.get('id'), market_data)
+            signals['sentiment'] = fused.get('sentiment', 0.5)
         except Exception as e:
-            logger.debug(f"Sentiment fusion error: {e}")
+            logger.debug(f"Signal fusion error: {e}")
         
         try:
             # Sharp trader alignment
