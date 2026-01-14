@@ -164,6 +164,23 @@ class BacktestEngine:
         finally:
             self.running = False
     
+    async def _load_user_config(self) -> Dict:
+        """Load user configuration from database"""
+        try:
+            config = await self.db.user_config.find_one({"type": "trading_preferences"}, {"_id": 0})
+            if config:
+                return config
+            return {
+                "enabled_strategies": ["delta_neutral", "volatility_exploitation", "alpha_directional", "arbitrage"],
+                "enabled_asset_classes": None  # None means all
+            }
+        except Exception as e:
+            logger.error(f"Error loading user config: {e}")
+            return {
+                "enabled_strategies": list(self.strategies.keys()),
+                "enabled_asset_classes": None
+            }
+    
     async def _get_market_timeseries(self, start_date: str, end_date: str) -> Dict[str, List[Dict]]:
         """Get historical data grouped by market_id as timeseries"""
         try:
