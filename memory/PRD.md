@@ -334,6 +334,48 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - ✅ Verified: Deep Dive Modal opens correctly from history items
 - ✅ Verified: Strategy Tuning page displays parameter transparency
 
+## Session 13 - UI/UX Enhancements & Infrastructure (Jan 14, 2026)
+
+### ✅ Table Totals Row
+- Added **TOTAL row** to Strategy Performance table showing aggregate P&L, trades, win rate, and profit factor
+- Added **TOTAL row** to Asset Class Performance table with same metrics
+- Totals highlighted with separator line and background for visual distinction
+
+### ✅ Data Source Dropdown Enhancement
+- Improved descriptions for all options:
+  - **Auto**: "Real prices → Snapshots → Simulated (uses highest quality available for each market)"
+  - **Real**: "Tick-level Polymarket CLOB data. Most accurate but may have gaps"
+  - **Snapshots**: "Periodic market snapshots (every few minutes). Faster processing"
+  - **Hybrid**: "Real prices where available + simulated fills for gaps"
+- Added tooltip with data source explanation on hover
+
+### ✅ Chart Tooltips
+- Added InfoTooltip to **Returns Distribution** chart header
+- Added InfoTooltip to **Equity Curve** chart header  
+- Added InfoTooltip to **Data Source** dropdown
+- All tooltips explain what the metric/chart shows
+
+### ✅ Whale Tracker Upgrade (`/app/backend/ml/whale_tracker.py`)
+- **NEW: Real Polymarket CLOB API integration** for actual trade data
+- `fetch_recent_trades()` - Fetches trades from Polymarket CLOB REST API
+- Detects whale trades: $1000+ (whale), $5000+ (large whale), $25000+ (mega whale)
+- Calculates buy/sell ratio from actual trade data
+- Tracks unique whale addresses
+- Falls back to volume heuristics if API unavailable
+- New fields in response:
+  - `large_whale_orders`, `mega_whale_orders`
+  - `whale_buy_volume`, `whale_sell_volume`, `buy_sell_ratio`
+  - `unique_whales`, `data_source` (polymarket_clob vs volume_heuristics)
+
+### ✅ EC2 Deployment (Terraform)
+Created simple single-server EC2 deployment at `/app/infrastructure/terraform/ec2/`:
+- `main.tf` - VPC, EC2 instance, security groups, elastic IP, CloudWatch alarms
+- `user_data.sh` - Bootstrap script installing Docker, Node.js, Python, Nginx
+- `terraform.tfvars.example` - Example variables file
+- `README.md` - Complete deployment guide
+- **Cost**: ~$36/month (t3.medium)
+- Includes Nginx reverse proxy for frontend/backend routing
+
 ## How to Activate RL Model
 The RL model learns from completed backtests. To train it:
 1. Run backtests (the model starts with 0 iterations)
