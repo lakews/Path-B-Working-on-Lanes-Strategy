@@ -65,12 +65,17 @@ const Backtest = () => {
   const [showEducation, setShowEducation] = useState(false);
   const [activeTab, setActiveTab] = useState('results'); // 'results', 'history', 'compare', 'learn'
   
+  // Deep-dive modal state
+  const [deepDiveBacktest, setDeepDiveBacktest] = useState(null);
+  const [deepDiveLoading, setDeepDiveLoading] = useState(false);
+  
   const [config, setConfig] = useState({
     start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end_date: new Date().toISOString().split('T')[0],
     strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage'],
     initial_capital: 1000,
-    kelly_fraction: 0.25
+    kelly_fraction: 0.25,
+    data_source: 'auto'
   });
 
   useEffect(() => {
