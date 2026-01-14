@@ -81,7 +81,7 @@ class BacktestEngine:
             self.trades = []
             self.equity_curve = []
             self.trade_returns = []  # Reset returns tracking
-            self.strategy_performance = {s: {"trades": 0, "wins": 0, "pnl": 0.0} for s in (strategies or [])}
+            self.strategy_performance = {s: {"trades": 0, "wins": 0, "losses": 0, "pnl": 0.0, "total_wins_pnl": 0.0, "total_losses_pnl": 0.0} for s in (strategies or [])}
             self.asset_class_performance = {}
             self.real_price_data_used = 0
             self.simulated_price_data_used = 0
