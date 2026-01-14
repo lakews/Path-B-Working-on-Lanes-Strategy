@@ -1172,16 +1172,17 @@ const Backtest = () => {
                 <div
                   key={bt.backtest_id}
                   data-testid={`history-item-${idx}`}
-                  className={`rounded-xl border p-4 transition-all ${
+                  onClick={() => openDeepDive(bt.backtest_id)}
+                  className={`rounded-xl border p-4 transition-all cursor-pointer ${
                     selectedBacktests.includes(bt.backtest_id)
                       ? 'bg-purple-500/10 border-purple-500/30'
-                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-cyan-500/30'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <button
-                        onClick={() => toggleBacktestSelection(bt.backtest_id)}
+                        onClick={(e) => { e.stopPropagation(); toggleBacktestSelection(bt.backtest_id); }}
                         className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
                           selectedBacktests.includes(bt.backtest_id)
                             ? 'border-purple-500 bg-purple-500'
@@ -1198,6 +1199,11 @@ const Backtest = () => {
                         </p>
                         <p className="text-xs text-white/50">
                           {bt.data_summary?.total_snapshots?.toLocaleString() || 0} snapshots | {bt.total_trades || 0} trades
+                          {bt.data_quality?.data_source_mode && (
+                            <span className="ml-2 px-1.5 py-0.5 rounded bg-white/10 text-white/60">
+                              {bt.data_quality.data_source_mode}
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1222,14 +1228,14 @@ const Backtest = () => {
                       
                       <div className="flex items-center gap-2 pl-4 border-l border-white/10">
                         <button
-                          onClick={() => viewBacktestResult(bt.backtest_id)}
+                          onClick={(e) => { e.stopPropagation(); viewBacktestResult(bt.backtest_id); }}
                           className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition"
-                          title="View Details"
+                          title="View in Results Tab"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => deleteBacktest(bt.backtest_id)}
+                          onClick={(e) => { e.stopPropagation(); deleteBacktest(bt.backtest_id); }}
                           className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/70 hover:text-red-400 transition"
                           title="Delete"
                         >
@@ -1242,6 +1248,176 @@ const Backtest = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* DEEP DIVE MODAL */}
+      {deepDiveBacktest && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeDeepDive}>
+          <div 
+            className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl border border-white/10 w-full max-w-5xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-white/10 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white">Backtest Deep Dive</h2>
+                <p className="text-sm text-white/50">
+                  {new Date(deepDiveBacktest.completed_at).toLocaleString()} • ID: {deepDiveBacktest.backtest_id?.slice(0, 8)}...
+                </p>
+              </div>
+              <button
+                onClick={closeDeepDive}
+                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Key Metrics Row */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="text-xs text-white/50 mb-1">Total Return</p>
+                  <p className={`text-2xl font-bold ${deepDiveBacktest.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {deepDiveBacktest.total_return_pct >= 0 ? '+' : ''}{deepDiveBacktest.total_return_pct?.toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-white/40">${deepDiveBacktest.total_pnl?.toFixed(2)}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="text-xs text-white/50 mb-1">Total Trades</p>
+                  <p className="text-2xl font-bold text-white">{deepDiveBacktest.total_trades}</p>
+                  <p className="text-xs text-green-400">{deepDiveBacktest.winning_trades} wins</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="text-xs text-white/50 mb-1">Win Rate</p>
+                  <p className="text-2xl font-bold text-cyan-400">{(deepDiveBacktest.win_rate * 100).toFixed(1)}%</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="text-xs text-white/50 mb-1">Sharpe Ratio</p>
+                  <p className="text-2xl font-bold text-purple-400">{deepDiveBacktest.sharpe_ratio?.toFixed(2)}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="text-xs text-white/50 mb-1">Profit Factor</p>
+                  <p className="text-2xl font-bold text-yellow-400">{deepDiveBacktest.profit_factor?.toFixed(2)}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="text-xs text-white/50 mb-1">Max Drawdown</p>
+                  <p className="text-2xl font-bold text-red-400">-{(deepDiveBacktest.max_drawdown * 100).toFixed(2)}%</p>
+                </div>
+              </div>
+
+              {/* Strategy Breakdown */}
+              {deepDiveBacktest.strategy_results && Object.keys(deepDiveBacktest.strategy_results).length > 0 && (
+                <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">Strategy Performance</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {Object.entries(deepDiveBacktest.strategy_results).map(([strategy, data]) => {
+                      const info = STRATEGY_INFO[strategy] || { name: strategy, color: '#666' };
+                      return (
+                        <div key={strategy} className={`p-3 rounded-lg border ${data.pnl >= 0 ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: info.color }} />
+                            <span className="text-sm text-white font-medium">{info.name}</span>
+                          </div>
+                          <div className={`text-xl font-bold ${data.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {data.pnl >= 0 ? '+' : ''}${data.pnl?.toFixed(2)}
+                          </div>
+                          <div className="flex justify-between text-xs text-white/50 mt-1">
+                            <span>{data.trades} trades</span>
+                            <span className={data.win_rate >= 0.5 ? 'text-green-400' : 'text-red-400'}>
+                              {(data.win_rate * 100).toFixed(1)}% WR
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Asset Class Breakdown */}
+              {deepDiveBacktest.asset_class_results && Object.keys(deepDiveBacktest.asset_class_results).length > 0 && (
+                <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">Asset Class Performance</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {Object.entries(deepDiveBacktest.asset_class_results).map(([category, data]) => (
+                      <div key={category} className={`p-3 rounded-lg border ${data.pnl >= 0 ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                        <span className="text-sm text-white font-medium capitalize">{category}</span>
+                        <div className={`text-lg font-bold ${data.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {data.pnl >= 0 ? '+' : ''}${data.pnl?.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-white/50">{data.trades} trades</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* AI Signals Stats */}
+              {deepDiveBacktest.ai_signals_stats && (
+                <div className="rounded-xl bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 p-4">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-cyan-400" />
+                    AI Signal Usage
+                  </h3>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-cyan-400">{deepDiveBacktest.ai_signals_stats.sentiment_signals_used}</p>
+                      <p className="text-xs text-white/50">Sentiment Signals</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-orange-400">{deepDiveBacktest.ai_signals_stats.whale_signals_used}</p>
+                      <p className="text-xs text-white/50">Whale Signals</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-white">{(deepDiveBacktest.ai_signals_stats.avg_sentiment * 100).toFixed(0)}%</p>
+                      <p className="text-xs text-white/50">Avg Sentiment</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-white">{(deepDiveBacktest.ai_signals_stats.avg_whale_activity * 100).toFixed(0)}%</p>
+                      <p className="text-xs text-white/50">Avg Whale Activity</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-400">{deepDiveBacktest.ai_signals_stats.bullish_whale_markets}</p>
+                      <p className="text-xs text-white/50">Bullish Whales</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-red-400">{deepDiveBacktest.ai_signals_stats.bearish_whale_markets}</p>
+                      <p className="text-xs text-white/50">Bearish Whales</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Data Quality */}
+              {deepDiveBacktest.data_quality && (
+                <div className={`rounded-xl border p-4 ${
+                  deepDiveBacktest.data_quality.data_source === 'real' 
+                    ? 'bg-green-500/10 border-green-500/20'
+                    : 'bg-yellow-500/10 border-yellow-500/20'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Database className={`w-5 h-5 ${deepDiveBacktest.data_quality.data_source === 'real' ? 'text-green-400' : 'text-yellow-400'}`} />
+                      <div>
+                        <h4 className="text-sm font-semibold text-white">
+                          Data Source: {deepDiveBacktest.data_quality.data_source_mode || deepDiveBacktest.data_quality.data_source}
+                        </h4>
+                        <p className="text-xs text-white/60">
+                          {deepDiveBacktest.data_quality.real_price_data_points?.toLocaleString()} real | {deepDiveBacktest.data_quality.simulated_price_data_points?.toLocaleString()} simulated
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`text-2xl font-bold ${deepDiveBacktest.data_quality.real_data_percentage > 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {deepDiveBacktest.data_quality.real_data_percentage}% Real
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
