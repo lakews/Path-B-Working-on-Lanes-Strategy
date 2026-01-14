@@ -700,6 +700,122 @@ async def stop_continuous_collection():
             content={"message": f"Failed to stop collection: {str(e)}"}
         )
 
+# Price History Collection Endpoints (High-Fidelity Data)
+@api_router.post("/historical/collect-prices")
+async def collect_price_history(
+    market_limit: int = 50,
+    interval: str = "1w",
+    fidelity: int = 60
+):
+    """
+    Collect high-fidelity price history for active markets.
+    This provides REAL price movements instead of static snapshots.
+    
+    - market_limit: Number of markets to collect (ordered by volume)
+    - interval: Time interval ("1h", "6h", "1d", "1w", "max")
+    - fidelity: Resolution in minutes (minimum 5 for 1w interval)
+    """
+    global historical_collector
+    
+    try:
+        if not historical_collector:
+            historical_collector = HistoricalDataCollector()
+        
+        stats = await historical_collector.collect_price_history(
+            market_limit=market_limit,
+            interval=interval,
+            fidelity=fidelity
+        )
+        
+        return {
+            "message": "Price history collection completed",
+            "stats": stats,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error collecting price history: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to collect price history: {str(e)}"}
+        )
+
+@api_router.get("/historical/price-stats")
+async def get_price_history_stats():
+    """Get statistics about collected price history data"""
+    global historical_collector
+    
+    try:
+        if not historical_collector:
+            historical_collector = HistoricalDataCollector()
+        
+        stats = await historical_collector.get_price_history_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Error getting price history stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get stats: {str(e)}"}
+        )
+
+@api_router.post("/historical/start-price-collection")
+async def start_price_history_collection(
+    background_tasks: BackgroundTasks,
+    interval_minutes: int = 30,
+    market_limit: int = 50
+):
+    """Start continuous high-fidelity price history collection"""
+    global historical_collector
+    
+    try:
+        if not historical_collector:
+            historical_collector = HistoricalDataCollector()
+        
+        if historical_collector.price_history_running:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Price history collection already running"}
+            )
+        
+        background_tasks.add_task(
+            historical_collector.start_price_history_collection,
+            interval_minutes,
+            market_limit
+        )
+        
+        return {
+            "message": "Started continuous price history collection",
+            "interval_minutes": interval_minutes,
+            "market_limit": market_limit
+        }
+    except Exception as e:
+        logger.error(f"Error starting price history collection: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to start collection: {str(e)}"}
+        )
+
+@api_router.post("/historical/stop-price-collection")
+async def stop_price_history_collection():
+    """Stop continuous price history collection"""
+    global historical_collector
+    
+    try:
+        if not historical_collector or not historical_collector.price_history_running:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Price history collection not running"}
+            )
+        
+        await historical_collector.stop_price_history_collection()
+        
+        return {"message": "Stopped price history collection"}
+    except Exception as e:
+        logger.error(f"Error stopping price history collection: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to stop collection: {str(e)}"}
+        )
+
 @api_router.get("/historical/data")
 async def get_historical_data(
     start_date: Optional[str] = None,
