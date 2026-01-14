@@ -944,6 +944,7 @@ const Backtest = () => {
                           <tr className="border-b border-white/10">
                             <th className="text-left text-xs text-white/50 font-medium py-2 px-2">Strategy</th>
                             <th className="text-right text-xs text-white/50 font-medium py-2 px-2">P&L</th>
+                            <th className="text-right text-xs text-white/50 font-medium py-2 px-2">% Return</th>
                             <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Trades</th>
                             <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Win Rate</th>
                             <th className="text-right text-xs text-white/50 font-medium py-2 px-2">PF</th>
@@ -953,6 +954,7 @@ const Backtest = () => {
                           {Object.entries(results.strategy_results || {}).map(([strategy, data]) => {
                             const info = STRATEGY_INFO[strategy] || { name: strategy, color: '#666' };
                             const isPositive = data.pnl >= 0;
+                            const returnPct = ((data.pnl || 0) / (results.initial_capital || 1000)) * 100;
                             return (
                               <tr key={strategy} className="border-b border-white/5 hover:bg-white/5">
                                 <td className="py-2 px-2">
@@ -963,6 +965,9 @@ const Backtest = () => {
                                 </td>
                                 <td className={`text-right py-2 px-2 font-bold text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
                                   {isPositive ? '+' : ''}${data.pnl?.toFixed(2)}
+                                </td>
+                                <td className={`text-right py-2 px-2 text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                  {isPositive ? '+' : ''}{returnPct.toFixed(2)}%
                                 </td>
                                 <td className="text-right text-sm text-white/70 py-2 px-2">{data.trades}</td>
                                 <td className={`text-right text-sm py-2 px-2 ${(data.win_rate || 0) >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
@@ -979,6 +984,7 @@ const Backtest = () => {
                             const strategyEntries = Object.entries(results.strategy_results || {});
                             if (strategyEntries.length === 0) return null;
                             const totalPnl = strategyEntries.reduce((sum, [, d]) => sum + (d.pnl || 0), 0);
+                            const totalReturnPct = (totalPnl / (results.initial_capital || 1000)) * 100;
                             const totalTrades = strategyEntries.reduce((sum, [, d]) => sum + (d.trades || 0), 0);
                             const avgWinRate = strategyEntries.reduce((sum, [, d]) => sum + (d.win_rate || 0), 0) / strategyEntries.length;
                             const avgPF = strategyEntries.reduce((sum, [, d]) => sum + (d.profit_factor || 0), 0) / strategyEntries.length;
@@ -987,6 +993,9 @@ const Backtest = () => {
                                 <td className="py-2 px-2 text-sm text-white">TOTAL</td>
                                 <td className={`text-right py-2 px-2 text-sm ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                   {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
+                                </td>
+                                <td className={`text-right py-2 px-2 text-sm ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {totalPnl >= 0 ? '+' : ''}{totalReturnPct.toFixed(2)}%
                                 </td>
                                 <td className="text-right text-sm text-white py-2 px-2">{totalTrades}</td>
                                 <td className={`text-right text-sm py-2 px-2 ${avgWinRate >= 0.5 ? 'text-green-400' : 'text-yellow-400'}`}>
