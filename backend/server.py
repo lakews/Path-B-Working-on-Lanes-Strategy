@@ -588,6 +588,8 @@ async def get_trade_stats():
 @api_router.post("/config/update")
 async def update_config(config_update: TradingConfig):
     """Update trading configuration"""
+    global user_config
+    
     try:
         if config_update.trades_per_10min:
             os.environ['TRADES_PER_10MIN'] = str(config_update.trades_per_10min)
@@ -608,6 +610,25 @@ async def update_config(config_update: TradingConfig):
         
         if config_update.max_drawdown_pct:
             os.environ['MAX_DRAWDOWN_PCT'] = str(config_update.max_drawdown_pct)
+        
+        # Update asset classes and strategies
+        if config_update.enabled_asset_classes is not None:
+            user_config["enabled_asset_classes"] = config_update.enabled_asset_classes
+        
+        if config_update.enabled_strategies is not None:
+            user_config["enabled_strategies"] = config_update.enabled_strategies
+        
+        # Store in database for persistence
+        db = get_db()
+        await db.user_config.update_one(
+            {"type": "trading_preferences"},
+            {"$set": {
+                "enabled_asset_classes": user_config["enabled_asset_classes"],
+                "enabled_strategies": user_config["enabled_strategies"],
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
         
         return {"message": "Configuration updated. Restart bot for changes to take effect."}
     except Exception as e:
