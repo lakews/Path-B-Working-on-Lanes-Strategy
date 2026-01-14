@@ -18,6 +18,43 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 14, 2026 - Session 10 (AI Signal Integration, WebSocket & Documentation)
+
+- ✅ **P1: AI Signals Wired into Trading Logic** (`/app/backend/backtest/backtest_engine.py`)
+  - Integrated Sentiment and Whale signals into `_select_best_strategy()` method
+  - AI signals now actively influence strategy selection during backtests:
+    - **Delta-Neutral**: Prefers neutral sentiment, avoids high whale activity
+    - **Volatility Exploitation**: Boosted by strong sentiment (any direction), high whale activity
+    - **Alpha-Directional**: Aligns with sentiment direction, whale direction matching
+    - **Arbitrage**: Prefers neutral sentiment, low whale activity
+  - Pre-loads AI signals for all markets before backtest for efficiency
+  - Position sizing adjusted based on AI signal confidence (+20% for high confidence)
+  - New `ai_signals_stats` in backtest results showing:
+    - Sentiment/whale signals count
+    - Average sentiment & whale activity
+    - Bullish/bearish whale market counts
+
+- ✅ **P2: WebSocket Real-Time Integration** (`/app/backend/server.py`)
+  - New `WebSocketConnectionManager` class for managing connections
+  - Endpoint: `ws://host/ws` for real-time updates
+  - Message types:
+    - `connected`: Initial state on connection
+    - `update`: Periodic updates (every 2 seconds)
+    - `heartbeat`: Keep-alive ping
+    - `pong`: Response to client ping
+  - Broadcasts: trading mode, total P&L, open positions, recent trades, backtest status
+  - Auto-starts on server startup
+  - Client commands: `ping`, `get_update`
+
+- ✅ **P3: Comprehensive Documentation** (`/app/docs/`)
+  - `API_REFERENCE.md`: Complete API documentation with all endpoints
+  - `ARCHITECTURE.md`: System architecture diagram and component details
+  - `OPERATIONS.md`: Operations runbook for daily maintenance
+
+- ✅ **UI Enhancement**: AI Signal Integration Stats Card
+  - New section in Backtest results showing sentiment/whale signal usage
+  - Shows average sentiment, whale activity, bullish/bearish counts
+
 ### January 14, 2026 - Session 9 (Sentiment Analysis, Whale Tracking & Strategy Tuning)
 - ✅ **Social Sentiment Analyzer** (`/app/backend/ml/social_sentiment.py`)
   - Integrates with Finnhub API for news and social sentiment
