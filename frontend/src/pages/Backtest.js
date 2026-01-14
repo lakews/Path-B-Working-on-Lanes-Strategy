@@ -5,9 +5,9 @@ import {
   Play, Square, TrendingUp, TrendingDown, Activity, DollarSign, Target, Calendar,
   BarChart3, Clock, Zap, Shield, Award, Percent, ChevronRight, Database,
   RefreshCw, AlertTriangle, CheckCircle, XCircle, History, GitCompare, Trash2,
-  BookOpen, Lightbulb, ChevronDown, ChevronUp, Eye, FileBarChart, Brain
+  BookOpen, Lightbulb, ChevronDown, ChevronUp, Eye, FileBarChart, Brain, Download
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ComposedChart, ReferenceLine } from 'recharts';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
