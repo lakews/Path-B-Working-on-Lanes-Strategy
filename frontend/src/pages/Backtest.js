@@ -504,6 +504,19 @@ const Backtest = () => {
                     </select>
                   </div>
                 </InfoTooltip>
+                {/* Show actual data source used in results */}
+                {results?.data_quality && (
+                  <div className="ml-2 px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs">
+                    <span className="text-white/50">Using: </span>
+                    <span className={`font-medium ${results.data_quality.real_data_percentage > 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {results.data_quality.real_data_percentage?.toFixed(0)}% Real
+                    </span>
+                    <span className="text-white/30 mx-1">|</span>
+                    <span className="text-white/60">
+                      {(100 - (results.data_quality.real_data_percentage || 0)).toFixed(0)}% Simulated
+                    </span>
+                  </div>
+                )}
               </div>
               <button
                 onClick={collectPriceHistory}
