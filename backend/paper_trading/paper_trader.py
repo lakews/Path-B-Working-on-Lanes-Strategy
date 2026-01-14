@@ -12,7 +12,7 @@ from ml.rl_engine import RLAdaptiveEngine
 from services.market_data_service import MarketDataService
 from ml.sharp_detector import SharpDetector
 from ml.volatility_predictor import VolatilityPredictor
-from ml.sentiment_fusion import SentimentFusionEngine
+from ml.signal_fusion import SignalFusionEngine
 from config import config
 import numpy as np
 
