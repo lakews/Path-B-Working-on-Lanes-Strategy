@@ -191,6 +191,7 @@ class PaperTrader:
     async def _trading_loop(self):
         """Main paper trading loop - evaluates markets and executes paper trades"""
         logger.info(f"Paper Trading loop started with {len(self.enabled_strategies)} strategies, {len(self.enabled_asset_classes)} asset classes")
+        logger.info(f"Continuous mode: {self.continuous_mode}")
         
         while self.running:
             try:
@@ -209,11 +210,19 @@ class PaperTrader:
                     # Check existing paper position
                     market_id = market_data.get('id')
                     if market_id in self.paper_positions:
+                        # Always evaluate exits (even during graceful stop)
                         await self._evaluate_exit(market_id, market_data)
-                    else:
+                    elif not self.graceful_stop:
+                        # Only evaluate new entries if not in graceful stop mode
                         await self._evaluate_entry(market_data)
                     
                     await asyncio.sleep(0.5)  # Brief pause between markets
+                
+                # Check if graceful stop is complete (all positions closed)
+                if self.graceful_stop and not self.paper_positions:
+                    logger.info("Graceful stop complete - all positions closed")
+                    self.running = False
+                    break
                 
                 # Record equity curve point
                 self.equity_curve.append({
