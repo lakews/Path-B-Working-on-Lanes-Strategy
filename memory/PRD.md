@@ -298,16 +298,25 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 ### P1 - High Priority
 - [x] ~~**Wire AI Signals into Trading Logic**~~ - COMPLETED (Jan 14, 2026)
 - [x] ~~**Refine Trading Strategies for Profitability**~~ - COMPLETED (Delta-Neutral fixed, AI integration)
-- [ ] **Further RL/ML Refinement** - Deep RL integration with performance data
+- [x] ~~**Further RL/ML Refinement**~~ - COMPLETED (Detailed metrics, learn from backtest)
 
 ### P2 - Medium Priority
-- [ ] **AWS Infrastructure as Code** - Terraform/CloudFormation deployment
+- [x] ~~**AWS Infrastructure as Code**~~ - COMPLETED (Terraform scripts in /app/infrastructure/terraform/)
 - [x] ~~**WebSocket Integration**~~ - COMPLETED (Jan 14, 2026)
 - [x] ~~**Comprehensive Documentation**~~ - COMPLETED (API_REFERENCE.md, ARCHITECTURE.md, OPERATIONS.md)
+- [x] ~~**SendGrid Email Alerts**~~ - COMPLETED (requires SENDGRID_API_KEY to activate)
 
 ### P3 - Lower Priority
-- [ ] **Alerts System** - Email/SMS notifications for risk events
+- [ ] **SMS Alerts via Twilio** - Add SMS notification support
 - [ ] **Mobile-responsive Dashboard** - Optimize for mobile devices
+- [ ] **Real-time Portfolio Tracking** - Live positions with unrealized P&L
+
+## Bug Fixes - Session 11 (Jan 14, 2026)
+- ✅ Fixed: Equity curve chart was empty (now shows data points)
+- ✅ Fixed: Equity curve tooltip not showing values on hover
+- ✅ Fixed: Volatility Exploitation strategy couldn't be selected (server config issue)
+- ✅ Fixed: Data Source dropdown visibility (now clearly visible)
+- ✅ Enhanced: Tuning page parameter transparency (shows all values being tested)
 
 ## Key API Endpoints
 - `GET /api/status` - System status and trading mode
