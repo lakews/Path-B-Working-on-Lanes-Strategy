@@ -33,7 +33,7 @@ class ApexTrader:
         # ML Engines
         self.rl_engine = RLAdaptiveEngine()
         self.volatility_predictor = VolatilityPredictor()
-        self.sentiment_fusion = SentimentFusionEngine()
+        self.signal_fusion = SignalFusionEngine()
         
         # Trading Strategies
         self.delta_neutral_strategy = DeltaNeutralStrategy()
