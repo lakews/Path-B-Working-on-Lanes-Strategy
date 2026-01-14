@@ -126,6 +126,9 @@ const PaperTrading = () => {
   const [activeTab, setActiveTab] = useState('live'); // 'live', 'history', 'optimizer', 'rl'
   const [initialCapital, setInitialCapital] = useState(10000);
   const [selectedSession, setSelectedSession] = useState(null);
+  const [continuousMode, setContinuousMode] = useState(false);
+  const [aiStats, setAiStats] = useState(null);
+  const [showStopOptions, setShowStopOptions] = useState(false);
 
   // Fetch all data
   const fetchData = useCallback(async () => {
@@ -139,6 +142,7 @@ const PaperTrading = () => {
       
       setStatus(statusRes.data);
       setRunning(statusRes.data?.running || false);
+      setContinuousMode(statusRes.data?.continuous_mode || false);
       setPositions(positionsRes.data?.positions || []);
       setTrades(tradesRes.data?.trades || []);
       setAnalytics(analyticsRes.data);
@@ -146,6 +150,15 @@ const PaperTrading = () => {
       console.error('Error fetching data:', e);
     }
   }, []);
+
+  const fetchAiStats = async () => {
+    try {
+      const response = await axios.get(`${API}/paper/ai-stats`);
+      setAiStats(response.data?.ai_stats);
+    } catch (e) {
+      console.error('Error fetching AI stats:', e);
+    }
+  };
 
   const fetchSessions = async () => {
     try {
