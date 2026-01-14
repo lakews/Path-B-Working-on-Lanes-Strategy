@@ -1594,6 +1594,345 @@ async def send_test_alert(request: TestAlertRequest):
         )
 
 # =============================================
+# PAPER TRADING ENDPOINTS
+# =============================================
+
+from paper_trading.paper_trader import PaperTrader
+from paper_trading.strategy_optimizer import StrategyOptimizer
+
+paper_trader: Optional[PaperTrader] = None
+strategy_optimizer: Optional[StrategyOptimizer] = None
+
+@api_router.post("/paper/start")
+async def start_paper_trading(
+    background_tasks: BackgroundTasks,
+    initial_capital: float = 10000.0,
+    username: str = Depends(verify_credentials)
+):
+    """Start paper trading session with RL learning"""
+    global paper_trader, trading_mode
+    
+    if trading_bot and trading_bot.running:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Live trading is running. Stop live trading first."}
+        )
+    
+    if paper_trader and paper_trader.running:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Paper trading is already running"}
+        )
+    
+    try:
+        paper_trader = PaperTrader(initial_capital=initial_capital)
+        background_tasks.add_task(paper_trader.start)
+        trading_mode = "paper"
+        
+        return {
+            "message": "Paper trading started",
+            "session_id": paper_trader.session_id,
+            "initial_capital": initial_capital,
+            "mode": "paper"
+        }
+    except Exception as e:
+        logger.error(f"Error starting paper trading: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to start paper trading: {str(e)}"}
+        )
+
+@api_router.post("/paper/stop")
+async def stop_paper_trading(username: str = Depends(verify_credentials)):
+    """Stop paper trading and save results"""
+    global paper_trader, trading_mode
+    
+    if not paper_trader or not paper_trader.running:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Paper trading is not running"}
+        )
+    
+    try:
+        await paper_trader.stop()
+        trading_mode = "stopped"
+        
+        status = paper_trader.get_status()
+        return {
+            "message": "Paper trading stopped",
+            "final_status": status
+        }
+    except Exception as e:
+        logger.error(f"Error stopping paper trading: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to stop paper trading: {str(e)}"}
+        )
+
+@api_router.get("/paper/status")
+async def get_paper_trading_status():
+    """Get current paper trading status and performance"""
+    global paper_trader
+    
+    if not paper_trader:
+        return {"running": False, "message": "No paper trading session"}
+    
+    return paper_trader.get_status()
+
+@api_router.get("/paper/positions")
+async def get_paper_positions():
+    """Get current open paper positions"""
+    global paper_trader
+    
+    if not paper_trader:
+        return {"positions": []}
+    
+    return {"positions": paper_trader.get_positions()}
+
+@api_router.get("/paper/trades")
+async def get_paper_trades(limit: int = 50):
+    """Get paper trading trade history"""
+    global paper_trader
+    
+    if not paper_trader:
+        return {"trades": []}
+    
+    return {"trades": paper_trader.get_trade_history(limit)}
+
+@api_router.get("/paper/sessions")
+async def get_paper_sessions(limit: int = 10):
+    """Get list of paper trading sessions"""
+    try:
+        db = get_db()
+        cursor = db.paper_trading_sessions.find(
+            {"type": "paper_trading"},
+            {"_id": 0}
+        ).sort("start_time", -1).limit(limit)
+        
+        sessions = await cursor.to_list(length=limit)
+        return {"sessions": sessions}
+    except Exception as e:
+        logger.error(f"Error getting paper sessions: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get sessions: {str(e)}"}
+        )
+
+@api_router.get("/paper/session/{session_id}")
+async def get_paper_session_details(session_id: str):
+    """Get detailed results for a specific paper trading session"""
+    try:
+        db = get_db()
+        session = await db.paper_trading_sessions.find_one(
+            {"session_id": session_id},
+            {"_id": 0}
+        )
+        
+        if not session:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "Session not found"}
+            )
+        
+        # Get trades for this session
+        cursor = db.paper_trades.find(
+            {"session_id": session_id},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(500)
+        trades = await cursor.to_list(length=500)
+        
+        return {
+            "session": session,
+            "trades": trades
+        }
+    except Exception as e:
+        logger.error(f"Error getting session details: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get session: {str(e)}"}
+        )
+
+@api_router.get("/paper/analytics")
+async def get_paper_analytics():
+    """Get comprehensive paper trading analytics with live market data"""
+    try:
+        db = get_db()
+        
+        # Get current session status
+        current_status = None
+        if paper_trader and paper_trader.running:
+            current_status = paper_trader.get_status()
+        
+        # Get all completed sessions
+        cursor = db.paper_trading_sessions.find(
+            {"type": "paper_trading", "status": "completed"},
+            {"_id": 0}
+        ).sort("end_time", -1).limit(20)
+        completed_sessions = await cursor.to_list(length=20)
+        
+        # Calculate aggregate stats
+        total_pnl = sum(s.get('total_pnl', 0) for s in completed_sessions)
+        total_trades = sum(s.get('total_trades', 0) for s in completed_sessions)
+        total_wins = sum(s.get('winning_trades', 0) for s in completed_sessions)
+        
+        # Aggregate strategy performance
+        strategy_performance = {
+            'delta_neutral': {'trades': 0, 'wins': 0, 'pnl': 0.0},
+            'volatility_exploitation': {'trades': 0, 'wins': 0, 'pnl': 0.0},
+            'alpha_directional': {'trades': 0, 'wins': 0, 'pnl': 0.0},
+            'arbitrage': {'trades': 0, 'wins': 0, 'pnl': 0.0}
+        }
+        
+        for session in completed_sessions:
+            stats = session.get('strategy_stats', {})
+            for strategy, data in stats.items():
+                if strategy in strategy_performance:
+                    strategy_performance[strategy]['trades'] += data.get('trades', 0)
+                    strategy_performance[strategy]['wins'] += data.get('wins', 0)
+                    strategy_performance[strategy]['pnl'] += data.get('pnl', 0)
+        
+        # Get recent trades for equity curve
+        recent_trades = []
+        trades_cursor = db.paper_trades.find(
+            {"type": "exit"},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(100)
+        recent_trades = await trades_cursor.to_list(length=100)
+        
+        # Build equity curve
+        equity_curve = []
+        cumulative_pnl = 0
+        for trade in reversed(recent_trades):
+            cumulative_pnl += trade.get('pnl', 0)
+            equity_curve.append({
+                "timestamp": trade.get('timestamp'),
+                "pnl": cumulative_pnl,
+                "strategy": trade.get('strategy', 'unknown')
+            })
+        
+        return {
+            "current_session": current_status,
+            "completed_sessions": len(completed_sessions),
+            "aggregate_stats": {
+                "total_pnl": total_pnl,
+                "total_trades": total_trades,
+                "total_wins": total_wins,
+                "win_rate": total_wins / total_trades if total_trades > 0 else 0
+            },
+            "strategy_performance": strategy_performance,
+            "equity_curve": equity_curve,
+            "recent_sessions": completed_sessions[:5]
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting paper analytics: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get analytics: {str(e)}"}
+        )
+
+# =============================================
+# STRATEGY OPTIMIZER ENDPOINTS
+# =============================================
+
+@api_router.post("/optimizer/run/{session_id}")
+async def run_strategy_optimization(session_id: str, username: str = Depends(verify_credentials)):
+    """Run strategy optimization based on a paper trading session"""
+    global strategy_optimizer
+    
+    try:
+        if not strategy_optimizer:
+            strategy_optimizer = StrategyOptimizer()
+            await strategy_optimizer.load_params()
+        
+        result = await strategy_optimizer.optimize_from_paper_session(session_id)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error running optimization: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Optimization failed: {str(e)}"}
+        )
+
+@api_router.get("/optimizer/params")
+async def get_optimizer_params():
+    """Get current optimized strategy parameters"""
+    global strategy_optimizer
+    
+    try:
+        if not strategy_optimizer:
+            strategy_optimizer = StrategyOptimizer()
+            await strategy_optimizer.load_params()
+        
+        return {
+            "params": strategy_optimizer.get_params()
+        }
+    except Exception as e:
+        logger.error(f"Error getting params: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get params: {str(e)}"}
+        )
+
+@api_router.get("/optimizer/stats")
+async def get_optimization_stats():
+    """Get optimization history and statistics"""
+    global strategy_optimizer
+    
+    try:
+        if not strategy_optimizer:
+            strategy_optimizer = StrategyOptimizer()
+            await strategy_optimizer.load_params()
+        
+        return await strategy_optimizer.get_optimization_stats()
+        
+    except Exception as e:
+        logger.error(f"Error getting optimization stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get stats: {str(e)}"}
+        )
+
+@api_router.post("/optimizer/apply")
+async def apply_optimized_params(username: str = Depends(verify_credentials)):
+    """Apply optimized parameters to trading strategies"""
+    global strategy_optimizer
+    
+    try:
+        if not strategy_optimizer:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "No optimization has been run yet"}
+            )
+        
+        params = strategy_optimizer.get_params()
+        
+        # Save params for use by paper trader and live trading
+        db = get_db()
+        await db.strategy_params.update_one(
+            {"type": "active"},
+            {"$set": {
+                "type": "active",
+                "params": params,
+                "applied_at": datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+        
+        return {
+            "message": "Optimized parameters applied",
+            "params": params
+        }
+        
+    except Exception as e:
+        logger.error(f"Error applying params: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to apply params: {str(e)}"}
+        )
+
+# =============================================
 # WEBSOCKET ENDPOINT FOR REAL-TIME UPDATES
 # =============================================
 
