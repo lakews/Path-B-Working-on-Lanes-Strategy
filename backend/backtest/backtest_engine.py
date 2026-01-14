@@ -1131,14 +1131,17 @@ class BacktestEngine:
             returns_distribution = self._calculate_returns_distribution()
             
             # Data quality metrics
-            total_price_points = self.real_price_data_used + self.simulated_price_data_used
+            live_data_points = getattr(self, 'live_data_points', 0)
+            total_price_points = self.real_price_data_used + self.simulated_price_data_used + live_data_points
             data_quality = {
                 "real_price_data_points": self.real_price_data_used,
                 "simulated_price_data_points": self.simulated_price_data_used,
+                "live_data_points": live_data_points,
                 "real_data_percentage": round((self.real_price_data_used / total_price_points * 100) if total_price_points > 0 else 0, 2),
-                "data_source": "real" if self.real_price_data_used > self.simulated_price_data_used else "simulated",
+                "live_data_percentage": round((live_data_points / total_price_points * 100) if total_price_points > 0 else 0, 2),
+                "data_source": "live" if live_data_points > 0 else ("real" if self.real_price_data_used > self.simulated_price_data_used else "simulated"),
                 "data_source_mode": getattr(self, 'data_source_mode', 'auto'),
-                "data_source_options": ["auto", "real", "snapshots", "live", "hybrid"]
+                "data_source_options": ["auto", "live", "real", "snapshots", "hybrid"]
             }
             
             # AI Signal Integration Stats
