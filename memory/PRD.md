@@ -18,6 +18,38 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 14, 2026 - Session 13 (Live Trading Tables, WebSocket Integration, UI Fixes)
+
+- ✅ **Live Trading Performance Tables** (`/app/frontend/src/pages/Dashboard.js`)
+  - Added Strategy Performance table with P&L, % Return, Contrib %, Trades, Win Rate columns
+  - Added Asset Class Performance table with same columns
+  - Added Returns Distribution chart with histogram visualization
+  - Tables only appear when trades exist (conditional rendering)
+  - TOTAL rows with aggregated metrics
+
+- ✅ **WebSocket Integration Fixed** 
+  - Dashboard: Fixed WebSocket URL from `/ws/status` to `/ws`
+  - Dashboard: Added message handlers for trade, position_update, performance_update, status_update
+  - Positions page: Added WebSocket connection with real-time position updates
+  - Both pages show Live/Offline status indicator (green Wifi icon when connected)
+
+- ✅ **InfoTooltip Fix** (`/app/frontend/src/pages/Backtest.js`)
+  - Fixed z-index and visibility issues on tooltip hover
+  - Improved positioning (left-aligned instead of center)
+  - Added backdrop blur and proper styling
+
+- ✅ **Contrib % Column Added** (Both pages)
+  - Strategy Performance: Shows each strategy's contribution to total P&L
+  - Asset Class Performance: Shows each asset class's contribution to total P&L
+  - Color-coded: cyan for positive, orange for negative contributions
+
+- ✅ **Test Suite Created** (`/app/tests/test_dashboard_websocket_features.py`)
+  - 12 tests all passing (100% success rate)
+  - WebSocket endpoint connectivity test
+  - Dashboard APIs verification
+  - Backtest APIs verification
+  - Contrib % calculation tests
+
 ### January 14, 2026 - Session 12 (Critical Data Source Bug Fix & UI Consolidation)
 
 - ✅ **CRITICAL BUG FIX: Backtest Engine Now Uses Real Data** (`/app/backend/backtest/backtest_engine.py`)
