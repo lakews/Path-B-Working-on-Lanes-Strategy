@@ -965,6 +965,14 @@ class BacktestEngine:
         # Remove from positions
         if market_id in self.positions:
             del self.positions[market_id]
+        
+        # Record equity curve point
+        self.equity_curve.append({
+            "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
+            "equity": float(self.current_capital),
+            "trade_num": len(self.trades),
+            "pnl": float(pnl)
+        })
     
     async def _calculate_backtest_results(self, data_summary: Dict) -> Dict:
         """Calculate comprehensive backtest metrics"""
