@@ -69,7 +69,8 @@ class BacktestEngine:
         start_date: str,
         end_date: str,
         strategies: Optional[List[str]] = None,
-        asset_classes: Optional[List[str]] = None
+        asset_classes: Optional[List[str]] = None,
+        use_tuned_params: bool = True
     ) -> Dict:
         """Run backtest with HFT-style position management"""
         try:
@@ -83,6 +84,13 @@ class BacktestEngine:
                     strategies = user_config.get("enabled_strategies", list(self.strategies.keys()))
                 if asset_classes is None:
                     asset_classes = user_config.get("enabled_asset_classes", None)
+            
+            # Load tuned parameters if enabled
+            self.tuned_params = {}
+            if use_tuned_params:
+                self.tuned_params = await self._load_tuned_parameters(strategies)
+                if self.tuned_params:
+                    logger.info(f"Loaded tuned parameters for {len(self.tuned_params)} strategies")
             
             # Reset state
             self.current_capital = self.initial_capital
@@ -101,6 +109,7 @@ class BacktestEngine:
             logger.info(f"Starting HFT backtest {self.backtest_id}: {start_date} to {end_date}")
             logger.info(f"Enabled strategies: {strategies}")
             logger.info(f"Enabled asset classes: {asset_classes or 'ALL'}")
+            logger.info(f"Using tuned params: {use_tuned_params}")
             
             # Get historical data grouped by market
             market_timeseries = await self._get_market_timeseries(start_date, end_date)
