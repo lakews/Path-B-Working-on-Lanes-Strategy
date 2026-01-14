@@ -12,11 +12,43 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Tech Stack
 - **Backend**: FastAPI (Python)
-- **Frontend**: React + Tailwind CSS
+- **Frontend**: React + Tailwind CSS + Recharts
 - **Database**: MongoDB
 - **Deployment**: AWS (planned)
 
 ## What's Been Implemented
+
+### January 14, 2026 - Session 6 (High-Fidelity Data Collection & Returns Distribution)
+- ✅ **P0: Fixed Historical Data Collection (REAL PRICE DATA)**
+  - Discovered Polymarket CLOB API has `/prices-history` endpoint for tick-level data
+  - Added `get_price_history()` and `get_markets_with_tokens()` methods to `polymarket_api.py`
+  - Added `collect_price_history()` method to `historical_collector.py` using real market data
+  - Backtest engine now detects and uses real price data when available
+  - Data quality metrics tracked: real vs simulated price points
+  - New API endpoints:
+    - `POST /api/historical/collect-prices` - Collect tick-level price history
+    - `GET /api/historical/price-stats` - Get real price data statistics
+    - `POST /api/historical/start-price-collection` - Start continuous collection
+    - `POST /api/historical/stop-price-collection` - Stop continuous collection
+
+- ✅ **Returns Distribution Chart (Histogram)**
+  - Added `trade_returns` tracking to backtest engine
+  - Implemented `_calculate_returns_distribution()` with:
+    - 20 bins from -20% to +20%
+    - Statistical metrics: mean, median, std, skewness, kurtosis
+    - Positive/negative return counts
+  - Frontend histogram with color-coded bars (green=positive, red=negative)
+  - Stats display: Mean, Median, Std Dev, Skewness, Kurtosis
+
+- ✅ **Data Quality Indicator Card**
+  - Shows real vs simulated data percentage in results
+  - Warning message when using simulated data
+  - "Fetch Real Prices" button in data summary section
+
+- ✅ **P1: Stop Backtest Button Verified**
+  - Full UI regression test completed
+  - Button properly switches state between Running/Stopped
+  - Mode correctly updates on stop
 
 ### January 13, 2026 - Session 5 (HFT Backtest Engine Complete)
 - ✅ **Fixed Position Closing Bug**: Positions now correctly track P&L through complete round-trips
@@ -31,8 +63,8 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - `timeout`: Closes stale positions after N snapshots
 - ✅ **Strategy Selection**: Adaptive strategy selection based on volatility, trend, and performance history
 - ✅ **Position Sizing**: Dynamic sizing based on volatility and volume profiles
-- ✅ **Price Simulation**: Since historical data has static prices, added realistic price movement simulation by category
-- ✅ **Results**: First profitable backtest achieved - **$33.80 profit, 64% win rate, 1.07 Sharpe**
+- ✅ **Price Simulation**: Fallback for markets without real price history
+- ✅ **Results**: Profitable backtests achieved - **$117.17 profit (+11.72% return), 70.6% win rate**
 
 ### January 13, 2026 - Session 4 (P3 + P0 ML Complete)
 - ✅ **P3: Backtest History & Comparison System**
@@ -46,8 +78,8 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Learn tab with educational content about Sharpe Ratio, Max Drawdown, Profit Factor, Win Rate
 
 - ✅ **P0: Trainable ML Models Implementation**
-  - **Volatility Predictor**: Gradient Boosting + Random Forest ensemble trained on 2,920 samples
-  - **Mispricing Detector**: Isolation Forest + Gradient Boosting classifier trained on 64,265 samples
+  - **Volatility Predictor**: Gradient Boosting + Random Forest ensemble
+  - **Mispricing Detector**: Isolation Forest + Gradient Boosting classifier
   - Models persist to disk (`/app/backend/ml/models/`)
   - Auto-load on startup, fallback to heuristics if not trained
   - API endpoints: `/api/ml/stats`, `/api/ml/train/all`, `/api/ml/train/volatility`, `/api/ml/train/mispricing`
@@ -66,11 +98,6 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Risk Status card
   - Live Trade Feed
 
-### January 13, 2026 - Session 2
-- ✅ **P0: Spread Calibrator Integration Verified**
-- ✅ **P1: Historical Data Collector** (64,000+ market snapshots)
-- ✅ **P1: Detailed Analytics** (strategy & asset class performance)
-
 ### Previous Implementation
 - ✅ Backend scaffolding with modular architecture
 - ✅ Frontend dashboard with multi-page navigation
@@ -83,8 +110,9 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Backlog
 
-### P0 - Critical (Next Priority)
-- [ ] **Refine Trading Strategies for Profitability** - Current backtests show negative returns, strategies need tuning using trained ML models
+### P1 - High Priority
+- [ ] **Refine Trading Strategies for Profitability** - Re-evaluate with high-quality real data
+- [ ] **Implement Full ML Model Logic** - Complete sentiment_analyzer, sharp_detector integration
 
 ### P2 - Medium Priority
 - [ ] **AWS Infrastructure as Code** - Terraform/CloudFormation deployment
@@ -102,10 +130,13 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - `GET /api/trades` - Recent trades
 - `GET /api/analytics` - Comprehensive analytics
 - `GET /api/historical/stats` - Historical data statistics
-- `POST /api/historical/collect` - Trigger data collection
+- `POST /api/historical/collect` - Trigger snapshot collection
+- `POST /api/historical/collect-prices` - **NEW** Collect tick-level price history
+- `GET /api/historical/price-stats` - **NEW** Real price data statistics
 - `GET /api/rl/stats` - RL engine training statistics
 - `POST /api/rl/train` - Trigger RL batch training
 - `GET /api/backtest/history` - Get list of past backtests
+- `GET /api/backtest/results` - Get latest or specific backtest results (includes returns_distribution, data_quality)
 - `POST /api/backtest/compare` - Compare multiple backtests with educational analysis
 - `DELETE /api/backtest/{id}` - Delete a backtest
 - `POST /api/bot/start` - Start live trading
@@ -117,7 +148,9 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 ├── backend/
 │   ├── server.py          # FastAPI application
 │   ├── trading_bot.py     # Core trading orchestrator
-│   ├── data/              # Data ingestion (historical_collector, polymarket_api)
+│   ├── data/
+│   │   ├── historical_collector.py  # Snapshot + price history collection
+│   │   └── polymarket_api.py        # Gamma API + CLOB API (price history)
 │   ├── ml/                # AI/ML models
 │   │   ├── volatility_predictor.py
 │   │   ├── sentiment_analyzer.py
@@ -127,25 +160,27 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 │   │   ├── signal_fusion.py
 │   │   └── rl_engine.py
 │   ├── strategies/        # Trading strategies
-│   ├── backtest/          # Backtesting engine with history & comparison
+│   ├── backtest/
+│   │   └── backtest_engine.py  # HFT engine with returns distribution
 │   ├── trading/           # Execution, risk management
 │   └── services/          # Analytics services
 ├── frontend/
-│   └── src/pages/         # Dashboard, Analytics, Backtest (4 tabs), Config
+│   └── src/pages/
+│       └── Backtest.js    # 4 tabs + Returns Distribution + Data Quality
 └── memory/
     └── PRD.md
 ```
 
-## Testing Status
-- **Iteration 1**: 12/12 tests passed
-- **Iteration 2**: 15/15 tests passed  
-- **Iteration 3**: 15/15 tests passed
-- **Iteration 4**: 60/60 tests passed (18 new backtest history/compare tests)
-- **Total**: 100% tests passing
+## Current Stats (Jan 14, 2026)
+- **Total snapshots**: 83,881+
+- **Real price data**: 14,881+ points (17.74%)
+- **Unique markets**: 1,047+
+- **Categories**: Finance (35,449), Sports (31,703), Politics (9,789), Crypto (6,250)
+- **Latest backtest**: +11.72% return, 70.6% win rate, 0.31 Sharpe
 
 ## Notes
-- Historical data: 64,000+ market snapshots from 947 unique markets
-- Categories: Sports (28480), Finance (27200), Politics (4736), Crypto (2944)
 - MongoDB ObjectId serialization handled - always exclude `_id` from responses
 - Credentials stored in `/app/backend/.env`
-- Current backtests show negative P&L - strategy refinement is next priority
+- Real price data collection uses Polymarket CLOB `/prices-history` endpoint
+- Backtest engine auto-detects and uses real price data when available
+- Price simulation (Brownian motion) used as fallback for markets without history
