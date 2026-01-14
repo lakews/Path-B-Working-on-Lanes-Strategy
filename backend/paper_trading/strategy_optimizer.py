@@ -226,7 +226,6 @@ class StrategyOptimizer:
             # Analyze stop loss exits
             sl_exits = [t for t in exit_trades if t.get('exit_reason') == 'stop_loss']
             if sl_exits:
-                avg_sl_pnl = np.mean([t.get('pnl_pct', 0) for t in sl_exits])
                 # If stop loss hits are very frequent, tighten stop loss
                 sl_rate = len(sl_exits) / len(exit_trades)
                 if sl_rate > 0.3:  # More than 30% of exits are stop losses
