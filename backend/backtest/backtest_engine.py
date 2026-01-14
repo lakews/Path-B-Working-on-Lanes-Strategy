@@ -80,12 +80,23 @@ class BacktestEngine:
         end_date: str,
         strategies: Optional[List[str]] = None,
         asset_classes: Optional[List[str]] = None,
-        use_tuned_params: bool = True
+        use_tuned_params: bool = True,
+        data_source: str = "auto"
     ) -> Dict:
-        """Run backtest with HFT-style position management"""
+        """Run backtest with HFT-style position management
+        
+        Args:
+            data_source: Data source to use
+                - auto: Automatically select best available data
+                - real: Use only real price history data
+                - snapshots: Use historical snapshots only
+                - live: Fetch live data during backtest
+                - hybrid: Combine real prices with snapshots
+        """
         try:
             self.running = True
             self.backtest_id = str(uuid.uuid4())
+            self.data_source_mode = data_source
             
             # Load user config from database if not provided
             if strategies is None or asset_classes is None:
