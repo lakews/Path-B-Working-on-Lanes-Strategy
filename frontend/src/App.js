@@ -8,6 +8,7 @@ import Positions from './pages/Positions';
 import Analytics from './pages/Analytics';
 import Backtest from './pages/Backtest';
 import Configuration from './pages/Configuration';
+import StrategyTuning from './pages/StrategyTuning';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import { AlertCircle } from 'lucide-react';
