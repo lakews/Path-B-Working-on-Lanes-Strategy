@@ -922,11 +922,13 @@ const Backtest = () => {
               {results.returns_distribution && results.returns_distribution.bins && (
                 <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="returns-distribution">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5 text-purple-400" />
-                      Returns Distribution
-                      <span className="text-xs text-white/40 ml-2">({results.returns_distribution.bins.filter(b => b.count > 0).length} bins with data)</span>
-                    </h3>
+                    <InfoTooltip text={METRIC_TOOLTIPS.returns_distribution}>
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-purple-400" />
+                        Returns Distribution
+                        <span className="text-xs text-white/40 ml-2">({results.returns_distribution.bins.filter(b => b.count > 0).length} bins with data)</span>
+                      </h3>
+                    </InfoTooltip>
                     {results.returns_distribution.stats && (
                       <div className="flex items-center gap-4 text-xs">
                         <span className="text-white/50">Mean: <span className={results.returns_distribution.stats.mean >= 0 ? 'text-green-400' : 'text-red-400'}>{results.returns_distribution.stats.mean?.toFixed(2)}%</span></span>
