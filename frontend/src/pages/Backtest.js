@@ -175,10 +175,11 @@ const Backtest = () => {
         params: {
           start_date: `${config.start_date}T00:00:00Z`,
           end_date: `${config.end_date}T23:59:59Z`,
-          strategies: config.strategies
+          strategies: config.strategies,
+          data_source: config.data_source
         }
       });
-      toast.success('Backtest started');
+      toast.success(`Backtest started (${config.data_source} mode)`);
       setBacktestRunning(true);
       setResults(null);
     } catch (e) {
@@ -186,6 +187,25 @@ const Backtest = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Deep dive into a specific backtest
+  const openDeepDive = async (backtestId) => {
+    setDeepDiveLoading(true);
+    try {
+      const response = await axios.get(`${API}/backtest/results?backtest_id=${backtestId}`);
+      if (response.data && !response.data.message) {
+        setDeepDiveBacktest(response.data);
+      }
+    } catch (e) {
+      toast.error('Failed to load backtest details');
+    } finally {
+      setDeepDiveLoading(false);
+    }
+  };
+
+  const closeDeepDive = () => {
+    setDeepDiveBacktest(null);
   };
 
   const stopBacktest = async () => {
