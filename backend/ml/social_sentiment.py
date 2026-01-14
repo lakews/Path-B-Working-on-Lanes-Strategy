@@ -7,8 +7,6 @@ import aiohttp
 import asyncio
 from typing import Dict, Tuple, List, Optional
 from datetime import datetime, timezone, timedelta
-from database import get_db
-from config import config
 import uuid
 import re
 
@@ -22,7 +20,7 @@ class SocialSentimentAnalyzer:
     """Real-time social sentiment analysis using multiple data sources"""
     
     def __init__(self):
-        self.db = get_db()
+        self._db = None
         self.finnhub_base = "https://finnhub.io/api/v1"
         self.cache = {}  # Simple in-memory cache
         self.cache_ttl = 300  # 5 minutes
@@ -43,6 +41,13 @@ class SocialSentimentAnalyzer:
             "stock market": "SPY",
             "s&p": "SPY",
         }
+    
+    @property
+    def db(self):
+        if self._db is None:
+            from database import get_db
+            self._db = get_db()
+        return self._db
     
     async def analyze_market_sentiment(self, market_data: Dict) -> Dict:
         """
