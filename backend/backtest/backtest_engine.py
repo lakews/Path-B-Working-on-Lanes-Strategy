@@ -1010,6 +1010,16 @@ class BacktestEngine:
                 "data_source": "real" if self.real_price_data_used > self.simulated_price_data_used else "simulated"
             }
             
+            # AI Signal Integration Stats
+            ai_signals_stats = {
+                "sentiment_signals_used": len(self.sentiment_cache),
+                "whale_signals_used": len(self.whale_cache),
+                "avg_sentiment": float(np.mean([s.get('overall_sentiment', 0.5) for s in self.sentiment_cache.values()])) if self.sentiment_cache else 0.5,
+                "avg_whale_activity": float(np.mean([w.get('whale_activity_score', 0) for w in self.whale_cache.values()])) if self.whale_cache else 0.0,
+                "bullish_whale_markets": len([w for w in self.whale_cache.values() if w.get('whale_direction') == 'bullish']),
+                "bearish_whale_markets": len([w for w in self.whale_cache.values() if w.get('whale_direction') == 'bearish'])
+            }
+            
             return {
                 "backtest_id": self.backtest_id,
                 "status": "completed",
@@ -1031,6 +1041,7 @@ class BacktestEngine:
                 "asset_class_results": asset_class_results,
                 "returns_distribution": returns_distribution,
                 "data_quality": data_quality,
+                "ai_signals_stats": ai_signals_stats,
                 "data_summary": data_summary,
                 "rl_learning_stats": await self.rl_engine.get_training_stats(),
                 "completed_at": datetime.now(timezone.utc).isoformat()
