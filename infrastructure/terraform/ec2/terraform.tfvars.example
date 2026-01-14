@@ -1,28 +1,80 @@
-# APEX TRADER - EC2 Terraform Variables
+# APEX TRADER - Terraform Configuration Example
 # Copy this file to terraform.tfvars and fill in your values
+# 
+# IMPORTANT: Never commit terraform.tfvars to version control!
+# Add terraform.tfvars to your .gitignore
 
-# AWS Configuration
-aws_region   = "us-east-1"
-environment  = "production"
+# =============================================
+# AWS CONFIGURATION
+# =============================================
 
-# EC2 Instance
-instance_type = "t3.medium"  # 2 vCPU, 4GB RAM (~$30/month)
-key_name      = "your-ssh-key-name"  # Create in AWS Console first
+aws_region  = "us-east-1"
+environment = "production"  # production, staging, development
 
-# MongoDB Atlas (Get from Atlas dashboard)
-mongodb_uri = "mongodb+srv://username:password@cluster.mongodb.net/apex_trader?retryWrites=true&w=majority"
+# EC2 Instance Type
+# t3.medium (2 vCPU, 4GB RAM) - Recommended for trading engine
+# t3.large (2 vCPU, 8GB RAM) - For heavy backtesting
+instance_type = "t3.medium"
 
-# Polymarket API Credentials (Get from Polymarket)
+# SSH Key Pair Name (must exist in AWS Console > EC2 > Key Pairs)
+key_name = "apex-trader-key"
+
+# Restrict SSH access to your IP (get yours at: curl ifconfig.me)
+# Format: ["YOUR_IP/32"] or ["0.0.0.0/0"] for any IP (NOT recommended)
+allowed_ssh_cidrs = ["0.0.0.0/0"]
+
+# =============================================
+# DATABASE (Required)
+# =============================================
+
+# MongoDB Atlas Connection String
+# Get from: MongoDB Atlas > Connect > Drivers > Connection String
+mongodb_uri = "mongodb+srv://USERNAME:PASSWORD@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority"
+db_name     = "apex_trader"
+
+# =============================================
+# POLYMARKET API (Required for Live Trading)
+# =============================================
+
+# Get from Polymarket CLOB API documentation
 polymarket_api_key        = "your-api-key"
 polymarket_api_secret     = "your-api-secret"
 polymarket_api_passphrase = "your-passphrase"
 
-# Wallet (KEEP THIS SECURE!)
-wallet_private_key = "your-wallet-private-key"
+# Ethereum wallet private key for executing trades
+# ⚠️ CRITICAL: Use a dedicated trading wallet, NOT your main wallet!
+wallet_private_key = "0x..."
 
-# Optional: SendGrid for email alerts
+# =============================================
+# TRADING CONFIGURATION
+# =============================================
+
+initial_capital   = 1000   # Starting capital in USD
+kelly_fraction    = 0.25   # Kelly Criterion fraction (0.1-0.5)
+max_drawdown_pct  = 3      # Max allowed drawdown %
+trades_per_10min  = 500    # Rate limit for trades
+
+# =============================================
+# OPTIONAL: INTEGRATIONS
+# =============================================
+
+# SendGrid - For email alerts
+# Get from: https://sendgrid.com > Settings > API Keys
 sendgrid_api_key = ""
-alert_email      = "your@email.com"
 
-# Optional: Custom domain
+# Finnhub - For sentiment analysis
+# Get from: https://finnhub.io > API Key
+finnhub_api_key = ""
+
+# Email for trading alerts
+alert_email = ""
+
+# =============================================
+# OPTIONAL: DOMAIN & SSL
+# =============================================
+
+# Custom domain (requires DNS pointing to server)
 domain_name = ""
+
+# Enable Let's Encrypt SSL (requires domain_name)
+enable_ssl = false
