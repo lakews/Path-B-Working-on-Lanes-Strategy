@@ -8,7 +8,7 @@ from data.historical_collector import HistoricalDataCollector
 from ml.sharp_detector import SharpDetector
 from ml.rl_engine import RLAdaptiveEngine
 from ml.volatility_predictor import VolatilityPredictor
-from ml.sentiment_fusion import SentimentFusionEngine
+from ml.signal_fusion import SignalFusionEngine
 from strategies.delta_neutral import DeltaNeutralStrategy
 from strategies.volatility_exploitation import VolatilityExploitationStrategy
 from strategies.alpha_directional import AlphaDirectionalStrategy
