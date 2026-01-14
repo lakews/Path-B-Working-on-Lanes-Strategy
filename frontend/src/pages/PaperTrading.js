@@ -208,8 +208,8 @@ const PaperTrading = () => {
   const startPaperTrading = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API}/paper/start?initial_capital=${initialCapital}`);
-      toast.success(`Paper trading started! Session: ${response.data.session_id}`);
+      const response = await axios.post(`${API}/paper/start?initial_capital=${initialCapital}&continuous_mode=${continuousMode}`);
+      toast.success(`Paper trading started! Session: ${response.data.session_id}${continuousMode ? ' (Continuous Mode)' : ''}`);
       setRunning(true);
       fetchData();
     } catch (e) {
@@ -219,18 +219,34 @@ const PaperTrading = () => {
     }
   };
 
-  const stopPaperTrading = async () => {
+  const stopPaperTrading = async (graceful = false) => {
     setLoading(true);
+    setShowStopOptions(false);
     try {
-      const response = await axios.post(`${API}/paper/stop`);
-      toast.success('Paper trading stopped');
-      setRunning(false);
+      const response = await axios.post(`${API}/paper/stop?graceful=${graceful}`);
+      toast.success(graceful ? 'Graceful stop initiated - waiting for positions to close' : 'Paper trading stopped');
+      if (!graceful) {
+        setRunning(false);
+      }
       setStatus(response.data?.final_status);
       fetchSessions();
     } catch (e) {
       toast.error('Failed to stop paper trading');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const trainRLFromSession = async () => {
+    try {
+      toast.info('Training RL from paper trading session...');
+      // Trigger RL training from current session
+      await axios.post(`${API}/rl/train`);
+      toast.success('RL training complete!');
+      fetchRlStats();
+      fetchAiStats();
+    } catch (e) {
+      toast.error('RL training failed');
     }
   };
 
