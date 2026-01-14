@@ -1148,10 +1148,26 @@ const Backtest = () => {
                     <div className="flex-1 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                       <p className="text-sm text-yellow-400 flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4" />
-                        RL Model not yet trained. Click &quot;Train RL Now&quot; or run backtests.
+                        RL Model not yet trained. Click &quot;Train RL Now&quot; or enable Auto-Train.
                       </p>
                     </div>
                   )}
+                  
+                  {/* Auto-Train Toggle */}
+                  <button
+                    onClick={() => setAutoTrainRL(!autoTrainRL)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition ${
+                      autoTrainRL 
+                        ? 'bg-green-500/20 border border-green-500/40 text-green-400' 
+                        : 'bg-white/5 border border-white/10 text-white/60 hover:text-white'
+                    }`}
+                    data-testid="auto-train-toggle"
+                  >
+                    <div className={`w-3 h-3 rounded-full ${autoTrainRL ? 'bg-green-400' : 'bg-white/30'}`} />
+                    Auto-Train
+                  </button>
+                  
+                  {/* Manual Train Button */}
                   <button
                     onClick={trainRLNow}
                     disabled={trainingRL || history.length === 0}
@@ -1171,6 +1187,13 @@ const Backtest = () => {
                     )}
                   </button>
                 </div>
+                
+                {/* Auto-Train Info */}
+                {autoTrainRL && (
+                  <p className="mt-2 text-xs text-green-400/70">
+                    ✓ RL will automatically learn from each new backtest when it completes
+                  </p>
+                )}
               </div>
 
               {/* AI Signals Integration Stats - Enhanced with Tooltips */}
