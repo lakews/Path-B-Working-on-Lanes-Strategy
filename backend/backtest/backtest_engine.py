@@ -535,6 +535,10 @@ class BacktestEngine:
         cost = position["cost"]
         pnl = exit_value - cost
         
+        # Calculate return percentage for distribution tracking
+        return_pct = (pnl / cost) * 100 if cost > 0 else 0
+        self.trade_returns.append(return_pct)
+        
         self.current_capital += exit_value
         
         strategy = position["strategy"]
