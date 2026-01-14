@@ -1,12 +1,13 @@
-from fastapi import FastAPI, APIRouter, BackgroundTasks, Query
+from fastapi import FastAPI, APIRouter, BackgroundTasks, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
 import logging
+import asyncio
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Set
 from datetime import datetime, timezone, timedelta
 
 from database import connect_db, close_db, get_db
@@ -43,6 +44,115 @@ backtest_engine: Optional[BacktestEngine] = None
 historical_collector: Optional[HistoricalDataCollector] = None
 rl_engine: Optional[RLAdaptiveEngine] = None
 trading_mode: str = "stopped"  # "stopped", "live", "backtest"
+
+# =============================================
+# WEBSOCKET CONNECTION MANAGER
+# =============================================
+
+class WebSocketConnectionManager:
+    """Manages WebSocket connections for real-time updates"""
+    
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+        self._broadcast_task: Optional[asyncio.Task] = None
+        self._running = False
+    
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.add(websocket)
+        logger.info(f"WebSocket connected. Active connections: {len(self.active_connections)}")
+    
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.discard(websocket)
+        logger.info(f"WebSocket disconnected. Active connections: {len(self.active_connections)}")
+    
+    async def broadcast(self, message: dict):
+        """Send message to all connected clients"""
+        if not self.active_connections:
+            return
+        
+        disconnected = set()
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception as e:
+                logger.error(f"Error sending to WebSocket: {e}")
+                disconnected.add(connection)
+        
+        # Clean up disconnected clients
+        for conn in disconnected:
+            self.active_connections.discard(conn)
+    
+    async def start_broadcast_loop(self):
+        """Start periodic broadcasting of updates"""
+        self._running = True
+        while self._running:
+            try:
+                if self.active_connections:
+                    update = await self._gather_update_data()
+                    await self.broadcast(update)
+                await asyncio.sleep(2)  # Broadcast every 2 seconds
+            except Exception as e:
+                logger.error(f"Error in broadcast loop: {e}")
+                await asyncio.sleep(5)
+    
+    async def stop_broadcast_loop(self):
+        """Stop the broadcast loop"""
+        self._running = False
+    
+    async def _gather_update_data(self) -> dict:
+        """Gather data for real-time updates"""
+        global trading_mode, trading_bot, backtest_engine
+        
+        db = get_db()
+        
+        # Get recent trades
+        recent_trades = []
+        try:
+            cursor = db.trades.find({}, {"_id": 0}).sort("timestamp", -1).limit(5)
+            recent_trades = await cursor.to_list(length=5)
+        except Exception:
+            pass
+        
+        # Get P&L
+        total_pnl = 0.0
+        try:
+            pipeline = [{"$group": {"_id": None, "total_pnl": {"$sum": "$pnl"}}}]
+            result = await db.trades.aggregate(pipeline).to_list(length=1)
+            total_pnl = result[0]["total_pnl"] if result else 0.0
+        except Exception:
+            pass
+        
+        # Get open positions count
+        open_positions = 0
+        try:
+            open_positions = await db.positions.count_documents({"status": "open"})
+        except Exception:
+            pass
+        
+        # Backtest status
+        backtest_status = None
+        if backtest_engine and backtest_engine.running:
+            backtest_status = {
+                "running": True,
+                "backtest_id": backtest_engine.backtest_id,
+                "progress": len(backtest_engine.trades) if backtest_engine else 0,
+                "current_capital": backtest_engine.current_capital if backtest_engine else 0
+            }
+        
+        return {
+            "type": "update",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "trading_mode": trading_mode,
+            "bot_running": trading_bot.running if trading_bot else False,
+            "total_pnl": float(total_pnl),
+            "open_positions": open_positions,
+            "recent_trades": recent_trades,
+            "backtest_status": backtest_status
+        }
+
+# Global WebSocket manager
+ws_manager = WebSocketConnectionManager()
 
 # Models
 class SystemStatus(BaseModel):
