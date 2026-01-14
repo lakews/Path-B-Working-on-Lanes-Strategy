@@ -65,6 +65,14 @@ class TradingConfig(BaseModel):
     max_position_size_pct: Optional[float] = None
     kelly_fraction: Optional[float] = None
     max_drawdown_pct: Optional[float] = None
+    enabled_asset_classes: Optional[List[str]] = None
+    enabled_strategies: Optional[List[str]] = None
+
+# Store user config preferences
+user_config = {
+    "enabled_asset_classes": ["finance", "politics", "sports", "crypto", "entertainment", "science"],
+    "enabled_strategies": ["delta_neutral", "volatility_exploitation", "alpha_directional", "arbitrage"]
+}
 
 # Routes
 @api_router.get("/")
