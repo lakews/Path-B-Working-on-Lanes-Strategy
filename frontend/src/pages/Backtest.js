@@ -989,11 +989,13 @@ const Backtest = () => {
 
               {/* Equity Curve - Full Width */}
               <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="equity-curve">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-cyan-400" />
-                  Equity Curve
-                  <span className="text-xs text-white/40 ml-2">({results.equity_curve?.length || 0} data points)</span>
-                </h3>
+                <InfoTooltip text={METRIC_TOOLTIPS.equity_curve}>
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-cyan-400" />
+                    Equity Curve
+                    <span className="text-xs text-white/40 ml-2">({results.equity_curve?.length || 0} data points)</span>
+                  </h3>
+                </InfoTooltip>
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={results.equity_curve || []}>
                     <defs>
