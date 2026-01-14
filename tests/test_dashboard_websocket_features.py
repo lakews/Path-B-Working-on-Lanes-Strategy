@@ -14,12 +14,25 @@ class TestWebSocketEndpoint:
     """Test WebSocket endpoint accessibility"""
     
     def test_websocket_endpoint_exists(self):
-        """Test that /ws endpoint is accessible via HTTP upgrade"""
-        # WebSocket endpoints return 426 Upgrade Required when accessed via HTTP
-        response = requests.get(f"{BASE_URL}/ws")
-        # FastAPI WebSocket returns 403 or connection upgrade required
-        assert response.status_code in [403, 426, 400], f"WebSocket endpoint should reject HTTP: {response.status_code}"
-        print(f"✓ WebSocket endpoint /ws exists (HTTP returns {response.status_code})")
+        """Test that /ws endpoint is accessible - WebSocket connection test"""
+        # Test via websockets library
+        import asyncio
+        import websockets
+        
+        async def test_ws_connection():
+            ws_url = BASE_URL.replace('https', 'wss').replace('http', 'ws') + '/ws'
+            try:
+                async with websockets.connect(ws_url) as ws:
+                    # Wait for initial message
+                    msg = await asyncio.wait_for(ws.recv(), timeout=5)
+                    data = json.loads(msg)
+                    return True, data.get('type', 'unknown')
+            except Exception as e:
+                return False, str(e)
+        
+        success, result = asyncio.run(test_ws_connection())
+        assert success, f"WebSocket connection failed: {result}"
+        print(f"✓ WebSocket endpoint /ws connected successfully, received message type: {result}")
 
 
 class TestDashboardAPIs:
