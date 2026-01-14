@@ -7,6 +7,7 @@ import Markets from './pages/Markets';
 import Positions from './pages/Positions';
 import Analytics from './pages/Analytics';
 import Backtest from './pages/Backtest';
+import PaperTrading from './pages/PaperTrading';
 import Configuration from './pages/Configuration';
 import StrategyTuning from './pages/StrategyTuning';
 import { Toaster } from './components/ui/sonner';
