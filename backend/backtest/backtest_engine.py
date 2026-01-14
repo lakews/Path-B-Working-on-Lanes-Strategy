@@ -590,7 +590,6 @@ class BacktestEngine:
         """Calculate comprehensive backtest metrics"""
         try:
             # Count trades by side
-            buy_trades = [t for t in self.trades if t.get("side") == "BUY"]
             sell_trades = [t for t in self.trades if t.get("side") == "SELL"]
             
             total_trades = len(sell_trades)  # Complete round trips
