@@ -14,17 +14,23 @@ from strategies.volatility_exploitation import VolatilityExploitationStrategy
 from strategies.alpha_directional import AlphaDirectionalStrategy
 from strategies.arbitrage import MultiMarketArbitrageStrategy
 from config import config
+from ml.social_sentiment import SocialSentimentAnalyzer
+from ml.whale_tracker import WhaleTracker
 
 logger = logging.getLogger(__name__)
 
 class BacktestEngine:
-    """High-Frequency Backtesting Engine with Adaptive Position Management"""
+    """High-Frequency Backtesting Engine with Adaptive Position Management and AI Signal Integration"""
     
     def __init__(self):
         self.db = get_db()
         self.signal_fusion = SignalFusionEngine(backtest_mode=True)
         self.kelly_optimizer = KellySharpeOptimizer()
         self.rl_engine = RLAdaptiveEngine()
+        
+        # AI Signal Modules
+        self.sentiment_analyzer = SocialSentimentAnalyzer()
+        self.whale_tracker = WhaleTracker()
         
         # Strategies
         self.strategies = {
@@ -33,6 +39,10 @@ class BacktestEngine:
             "alpha_directional": AlphaDirectionalStrategy(),
             "arbitrage": MultiMarketArbitrageStrategy()
         }
+        
+        # AI signal cache for backtest (avoid repeated lookups)
+        self.sentiment_cache: Dict[str, Dict] = {}
+        self.whale_cache: Dict[str, Dict] = {}
         
         self.running = False
         self.backtest_id = None
