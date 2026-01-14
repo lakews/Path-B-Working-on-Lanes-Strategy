@@ -759,14 +759,35 @@ const Backtest = () => {
                         name: category.charAt(0).toUpperCase() + category.slice(1),
                         pnl: data.pnl || 0,
                         trades: data.trades || 0,
-                        winRate: (data.win_rate || 0) * 100
+                        winRate: (data.win_rate || 0) * 100,
+                        avgWin: data.avg_win || 0,
+                        avgLoss: data.avg_loss || 0,
+                        profitFactor: data.profit_factor || 0
                       }))} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                         <XAxis type="number" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
                         <YAxis dataKey="name" type="category" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} width={80} />
                         <Tooltip 
-                          contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px'}}
-                          formatter={(value, name) => [`$${value.toFixed(2)}`, 'P&L']}
+                          contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '12px'}}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-black/95 border border-white/20 rounded-lg p-3 text-sm">
+                                  <p className="text-white font-bold mb-2">{data.name}</p>
+                                  <div className="space-y-1">
+                                    <p className="text-white/80">P&L: <span className={data.pnl >= 0 ? 'text-green-400' : 'text-red-400'}>${data.pnl.toFixed(2)}</span></p>
+                                    <p className="text-white/80">Trades: <span className="text-cyan-400">{data.trades}</span></p>
+                                    <p className="text-white/80">Win Rate: <span className="text-purple-400">{data.winRate.toFixed(1)}%</span></p>
+                                    <p className="text-white/80">Avg Win: <span className="text-green-400">${data.avgWin.toFixed(3)}</span></p>
+                                    <p className="text-white/80">Avg Loss: <span className="text-red-400">${data.avgLoss.toFixed(3)}</span></p>
+                                    <p className="text-white/80">Profit Factor: <span className="text-yellow-400">{data.profitFactor.toFixed(2)}</span></p>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
                         />
                         <Bar dataKey="pnl" name="P&L">
                           {Object.entries(results.asset_class_results || {}).map(([category, data], index) => (
