@@ -653,6 +653,18 @@ class BacktestEngine:
                     "win_rate": float(perf["wins"] / trades) if trades > 0 else 0.0
                 }
             
+            # Calculate returns distribution for histogram
+            returns_distribution = self._calculate_returns_distribution()
+            
+            # Data quality metrics
+            total_price_points = self.real_price_data_used + self.simulated_price_data_used
+            data_quality = {
+                "real_price_data_points": self.real_price_data_used,
+                "simulated_price_data_points": self.simulated_price_data_used,
+                "real_data_percentage": round((self.real_price_data_used / total_price_points * 100) if total_price_points > 0 else 0, 2),
+                "data_source": "real" if self.real_price_data_used > self.simulated_price_data_used else "simulated"
+            }
+            
             return {
                 "backtest_id": self.backtest_id,
                 "status": "completed",
@@ -672,6 +684,8 @@ class BacktestEngine:
                 "exit_reasons": exit_reasons,
                 "strategy_results": strategy_results,
                 "asset_class_results": asset_class_results,
+                "returns_distribution": returns_distribution,
+                "data_quality": data_quality,
                 "data_summary": data_summary,
                 "rl_learning_stats": await self.rl_engine.get_training_stats(),
                 "completed_at": datetime.now(timezone.utc).isoformat()
