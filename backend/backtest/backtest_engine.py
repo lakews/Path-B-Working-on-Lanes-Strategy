@@ -608,22 +608,28 @@ class BacktestEngine:
         strategy = position.get("strategy", "unknown")
         pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
         
+        # Get tuned parameters for this strategy
+        params = self._get_strategy_params(strategy)
+        
         # Strategy-specific parameters
         if strategy == "delta_neutral":
-            # Delta-Neutral: Market Making Strategy
-            # Key insight: Focus on TIME-BASED exits rather than price-based stops
-            # Market making profits come from spread capture, not price movement
+            # Delta-Neutral: Market Making Strategy with tuned params
+            dn_profit_target = params.get('profit_target', 0.004)
+            dn_stop_loss = params.get('stop_loss', 0.015)
+            dn_bank_threshold = params.get('bank_profit_threshold', 0.001)
+            dn_timeout = params.get('timeout_snapshots', 12)
+            dn_spread_threshold = params.get('spread_threshold', 0.012)
             
-            # Immediate profit capture - any positive P&L is good
-            if pnl_pct >= 0.004:  # 0.4% profit target
+            # Immediate profit capture
+            if pnl_pct >= dn_profit_target:
                 return "profit_target"
             
             # Bank small profits quickly
-            if pnl_pct > 0.001 and snapshots_held >= 2:  # 0.1% after 2 snapshots
+            if pnl_pct > dn_bank_threshold and snapshots_held >= 2:
                 return "bank_profit"
             
-            # Spread capture - exit when spread narrows (profit taken)
-            if spread < 0.012 and pnl_pct > 0:
+            # Spread capture - exit when spread narrows
+            if spread < dn_spread_threshold and pnl_pct > 0:
                 return "spread_capture"
             
             # Time-based profit protection
@@ -631,12 +637,12 @@ class BacktestEngine:
                 if pnl_pct > 0:
                     return "bank_profit"
             
-            # Moderate stop loss - give some room
-            if pnl_pct <= -0.015:  # 1.5% stop loss
+            # Stop loss
+            if pnl_pct <= -dn_stop_loss:
                 return "stop_loss"
             
             # Strict timeout for losing positions
-            if snapshots_held > 12 and pnl_pct < 0:
+            if snapshots_held > dn_timeout and pnl_pct < 0:
                 return "timeout"
             
             # Maximum hold time
@@ -645,29 +651,35 @@ class BacktestEngine:
             
             return None
         
-        # Non-delta-neutral strategies use standard logic
+        # Use tuned parameters for other strategies
+        tuned_profit_target = params.get('profit_target', profit_target)
+        tuned_stop_loss = params.get('stop_loss', stop_loss)
         
         # 1. Take profit - adaptive based on actual price movement
-        if pnl_pct >= profit_target:
+        if pnl_pct >= tuned_profit_target:
             return "profit_target"
         
         # 2. Stop loss
-        if pnl_pct <= -stop_loss:
+        if pnl_pct <= -tuned_stop_loss:
             return "stop_loss"
         
         # 3. Trailing stop - only activate after minimum profit
-        if pnl_pct > self.trailing_stop_trigger:
-            trailing_stop_price = highest_price * (1 - self.trailing_stop_distance)
+        trailing_trigger = params.get('trailing_stop_trigger', self.trailing_stop_trigger)
+        trailing_distance = params.get('trailing_stop_distance', self.trailing_stop_distance)
+        
+        if pnl_pct > trailing_trigger:
+            trailing_stop_price = highest_price * (1 - trailing_distance)
             if current_price < trailing_stop_price:
                 return "trailing_stop"
         
         # 4. Quick profit banking for HFT - capture small gains
-        if pnl_pct > 0.005 and snapshots_held > 3:  # 0.5% profit after 3 snapshots
-            if random.random() < 0.4:  # 40% chance to bank small profit
+        if pnl_pct > 0.005 and snapshots_held > 3:
+            if random.random() < 0.4:
                 return "bank_profit"
         
         # 5. Time-based exit for stale positions
-        if snapshots_held > self.position_timeout_snapshots:
+        timeout = params.get('position_timeout', self.position_timeout_snapshots)
+        if snapshots_held > timeout:
             return "timeout"
         
         # 6. Exit if spread narrows (market making profit taken)
