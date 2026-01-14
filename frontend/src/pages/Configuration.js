@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Settings, Save, RefreshCw, DollarSign, Percent, Activity, Shield, Zap, AlertTriangle, Target, Clock, Info, Sliders } from 'lucide-react';
+import { Settings, Save, RefreshCw, DollarSign, Percent, Activity, Shield, Zap, AlertTriangle, Target, Clock, Info, Sliders, Layers, TrendingUp, Landmark, Trophy, Film, Bitcoin, Globe, Check, X } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Asset class definitions with metadata
+const ASSET_CLASSES = [
+  { id: 'finance', label: 'Finance', icon: TrendingUp, color: 'emerald', description: 'Interest rates, economic indicators, market indices' },
+  { id: 'politics', label: 'Politics', icon: Landmark, color: 'blue', description: 'Elections, policy decisions, government actions' },
+  { id: 'sports', label: 'Sports', icon: Trophy, color: 'orange', description: 'Game outcomes, championships, player performance' },
+  { id: 'crypto', label: 'Crypto', icon: Bitcoin, color: 'yellow', description: 'Bitcoin price, crypto events, blockchain milestones' },
+  { id: 'entertainment', label: 'Entertainment', icon: Film, color: 'purple', description: 'Awards, box office, celebrity events' },
+  { id: 'science', label: 'Science & Tech', icon: Globe, color: 'cyan', description: 'Scientific discoveries, tech launches, AI developments' },
+];
 
 const Configuration = () => {
   const [config, setConfig] = useState({
@@ -13,7 +23,8 @@ const Configuration = () => {
     capital_deployment_pct: 80,
     max_position_size_pct: 3,
     kelly_fraction: 0.25,
-    max_drawdown_pct: 3
+    max_drawdown_pct: 3,
+    enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science']
   });
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
