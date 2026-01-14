@@ -272,22 +272,132 @@ class RLAdaptiveEngine:
             logger.error(f"Error storing training progress: {e}")
     
     async def get_training_stats(self) -> Dict:
-        """Get current training statistics"""
+        """Get current training statistics with detailed performance metrics"""
         try:
             recent_rewards = self.episode_rewards[-100:] if self.episode_rewards else []
             
+            # Calculate additional metrics
+            positive_rewards = [r for r in recent_rewards if r > 0]
+            negative_rewards = [r for r in recent_rewards if r < 0]
+            
+            # Q-table analysis
+            q_values_flat = self.q_table.flatten()
+            nonzero_q = q_values_flat[q_values_flat != 0]
+            
+            # Action distribution from Q-table
+            best_actions = np.argmax(self.q_table, axis=1)
+            action_counts = {action: int(np.sum(best_actions == i)) for i, action in enumerate(self.actions)}
+            
             return {
                 "total_iterations": self.training_iterations,
-                "epsilon": self.epsilon,
-                "avg_reward_100": np.mean(recent_rewards) if recent_rewards else 0,
-                "max_reward_100": max(recent_rewards) if recent_rewards else 0,
-                "min_reward_100": min(recent_rewards) if recent_rewards else 0,
+                "epsilon": float(self.epsilon),
+                "avg_reward_100": float(np.mean(recent_rewards)) if recent_rewards else 0,
+                "max_reward_100": float(max(recent_rewards)) if recent_rewards else 0,
+                "min_reward_100": float(min(recent_rewards)) if recent_rewards else 0,
+                "std_reward_100": float(np.std(recent_rewards)) if len(recent_rewards) > 1 else 0,
+                "positive_rate": float(len(positive_rewards) / len(recent_rewards)) if recent_rewards else 0,
+                "avg_positive_reward": float(np.mean(positive_rewards)) if positive_rewards else 0,
+                "avg_negative_reward": float(np.mean(negative_rewards)) if negative_rewards else 0,
                 "buffer_size": len(self.replay_buffer),
-                "q_table_size": self.q_table.shape
+                "q_table_size": list(self.q_table.shape),
+                "q_table_nonzero_pct": float(len(nonzero_q) / len(q_values_flat) * 100) if len(q_values_flat) > 0 else 0,
+                "q_table_mean": float(np.mean(nonzero_q)) if len(nonzero_q) > 0 else 0,
+                "q_table_max": float(np.max(nonzero_q)) if len(nonzero_q) > 0 else 0,
+                "action_distribution": action_counts,
+                "learning_rate": float(self.learning_rate),
+                "discount_factor": float(self.discount_factor)
             }
         except Exception as e:
             logger.error(f"Error getting training stats: {e}")
             return {}
+    
+    async def learn_from_backtest_results(self, backtest_results: Dict):
+        """Learn from completed backtest results to improve future performance"""
+        try:
+            strategy_results = backtest_results.get('strategy_results', {})
+            
+            for strategy, data in strategy_results.items():
+                pnl = data.get('pnl', 0)
+                win_rate = data.get('win_rate', 0.5)
+                trades = data.get('trades', 0)
+                
+                if trades == 0:
+                    continue
+                
+                # Calculate reward signal for each strategy
+                # Positive reward for profitable strategies, scaled by performance
+                reward = pnl / 100  # Scale down to reasonable reward range
+                
+                # Bonus for high win rate
+                if win_rate > 0.6:
+                    reward *= 1.2
+                elif win_rate < 0.4:
+                    reward *= 0.8
+                
+                # Create synthetic experience for this strategy
+                state = np.array([
+                    0.5,  # Neutral price
+                    0.05 if 'volatility' in strategy else 0.02,  # Volatility estimate
+                    0.5,  # Neutral sentiment
+                    win_rate  # Use win rate as sharp alignment proxy
+                ])
+                
+                # Map strategy to action
+                action_map = {
+                    'delta_neutral': 0,  # WAIT-like (low risk)
+                    'volatility_exploitation': 2,  # BUY_MEDIUM
+                    'alpha_directional': 3,  # BUY_LARGE
+                    'arbitrage': 1  # BUY_SMALL
+                }
+                action_idx = action_map.get(strategy, 0)
+                
+                # Update Q-table
+                state_idx = self._discretize_state(state)
+                current_q = self.q_table[state_idx, action_idx]
+                new_q = current_q + self.learning_rate * (reward - current_q)
+                self.q_table[state_idx, action_idx] = new_q
+                
+                self.training_iterations += 1
+                self.episode_rewards.append(reward)
+                
+                logger.info(f"RL learned from {strategy}: reward={reward:.4f}, new_q={new_q:.4f}")
+            
+            # Save model after learning
+            await self.save_model()
+            
+        except Exception as e:
+            logger.error(f"Error learning from backtest results: {e}")
+    
+    async def get_strategy_confidence(self, strategy: str, market_data: Dict) -> float:
+        """Get RL model's confidence for a specific strategy in current market conditions"""
+        try:
+            state = self._build_state(market_data, {})
+            state_idx = self._discretize_state(state)
+            
+            # Map strategy to action
+            action_map = {
+                'delta_neutral': 0,
+                'volatility_exploitation': 2,
+                'alpha_directional': 3,
+                'arbitrage': 1
+            }
+            action_idx = action_map.get(strategy, 0)
+            
+            # Get Q-value for this strategy
+            q_value = self.q_table[state_idx, action_idx]
+            
+            # Normalize to confidence [0, 1]
+            all_q = self.q_table[state_idx]
+            if np.max(all_q) - np.min(all_q) > 0:
+                confidence = (q_value - np.min(all_q)) / (np.max(all_q) - np.min(all_q))
+            else:
+                confidence = 0.5
+            
+            return float(confidence)
+            
+        except Exception as e:
+            logger.error(f"Error getting strategy confidence: {e}")
+            return 0.5
     
     async def save_model(self, filepath: str = "/app/backend/ml/rl_model.npz"):
         """Save Q-table and parameters"""
