@@ -809,6 +809,30 @@ const Backtest = () => {
                               </tr>
                             );
                           })}
+                          {/* TOTALS ROW */}
+                          {(() => {
+                            const strategyEntries = Object.entries(results.strategy_results || {});
+                            if (strategyEntries.length === 0) return null;
+                            const totalPnl = strategyEntries.reduce((sum, [, d]) => sum + (d.pnl || 0), 0);
+                            const totalTrades = strategyEntries.reduce((sum, [, d]) => sum + (d.trades || 0), 0);
+                            const avgWinRate = strategyEntries.reduce((sum, [, d]) => sum + (d.win_rate || 0), 0) / strategyEntries.length;
+                            const avgPF = strategyEntries.reduce((sum, [, d]) => sum + (d.profit_factor || 0), 0) / strategyEntries.length;
+                            return (
+                              <tr className="border-t-2 border-white/20 bg-white/5 font-semibold">
+                                <td className="py-2 px-2 text-sm text-white">TOTAL</td>
+                                <td className={`text-right py-2 px-2 text-sm ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
+                                </td>
+                                <td className="text-right text-sm text-white py-2 px-2">{totalTrades}</td>
+                                <td className={`text-right text-sm py-2 px-2 ${avgWinRate >= 0.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                  {(avgWinRate * 100).toFixed(1)}%
+                                </td>
+                                <td className={`text-right text-sm py-2 px-2 ${avgPF >= 1.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                  {avgPF.toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          })()}
                         </tbody>
                       </table>
                     </div>
@@ -858,6 +882,30 @@ const Backtest = () => {
                                 </tr>
                               );
                             })}
+                          {/* TOTALS ROW */}
+                          {(() => {
+                            const assetEntries = Object.entries(results.asset_class_results || {});
+                            if (assetEntries.length === 0) return null;
+                            const totalPnl = assetEntries.reduce((sum, [, d]) => sum + (d.pnl || 0), 0);
+                            const totalTrades = assetEntries.reduce((sum, [, d]) => sum + (d.trades || 0), 0);
+                            const avgWinRate = assetEntries.reduce((sum, [, d]) => sum + (d.win_rate || 0), 0) / assetEntries.length;
+                            const avgPF = assetEntries.reduce((sum, [, d]) => sum + (d.profit_factor || 0), 0) / assetEntries.length;
+                            return (
+                              <tr className="border-t-2 border-white/20 bg-white/5 font-semibold">
+                                <td className="py-2 px-2 text-sm text-white">TOTAL</td>
+                                <td className={`text-right py-2 px-2 text-sm ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
+                                </td>
+                                <td className="text-right text-sm text-white py-2 px-2">{totalTrades}</td>
+                                <td className={`text-right text-sm py-2 px-2 ${avgWinRate >= 0.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                  {(avgWinRate * 100).toFixed(1)}%
+                                </td>
+                                <td className={`text-right text-sm py-2 px-2 ${avgPF >= 1.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                  {avgPF.toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          })()}
                         </tbody>
                       </table>
                     </div>
