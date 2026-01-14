@@ -602,116 +602,220 @@ const Backtest = () => {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Strategy Breakdown */}
+                {/* Strategy Performance Chart */}
                 <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Performance by Strategy</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">Strategy P&L Comparison</h3>
                   {results.strategy_results && Object.keys(results.strategy_results).length > 0 ? (
-                    <div className="space-y-3">
-                      {Object.entries(results.strategy_results || {}).map(([strategy, data]) => {
-                        const info = STRATEGY_INFO[strategy] || { name: strategy, color: '#666' };
-                        return (
-                          <div key={strategy} className="p-3 rounded-lg bg-white/5">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: info.color }} />
-                                <span className="text-sm text-white">{info.name}</span>
-                              </div>
-                              <span className={`text-sm font-bold ${data.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {data.pnl >= 0 ? '+' : ''}${data.pnl?.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs text-white/60">
-                              <span>{data.trades} trades</span>
-                              <span>{((data.win_rate || 0) * 100).toFixed(1)}% win rate</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={Object.entries(results.strategy_results || {}).map(([strategy, data]) => ({
+                        name: STRATEGY_INFO[strategy]?.name || strategy,
+                        pnl: data.pnl || 0,
+                        trades: data.trades || 0,
+                        winRate: (data.win_rate || 0) * 100
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                        <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 9 }} />
+                        <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} label={{ value: 'P&L ($)', angle: -90, position: 'insideLeft', fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} />
+                        <Tooltip 
+                          contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px'}}
+                          formatter={(value, name) => {
+                            if (name === 'pnl') return [`$${value.toFixed(2)}`, 'P&L'];
+                            if (name === 'winRate') return [`${value.toFixed(1)}%`, 'Win Rate'];
+                            return [value, name];
+                          }}
+                        />
+                        <Bar dataKey="pnl" name="P&L">
+                          {Object.entries(results.strategy_results || {}).map(([strategy, data], index) => (
+                            <Cell key={`cell-${index}`} fill={data.pnl >= 0 ? '#10b981' : '#ef4444'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
                   ) : (
                     <div className="h-64 flex items-center justify-center text-white/40">
-                      No strategy breakdown available
+                      No strategy data available
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Asset Class Performance & RL Learning Row */}
+              {/* Detailed Strategy Breakdown Table */}
+              <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="strategy-breakdown">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-cyan-400" />
+                  Strategy Performance Breakdown
+                </h3>
+                {results.strategy_results && Object.keys(results.strategy_results).length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/10">
+                          <th className="text-left text-xs text-white/50 font-medium py-3 px-2">Strategy</th>
+                          <th className="text-right text-xs text-white/50 font-medium py-3 px-2">P&L</th>
+                          <th className="text-right text-xs text-white/50 font-medium py-3 px-2">Trades</th>
+                          <th className="text-right text-xs text-white/50 font-medium py-3 px-2">Win Rate</th>
+                          <th className="text-right text-xs text-white/50 font-medium py-3 px-2">Avg Win</th>
+                          <th className="text-right text-xs text-white/50 font-medium py-3 px-2">Avg Loss</th>
+                          <th className="text-right text-xs text-white/50 font-medium py-3 px-2">Profit Factor</th>
+                          <th className="text-center text-xs text-white/50 font-medium py-3 px-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(results.strategy_results || {}).map(([strategy, data]) => {
+                          const info = STRATEGY_INFO[strategy] || { name: strategy, color: '#666' };
+                          const profitFactor = data.avg_loss !== 0 ? Math.abs((data.avg_win || 0) / (data.avg_loss || 1)) : 0;
+                          const isPositive = data.pnl >= 0;
+                          return (
+                            <tr key={strategy} className="border-b border-white/5 hover:bg-white/5">
+                              <td className="py-3 px-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: info.color }} />
+                                  <span className="text-sm text-white font-medium">{info.name}</span>
+                                </div>
+                              </td>
+                              <td className={`text-right py-3 px-2 font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                {isPositive ? '+' : ''}${data.pnl?.toFixed(2)}
+                              </td>
+                              <td className="text-right text-sm text-white/80 py-3 px-2">{data.trades}</td>
+                              <td className="text-right py-3 px-2">
+                                <span className={`text-sm font-medium ${(data.win_rate || 0) >= 0.6 ? 'text-green-400' : (data.win_rate || 0) >= 0.5 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                  {((data.win_rate || 0) * 100).toFixed(1)}%
+                                </span>
+                              </td>
+                              <td className="text-right text-sm text-green-400 py-3 px-2">
+                                +${(data.avg_win || 0).toFixed(3)}
+                              </td>
+                              <td className="text-right text-sm text-red-400 py-3 px-2">
+                                -${Math.abs(data.avg_loss || 0).toFixed(3)}
+                              </td>
+                              <td className="text-right py-3 px-2">
+                                <span className={`text-sm font-medium ${profitFactor >= 1.5 ? 'text-green-400' : profitFactor >= 1 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                  {profitFactor.toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="text-center py-3 px-2">
+                                {isPositive ? (
+                                  <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400">Profitable</span>
+                                ) : (
+                                  <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400">Loss</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="h-32 flex items-center justify-center text-white/40">
+                    No strategy breakdown available
+                  </div>
+                )}
+              </div>
+
+              {/* Asset Class Performance Section */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Asset Class Breakdown */}
+                {/* Asset Class Chart */}
                 <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Performance by Asset Class</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">Asset Class P&L Comparison</h3>
                   {results.asset_class_results && Object.keys(results.asset_class_results).length > 0 ? (
-                    <div className="space-y-3">
-                      {Object.entries(results.asset_class_results || {}).map(([category, data], idx) => {
-                        const colors = ['#06b6d4', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444'];
-                        return (
-                          <div key={category} className="p-3 rounded-lg bg-white/5">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[idx % colors.length] }} />
-                                <span className="text-sm text-white capitalize">{category}</span>
-                              </div>
-                              <span className={`text-sm font-bold ${data.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {data.pnl >= 0 ? '+' : ''}${data.pnl?.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs text-white/60">
-                              <span>{data.trades} trades</span>
-                              <span>{((data.win_rate || 0) * 100).toFixed(1)}% win rate</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={Object.entries(results.asset_class_results || {}).map(([category, data]) => ({
+                        name: category.charAt(0).toUpperCase() + category.slice(1),
+                        pnl: data.pnl || 0,
+                        trades: data.trades || 0,
+                        winRate: (data.win_rate || 0) * 100
+                      }))} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                        <XAxis type="number" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
+                        <YAxis dataKey="name" type="category" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} width={80} />
+                        <Tooltip 
+                          contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px'}}
+                          formatter={(value, name) => [`$${value.toFixed(2)}`, 'P&L']}
+                        />
+                        <Bar dataKey="pnl" name="P&L">
+                          {Object.entries(results.asset_class_results || {}).map(([category, data], index) => (
+                            <Cell key={`cell-${index}`} fill={data.pnl >= 0 ? '#10b981' : '#ef4444'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
                   ) : (
-                    <div className="h-48 flex items-center justify-center text-white/40">
-                      No asset class breakdown available
+                    <div className="h-64 flex items-center justify-center text-white/40">
+                      No asset class data available
                     </div>
                   )}
                 </div>
 
-                {/* RL Learning Stats */}
-                <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/20 p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-purple-400" />
-                    AI Model Learning
-                  </h3>
-                  {results.rl_learning_stats ? (
-                    <div className="space-y-4">
-                      <p className="text-sm text-white/70">
-                        The RL model has learned from this backtest and improved its decision-making.
-                      </p>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-3 rounded-lg bg-white/5">
-                          <p className="text-xs text-white/50 mb-1">Training Iterations</p>
-                          <p className="text-xl font-bold text-purple-400">{results.rl_learning_stats.total_iterations || 0}</p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-white/5">
-                          <p className="text-xs text-white/50 mb-1">Exploration Rate</p>
-                          <p className="text-xl font-bold text-purple-400">{((results.rl_learning_stats.epsilon || 0) * 100).toFixed(1)}%</p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-white/5">
-                          <p className="text-xs text-white/50 mb-1">Avg Reward (Last 100)</p>
-                          <p className={`text-xl font-bold ${(results.rl_learning_stats.avg_reward_100 || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {(results.rl_learning_stats.avg_reward_100 || 0).toFixed(4)}
-                          </p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-white/5">
-                          <p className="text-xs text-white/50 mb-1">Experience Buffer</p>
-                          <p className="text-xl font-bold text-cyan-400">{results.rl_learning_stats.buffer_size || 0}</p>
-                        </div>
-                      </div>
-                      <p className="text-xs text-purple-400/80 mt-2">
-                        Run more backtests to continue training the model. Lower epsilon means more exploitation of learned patterns.
-                      </p>
+                {/* Asset Class Detailed Cards */}
+                <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Asset Class Details</h3>
+                  {results.asset_class_results && Object.keys(results.asset_class_results).length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3 max-h-[280px] overflow-y-auto">
+                      {Object.entries(results.asset_class_results || {})
+                        .sort((a, b) => b[1].pnl - a[1].pnl)
+                        .map(([category, data], idx) => {
+                          const colors = ['#06b6d4', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#3b82f6'];
+                          const isPositive = data.pnl >= 0;
+                          return (
+                            <div key={category} className={`p-3 rounded-lg border ${isPositive ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[idx % colors.length] }} />
+                                <span className="text-sm text-white font-medium capitalize">{category}</span>
+                              </div>
+                              <div className={`text-xl font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                {isPositive ? '+' : ''}${data.pnl?.toFixed(2)}
+                              </div>
+                              <div className="flex items-center justify-between text-xs text-white/50 mt-1">
+                                <span>{data.trades} trades</span>
+                                <span className={`${(data.win_rate || 0) >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {((data.win_rate || 0) * 100).toFixed(1)}% WR
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
                   ) : (
-                    <div className="h-48 flex items-center justify-center text-white/40">
-                      RL learning stats will appear after backtest
+                    <div className="h-64 flex items-center justify-center text-white/40">
+                      No asset class breakdown available
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* RL Learning Stats */}
+              <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/20 p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  AI Model Learning
+                </h3>
+                {results.rl_learning_stats ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Training Iterations</p>
+                      <p className="text-xl font-bold text-purple-400">{results.rl_learning_stats.total_iterations || 0}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Exploration Rate</p>
+                      <p className="text-xl font-bold text-purple-400">{((results.rl_learning_stats.epsilon || 0) * 100).toFixed(1)}%</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Avg Reward (Last 100)</p>
+                      <p className={`text-xl font-bold ${(results.rl_learning_stats.avg_reward_100 || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {(results.rl_learning_stats.avg_reward_100 || 0).toFixed(4)}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/50 mb-1">Experience Buffer</p>
+                      <p className="text-xl font-bold text-cyan-400">{results.rl_learning_stats.buffer_size || 0}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-24 flex items-center justify-center text-white/40">
+                    RL learning stats will appear after backtest
+                  </div>
+                )}
               </div>
 
               {/* Returns Distribution Chart */}
