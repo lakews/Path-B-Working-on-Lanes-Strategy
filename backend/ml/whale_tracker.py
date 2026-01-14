@@ -6,8 +6,6 @@ import logging
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
-from database import get_db
-from config import config
 import uuid
 import aiohttp
 
@@ -21,7 +19,7 @@ class WhaleTracker:
     """
     
     def __init__(self):
-        self.db = get_db()
+        self._db = None
         self.whale_threshold_volume = 10000  # $10k+ is considered whale activity
         self.sharp_win_rate_threshold = 0.65  # 65%+ win rate = sharp
         self.tracking_window = timedelta(days=7)
@@ -29,6 +27,13 @@ class WhaleTracker:
         # Simulated whale profiles (in production, track real addresses)
         self.known_whales = {}
         self.whale_positions = {}
+    
+    @property
+    def db(self):
+        if self._db is None:
+            from database import get_db
+            self._db = get_db()
+        return self._db
     
     async def detect_whale_activity(self, market_data: Dict) -> Dict:
         """
