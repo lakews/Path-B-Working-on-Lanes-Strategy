@@ -69,7 +69,7 @@ const METRIC_TOOLTIPS = {
   win_rate: "Percentage of trades that were profitable.",
   equity_curve: "Shows portfolio value over time as trades execute. Upward slope = profitable, volatility = risk.",
   returns_distribution: "Histogram of individual trade returns. Bell curve centered right of 0 = consistent profits. Skew indicates asymmetry.",
-  data_source: "Auto: Uses real prices when available, falls back to snapshots/simulated. Real: Only actual tick data. Hybrid: Mix of real + fills."
+  data_source: "Auto: Uses best available data. Live: Real-time Polymarket API prices. Real: Historical tick data. Snapshots: Periodic captures. Hybrid: Combines sources."
 };
 
 // Tooltip Component
