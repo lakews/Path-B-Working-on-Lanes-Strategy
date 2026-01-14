@@ -1123,15 +1123,35 @@ const Backtest = () => {
                   </div>
                 )}
                 
-                {/* Training Instructions */}
-                {(!liveRLStats || liveRLStats.total_iterations === 0) && (
-                  <div className="mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                    <p className="text-sm text-yellow-400 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4" />
-                      RL Model not yet trained. Run backtests to generate training data, then the model learns automatically.
-                    </p>
-                  </div>
-                )}
+                {/* Training Instructions & Train Button */}
+                <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  {(!liveRLStats || liveRLStats.total_iterations === 0) && (
+                    <div className="flex-1 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                      <p className="text-sm text-yellow-400 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />
+                        RL Model not yet trained. Click &quot;Train RL Now&quot; or run backtests.
+                      </p>
+                    </div>
+                  )}
+                  <button
+                    onClick={trainRLNow}
+                    disabled={trainingRL || history.length === 0}
+                    className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-bold hover:from-purple-600 hover:to-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+                    data-testid="train-rl-btn"
+                  >
+                    {trainingRL ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Training ({history.length})...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="w-4 h-4" />
+                        Train RL Now ({history.length} backtests)
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* AI Signals Integration Stats - Enhanced with Tooltips */}
