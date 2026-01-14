@@ -240,134 +240,210 @@ const Dashboard = () => {
   return (
     <div className="space-y-6" data-testid="dashboard-page">
       
-      {/* Header with Mode Control & Connection Status */}
-      <div className="rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-xl border border-white/10 p-4" data-testid="mode-control-banner">
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-          
-          {/* Left: Mode Buttons */}
-          <div className="flex items-center gap-3">
-            <span className="text-white/60 text-sm font-medium mr-2">MODE:</span>
-            {[
-              { mode: 'live', icon: Zap, label: 'LIVE', color: 'green' },
-              { mode: 'backtest', icon: BarChart3, label: 'BACKTEST', color: 'orange' },
-              { mode: 'stopped', icon: null, label: 'STOP', color: 'red' }
-            ].map(({ mode, icon: Icon, label, color }) => (
-              <button
-                key={mode}
-                onClick={() => setMode(mode)}
-                data-testid={`dashboard-${mode}-btn`}
-                className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${
-                  tradingMode === mode
-                    ? `bg-gradient-to-r from-${color}-500 to-${color === 'green' ? 'emerald' : color === 'orange' ? 'amber' : 'rose'}-600 text-white shadow-lg shadow-${color}-500/30 scale-105`
-                    : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {Icon ? <Icon className="w-4 h-4" /> : <div className="w-3 h-3 rounded-sm bg-current" />}
-                  {label}
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Center: Status Display */}
-          <div className={`flex items-center gap-3 px-5 py-2.5 rounded-xl ${
-            tradingMode === 'live' ? 'bg-green-500/20 border border-green-500/40' :
-            tradingMode === 'backtest' ? 'bg-orange-500/20 border border-orange-500/40' :
-            'bg-gray-500/20 border border-gray-500/40'
-          }`} data-testid="current-mode-display">
-            <div className={`w-2.5 h-2.5 rounded-full ${
-              tradingMode === 'live' ? 'bg-green-400 animate-pulse' :
-              tradingMode === 'backtest' ? 'bg-orange-400 animate-pulse' :
-              'bg-gray-400'
-            }`} />
-            <span className={`font-bold ${
-              tradingMode === 'live' ? 'text-green-400' :
-              tradingMode === 'backtest' ? 'text-orange-400' :
-              'text-gray-400'
-            }`}>
-              {tradingMode === 'live' ? 'LIVE ACTIVE' :
-               tradingMode === 'backtest' ? 'BACKTESTING' : 'STOPPED'}
-            </span>
-          </div>
-
-          {/* Right: Connection & Bot Control */}
-          <div className="flex items-center gap-3">
-            {/* WebSocket Status */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${wsConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-              {wsConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-              <span className="text-xs font-medium">{wsConnected ? 'Live' : 'Offline'}</span>
+      {/* Hero Section - Redesigned Top */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-white/10" data-testid="dashboard-hero">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
+        </div>
+        
+        <div className="relative p-6">
+          {/* Top Row: Mode Control & Status */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+            {/* Left: Title & Mode */}
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
+                <Cpu className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">APEX TRADER</h1>
+                <p className="text-sm text-white/50">AI-Powered Prediction Market Engine</p>
+              </div>
             </div>
             
-            {tradingMode === 'live' && (
-              <button
-                onClick={botRunning ? stopBot : startBot}
-                data-testid="bot-control-btn"
-                className={`px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${
-                  botRunning 
-                    ? 'bg-red-500 hover:bg-red-600 text-white' 
-                    : 'bg-green-500 hover:bg-green-600 text-white'
-                }`}
-              >
-                {botRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                {botRunning ? 'PAUSE' : 'START'}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Stats Grid - Improved Layout */}
-      <div className="grid grid-cols-12 gap-4">
-        
-        {/* P&L Hero - Left Side */}
-        <div className={`col-span-12 lg:col-span-4 rounded-xl p-6 ${
-          isProfitable 
-            ? 'bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30' 
-            : 'bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30'
-        }`} data-testid="pnl-hero-card">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <p className="text-white/60 text-xs font-medium mb-1 uppercase tracking-wider">Total P&L</p>
-              <h2 className={`text-4xl font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`} data-testid="total-pnl-value">
-                {isProfitable ? '+' : ''}{pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-              </h2>
+            {/* Right: Mode Buttons & Status */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Mode Switcher - Pill Style */}
+              <div className="flex items-center bg-slate-800/80 rounded-xl p-1 border border-white/10">
+                {[
+                  { mode: 'live', icon: Zap, label: 'LIVE', activeColor: 'bg-gradient-to-r from-green-500 to-emerald-500' },
+                  { mode: 'backtest', icon: BarChart3, label: 'BACKTEST', activeColor: 'bg-gradient-to-r from-orange-500 to-amber-500' },
+                  { mode: 'stopped', icon: Pause, label: 'STOP', activeColor: 'bg-gradient-to-r from-red-500 to-rose-500' }
+                ].map(({ mode, icon: Icon, label, activeColor }) => (
+                  <button
+                    key={mode}
+                    onClick={() => setMode(mode)}
+                    data-testid={`dashboard-${mode}-btn`}
+                    className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                      tradingMode === mode
+                        ? `${activeColor} text-white shadow-lg`
+                        : 'text-white/60 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Status Badge */}
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm ${
+                tradingMode === 'live' ? 'bg-green-500/20 border border-green-500/40 text-green-400' :
+                tradingMode === 'backtest' ? 'bg-orange-500/20 border border-orange-500/40 text-orange-400' :
+                'bg-slate-700/50 border border-white/10 text-white/50'
+              }`} data-testid="current-mode-display">
+                <div className={`w-2 h-2 rounded-full ${
+                  tradingMode === 'live' ? 'bg-green-400 animate-pulse' :
+                  tradingMode === 'backtest' ? 'bg-orange-400 animate-pulse' :
+                  'bg-white/30'
+                }`} />
+                {tradingMode === 'live' ? 'LIVE TRADING' :
+                 tradingMode === 'backtest' ? 'BACKTESTING' : 'ENGINE STOPPED'}
+              </div>
+              
+              {/* WebSocket Status */}
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${wsConnected ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                {wsConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+                <span className="text-xs font-medium">{wsConnected ? 'Connected' : 'Offline'}</span>
+              </div>
+              
+              {/* Bot Control */}
+              {tradingMode === 'live' && (
+                <button
+                  onClick={botRunning ? stopBot : startBot}
+                  data-testid="bot-control-btn"
+                  className={`px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-lg ${
+                    botRunning 
+                      ? 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white shadow-red-500/30' 
+                      : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-500/30'
+                  }`}
+                >
+                  {botRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  {botRunning ? 'STOP BOT' : 'START BOT'}
+                </button>
+              )}
             </div>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isProfitable ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
-              {isProfitable ? <TrendingUp className="w-7 h-7 text-green-400" /> : <TrendingDown className="w-7 h-7 text-red-400" />}
+          </div>
+          
+          {/* Main Stats Row */}
+          <div className="grid grid-cols-12 gap-4">
+            {/* P&L Hero Card */}
+            <div className={`col-span-12 lg:col-span-5 rounded-xl p-5 ${
+              isProfitable 
+                ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/30' 
+                : 'bg-gradient-to-br from-red-500/20 to-rose-500/10 border border-red-500/30'
+            }`} data-testid="pnl-hero-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white/50 text-xs font-medium mb-1 uppercase tracking-wider">Total P&L</p>
+                  <div className="flex items-baseline gap-3">
+                    <h2 className={`text-4xl font-bold tracking-tight ${isProfitable ? 'text-green-400' : 'text-red-400'}`} data-testid="total-pnl-value">
+                      {isProfitable ? '+' : ''}{pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    </h2>
+                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-semibold ${
+                      isProfitable ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {isProfitable ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                      {isProfitable ? '+' : ''}{pnlPct.toFixed(2)}%
+                    </div>
+                  </div>
+                </div>
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isProfitable ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                  {isProfitable ? <TrendingUp className="w-8 h-8 text-green-400" /> : <TrendingDown className="w-8 h-8 text-red-400" />}
+                </div>
+              </div>
+              
+              {/* Mini Stats Row */}
+              <div className="flex items-center gap-6 mt-4 pt-4 border-t border-white/10">
+                <div>
+                  <p className="text-white/40 text-xs">Trades</p>
+                  <p className="text-white font-semibold">{performance?.num_trades || 0}</p>
+                </div>
+                <div>
+                  <p className="text-white/40 text-xs">Win Rate</p>
+                  <p className="text-cyan-400 font-semibold">{((performance?.win_rate || 0) * 100).toFixed(1)}%</p>
+                </div>
+                <div>
+                  <p className="text-white/40 text-xs">Sharpe</p>
+                  <p className="text-purple-400 font-semibold">{performance?.sharpe_ratio?.toFixed(2) || '0.00'}</p>
+                </div>
+                <div>
+                  <p className="text-white/40 text-xs">Max DD</p>
+                  <p className="text-orange-400 font-semibold">{((performance?.max_drawdown || 0) * 100).toFixed(1)}%</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Key Metrics Cards */}
+            <div className="col-span-12 lg:col-span-3 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                    <Target className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <span className="text-white/50 text-xs">Win Rate</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{((performance?.win_rate || 0) * 100).toFixed(1)}%</p>
+              </div>
+              <div className="rounded-xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-purple-400" />
+                  </div>
+                  <span className="text-white/50 text-xs">Sharpe</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{performance?.sharpe_ratio?.toFixed(2) || '0.00'}</p>
+              </div>
+              <div className="rounded-xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-orange-400" />
+                  </div>
+                  <span className="text-white/50 text-xs">Max DD</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{((performance?.max_drawdown || 0) * 100).toFixed(1)}%</p>
+              </div>
+              <div className="rounded-xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                    <Activity className="w-4 h-4 text-green-400" />
+                  </div>
+                  <span className="text-white/50 text-xs">Trades</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{performance?.num_trades || 0}</p>
+              </div>
+            </div>
+            
+            {/* Real-time Chart */}
+            <div className="col-span-12 lg:col-span-4 rounded-xl bg-white/5 border border-white/10 p-4" data-testid="realtime-pnl-chart">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <h3 className="text-sm font-semibold text-white">Real-time P&L</h3>
+                </div>
+                <span className="text-xs text-white/40">Last 30 updates</span>
+              </div>
+              <ResponsiveContainer width="100%" height={120}>
+                <AreaChart data={pnlHistory}>
+                  <defs>
+                    <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={isProfitable ? '#4ade80' : '#f87171'} stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor={isProfitable ? '#4ade80' : '#f87171'} stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="time" stroke="rgba(255,255,255,0.2)" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                  <YAxis stroke="rgba(255,255,255,0.2)" tick={{ fontSize: 9 }} width={45} axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    contentStyle={{backgroundColor: 'rgba(15,23,42,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px'}}
+                    formatter={(value) => [`$${value.toFixed(2)}`, 'P&L']}
+                  />
+                  <Area type="monotone" dataKey="pnl" stroke={isProfitable ? '#4ade80' : '#f87171'} strokeWidth={2} fill="url(#pnlGradient)" />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-1 ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
-              {isProfitable ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-              <span className="font-semibold">{isProfitable ? '+' : ''}{pnlPct.toFixed(2)}%</span>
-            </div>
-            <span className="text-white/40 text-sm">return</span>
-          </div>
-        </div>
-
-        {/* Key Metrics - Center */}
-        <div className="col-span-12 lg:col-span-4 grid grid-cols-2 gap-3">
-          <MetricCard icon={Target} label="Win Rate" value={`${((performance?.win_rate || 0) * 100).toFixed(1)}%`} color="cyan" />
-          <MetricCard icon={TrendingUp} label="Sharpe" value={performance?.sharpe_ratio?.toFixed(2) || '0.00'} color="purple" />
-          <MetricCard icon={Shield} label="Max DD" value={`${((performance?.max_drawdown || 0) * 100).toFixed(1)}%`} color="orange" />
-          <MetricCard icon={Activity} label="Trades" value={performance?.num_trades || 0} color="green" />
-        </div>
-
-        {/* Real-time Chart - Right Side */}
-        <div className="col-span-12 lg:col-span-4 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4" data-testid="realtime-pnl-chart">
-          <h3 className="text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">Real-time P&L</h3>
-          <ResponsiveContainer width="100%" height={130}>
-            <LineChart data={pnlHistory}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="time" stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 9 }} />
-              <YAxis stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 9 }} width={40} />
-              <Tooltip 
-                contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px'}}
-              />
-              <Line type="monotone" dataKey="pnl" stroke={isProfitable ? '#4ade80' : '#f87171'} strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
         </div>
       </div>
 
