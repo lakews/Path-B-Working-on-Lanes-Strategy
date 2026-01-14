@@ -1101,13 +1101,31 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Could not load saved config: {e}")
     
+    # Start continuous price history collection in background
+    try:
+        global historical_collector
+        if not historical_collector:
+            historical_collector = HistoricalDataCollector()
+        
+        # Start background task for continuous price collection (every 30 minutes)
+        import asyncio
+        asyncio.create_task(historical_collector.start_price_history_collection(
+            interval_minutes=30,
+            market_limit=100
+        ))
+        logger.info("Started continuous price history collection (30 min interval, 100 markets)")
+    except Exception as e:
+        logger.warning(f"Could not start continuous price collection: {e}")
+    
     logger.info("APEX TRADER API Started")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    global trading_bot
+    global trading_bot, historical_collector
     if trading_bot and trading_bot.running:
         await trading_bot.stop()
+    if historical_collector and historical_collector.price_history_running:
+        await historical_collector.stop_price_history_collection()
     await close_db()
     logger.info("APEX TRADER API Shutdown")
