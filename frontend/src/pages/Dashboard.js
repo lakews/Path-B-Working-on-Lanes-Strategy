@@ -615,6 +615,262 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Live Trading Performance Tables */}
+      {trades.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Strategy Performance Table */}
+          <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="live-strategy-performance">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="w-5 h-5 text-cyan-400" />
+              <h3 className="text-lg font-semibold text-white">Strategy Performance</h3>
+            </div>
+            {(() => {
+              // Calculate strategy performance from trades
+              const strategyStats = trades.reduce((acc, t) => {
+                const strategy = t.strategy || 'Unknown';
+                if (!acc[strategy]) {
+                  acc[strategy] = { pnl: 0, trades: 0, wins: 0 };
+                }
+                acc[strategy].pnl += t.pnl || 0;
+                acc[strategy].trades += 1;
+                if ((t.pnl || 0) > 0) acc[strategy].wins += 1;
+                return acc;
+              }, {});
+              
+              const strategyEntries = Object.entries(strategyStats);
+              const totalPnl = strategyEntries.reduce((sum, [, d]) => sum + d.pnl, 0);
+              const initialCapital = 1000; // Default
+              
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="text-left text-xs text-white/50 font-medium py-2 px-2">Strategy</th>
+                        <th className="text-right text-xs text-white/50 font-medium py-2 px-2">P&L</th>
+                        <th className="text-right text-xs text-white/50 font-medium py-2 px-2">% Return</th>
+                        <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Contrib %</th>
+                        <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Trades</th>
+                        <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Win Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {strategyEntries.map(([strategy, data]) => {
+                        const isPositive = data.pnl >= 0;
+                        const returnPct = (data.pnl / initialCapital) * 100;
+                        const contribPct = totalPnl !== 0 ? (data.pnl / totalPnl) * 100 : 0;
+                        const winRate = data.trades > 0 ? (data.wins / data.trades) * 100 : 0;
+                        return (
+                          <tr key={strategy} className="border-b border-white/5 hover:bg-white/5">
+                            <td className="py-2 px-2">
+                              <span className="text-sm text-white">{strategy.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                            </td>
+                            <td className={`text-right py-2 px-2 font-bold text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                              {isPositive ? '+' : ''}${data.pnl.toFixed(2)}
+                            </td>
+                            <td className={`text-right py-2 px-2 text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                              {isPositive ? '+' : ''}{returnPct.toFixed(2)}%
+                            </td>
+                            <td className={`text-right py-2 px-2 text-sm ${contribPct >= 0 ? 'text-cyan-400' : 'text-orange-400'}`}>
+                              {contribPct.toFixed(1)}%
+                            </td>
+                            <td className="text-right text-sm text-white/70 py-2 px-2">{data.trades}</td>
+                            <td className={`text-right text-sm py-2 px-2 ${winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                              {winRate.toFixed(1)}%
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {/* TOTALS ROW */}
+                      {strategyEntries.length > 0 && (
+                        <tr className="border-t-2 border-white/20 bg-white/5 font-semibold">
+                          <td className="py-2 px-2 text-sm text-white">TOTAL</td>
+                          <td className={`text-right py-2 px-2 text-sm ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
+                          </td>
+                          <td className={`text-right py-2 px-2 text-sm ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {totalPnl >= 0 ? '+' : ''}{((totalPnl / initialCapital) * 100).toFixed(2)}%
+                          </td>
+                          <td className="text-right py-2 px-2 text-sm text-cyan-400">100%</td>
+                          <td className="text-right text-sm text-white py-2 px-2">{trades.length}</td>
+                          <td className={`text-right text-sm py-2 px-2 ${(tradeStats?.win_rate || 0) >= 0.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                            {((tradeStats?.win_rate || 0) * 100).toFixed(1)}%
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Asset Class Performance Table */}
+          <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="live-asset-class-performance">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="w-5 h-5 text-purple-400" />
+              <h3 className="text-lg font-semibold text-white">Asset Class Performance</h3>
+            </div>
+            {(() => {
+              // Calculate asset class performance from trades
+              const assetStats = trades.reduce((acc, t) => {
+                const category = t.category || t.asset_class || 'Unknown';
+                if (!acc[category]) {
+                  acc[category] = { pnl: 0, trades: 0, wins: 0 };
+                }
+                acc[category].pnl += t.pnl || 0;
+                acc[category].trades += 1;
+                if ((t.pnl || 0) > 0) acc[category].wins += 1;
+                return acc;
+              }, {});
+              
+              const assetEntries = Object.entries(assetStats).sort((a, b) => b[1].pnl - a[1].pnl);
+              const totalPnl = assetEntries.reduce((sum, [, d]) => sum + d.pnl, 0);
+              const initialCapital = 1000;
+              
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="text-left text-xs text-white/50 font-medium py-2 px-2">Asset Class</th>
+                        <th className="text-right text-xs text-white/50 font-medium py-2 px-2">P&L</th>
+                        <th className="text-right text-xs text-white/50 font-medium py-2 px-2">% Return</th>
+                        <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Contrib %</th>
+                        <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Trades</th>
+                        <th className="text-right text-xs text-white/50 font-medium py-2 px-2">Win Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {assetEntries.map(([category, data]) => {
+                        const isPositive = data.pnl >= 0;
+                        const returnPct = (data.pnl / initialCapital) * 100;
+                        const contribPct = totalPnl !== 0 ? (data.pnl / totalPnl) * 100 : 0;
+                        const winRate = data.trades > 0 ? (data.wins / data.trades) * 100 : 0;
+                        return (
+                          <tr key={category} className="border-b border-white/5 hover:bg-white/5">
+                            <td className="py-2 px-2">
+                              <span className="text-sm text-white capitalize">{category}</span>
+                            </td>
+                            <td className={`text-right py-2 px-2 font-bold text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                              {isPositive ? '+' : ''}${data.pnl.toFixed(2)}
+                            </td>
+                            <td className={`text-right py-2 px-2 text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                              {isPositive ? '+' : ''}{returnPct.toFixed(2)}%
+                            </td>
+                            <td className={`text-right py-2 px-2 text-sm ${contribPct >= 0 ? 'text-cyan-400' : 'text-orange-400'}`}>
+                              {contribPct.toFixed(1)}%
+                            </td>
+                            <td className="text-right text-sm text-white/70 py-2 px-2">{data.trades}</td>
+                            <td className={`text-right text-sm py-2 px-2 ${winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                              {winRate.toFixed(1)}%
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {/* TOTALS ROW */}
+                      {assetEntries.length > 0 && (
+                        <tr className="border-t-2 border-white/20 bg-white/5 font-semibold">
+                          <td className="py-2 px-2 text-sm text-white">TOTAL</td>
+                          <td className={`text-right py-2 px-2 text-sm ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
+                          </td>
+                          <td className={`text-right py-2 px-2 text-sm ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {totalPnl >= 0 ? '+' : ''}{((totalPnl / initialCapital) * 100).toFixed(2)}%
+                          </td>
+                          <td className="text-right py-2 px-2 text-sm text-cyan-400">100%</td>
+                          <td className="text-right text-sm text-white py-2 px-2">{trades.length}</td>
+                          <td className={`text-right text-sm py-2 px-2 ${(tradeStats?.win_rate || 0) >= 0.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                            {((tradeStats?.win_rate || 0) * 100).toFixed(1)}%
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Returns Distribution Chart */}
+      {trades.length > 0 && (
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="live-returns-distribution">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-cyan-400" />
+              <h3 className="text-lg font-semibold text-white">Returns Distribution</h3>
+              <div className="group relative">
+                <div className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center cursor-help">
+                  <span className="text-xs text-white/50">?</span>
+                </div>
+                <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-900 border border-white/20 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                  Histogram of individual trade returns. Bell curve centered right of 0 = consistent profits. Skew indicates asymmetry.
+                </div>
+              </div>
+            </div>
+            {(() => {
+              const returns = trades.map(t => ((t.pnl || 0) / Math.max(Math.abs(t.price * t.shares), 0.01)) * 100);
+              const mean = returns.length > 0 ? returns.reduce((a, b) => a + b, 0) / returns.length : 0;
+              const sortedReturns = [...returns].sort((a, b) => a - b);
+              const median = returns.length > 0 ? sortedReturns[Math.floor(returns.length / 2)] : 0;
+              const variance = returns.length > 0 ? returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length : 0;
+              const std = Math.sqrt(variance);
+              return (
+                <div className="flex items-center gap-4 text-xs">
+                  <span className="text-white/50">Mean: <span className={mean >= 0 ? 'text-green-400' : 'text-red-400'}>{mean.toFixed(2)}%</span></span>
+                  <span className="text-white/50">Median: <span className="text-cyan-400">{median.toFixed(2)}%</span></span>
+                  <span className="text-white/50">Std Dev: <span className="text-purple-400">{std.toFixed(2)}%</span></span>
+                </div>
+              );
+            })()}
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            {(() => {
+              // Calculate returns distribution
+              const returns = trades.map(t => ((t.pnl || 0) / Math.max(Math.abs(t.price * t.shares), 0.01)) * 100);
+              const minReturn = Math.min(...returns, -10);
+              const maxReturn = Math.max(...returns, 10);
+              const binCount = 20;
+              const binSize = (maxReturn - minReturn) / binCount;
+              
+              const bins = Array.from({ length: binCount }, (_, i) => {
+                const rangeStart = minReturn + i * binSize;
+                const rangeEnd = rangeStart + binSize;
+                const count = returns.filter(r => r >= rangeStart && r < rangeEnd).length;
+                return {
+                  range: `${rangeStart.toFixed(1)}%`,
+                  count,
+                  rangeStart,
+                  rangeEnd
+                };
+              });
+              
+              return (
+                <AreaChart data={bins}>
+                  <defs>
+                    <linearGradient id="colorReturns" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="range" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 9 }} interval={3} />
+                  <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
+                  <Tooltip 
+                    contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px'}}
+                    formatter={(value, name) => [value, 'Trades']}
+                    labelFormatter={(label) => `Return: ${label}`}
+                  />
+                  <Area type="monotone" dataKey="count" stroke="#06b6d4" fillOpacity={1} fill="url(#colorReturns)" />
+                </AreaChart>
+              );
+            })()}
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 };
