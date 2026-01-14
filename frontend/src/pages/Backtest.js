@@ -72,18 +72,28 @@ const METRIC_TOOLTIPS = {
   data_source: "Auto: Uses best available data. Live: Real-time Polymarket API prices. Real: Historical tick data. Snapshots: Periodic captures. Hybrid: Combines sources."
 };
 
-// Tooltip Component
+// Tooltip Component - Fixed for better visibility
 const InfoTooltip = ({ text, children }) => (
   <div className="relative group inline-flex items-center gap-1">
     {children}
-    <div className="cursor-help flex-shrink-0">
-      <svg className="w-4 h-4 text-white/40 group-hover:text-white/70 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <div className="cursor-help flex-shrink-0 relative">
+      <svg className="w-4 h-4 text-white/40 group-hover:text-cyan-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-    </div>
-    <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-slate-900/95 border border-white/20 rounded-lg text-xs text-white/90 w-72 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] shadow-xl pointer-events-none backdrop-blur-sm">
-      {text}
-      <div className="absolute top-full left-4 border-4 border-transparent border-t-slate-900/95"></div>
+      <div className="fixed z-[9999] px-4 py-3 bg-slate-900 border border-cyan-500/30 rounded-xl text-sm text-white/90 w-80 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 shadow-2xl shadow-black/50 pointer-events-none"
+           style={{ 
+             transform: 'translateX(-50%)', 
+             left: '50%',
+             bottom: 'calc(100% + 12px)'
+           }}>
+        <div className="flex items-start gap-2">
+          <svg className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{text}</span>
+        </div>
+        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900"></div>
+      </div>
     </div>
   </div>
 );
