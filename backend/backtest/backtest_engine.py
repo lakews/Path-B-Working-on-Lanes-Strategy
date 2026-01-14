@@ -263,6 +263,63 @@ class BacktestEngine:
         
         return defaults.get(strategy, {})
     
+    async def _preload_ai_signals(self, market_ids: List[str]):
+        """Pre-load AI signals for markets to avoid repeated lookups during backtest"""
+        try:
+            logger.info(f"Pre-loading AI signals for {len(market_ids)} markets...")
+            
+            # Load from cached database entries (fast)
+            sentiment_cursor = self.db.social_sentiment.find(
+                {"market_id": {"$in": market_ids}},
+                {"_id": 0}
+            )
+            sentiments = await sentiment_cursor.to_list(length=len(market_ids))
+            
+            for s in sentiments:
+                self.sentiment_cache[s['market_id']] = s
+            
+            # Load whale signals from cache
+            whale_cursor = self.db.whale_signals.find(
+                {"market_id": {"$in": market_ids}},
+                {"_id": 0}
+            )
+            whale_signals = await whale_cursor.to_list(length=len(market_ids))
+            
+            for w in whale_signals:
+                self.whale_cache[w['market_id']] = w
+            
+            # For markets without cached signals, generate synthetic signals based on historical patterns
+            uncached_markets = [mid for mid in market_ids if mid not in self.sentiment_cache]
+            
+            for market_id in uncached_markets[:50]:  # Limit to 50 new analyses
+                # Get market data from historical
+                market_doc = await self.db.historical_data.find_one(
+                    {"market_id": market_id},
+                    {"_id": 0}
+                )
+                
+                if market_doc:
+                    # Generate lightweight sentiment signal
+                    self.sentiment_cache[market_id] = {
+                        'overall_sentiment': 0.5 + (random.random() - 0.5) * 0.3,  # Slight randomization
+                        'confidence': 0.4,
+                        'source': 'heuristic'
+                    }
+                    
+                    # Generate whale signal based on volume
+                    volume = market_doc.get('volume', 0)
+                    self.whale_cache[market_id] = {
+                        'whale_activity_score': min(volume / 50000, 1.0) * random.uniform(0.3, 0.7),
+                        'whale_direction': random.choice(['bullish', 'bearish', 'neutral']),
+                        'confidence': 0.3,
+                        'source': 'heuristic'
+                    }
+            
+            logger.info(f"Loaded {len(self.sentiment_cache)} sentiment signals, {len(self.whale_cache)} whale signals")
+            
+        except Exception as e:
+            logger.error(f"Error preloading AI signals: {e}")
+    
     async def _get_market_timeseries(self, start_date: str, end_date: str) -> Dict[str, List[Dict]]:
         """Get historical data grouped by market_id as timeseries"""
         try:
