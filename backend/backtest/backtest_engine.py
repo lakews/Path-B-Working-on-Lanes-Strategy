@@ -48,6 +48,9 @@ class BacktestEngine:
         self.strategy_performance: Dict[str, Dict] = {}
         self.asset_class_performance: Dict[str, Dict] = {}
         
+        # Returns tracking for distribution chart
+        self.trade_returns: List[float] = []
+        
         # HFT Parameters
         self.max_positions = 20
         self.position_timeout_snapshots = 50  # Close after N snapshots if not exited
@@ -55,6 +58,11 @@ class BacktestEngine:
         self.max_loss_limit = 0.03  # 3% stop loss
         self.trailing_stop_trigger = 0.015  # Start trailing after 1.5% profit
         self.trailing_stop_distance = 0.01  # 1% trailing stop distance
+        
+        # Data quality tracking
+        self.use_simulated_prices = True  # Will be set based on data quality
+        self.real_price_data_used = 0
+        self.simulated_price_data_used = 0
     
     async def run_backtest(
         self,
@@ -72,8 +80,11 @@ class BacktestEngine:
             self.positions = {}
             self.trades = []
             self.equity_curve = []
+            self.trade_returns = []  # Reset returns tracking
             self.strategy_performance = {s: {"trades": 0, "wins": 0, "pnl": 0.0} for s in (strategies or [])}
             self.asset_class_performance = {}
+            self.real_price_data_used = 0
+            self.simulated_price_data_used = 0
             
             logger.info(f"Starting HFT backtest {self.backtest_id}: {start_date} to {end_date}")
             
