@@ -1074,6 +1074,198 @@ async def load_rl_model():
             content={"message": f"Failed to load RL model: {str(e)}"}
         )
 
+# =============================================
+# SOCIAL SENTIMENT ANALYSIS ENDPOINTS
+# =============================================
+
+@api_router.get("/sentiment/analyze")
+async def analyze_sentiment(market_id: str = None, question: str = None, category: str = "unknown"):
+    """Analyze social sentiment for a market"""
+    try:
+        market_data = {
+            'id': market_id or 'manual',
+            'question': question or '',
+            'category': category
+        }
+        
+        result = await social_sentiment_analyzer.analyze_market_sentiment(market_data)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error analyzing sentiment: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to analyze sentiment: {str(e)}"}
+        )
+
+@api_router.get("/sentiment/trending")
+async def get_trending_topics(limit: int = 10):
+    """Get currently trending topics from news"""
+    try:
+        topics = await social_sentiment_analyzer.get_trending_topics(limit)
+        return {"trending_topics": topics}
+    except Exception as e:
+        logger.error(f"Error getting trending topics: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get trending topics: {str(e)}"}
+        )
+
+# =============================================
+# WHALE/SHARP TRACKER ENDPOINTS
+# =============================================
+
+@api_router.get("/whale/detect")
+async def detect_whale_activity(market_id: str, volume24hr: float = 0, liquidity: float = 0):
+    """Detect whale activity for a specific market"""
+    try:
+        market_data = {
+            'id': market_id,
+            'volume24hr': volume24hr,
+            'liquidity': liquidity
+        }
+        
+        result = await whale_tracker.detect_whale_activity(market_data)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error detecting whale activity: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to detect whale activity: {str(e)}"}
+        )
+
+@api_router.get("/whale/statistics")
+async def get_whale_statistics():
+    """Get overall whale tracking statistics"""
+    try:
+        stats = await whale_tracker.get_whale_statistics()
+        return stats
+    except Exception as e:
+        logger.error(f"Error getting whale statistics: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get statistics: {str(e)}"}
+        )
+
+@api_router.post("/whale/track-sharp")
+async def track_sharp_traders():
+    """Analyze and track sharp (smart money) traders"""
+    try:
+        result = await whale_tracker.track_sharp_traders()
+        return result
+    except Exception as e:
+        logger.error(f"Error tracking sharp traders: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to track sharp traders: {str(e)}"}
+        )
+
+# =============================================
+# STRATEGY TUNING ENDPOINTS
+# =============================================
+
+@api_router.post("/tuning/strategy")
+async def tune_strategy(
+    background_tasks: BackgroundTasks,
+    strategy_name: str,
+    start_date: str = "2026-01-01T00:00:00Z",
+    end_date: str = "2026-01-14T23:59:59Z",
+    max_combinations: int = 30
+):
+    """
+    Tune a single strategy's parameters using grid search.
+    Runs in background for large parameter spaces.
+    """
+    try:
+        if strategy_tuner.running:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Tuning already in progress"}
+            )
+        
+        # Run tuning (this can take a while)
+        result = await strategy_tuner.tune_strategy(
+            strategy_name, start_date, end_date, max_combinations
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error tuning strategy: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to tune strategy: {str(e)}"}
+        )
+
+@api_router.post("/tuning/all")
+async def tune_all_strategies(
+    start_date: str = "2026-01-01T00:00:00Z",
+    end_date: str = "2026-01-14T23:59:59Z",
+    max_combinations_per_strategy: int = 20
+):
+    """Tune all strategies' parameters"""
+    try:
+        if strategy_tuner.running:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Tuning already in progress"}
+            )
+        
+        result = await strategy_tuner.tune_all_strategies(
+            start_date, end_date, max_combinations_per_strategy
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error tuning all strategies: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to tune strategies: {str(e)}"}
+        )
+
+@api_router.get("/tuning/best/{strategy_name}")
+async def get_best_parameters(strategy_name: str):
+    """Get the best parameters from previous tuning for a strategy"""
+    try:
+        result = await strategy_tuner.get_best_parameters(strategy_name)
+        if result:
+            return result
+        return {"message": "No tuning results found for this strategy"}
+    except Exception as e:
+        logger.error(f"Error getting best parameters: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get best parameters: {str(e)}"}
+        )
+
+@api_router.get("/tuning/history")
+async def get_tuning_history(limit: int = 10):
+    """Get recent tuning history"""
+    try:
+        history = await strategy_tuner.get_tuning_history(limit)
+        return {"history": history}
+    except Exception as e:
+        logger.error(f"Error getting tuning history: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get history: {str(e)}"}
+        )
+
+@api_router.post("/tuning/stop")
+async def stop_tuning():
+    """Stop current tuning process"""
+    try:
+        strategy_tuner.stop_tuning()
+        return {"message": "Tuning stopped"}
+    except Exception as e:
+        logger.error(f"Error stopping tuning: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to stop tuning: {str(e)}"}
+        )
+
 # Include the router in the main app
 app.include_router(api_router)
 
