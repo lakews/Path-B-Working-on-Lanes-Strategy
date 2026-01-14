@@ -5,6 +5,7 @@ Uses Finnhub for stock/crypto sentiment and news, plus LLM analysis
 import logging
 import aiohttp
 import asyncio
+import os
 from typing import Dict, Tuple, List, Optional
 from datetime import datetime, timezone, timedelta
 import uuid
@@ -12,8 +13,8 @@ import re
 
 logger = logging.getLogger(__name__)
 
-# Finnhub free API key (public demo key - replace with env var for production)
-FINNHUB_API_KEY = "demo"  # Free tier
+# Finnhub API key from environment
+FINNHUB_API_KEY = os.environ.get("FINNHUB_API_KEY", "demo")
 
 
 class SocialSentimentAnalyzer:
