@@ -367,14 +367,29 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - `whale_buy_volume`, `whale_sell_volume`, `buy_sell_ratio`
   - `unique_whales`, `data_source` (polymarket_clob vs volume_heuristics)
 
-### ✅ EC2 Deployment (Terraform)
-Created simple single-server EC2 deployment at `/app/infrastructure/terraform/ec2/`:
-- `main.tf` - VPC, EC2 instance, security groups, elastic IP, CloudWatch alarms
-- `user_data.sh` - Bootstrap script installing Docker, Node.js, Python, Nginx
-- `terraform.tfvars.example` - Example variables file
-- `README.md` - Complete deployment guide
-- **Cost**: ~$36/month (t3.medium)
-- Includes Nginx reverse proxy for frontend/backend routing
+### ✅ Train RL Now Button
+- Added **"Train RL Now"** button to both **Dashboard** and **Backtest** pages
+- Button shows count of available backtests: "Train RL Now (10 backtests)"
+- Clicking triggers learning from ALL historical backtests sequentially
+- Shows loading spinner and progress during training
+- Displays completion alert with count of backtests trained
+- Automatically refreshes RL stats after training completes
+
+### ✅ Dashboard Layout Overhaul (`/app/frontend/src/pages/Dashboard.js`)
+Complete redesign with improved information density:
+- **Header Bar**: Mode buttons (LIVE/BACKTEST/STOP), current status display, WebSocket connection status
+- **Top Row (3 columns)**:
+  - P&L Hero Card (large, color-coded)
+  - Key Metrics (2x2 grid: Win Rate, Sharpe, Max DD, Trades)
+  - Real-time Mini P&L Chart
+- **Trade Frequency Row**: 5 compact cards (Live, 10m, 30m, 1hr, 24hr)
+- **AI/Data/Risk Row (3 cards)**:
+  - RL Engine: iterations, exploration, reward, Q-table + Train button
+  - Historical Data: snapshots, markets, collector status + Collect button
+  - Risk Status: drawdown, Kelly fraction, open positions
+- **Charts Row**: P&L by Trade area chart + Strategy Distribution pie
+- **Live Trade Feed**: 3-column grid of recent trades
+- **Open Positions Table**: Full table with P&L for each position
 
 ## How to Activate RL Model
 The RL model learns from completed backtests. To train it:
