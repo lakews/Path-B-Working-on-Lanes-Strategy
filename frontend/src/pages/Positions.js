@@ -4,7 +4,8 @@ import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell } from 'recha
 import { 
   X, TrendingUp, TrendingDown, DollarSign, Target, Shield, 
   Clock, Activity, Layers, AlertTriangle, ChevronDown, ChevronUp,
-  Briefcase, PieChart as PieIcon, BarChart3, Percent, Zap, Timer
+  Briefcase, PieChart as PieIcon, BarChart3, Percent, Zap, Timer,
+  Wifi, WifiOff
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
