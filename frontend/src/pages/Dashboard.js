@@ -248,6 +248,18 @@ const Dashboard = () => {
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
         </div>
         
+        {/* Top Right Logo Badge */}
+        <div className="absolute top-4 right-4 z-10">
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/20 shadow-lg">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_aitrader-96/artifacts/adp4pnam_swaye%20logo.png" 
+              alt="Swaye Ventures" 
+              className="h-8 w-auto object-contain"
+              style={{ imageRendering: 'crisp-edges', filter: 'contrast(1.1) brightness(1.05)' }}
+            />
+          </div>
+        </div>
+        
         <div className="relative p-6">
           {/* Top Row: Mode Control & Status */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
