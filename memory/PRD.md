@@ -18,6 +18,48 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 14, 2026 - Session 9 (Sentiment Analysis, Whale Tracking & Strategy Tuning)
+- ✅ **Social Sentiment Analyzer** (`/app/backend/ml/social_sentiment.py`)
+  - Integrates with Finnhub API for news and social sentiment
+  - Topic-to-symbol mapping (Bitcoin→BTCUSDT, Fed→SPY, etc.)
+  - Multi-source fusion: news (40%), social (30%), keyword analysis (30%)
+  - In-memory caching with 5-minute TTL
+  - API endpoints:
+    - `GET /api/sentiment/analyze` - Analyze market sentiment
+    - `GET /api/sentiment/trending` - Get trending topics
+
+- ✅ **Whale/Sharp Tracker** (`/app/backend/ml/whale_tracker.py`)
+  - Volume spike detection against historical averages
+  - Price impact scoring based on volume/liquidity ratio
+  - Whale direction analysis (bullish/bearish/neutral)
+  - Sharp trader tracking by market volatility patterns
+  - API endpoints:
+    - `GET /api/whale/detect` - Detect whale activity for a market
+    - `GET /api/whale/statistics` - Overall whale tracking stats
+    - `POST /api/whale/track-sharp` - Analyze sharp traders
+
+- ✅ **Strategy Tuning Mode** (`/app/backend/ml/strategy_tuner.py`)
+  - Grid search parameter optimization
+  - Parameter grids for all 4 strategies:
+    - Delta-Neutral: profit_target, stop_loss, bank_profit_threshold, timeout, spread_threshold
+    - Volatility Exploitation: profit_target, stop_loss, min/max_volatility, trend_threshold
+    - Alpha-Directional: profit_target, stop_loss, trend_threshold, trailing_stop params
+    - Arbitrage: profit_target, stop_loss, min_spread, position_timeout
+  - Composite scoring: Return (25%), Sharpe (25%), Win Rate (20%), Profit Factor (20%), Drawdown (10%)
+  - API endpoints:
+    - `POST /api/tuning/strategy` - Tune single strategy
+    - `POST /api/tuning/all` - Tune all strategies
+    - `GET /api/tuning/best/{strategy}` - Get best parameters
+    - `GET /api/tuning/history` - Tuning history
+
+- ✅ **New "Tuning" Page** (`/app/frontend/src/pages/StrategyTuning.js`)
+  - 4 strategy cards with scores, win rates, and Sharpe ratios
+  - "Tune All Strategies" button
+  - Max combinations slider (10-100)
+  - Results display with best parameters and metrics
+  - Top 5 parameter sets chart
+  - Recent tuning history table
+
 ### January 14, 2026 - Session 8 (Strategy Filtering & Delta-Neutral Fix)
 - ✅ **Wired Strategy/Asset Class Selection to Backtest**
   - Backtest now reads user config from database
