@@ -26,6 +26,32 @@ const Dashboard = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const tradesFeedRef = useRef(null);
 
+  const fetchData = async () => {
+    try {
+      const [perfRes, posRes, tradesRes, statsRes, statusRes, rlRes, histRes] = await Promise.all([
+        axios.get(`${API}/performance`),
+        axios.get(`${API}/positions`),
+        axios.get(`${API}/trades?limit=50`),
+        axios.get(`${API}/trades/stats`),
+        axios.get(`${API}/status`),
+        axios.get(`${API}/rl/detailed-stats`).catch(() => ({ data: { rl_stats: null } })),
+        axios.get(`${API}/historical/stats`).catch(() => ({ data: null }))
+      ]);
+      
+      setPerformance(perfRes.data);
+      setPositions(posRes.data.positions || []);
+      setTrades(tradesRes.data.trades || []);
+      setTradeStats(statsRes.data);
+      setStatus(statusRes.data);
+      setRlStats(rlRes.data?.rl_stats || rlRes.data);
+      setHistoricalStats(histRes.data);
+      setLoading(false);
+    } catch (e) {
+      console.error('Error fetching data:', e);
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 3000);
@@ -66,32 +92,6 @@ const Dashboard = () => {
       });
     }
   }, [tradeStats?.total_pnl]);
-
-  const fetchData = async () => {
-    try {
-      const [perfRes, posRes, tradesRes, statsRes, statusRes, rlRes, histRes] = await Promise.all([
-        axios.get(`${API}/performance`),
-        axios.get(`${API}/positions`),
-        axios.get(`${API}/trades?limit=50`),
-        axios.get(`${API}/trades/stats`),
-        axios.get(`${API}/status`),
-        axios.get(`${API}/rl/detailed-stats`).catch(() => ({ data: { rl_stats: null } })),
-        axios.get(`${API}/historical/stats`).catch(() => ({ data: null }))
-      ]);
-      
-      setPerformance(perfRes.data);
-      setPositions(posRes.data.positions || []);
-      setTrades(tradesRes.data.trades || []);
-      setTradeStats(statsRes.data);
-      setStatus(statusRes.data);
-      setRlStats(rlRes.data?.rl_stats || rlRes.data);
-      setHistoricalStats(histRes.data);
-      setLoading(false);
-    } catch (e) {
-      console.error('Error fetching data:', e);
-      setLoading(false);
-    }
-  };
 
   const startBot = async () => {
     try {
