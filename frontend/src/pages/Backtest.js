@@ -69,6 +69,7 @@ const Backtest = () => {
     checkStatus();
     fetchLatestResults();
     fetchHistoricalStats();
+    fetchPriceHistoryStats();
     fetchBacktestHistory();
     const interval = setInterval(() => {
       checkStatus();
