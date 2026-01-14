@@ -8,6 +8,11 @@ import os
 import asyncio
 import json
 
+try:
+    import websockets
+except ImportError:
+    websockets = None
+
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://aitrader-96.preview.emergentagent.com')
 
 class TestWebSocketEndpoint:
