@@ -1060,7 +1060,6 @@ const Backtest = () => {
                 onClick={compareSelectedBacktests}
                 disabled={selectedBacktests.length === 0}
                 className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        <Tooltip 
                           contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '12px'}}
                           labelStyle={{color: 'rgba(255,255,255,0.9)', fontWeight: 'bold', marginBottom: '8px'}}
                           formatter={(value, name, props) => {
