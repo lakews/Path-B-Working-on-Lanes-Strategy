@@ -396,7 +396,7 @@ const PaperTrading = () => {
           )}
 
           {/* Equity Curve */}
-          {equityCurveData.length > 0 && (
+          {(status?.equity_curve?.length > 0 || equityCurveData.length > 0) && (
             <div className="rounded-xl bg-white/5 border border-white/10 p-6">
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <LineChartIcon className="w-5 h-5 text-cyan-400" />
@@ -404,7 +404,7 @@ const PaperTrading = () => {
               </h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={equityCurveData}>
+                  <AreaChart data={status?.equity_curve || equityCurveData}>
                     <defs>
                       <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
@@ -422,6 +422,7 @@ const PaperTrading = () => {
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)' }}
                       labelStyle={{ color: '#94a3b8' }}
+                      formatter={(value) => [`$${value?.toFixed(2)}`, 'P&L']}
                     />
                     <Area 
                       type="monotone" 
@@ -436,48 +437,227 @@ const PaperTrading = () => {
             </div>
           )}
 
-          {/* Strategy Performance & Positions Grid */}
+          {/* Strategy & Asset Class Performance Tables */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Strategy Performance */}
-            <div className="rounded-xl bg-white/5 border border-white/10 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-purple-400" />
-                Strategy Performance
-              </h3>
-              {status?.strategy_stats && (
-                <div className="space-y-3">
-                  {Object.entries(status.strategy_stats).map(([strategy, data]) => {
-                    const winRate = data.trades > 0 ? (data.wins / data.trades * 100) : 0;
-                    const info = STRATEGY_INFO[strategy];
-                    return (
-                      <div key={strategy} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: info?.color }} />
-                          <span className="text-sm text-white">{info?.name || strategy}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="text-white/60">{data.trades} trades</span>
-                          <span className="text-white/60">{winRate.toFixed(0)}% win</span>
-                          <span className={data.pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                            {data.pnl >= 0 ? '+' : ''}${data.pnl.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+            {/* Strategy Performance Table */}
+            <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+              <div className="p-4 border-b border-white/10">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-400" />
+                  Strategy Performance
+                </h3>
+              </div>
+              {status?.strategy_results && Object.keys(status.strategy_results).length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-white/5 text-left">
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase">Strategy</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">P&L</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">% Return</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">Contrib %</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">Trades</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">Win Rate</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">PF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const entries = Object.entries(status.strategy_results)
+                          .filter(([_, d]) => d.trades > 0)
+                          .sort((a, b) => b[1].pnl - a[1].pnl);
+                        const totalPnl = entries.reduce((sum, [_, d]) => sum + (d.pnl || 0), 0);
+                        const absTotalPnl = Math.abs(totalPnl);
+                        
+                        return entries.map(([strategy, data]) => {
+                          const isPositive = data.pnl >= 0;
+                          const returnPct = ((data.pnl || 0) / (status.initial_capital || 10000)) * 100;
+                          const contribPct = absTotalPnl > 0 ? ((data.pnl || 0) / totalPnl) * 100 : 0;
+                          const info = STRATEGY_INFO[strategy];
+                          return (
+                            <tr key={strategy} className="border-b border-white/5 hover:bg-white/5">
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: info?.color }} />
+                                  <span className="text-sm text-white">{info?.name || strategy}</span>
+                                </div>
+                              </td>
+                              <td className={`py-2 px-3 text-right text-sm font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                {isPositive ? '+' : ''}${data.pnl?.toFixed(2)}
+                              </td>
+                              <td className={`py-2 px-3 text-right text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                {isPositive ? '+' : ''}{returnPct.toFixed(2)}%
+                              </td>
+                              <td className={`py-2 px-3 text-right text-sm ${contribPct >= 0 ? 'text-cyan-400' : 'text-orange-400'}`}>
+                                {contribPct.toFixed(1)}%
+                              </td>
+                              <td className="py-2 px-3 text-right text-sm text-white/70">{data.trades}</td>
+                              <td className={`py-2 px-3 text-right text-sm ${(data.win_rate || 0) >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
+                                {((data.win_rate || 0) * 100).toFixed(1)}%
+                              </td>
+                              <td className={`py-2 px-3 text-right text-sm ${(data.profit_factor || 0) >= 1.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                {(data.profit_factor || 0).toFixed(2)}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
                 </div>
+              ) : (
+                <div className="p-8 text-center text-white/40">No strategy data yet</div>
               )}
             </div>
 
-            {/* Open Positions */}
+            {/* Asset Class Performance Table */}
+            <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+              <div className="p-4 border-b border-white/10">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-orange-400" />
+                  Asset Class Performance
+                </h3>
+              </div>
+              {status?.asset_class_results && Object.keys(status.asset_class_results).length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-white/5 text-left">
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase">Asset Class</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">P&L</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">% Return</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">Contrib %</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">Trades</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">Win Rate</th>
+                        <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">PF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const entries = Object.entries(status.asset_class_results)
+                          .filter(([_, d]) => d.trades > 0)
+                          .sort((a, b) => b[1].pnl - a[1].pnl);
+                        const totalPnl = entries.reduce((sum, [_, d]) => sum + (d.pnl || 0), 0);
+                        const absTotalPnl = Math.abs(totalPnl);
+                        
+                        return entries.map(([assetClass, data]) => {
+                          const isPositive = data.pnl >= 0;
+                          const returnPct = ((data.pnl || 0) / (status.initial_capital || 10000)) * 100;
+                          const contribPct = absTotalPnl > 0 ? ((data.pnl || 0) / totalPnl) * 100 : 0;
+                          return (
+                            <tr key={assetClass} className="border-b border-white/5 hover:bg-white/5">
+                              <td className="py-2 px-3">
+                                <span className="text-sm text-white capitalize">{assetClass}</span>
+                              </td>
+                              <td className={`py-2 px-3 text-right text-sm font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                {isPositive ? '+' : ''}${data.pnl?.toFixed(2)}
+                              </td>
+                              <td className={`py-2 px-3 text-right text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                {isPositive ? '+' : ''}{returnPct.toFixed(2)}%
+                              </td>
+                              <td className={`py-2 px-3 text-right text-sm ${contribPct >= 0 ? 'text-cyan-400' : 'text-orange-400'}`}>
+                                {contribPct.toFixed(1)}%
+                              </td>
+                              <td className="py-2 px-3 text-right text-sm text-white/70">{data.trades}</td>
+                              <td className={`py-2 px-3 text-right text-sm ${(data.win_rate || 0) >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
+                                {((data.win_rate || 0) * 100).toFixed(1)}%
+                              </td>
+                              <td className={`py-2 px-3 text-right text-sm ${(data.profit_factor || 0) >= 1.5 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                {(data.profit_factor || 0).toFixed(2)}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-8 text-center text-white/40">No asset class data yet</div>
+              )}
+            </div>
+          </div>
+
+          {/* Returns Distribution */}
+          {status?.returns_distribution?.bins?.length > 0 && (
             <div className="rounded-xl bg-white/5 border border-white/10 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-orange-400" />
-                Open Positions ({positions.length})
-              </h3>
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {positions.length > 0 ? positions.map((pos, idx) => (
-                  <PositionCard key={idx} position={pos} />
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-400" />
+                  Returns Distribution
+                  <span className="text-xs text-white/40 ml-2">
+                    ({status.returns_distribution.bins.filter(b => b.count > 0).length} bins with data)
+                  </span>
+                </h3>
+                {status.returns_distribution.stats && (
+                  <div className="flex items-center gap-4 text-xs">
+                    <span className="text-white/50">Mean: <span className={status.returns_distribution.stats.mean >= 0 ? 'text-green-400' : 'text-red-400'}>{status.returns_distribution.stats.mean?.toFixed(2)}%</span></span>
+                    <span className="text-white/50">Median: <span className="text-cyan-400">{status.returns_distribution.stats.median?.toFixed(2)}%</span></span>
+                    <span className="text-white/50">Std Dev: <span className="text-purple-400">{status.returns_distribution.stats.std?.toFixed(2)}%</span></span>
+                  </div>
+                )}
+              </div>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={status.returns_distribution.bins.filter(b => b.count > 0)} margin={{ top: 10, right: 30, left: 0, bottom: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis 
+                      dataKey="label" 
+                      stroke="rgba(255,255,255,0.5)" 
+                      tick={{ fontSize: 9, fill: 'rgba(255,255,255,0.6)' }}
+                      angle={-45}
+                      textAnchor="end"
+                      interval={0}
+                      height={60}
+                    />
+                    <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.6)' }} />
+                    <Tooltip 
+                      contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px'}}
+                      formatter={(value) => [`${value} trades`, 'Count']}
+                      labelFormatter={(label) => `Return: ${label}`}
+                    />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {status.returns_distribution.bins.filter(b => b.count > 0).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.min >= 0 ? '#10b981' : '#ef4444'} fillOpacity={0.8} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {status.returns_distribution.stats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-white/10">
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">Positive Returns</p>
+                    <p className="text-lg font-bold text-green-400">{status.returns_distribution.stats.positive_returns || 0}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">Negative Returns</p>
+                    <p className="text-lg font-bold text-red-400">{status.returns_distribution.stats.negative_returns || 0}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">Skewness</p>
+                    <p className={`text-lg font-bold ${(status.returns_distribution.stats.skewness || 0) > 0 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {status.returns_distribution.stats.skewness?.toFixed(2) || '0.00'}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">Kurtosis</p>
+                    <p className="text-lg font-bold text-purple-400">{status.returns_distribution.stats.kurtosis?.toFixed(2) || '0.00'}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Open Positions */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-orange-400" />
+              Open Positions ({positions.length})
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-80 overflow-y-auto">
+              {positions.length > 0 ? positions.map((pos, idx) => (
+                <PositionCard key={idx} position={pos} />
                 )) : (
                   <p className="text-white/40 text-center py-8">No open positions</p>
                 )}
