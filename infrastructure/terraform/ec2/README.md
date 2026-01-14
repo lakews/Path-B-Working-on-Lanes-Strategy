@@ -1,188 +1,53 @@
 # APEX TRADER - EC2 Deployment
 
-Simple single-server deployment for APEX TRADER on AWS EC2.
-
-## Overview
-
-This Terraform configuration deploys:
-- **EC2 Instance** (t3.medium by default) with Ubuntu 22.04
-- **VPC** with public subnet
-- **Elastic IP** for static public address
-- **Security Group** with necessary ports
-- **Nginx** reverse proxy
-- **CloudWatch** monitoring alarms
-
-## Cost Estimate
-
-| Resource | Monthly Cost |
-|----------|-------------|
-| t3.medium EC2 | ~$30 |
-| EIP | ~$3 |
-| Storage (30GB gp3) | ~$3 |
-| **Total** | **~$36/month** |
-
-## Prerequisites
-
-1. **AWS Account** with credentials configured
-2. **SSH Key Pair** created in AWS Console
-3. **MongoDB Atlas** cluster (free tier works)
-4. **Polymarket API** credentials
-5. **Terraform** installed (v1.5+)
+Deploy APEX TRADER to a single AWS EC2 instance. Simple, cost-effective, easy to debug.
 
 ## Quick Start
 
-### 1. Configure Variables
-
 ```bash
-cd /app/infrastructure/terraform/ec2
+# 1. Configure
 cp terraform.tfvars.example terraform.tfvars
-```
+nano terraform.tfvars  # Fill in your values
 
-Edit `terraform.tfvars` with your values:
-- MongoDB connection string
-- Polymarket API credentials
-- SSH key name
-- Optional: SendGrid API key for alerts
-
-### 2. Initialize Terraform
-
-```bash
+# 2. Deploy
 terraform init
-```
-
-### 3. Review Plan
-
-```bash
 terraform plan
-```
-
-### 4. Deploy
-
-```bash
 terraform apply
+
+# 3. Connect
+ssh -i ~/.ssh/YOUR_KEY.pem ubuntu@ELASTIC_IP
 ```
 
-### 5. Connect to Server
+## Files
 
-After deployment, Terraform outputs the SSH command:
+| File | Purpose |
+|------|---------|
+| `main.tf` | Main infrastructure (VPC, EC2, Security Groups) |
+| `variables.tf` | All variable definitions with validation |
+| `outputs.tf` | Connection info and URLs after deployment |
+| `user_data.sh` | Server bootstrap script (Docker, Nginx, Node, Python) |
+| `terraform.tfvars.example` | Example configuration (copy to terraform.tfvars) |
 
-```bash
-ssh -i ~/.ssh/your-key.pem ubuntu@<public-ip>
-```
+## Requirements
 
-### 6. Deploy Application Code
+- AWS Account with EC2/VPC permissions
+- Terraform v1.5+
+- SSH key pair uploaded to AWS
+- MongoDB Atlas connection string
+- Polymarket API credentials (for live trading)
 
-```bash
-# On the server
-cd /opt/apex-trader
+## Resources Created
 
-# Clone your repo (or upload via scp)
-git clone https://github.com/YOUR_USER/apex-trader.git app
+- **VPC** with public subnet and internet gateway
+- **EC2 Instance** (t3.medium by default)
+- **Elastic IP** for stable addressing
+- **Security Group** with ports: 22 (SSH), 80 (HTTP), 443 (HTTPS), 3000, 8001
+- **CloudWatch Alarms** for CPU and health monitoring
 
-# Setup backend
-cd /opt/apex-trader/backend
-python3.11 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+## Cost
 
-# Setup frontend
-cd /opt/apex-trader/frontend
-npm install
-npm run build  # For production
+~$33/month (t3.medium in us-east-1)
 
-# Start services
-sudo systemctl daemon-reload
-sudo systemctl enable apex-backend apex-frontend
-sudo systemctl start apex-backend apex-frontend
-```
+## Full Documentation
 
-## Architecture
-
-```
-Internet
-    │
-    ▼
-[Elastic IP] ──► [EC2 Instance]
-                      │
-                      ├── Nginx (port 80/443)
-                      │     ├── / → Frontend (3000)
-                      │     └── /api → Backend (8001)
-                      │
-                      ├── Frontend Service (React)
-                      │
-                      └── Backend Service (FastAPI)
-                            │
-                            ▼
-                      [MongoDB Atlas]
-```
-
-## Security Notes
-
-1. **SSH Access**: Consider restricting SSH to your IP only
-2. **Secrets**: Never commit terraform.tfvars to git
-3. **SSL**: For production, add domain and enable certbot
-
-## Adding SSL (Optional)
-
-If you have a domain:
-
-```bash
-# On the server
-sudo certbot --nginx -d yourdomain.com
-```
-
-## Monitoring
-
-- CloudWatch alarms for CPU and instance health
-- Logs: `/var/log/apex-trader-setup.log`
-- Service logs: `journalctl -u apex-backend -f`
-
-## Scaling Up
-
-If you need more power:
-
-```hcl
-# In terraform.tfvars
-instance_type = "t3.large"   # 2 vCPU, 8GB RAM
-# or
-instance_type = "t3.xlarge"  # 4 vCPU, 16GB RAM
-```
-
-Then:
-```bash
-terraform apply
-```
-
-## Destroying
-
-To tear down all resources:
-
-```bash
-terraform destroy
-```
-
-## Troubleshooting
-
-### Services not starting
-
-```bash
-# Check service status
-sudo systemctl status apex-backend
-sudo systemctl status apex-frontend
-
-# View logs
-journalctl -u apex-backend -n 100
-journalctl -u apex-frontend -n 100
-```
-
-### Nginx issues
-
-```bash
-sudo nginx -t
-sudo systemctl status nginx
-```
-
-### MongoDB connection issues
-
-- Verify IP whitelist in MongoDB Atlas (add EC2 public IP)
-- Test connection: `mongosh "your-connection-string"`
+See [/app/docs/DEPLOYMENT.md](/app/docs/DEPLOYMENT.md) for complete deployment guide.
