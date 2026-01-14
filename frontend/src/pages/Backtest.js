@@ -5,12 +5,20 @@ import {
   Play, Square, TrendingUp, TrendingDown, Activity, DollarSign, Target, Calendar,
   BarChart3, Clock, Zap, Shield, Award, Percent, ChevronRight, Database,
   RefreshCw, AlertTriangle, CheckCircle, XCircle, History, GitCompare, Trash2,
-  BookOpen, Lightbulb, ChevronDown, ChevronUp, Eye, FileBarChart, Brain, Download
+  BookOpen, Lightbulb, ChevronDown, ChevronUp, Eye, FileBarChart, Brain, Download, X, Layers
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ComposedChart, ReferenceLine } from 'recharts';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Data Source Options
+const DATA_SOURCE_OPTIONS = [
+  { id: 'auto', name: 'Auto (Best Available)', desc: 'Automatically selects best data', icon: '🔄' },
+  { id: 'real', name: 'Real Price History', desc: 'Most accurate, tick-level data', icon: '📈' },
+  { id: 'snapshots', name: 'Historical Snapshots', desc: 'Faster, periodic snapshots', icon: '📸' },
+  { id: 'hybrid', name: 'Hybrid Mode', desc: 'Combines real prices + snapshots', icon: '🔀' }
+];
 
 const STRATEGY_INFO = {
   delta_neutral: { 
