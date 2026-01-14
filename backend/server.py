@@ -1,10 +1,12 @@
-from fastapi import FastAPI, APIRouter, BackgroundTasks, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, APIRouter, BackgroundTasks, Query, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
 import logging
 import asyncio
+import secrets
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Set
@@ -34,6 +36,27 @@ logger = logging.getLogger(__name__)
 # Create the main app
 app = FastAPI(title="APEX TRADER API", version="1.0.0")
 
+# =============================================
+# AUTHENTICATION
+# =============================================
+security = HTTPBasic()
+
+# Get credentials from environment or use defaults
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'apex2026!')
+
+def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)):
+    """Verify HTTP Basic Auth credentials for sensitive endpoints"""
+    correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
+    correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
@@ -43,7 +66,8 @@ analytics_engine: Optional[PerformanceAnalytics] = None
 backtest_engine: Optional[BacktestEngine] = None
 historical_collector: Optional[HistoricalDataCollector] = None
 rl_engine: Optional[RLAdaptiveEngine] = None
-trading_mode: str = "stopped"  # "stopped", "live", "backtest"
+trading_mode: str = "stopped"  # "stopped", "live", "backtest", "paper"
+paper_trading_enabled: bool = False  # Paper trading flag
 
 # =============================================
 # WEBSOCKET CONNECTION MANAGER
