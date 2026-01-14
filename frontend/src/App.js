@@ -181,6 +181,7 @@ function App() {
             <Route path="/positions" element={<Positions />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/backtest" element={<Backtest />} />
+            <Route path="/tuning" element={<StrategyTuning />} />
             <Route path="/config" element={<Configuration />} />
           </Routes>
         </main>
