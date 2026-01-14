@@ -1109,6 +1109,7 @@ class BacktestEngine:
                 "strategy_results": strategy_results,
                 "asset_class_results": asset_class_results,
                 "returns_distribution": returns_distribution,
+                "equity_curve": self.equity_curve[-500:] if self.equity_curve else [],  # Last 500 points for performance
                 "data_quality": data_quality,
                 "ai_signals_stats": ai_signals_stats,
                 "data_summary": data_summary,
