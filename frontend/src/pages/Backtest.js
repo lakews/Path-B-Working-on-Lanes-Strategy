@@ -111,6 +111,29 @@ const Backtest = () => {
     }
   };
 
+  const fetchPriceHistoryStats = async () => {
+    try {
+      const response = await axios.get(`${API}/historical/price-stats`);
+      setPriceHistoryStats(response.data);
+    } catch (e) {
+      console.error('Error fetching price history stats:', e);
+    }
+  };
+
+  const collectPriceHistory = async () => {
+    setCollectingPrices(true);
+    try {
+      const response = await axios.post(`${API}/historical/collect-prices?market_limit=100&interval=1w&fidelity=60`);
+      toast.success(`Collected ${response.data.stats?.stored_snapshots || 0} price points from ${response.data.stats?.markets_with_history || 0} markets`);
+      await fetchPriceHistoryStats();
+      await fetchHistoricalStats();
+    } catch (e) {
+      toast.error('Failed to collect price history');
+    } finally {
+      setCollectingPrices(false);
+    }
+  };
+
   const fetchBacktestHistory = async () => {
     try {
       const response = await axios.get(`${API}/backtest/history?limit=10`);
