@@ -47,6 +47,43 @@ const STRATEGY_INFO = {
   }
 };
 
+// Tooltip explanations for metrics
+const METRIC_TOOLTIPS = {
+  sentiment_signals: "Number of markets analyzed for social media and news sentiment. Higher values indicate broader market coverage.",
+  whale_signals: "Number of markets checked for large trader (whale) activity. Whales can move markets significantly.",
+  avg_sentiment: "Average sentiment score across all analyzed markets. >50% indicates bullish bias, <50% bearish.",
+  avg_whale_activity: "Average whale activity level. Higher % means more large traders are active.",
+  bullish_whales: "Markets where whales are predominantly buying (bullish positioning).",
+  bearish_whales: "Markets where whales are predominantly selling (bearish positioning).",
+  training_iterations: "Total number of learning cycles the RL model has completed.",
+  exploration_rate: "Probability of exploring new strategies vs exploiting known good ones. Lower = more exploitation.",
+  avg_reward: "Average reward signal from recent trades. Positive indicates profitable learning.",
+  experience_buffer: "Number of past experiences stored for learning. More data = better learning.",
+  q_table_usage: "Percentage of Q-table cells with learned values. Higher = more market conditions explored.",
+  action_distribution: "How the RL model distributes decisions across different action types.",
+  real_data_pct: "Percentage of data from real tick-level prices vs simulated data.",
+  sharpe_ratio: "Risk-adjusted return. Measures excess return per unit of risk. >1 is good, >2 is excellent.",
+  profit_factor: "Gross profits divided by gross losses. >1.5 indicates strong profitability.",
+  max_drawdown: "Largest peak-to-trough decline. Lower is better for risk management.",
+  win_rate: "Percentage of trades that were profitable."
+};
+
+// Tooltip Component
+const InfoTooltip = ({ text, children }) => (
+  <div className="relative group inline-flex items-center">
+    {children}
+    <div className="ml-1 cursor-help">
+      <svg className="w-3.5 h-3.5 text-white/30 hover:text-white/60 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 border border-white/20 rounded-lg text-xs text-white/80 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 shadow-xl">
+      {text}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+    </div>
+  </div>
+);
+
 const Backtest = () => {
   const [backtestRunning, setBacktestRunning] = useState(false);
   const [results, setResults] = useState(null);
