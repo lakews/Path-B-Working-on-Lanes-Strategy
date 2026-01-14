@@ -730,65 +730,132 @@ const Backtest = () => {
           {/* Results Section */}
           {results && (
             <>
-              {/* Data Summary Bar at Top - Enhanced */}
-              <div className="rounded-xl bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-white/10 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                      <Database className="w-4 h-4 text-cyan-400" />
-                      <span className="text-sm text-white/70">Data Pulled:</span>
+              {/* Consolidated Data Summary Card */}
+              <div className="rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/80 border border-white/10 p-5" data-testid="data-summary-card">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-cyan-500/20">
+                      <Database className="w-5 h-5 text-cyan-400" />
                     </div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      {results.data_quality?.live_data_points > 0 && (
-                        <div className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
-                          <span className="text-xs text-red-400 font-medium">
-                            🔴 {results.data_quality?.live_data_points?.toLocaleString() || 0} Live Markets
-                          </span>
-                        </div>
-                      )}
-                      <div className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20">
-                        <span className="text-xs text-green-400 font-medium">
-                          📈 {results.data_quality?.real_price_data_points?.toLocaleString() || 0} Real Prices
-                        </span>
-                      </div>
-                      <div className="px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                        <span className="text-xs text-yellow-400 font-medium">
-                          🔄 {results.data_quality?.simulated_price_data_points?.toLocaleString() || 0} Simulated
-                        </span>
-                      </div>
-                      <div className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                        <span className="text-xs text-blue-400 font-medium">
-                          📸 {results.data_summary?.total_snapshots?.toLocaleString() || 0} Snapshots
-                        </span>
-                      </div>
-                      <div className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                        <span className="text-xs text-purple-400 font-medium">
-                          🎯 {results.data_summary?.unique_markets || 0} Markets
-                        </span>
-                      </div>
-                      <div className="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-                        <span className="text-xs text-cyan-400 font-medium">
-                          📊 {results.total_trades || 0} Trades
-                        </span>
-                      </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Data Summary</h3>
+                      <p className="text-xs text-white/50">Backtest data sources and market coverage</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${
                       results.data_quality?.live_data_percentage > 0 
-                        ? 'bg-red-500/20 text-red-400'
+                        ? 'bg-red-500/30 text-red-300 border border-red-500/50'
                         : results.data_quality?.real_data_percentage > 50 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-yellow-500/20 text-yellow-400'
+                          ? 'bg-green-500/30 text-green-300 border border-green-500/50' 
+                          : 'bg-yellow-500/30 text-yellow-300 border border-yellow-500/50'
                     }`}>
                       {results.data_quality?.live_data_percentage > 0 
-                        ? `${results.data_quality?.live_data_percentage}% Live`
-                        : `${results.data_quality?.real_data_percentage || 0}% Real`
+                        ? `${results.data_quality?.live_data_percentage?.toFixed(0)}% LIVE`
+                        : `${results.data_quality?.real_data_percentage?.toFixed(0) || 0}% REAL DATA`
                       }
                     </span>
-                    <span className="px-3 py-1.5 rounded-lg bg-white/10 text-xs text-white/60">
-                      Mode: {results.data_quality?.data_source_mode || 'auto'}
+                  </div>
+                </div>
+                
+                {/* Data Source Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+                  {/* Data Source Mode */}
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <p className="text-xs text-white/50 mb-1">Source Mode</p>
+                    <p className="text-sm font-bold text-white capitalize">{results.data_quality?.data_source_mode || 'auto'}</p>
+                  </div>
+                  
+                  {/* Live Data Points */}
+                  {results.data_quality?.live_data_points > 0 && (
+                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                      <p className="text-xs text-red-400/80 mb-1">Live Markets</p>
+                      <p className="text-sm font-bold text-red-400">{results.data_quality?.live_data_points?.toLocaleString() || 0}</p>
+                    </div>
+                  )}
+                  
+                  {/* Real Price Data */}
+                  <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <p className="text-xs text-green-400/80 mb-1">Real Prices</p>
+                    <p className="text-sm font-bold text-green-400">{results.data_quality?.real_price_data_points?.toLocaleString() || 0}</p>
+                  </div>
+                  
+                  {/* Simulated Data */}
+                  <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                    <p className="text-xs text-yellow-400/80 mb-1">Simulated</p>
+                    <p className="text-sm font-bold text-yellow-400">{results.data_quality?.simulated_price_data_points?.toLocaleString() || 0}</p>
+                  </div>
+                  
+                  {/* Total Snapshots */}
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <p className="text-xs text-blue-400/80 mb-1">Total Snapshots</p>
+                    <p className="text-sm font-bold text-blue-400">{results.data_summary?.total_snapshots?.toLocaleString() || 0}</p>
+                  </div>
+                  
+                  {/* Unique Markets */}
+                  <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                    <p className="text-xs text-purple-400/80 mb-1">Unique Markets</p>
+                    <p className="text-sm font-bold text-purple-400">{results.data_summary?.unique_markets || 0}</p>
+                  </div>
+                  
+                  {/* Total Trades */}
+                  <div className="p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                    <p className="text-xs text-cyan-400/80 mb-1">Total Trades</p>
+                    <p className="text-sm font-bold text-cyan-400">{results.total_trades || 0}</p>
+                  </div>
+                </div>
+                
+                {/* Data Quality Bar */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-white/50">Data Quality Breakdown</span>
+                    <span className="text-white/70">
+                      {results.data_summary?.date_range?.start && (
+                        <>
+                          {new Date(results.data_summary.date_range.start).toLocaleDateString()} - {new Date(results.data_summary.date_range.end).toLocaleDateString()}
+                        </>
+                      )}
                     </span>
+                  </div>
+                  <div className="h-3 rounded-full bg-slate-700 overflow-hidden flex">
+                    {results.data_quality?.live_data_percentage > 0 && (
+                      <div 
+                        className="h-full bg-red-500 transition-all"
+                        style={{ width: `${results.data_quality.live_data_percentage}%` }}
+                        title={`Live: ${results.data_quality.live_data_percentage?.toFixed(1)}%`}
+                      />
+                    )}
+                    <div 
+                      className="h-full bg-green-500 transition-all"
+                      style={{ width: `${results.data_quality?.real_data_percentage || 0}%` }}
+                      title={`Real: ${results.data_quality?.real_data_percentage?.toFixed(1)}%`}
+                    />
+                    <div 
+                      className="h-full bg-yellow-500 transition-all"
+                      style={{ width: `${100 - (results.data_quality?.real_data_percentage || 0) - (results.data_quality?.live_data_percentage || 0)}%` }}
+                      title={`Simulated: ${(100 - (results.data_quality?.real_data_percentage || 0) - (results.data_quality?.live_data_percentage || 0)).toFixed(1)}%`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-4 text-xs">
+                    {results.data_quality?.live_data_percentage > 0 && (
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                        <span className="text-white/60">Live {results.data_quality.live_data_percentage?.toFixed(1)}%</span>
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      <span className="text-white/60">Real {results.data_quality?.real_data_percentage?.toFixed(1) || 0}%</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                      <span className="text-white/60">Simulated {(100 - (results.data_quality?.real_data_percentage || 0) - (results.data_quality?.live_data_percentage || 0)).toFixed(1)}%</span>
+                    </span>
+                    {results.data_summary?.enabled_asset_classes && results.data_summary.enabled_asset_classes !== 'all' && (
+                      <span className="text-white/40 ml-auto">
+                        Asset Classes: {Array.isArray(results.data_summary.enabled_asset_classes) ? results.data_summary.enabled_asset_classes.join(', ') : results.data_summary.enabled_asset_classes}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
