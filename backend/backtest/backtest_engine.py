@@ -190,6 +190,64 @@ class BacktestEngine:
                 "enabled_asset_classes": None
             }
     
+    async def _load_tuned_parameters(self, strategies: List[str]) -> Dict:
+        """Load best tuned parameters for each strategy"""
+        tuned = {}
+        try:
+            for strategy in strategies:
+                result = await self.db.strategy_tuning.find_one(
+                    {"strategy": strategy},
+                    {"_id": 0},
+                    sort=[("timestamp", -1)]
+                )
+                if result and result.get('results') and len(result['results']) > 0:
+                    best = result['results'][0]
+                    if best.get('params'):
+                        tuned[strategy] = best['params']
+                        logger.info(f"Loaded tuned params for {strategy}: {best['params']}")
+        except Exception as e:
+            logger.error(f"Error loading tuned parameters: {e}")
+        return tuned
+    
+    def _get_strategy_params(self, strategy: str) -> Dict:
+        """Get parameters for a strategy, using tuned params if available"""
+        # Default parameters
+        defaults = {
+            'delta_neutral': {
+                'profit_target': 0.004,
+                'stop_loss': 0.015,
+                'bank_profit_threshold': 0.001,
+                'timeout_snapshots': 12,
+                'spread_threshold': 0.012
+            },
+            'volatility_exploitation': {
+                'profit_target': 0.03,
+                'stop_loss': 0.03,
+                'min_volatility': 0.02,
+                'max_volatility': 0.10,
+                'trend_threshold': 0.02
+            },
+            'alpha_directional': {
+                'profit_target': 0.03,
+                'stop_loss': 0.03,
+                'trend_threshold': 0.03,
+                'trailing_stop_trigger': 0.015,
+                'trailing_stop_distance': 0.01
+            },
+            'arbitrage': {
+                'profit_target': 0.015,
+                'stop_loss': 0.02,
+                'min_spread': 0.02,
+                'position_timeout': 50
+            }
+        }
+        
+        # Use tuned params if available
+        if hasattr(self, 'tuned_params') and strategy in self.tuned_params:
+            return {**defaults.get(strategy, {}), **self.tuned_params[strategy]}
+        
+        return defaults.get(strategy, {})
+    
     async def _get_market_timeseries(self, start_date: str, end_date: str) -> Dict[str, List[Dict]]:
         """Get historical data grouped by market_id as timeseries"""
         try:
