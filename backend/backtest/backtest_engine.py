@@ -533,7 +533,41 @@ class BacktestEngine:
                                spread: float = 0) -> Optional[str]:
         """Check if position should be closed with adaptive exit logic"""
         entry_price = position["entry_price"]
+        strategy = position.get("strategy", "unknown")
         pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+        
+        # Strategy-specific parameters
+        if strategy == "delta_neutral":
+            # Delta-Neutral: Quick, small wins with very tight risk management
+            # This strategy should be profitable through volume, not individual trade size
+            dn_profit_target = 0.008  # 0.8% profit target (smaller but more frequent)
+            dn_stop_loss = 0.012  # 1.2% stop loss (tighter risk)
+            
+            # Take profit quickly
+            if pnl_pct >= dn_profit_target:
+                return "profit_target"
+            
+            # Very tight stop loss
+            if pnl_pct <= -dn_stop_loss:
+                return "stop_loss"
+            
+            # Bank any profit after just 2 snapshots (HFT style)
+            if pnl_pct > 0.003 and snapshots_held >= 2:
+                return "bank_profit"
+            
+            # Exit if spread narrows - this is key for delta-neutral
+            if spread < 0.01 and pnl_pct > 0:
+                return "spread_capture"
+            
+            # Quick timeout - don't hold delta-neutral positions long
+            if snapshots_held > 15:
+                if pnl_pct > 0:
+                    return "bank_profit"
+                return "timeout"
+            
+            return None
+        
+        # Non-delta-neutral strategies use standard logic
         
         # 1. Take profit - adaptive based on actual price movement
         if pnl_pct >= profit_target:
