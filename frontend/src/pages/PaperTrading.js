@@ -658,10 +658,9 @@ const PaperTrading = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-80 overflow-y-auto">
               {positions.length > 0 ? positions.map((pos, idx) => (
                 <PositionCard key={idx} position={pos} />
-                )) : (
-                  <p className="text-white/40 text-center py-8">No open positions</p>
-                )}
-              </div>
+              )) : (
+                <p className="text-white/40 text-center py-8 col-span-full">No open positions</p>
+              )}
             </div>
           </div>
 
