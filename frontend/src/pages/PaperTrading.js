@@ -311,26 +311,64 @@ const PaperTrading = () => {
           {/* Status Badge */}
           <div className={`flex items-center gap-2 px-4 py-2 rounded-lg backdrop-blur-sm border ${
             running 
-              ? 'bg-blue-500/20 border-blue-500/30' 
+              ? status?.graceful_stop 
+                ? 'bg-yellow-500/20 border-yellow-500/30' 
+                : 'bg-blue-500/20 border-blue-500/30' 
               : 'bg-white/5 border-white/10'
           }`}>
-            <div className={`w-2 h-2 rounded-full ${running ? 'bg-blue-400 animate-pulse' : 'bg-gray-400'}`}></div>
-            <span className={`text-sm ${running ? 'text-blue-400' : 'text-white/60'}`}>
-              {running ? '📝 PAPER TRADING' : 'Stopped'}
+            <div className={`w-2 h-2 rounded-full ${running ? status?.graceful_stop ? 'bg-yellow-400 animate-pulse' : 'bg-blue-400 animate-pulse' : 'bg-gray-400'}`}></div>
+            <span className={`text-sm ${running ? status?.graceful_stop ? 'text-yellow-400' : 'text-blue-400' : 'text-white/60'}`}>
+              {running 
+                ? status?.graceful_stop 
+                  ? '⏳ CLOSING POSITIONS' 
+                  : status?.continuous_mode 
+                    ? '🔄 CONTINUOUS MODE' 
+                    : '📝 PAPER TRADING' 
+                : 'Stopped'}
             </span>
           </div>
           
           {/* Start/Stop Button */}
           {running ? (
-            <button
-              onClick={stopPaperTrading}
-              disabled={loading}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
-              data-testid="stop-paper-trading-btn"
-            >
-              <Square className="w-4 h-4" />
-              Stop Session
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowStopOptions(!showStopOptions)}
+                disabled={loading || status?.graceful_stop}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
+                data-testid="stop-paper-trading-btn"
+              >
+                <Square className="w-4 h-4" />
+                {status?.graceful_stop ? 'Closing...' : 'Stop Session'}
+              </button>
+              {/* Stop Options Dropdown */}
+              {showStopOptions && (
+                <div className="absolute top-full right-0 mt-2 w-64 rounded-lg bg-slate-800 border border-white/10 shadow-xl z-50">
+                  <div className="p-2 border-b border-white/10">
+                    <p className="text-xs text-white/60 px-2">How do you want to stop?</p>
+                  </div>
+                  <button
+                    onClick={() => stopPaperTrading(false)}
+                    className="w-full px-4 py-3 text-left hover:bg-white/10 flex items-center gap-3 text-sm"
+                  >
+                    <Square className="w-4 h-4 text-red-400" />
+                    <div>
+                      <p className="text-white">Immediate Stop</p>
+                      <p className="text-xs text-white/40">Close all positions now at current prices</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => stopPaperTrading(true)}
+                    className="w-full px-4 py-3 text-left hover:bg-white/10 flex items-center gap-3 text-sm"
+                  >
+                    <Clock className="w-4 h-4 text-yellow-400" />
+                    <div>
+                      <p className="text-white">Graceful Stop</p>
+                      <p className="text-xs text-white/40">Let positions close by TP/SL strategy</p>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <input
@@ -340,6 +378,19 @@ const PaperTrading = () => {
                 className="w-28 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm"
                 placeholder="Capital"
               />
+              {/* Continuous Mode Toggle */}
+              <button
+                onClick={() => setContinuousMode(!continuousMode)}
+                className={`px-3 py-2 rounded-lg border text-sm flex items-center gap-2 ${
+                  continuousMode 
+                    ? 'bg-purple-500/20 border-purple-500/30 text-purple-400' 
+                    : 'bg-white/5 border-white/20 text-white/60 hover:text-white'
+                }`}
+                title="Continuous mode runs indefinitely until manually stopped"
+              >
+                <RefreshCw className={`w-4 h-4 ${continuousMode ? 'animate-spin' : ''}`} />
+                {continuousMode ? 'Continuous' : 'Single'}
+              </button>
               <button
                 onClick={startPaperTrading}
                 disabled={loading}
