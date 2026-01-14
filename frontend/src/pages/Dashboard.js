@@ -4,7 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { 
   TrendingUp, TrendingDown, DollarSign, Activity, Target, Zap, Clock, Timer, 
   BarChart3, Layers, Brain, AlertTriangle, RefreshCw, Play, Pause, Settings,
-  ArrowUpRight, ArrowDownRight, Percent, Shield, Cpu, Database, Wifi, WifiOff
+  ArrowUpRight, ArrowDownRight, Percent, Shield, Cpu, Database, Wifi, WifiOff, FileText
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
