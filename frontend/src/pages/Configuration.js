@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Settings, Save, RefreshCw, DollarSign, Percent, Activity, Shield, Zap, AlertTriangle, Target, Clock, Info, Sliders, Layers, TrendingUp, Landmark, Trophy, Film, Bitcoin, Globe, Check, X } from 'lucide-react';
+import { Settings, Save, RefreshCw, DollarSign, Percent, Activity, Shield, Zap, AlertTriangle, Target, Clock, Info, Sliders, Layers, TrendingUp, Landmark, Trophy, Film, Bitcoin, Globe, Check, X, BarChart3, GitBranch, Crosshair, Scale } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -16,6 +16,14 @@ const ASSET_CLASSES = [
   { id: 'science', label: 'Science & Tech', icon: Globe, color: 'cyan', description: 'Scientific discoveries, tech launches, AI developments' },
 ];
 
+// Trading strategies with metadata
+const STRATEGIES = [
+  { id: 'delta_neutral', label: 'Delta-Neutral', icon: Scale, color: 'cyan', description: 'Market making with zero directional exposure, captures spreads', risk: 'Low', expectedReturn: '5-15%' },
+  { id: 'volatility_exploitation', label: 'Volatility Exploitation', icon: Zap, color: 'yellow', description: 'Buy at extreme prices during volatility spikes', risk: 'High', expectedReturn: '30-100x' },
+  { id: 'alpha_directional', label: 'Alpha-Directional', icon: TrendingUp, color: 'green', description: 'Directional bets based on ML signals and sentiment', risk: 'Medium', expectedReturn: '10-30%' },
+  { id: 'arbitrage', label: 'Multi-Market Arbitrage', icon: GitBranch, color: 'purple', description: 'Exploit price discrepancies across similar markets', risk: 'Low', expectedReturn: '2-5%' },
+];
+
 const Configuration = () => {
   const [config, setConfig] = useState({
     trades_per_10min: 500,
@@ -24,7 +32,8 @@ const Configuration = () => {
     max_position_size_pct: 3,
     kelly_fraction: 0.25,
     max_drawdown_pct: 3,
-    enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science']
+    enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'],
+    enabled_strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
   });
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
