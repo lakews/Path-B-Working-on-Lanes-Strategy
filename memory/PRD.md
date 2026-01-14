@@ -18,6 +18,48 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 14, 2026 - Session 12 (Critical Data Source Bug Fix & UI Consolidation)
+
+- ✅ **CRITICAL BUG FIX: Backtest Engine Now Uses Real Data** (`/app/backend/backtest/backtest_engine.py`)
+  - **Bug**: Engine was querying non-existent `price_history` collection (0 documents)
+  - **Fix**: Now queries `historical_data` collection with `source='price_history'` filter (22,000+ documents)
+  - **Result**: `real_data_percentage` now shows 99% (was 0% before fix!)
+  - Changes to `_get_market_timeseries()` method:
+    - Added filter `{"source": "price_history"}` for real data
+    - Properly handles all data source modes: auto, real, live, snapshots, hybrid
+    - Fixed `live_data_points` reset at backtest start to prevent stale data
+
+- ✅ **Live Data Source Improvements**
+  - Category inference from question keywords for markets without category field
+  - Proper parsing of `outcomePrices` from Polymarket API (handles string JSON format)
+  - Categories inferred: politics, crypto, finance, entertainment, science
+
+- ✅ **Consolidated Data Summary Card** (`/app/frontend/src/pages/Backtest.js`)
+  - New unified "Data Summary" card showing all data info in one place:
+    - Source Mode (auto/real/live/snapshots/hybrid)
+    - Real Prices count (green)
+    - Simulated count (yellow)
+    - Total Snapshots (blue)
+    - Unique Markets (purple)
+    - Total Trades (cyan)
+  - Data Quality Breakdown bar with color-coded segments:
+    - Green = Real data percentage
+    - Yellow = Simulated data percentage  
+    - Red = Live data percentage
+  - Date range display
+  - Asset classes display
+  - Dynamic badge showing "99% REAL DATA" or "X% LIVE" based on data source
+
+- ✅ **Test Suite Created** (`/app/tests/test_backtest_data_source_fix.py`)
+  - 14 comprehensive tests all passing:
+    - API status and historical stats verification
+    - Real data source percentage >90% verification (was 0%)
+    - Live data source Polymarket API fetch
+    - Data quality structure validation
+    - All 5 data source modes tested
+    - Backtest history endpoint
+    - Live markets card visibility logic
+
 ### January 14, 2026 - Session 11 (RL Enhancement, Alerts, Data Sources, Deep Dive Modal, AWS IaC)
 
 - ✅ **Enhanced RL/ML with Detailed Performance Metrics** (`/app/backend/ml/rl_engine.py`)
