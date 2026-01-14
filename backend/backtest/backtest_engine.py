@@ -123,6 +123,7 @@ class BacktestEngine:
             self.asset_class_performance = {}
             self.real_price_data_used = 0
             self.simulated_price_data_used = 0
+            self.live_data_points = 0  # Reset live data counter
             self.sentiment_cache = {}  # Reset AI signal caches
             self.whale_cache = {}
             
