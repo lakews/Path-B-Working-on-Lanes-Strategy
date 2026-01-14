@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Activity, Target, Zap, Clock, Timer, BarChart3, Layers, Brain, AlertTriangle, RefreshCw } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { 
+  TrendingUp, TrendingDown, DollarSign, Activity, Target, Zap, Clock, Timer, 
+  BarChart3, Layers, Brain, AlertTriangle, RefreshCw, Play, Pause, Settings,
+  ArrowUpRight, ArrowDownRight, Percent, Shield, Cpu, Database, Wifi, WifiOff
+} from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+const COLORS = ['#06b6d4', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444'];
 
 const Dashboard = () => {
   const [performance, setPerformance] = useState(null);
@@ -16,12 +22,35 @@ const Dashboard = () => {
   const [historicalStats, setHistoricalStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [pnlHistory, setPnlHistory] = useState([]);
+  const [trainingRL, setTrainingRL] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
   const tradesFeedRef = useRef(null);
 
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
+  }, []);
+
+  // WebSocket connection
+  useEffect(() => {
+    let ws = null;
+    const connectWs = () => {
+      try {
+        const wsUrl = BACKEND_URL.replace('http', 'ws').replace('/api', '') + '/ws/status';
+        ws = new WebSocket(wsUrl);
+        ws.onopen = () => setWsConnected(true);
+        ws.onclose = () => {
+          setWsConnected(false);
+          setTimeout(connectWs, 5000);
+        };
+        ws.onerror = () => setWsConnected(false);
+      } catch (e) {
+        console.error('WS error:', e);
+      }
+    };
+    connectWs();
+    return () => { if (ws) ws.close(); };
   }, []);
 
   // Track P&L history for chart
@@ -32,7 +61,7 @@ const Dashboard = () => {
           time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
           pnl: tradeStats.total_pnl
         };
-        const updated = [...prev, newEntry].slice(-30); // Keep last 30 points
+        const updated = [...prev, newEntry].slice(-30);
         return updated;
       });
     }
@@ -46,7 +75,7 @@ const Dashboard = () => {
         axios.get(`${API}/trades?limit=50`),
         axios.get(`${API}/trades/stats`),
         axios.get(`${API}/status`),
-        axios.get(`${API}/rl/stats`).catch(() => ({ data: null })),
+        axios.get(`${API}/rl/detailed-stats`).catch(() => ({ data: { rl_stats: null } })),
         axios.get(`${API}/historical/stats`).catch(() => ({ data: null }))
       ]);
       
@@ -55,7 +84,7 @@ const Dashboard = () => {
       setTrades(tradesRes.data.trades || []);
       setTradeStats(statsRes.data);
       setStatus(statusRes.data);
-      setRlStats(rlRes.data);
+      setRlStats(rlRes.data?.rl_stats || rlRes.data);
       setHistoricalStats(histRes.data);
       setLoading(false);
     } catch (e) {
@@ -112,6 +141,41 @@ const Dashboard = () => {
     }
   };
 
+  // Train RL from all historical backtests
+  const trainRLNow = async () => {
+    setTrainingRL(true);
+    try {
+      // Get all backtest history
+      const historyRes = await axios.get(`${API}/backtest/history?limit=100`);
+      const backtests = historyRes.data?.history || [];
+      
+      if (backtests.length === 0) {
+        alert('No backtests found. Run some backtests first to generate training data.');
+        setTrainingRL(false);
+        return;
+      }
+
+      // Train on each backtest
+      let trained = 0;
+      for (const bt of backtests) {
+        try {
+          await axios.post(`${API}/rl/learn-from-backtest/${bt.backtest_id}`);
+          trained++;
+        } catch (e) {
+          console.error(`Failed to learn from ${bt.backtest_id}:`, e);
+        }
+      }
+      
+      // Refresh RL stats
+      fetchData();
+      alert(`RL Training Complete! Trained on ${trained} backtests.`);
+    } catch (e) {
+      console.error('RL Training failed:', e);
+      alert('RL Training failed. Check console for details.');
+    }
+    setTrainingRL(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96" data-testid="dashboard-loading">
@@ -126,142 +190,141 @@ const Dashboard = () => {
   const pnlPct = tradeStats?.pnl_pct || 0;
   const isProfitable = pnl >= 0;
 
+  // Strategy distribution for pie chart
+  const strategyDist = trades.reduce((acc, t) => {
+    const strat = t.strategy || 'Unknown';
+    acc[strat] = (acc[strat] || 0) + 1;
+    return acc;
+  }, {});
+  const pieData = Object.entries(strategyDist).map(([name, value]) => ({ name, value }));
+
   return (
     <div className="space-y-6" data-testid="dashboard-page">
       
-      {/* Mode Control Banner */}
-      <div className="rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-xl border border-white/10 p-6" data-testid="mode-control-banner">
+      {/* Header with Mode Control & Connection Status */}
+      <div className="rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-xl border border-white/10 p-4" data-testid="mode-control-banner">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
           
-          {/* Mode Buttons */}
+          {/* Left: Mode Buttons */}
           <div className="flex items-center gap-3">
             <span className="text-white/60 text-sm font-medium mr-2">MODE:</span>
-            <button
-              onClick={() => setMode('live')}
-              data-testid="dashboard-live-btn"
-              className={`px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
-                tradingMode === 'live'
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/40 scale-105'
-                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                LIVE TRADING
-              </div>
-            </button>
-            
-            <button
-              onClick={() => setMode('backtest')}
-              data-testid="dashboard-backtest-btn"
-              className={`px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
-                tradingMode === 'backtest'
-                  ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/40 scale-105'
-                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                BACKTEST
-              </div>
-            </button>
-
-            <button
-              onClick={() => setMode('stopped')}
-              data-testid="dashboard-stop-btn"
-              className={`px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
-                tradingMode === 'stopped'
-                  ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/40 scale-105'
-                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-sm bg-current" />
-                STOP
-              </div>
-            </button>
+            {[
+              { mode: 'live', icon: Zap, label: 'LIVE', color: 'green' },
+              { mode: 'backtest', icon: BarChart3, label: 'BACKTEST', color: 'orange' },
+              { mode: 'stopped', icon: null, label: 'STOP', color: 'red' }
+            ].map(({ mode, icon: Icon, label, color }) => (
+              <button
+                key={mode}
+                onClick={() => setMode(mode)}
+                data-testid={`dashboard-${mode}-btn`}
+                className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${
+                  tradingMode === mode
+                    ? `bg-gradient-to-r from-${color}-500 to-${color === 'green' ? 'emerald' : color === 'orange' ? 'amber' : 'rose'}-600 text-white shadow-lg shadow-${color}-500/30 scale-105`
+                    : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {Icon ? <Icon className="w-4 h-4" /> : <div className="w-3 h-3 rounded-sm bg-current" />}
+                  {label}
+                </div>
+              </button>
+            ))}
           </div>
 
-          {/* Current Mode Status */}
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-3 px-6 py-3 rounded-xl ${
-              tradingMode === 'live' ? 'bg-green-500/20 border border-green-500/40' :
-              tradingMode === 'backtest' ? 'bg-orange-500/20 border border-orange-500/40' :
-              'bg-gray-500/20 border border-gray-500/40'
-            }`} data-testid="current-mode-display">
-              <div className={`w-3 h-3 rounded-full ${
-                tradingMode === 'live' ? 'bg-green-400 animate-pulse' :
-                tradingMode === 'backtest' ? 'bg-orange-400 animate-pulse' :
-                'bg-gray-400'
-              }`} />
-              <span className={`font-bold text-lg ${
-                tradingMode === 'live' ? 'text-green-400' :
-                tradingMode === 'backtest' ? 'text-orange-400' :
-                'text-gray-400'
-              }`}>
-                {tradingMode === 'live' ? 'LIVE TRADING ACTIVE' :
-                 tradingMode === 'backtest' ? 'BACKTESTING MODE' :
-                 'SYSTEM STOPPED'}
-              </span>
+          {/* Center: Status Display */}
+          <div className={`flex items-center gap-3 px-5 py-2.5 rounded-xl ${
+            tradingMode === 'live' ? 'bg-green-500/20 border border-green-500/40' :
+            tradingMode === 'backtest' ? 'bg-orange-500/20 border border-orange-500/40' :
+            'bg-gray-500/20 border border-gray-500/40'
+          }`} data-testid="current-mode-display">
+            <div className={`w-2.5 h-2.5 rounded-full ${
+              tradingMode === 'live' ? 'bg-green-400 animate-pulse' :
+              tradingMode === 'backtest' ? 'bg-orange-400 animate-pulse' :
+              'bg-gray-400'
+            }`} />
+            <span className={`font-bold ${
+              tradingMode === 'live' ? 'text-green-400' :
+              tradingMode === 'backtest' ? 'text-orange-400' :
+              'text-gray-400'
+            }`}>
+              {tradingMode === 'live' ? 'LIVE ACTIVE' :
+               tradingMode === 'backtest' ? 'BACKTESTING' : 'STOPPED'}
+            </span>
+          </div>
+
+          {/* Right: Connection & Bot Control */}
+          <div className="flex items-center gap-3">
+            {/* WebSocket Status */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${wsConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+              {wsConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+              <span className="text-xs font-medium">{wsConnected ? 'Live' : 'Offline'}</span>
             </div>
             
             {tradingMode === 'live' && (
               <button
                 onClick={botRunning ? stopBot : startBot}
                 data-testid="bot-control-btn"
-                className={`px-5 py-3 rounded-xl font-bold text-sm transition-all ${
+                className={`px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${
                   botRunning 
                     ? 'bg-red-500 hover:bg-red-600 text-white' 
                     : 'bg-green-500 hover:bg-green-600 text-white'
                 }`}
               >
-                {botRunning ? 'PAUSE BOT' : 'START BOT'}
+                {botRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {botRunning ? 'PAUSE' : 'START'}
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* P&L Hero Card with Real-time Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className={`lg:col-span-1 rounded-xl p-6 ${
+      {/* Main Stats Grid - Improved Layout */}
+      <div className="grid grid-cols-12 gap-4">
+        
+        {/* P&L Hero - Left Side */}
+        <div className={`col-span-12 lg:col-span-4 rounded-xl p-6 ${
           isProfitable 
             ? 'bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30' 
             : 'bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30'
         }`} data-testid="pnl-hero-card">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-white/60 text-sm font-medium mb-1">Total Profit & Loss</p>
+              <p className="text-white/60 text-xs font-medium mb-1 uppercase tracking-wider">Total P&L</p>
               <h2 className={`text-4xl font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`} data-testid="total-pnl-value">
                 {isProfitable ? '+' : ''}{pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
               </h2>
-              <span className={`text-lg font-semibold ${isProfitable ? 'text-green-400/80' : 'text-red-400/80'}`}>
-                ({isProfitable ? '+' : ''}{pnlPct.toFixed(2)}%)
-              </span>
             </div>
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
-              isProfitable ? 'bg-green-500/20' : 'bg-red-500/20'
-            }`}>
-              {isProfitable ? (
-                <TrendingUp className="w-8 h-8 text-green-400" />
-              ) : (
-                <TrendingDown className="w-8 h-8 text-red-400" />
-              )}
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isProfitable ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+              {isProfitable ? <TrendingUp className="w-7 h-7 text-green-400" /> : <TrendingDown className="w-7 h-7 text-red-400" />}
             </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className={`flex items-center gap-1 ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
+              {isProfitable ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+              <span className="font-semibold">{isProfitable ? '+' : ''}{pnlPct.toFixed(2)}%</span>
+            </div>
+            <span className="text-white/40 text-sm">return</span>
           </div>
         </div>
 
-        {/* Real-time P&L Chart */}
-        <div className="lg:col-span-2 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4" data-testid="realtime-pnl-chart">
-          <h3 className="text-sm font-semibold text-white/80 mb-2">Real-time P&L</h3>
-          <ResponsiveContainer width="100%" height={120}>
+        {/* Key Metrics - Center */}
+        <div className="col-span-12 lg:col-span-4 grid grid-cols-2 gap-3">
+          <MetricCard icon={Target} label="Win Rate" value={`${((performance?.win_rate || 0) * 100).toFixed(1)}%`} color="cyan" />
+          <MetricCard icon={TrendingUp} label="Sharpe" value={performance?.sharpe_ratio?.toFixed(2) || '0.00'} color="purple" />
+          <MetricCard icon={Shield} label="Max DD" value={`${((performance?.max_drawdown || 0) * 100).toFixed(1)}%`} color="orange" />
+          <MetricCard icon={Activity} label="Trades" value={performance?.num_trades || 0} color="green" />
+        </div>
+
+        {/* Real-time Chart - Right Side */}
+        <div className="col-span-12 lg:col-span-4 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4" data-testid="realtime-pnl-chart">
+          <h3 className="text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">Real-time P&L</h3>
+          <ResponsiveContainer width="100%" height={130}>
             <LineChart data={pnlHistory}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="time" stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 10 }} />
-              <YAxis stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 10 }} />
+              <XAxis dataKey="time" stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 9 }} />
+              <YAxis stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 9 }} width={40} />
               <Tooltip 
-                contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px'}}
-                labelStyle={{color: 'white'}}
+                contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px'}}
               />
               <Line type="monotone" dataKey="pnl" stroke={isProfitable ? '#4ade80' : '#f87171'} strokeWidth={2} dot={false} />
             </LineChart>
@@ -269,47 +332,81 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Trade Frequency Stats - Top Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard title="Live Trades" value={tradeStats?.live_trades || 0} subtitle="Currently Active" icon={Zap} color="cyan" testId="live-trades-card" />
-        <StatCard title="Last 10 Min" value={tradeStats?.trades_10min || 0} subtitle="trades executed" icon={Timer} color="blue" testId="trades-10min-card" />
-        <StatCard title="Last 30 Min" value={tradeStats?.trades_30min || 0} subtitle="trades executed" icon={Clock} color="purple" testId="trades-30min-card" />
-        <StatCard title="Last 1 Hour" value={tradeStats?.trades_1hr || 0} subtitle="trades executed" icon={Clock} color="indigo" testId="trades-1hr-card" />
+      {/* Trade Frequency Row */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <StatCard title="Live" value={tradeStats?.live_trades || 0} icon={Zap} color="cyan" />
+        <StatCard title="10 Min" value={tradeStats?.trades_10min || 0} icon={Timer} color="blue" />
+        <StatCard title="30 Min" value={tradeStats?.trades_30min || 0} icon={Clock} color="purple" />
+        <StatCard title="1 Hour" value={tradeStats?.trades_1hr || 0} icon={Clock} color="indigo" />
+        <StatCard title="24 Hours" value={tradeStats?.trades_24hr || 0} icon={Activity} color="orange" />
       </div>
 
-      {/* Second Row Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard title="Last 24 Hours" value={tradeStats?.trades_24hr || 0} subtitle="trades executed" icon={Activity} color="orange" testId="trades-24hr-card" />
-        <StatCard title="Win Rate" value={`${((performance?.win_rate || 0) * 100).toFixed(1)}%`} subtitle={`${performance?.num_trades || 0} total trades`} icon={Target} color="green" testId="win-rate-card" />
-        <StatCard title="Sharpe Ratio" value={performance?.sharpe_ratio?.toFixed(2) || '0.00'} subtitle={`Max DD: ${((performance?.max_drawdown || 0) * 100).toFixed(1)}%`} icon={TrendingUp} color="teal" testId="sharpe-ratio-card" />
-        <StatCard title="Active Positions" value={positions.length} subtitle="open positions" icon={Layers} color="pink" testId="active-positions-card" />
-      </div>
-
-      {/* AI & Data Status Row */}
+      {/* AI/Data/Risk Status Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* RL Engine Status */}
+        
+        {/* RL Engine Status - With Train Button */}
         <div className="rounded-xl bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-500/20 p-4" data-testid="rl-status-card">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-purple-400" />
               <h3 className="text-sm font-semibold text-white">RL Engine</h3>
             </div>
-            <span className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400">
-              {rlStats?.total_iterations || 0} iterations
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                (rlStats?.total_iterations || 0) > 0 ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+              }`}>
+                {(rlStats?.total_iterations || 0) > 0 ? 'Active' : 'Not Trained'}
+              </span>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="text-white/60">Epsilon: <span className="text-white">{(rlStats?.epsilon || 0).toFixed(3)}</span></div>
-            <div className="text-white/60">Buffer: <span className="text-white">{rlStats?.buffer_size || 0}</span></div>
-            <div className="text-white/60">Avg Reward: <span className="text-cyan-400">{(rlStats?.avg_reward_100 || 0).toFixed(4)}</span></div>
+          
+          <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+            <div className="p-2 rounded-lg bg-white/5">
+              <p className="text-white/50">Iterations</p>
+              <p className="text-lg font-bold text-purple-400">{rlStats?.total_iterations || 0}</p>
+            </div>
+            <div className="p-2 rounded-lg bg-white/5">
+              <p className="text-white/50">Exploration</p>
+              <p className="text-lg font-bold text-cyan-400">{((rlStats?.epsilon || 0.15) * 100).toFixed(0)}%</p>
+            </div>
+            <div className="p-2 rounded-lg bg-white/5">
+              <p className="text-white/50">Avg Reward</p>
+              <p className={`text-lg font-bold ${(rlStats?.avg_reward_100 || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {(rlStats?.avg_reward_100 || 0).toFixed(4)}
+              </p>
+            </div>
+            <div className="p-2 rounded-lg bg-white/5">
+              <p className="text-white/50">Q-Table</p>
+              <p className="text-lg font-bold text-yellow-400">{(rlStats?.q_table_nonzero_pct || 0).toFixed(2)}%</p>
+            </div>
           </div>
+          
+          {/* Train RL Now Button */}
+          <button
+            onClick={trainRLNow}
+            disabled={trainingRL}
+            className="w-full py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-bold hover:from-purple-600 hover:to-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            data-testid="train-rl-btn"
+          >
+            {trainingRL ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Training...
+              </>
+            ) : (
+              <>
+                <Cpu className="w-4 h-4" />
+                Train RL Now
+              </>
+            )}
+          </button>
         </div>
 
         {/* Historical Data Status */}
         <div className="rounded-xl bg-gradient-to-br from-blue-900/30 to-cyan-900/30 border border-blue-500/20 p-4" data-testid="data-status-card">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-blue-400" />
+              <Database className="w-5 h-5 text-blue-400" />
               <h3 className="text-sm font-semibold text-white">Historical Data</h3>
             </div>
             <button 
@@ -320,13 +417,24 @@ const Dashboard = () => {
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="text-white/60">Snapshots: <span className="text-white">{(historicalStats?.total_snapshots || 0).toLocaleString()}</span></div>
-            <div className="text-white/60">Markets: <span className="text-white">{historicalStats?.unique_markets || 0}</span></div>
-            <div className="text-white/60">Status: <span className={historicalStats?.collector_running ? 'text-green-400' : 'text-gray-400'}>{historicalStats?.collector_running ? 'Running' : 'Stopped'}</span></div>
+            <div className="p-2 rounded-lg bg-white/5">
+              <p className="text-white/50">Snapshots</p>
+              <p className="text-lg font-bold text-white">{(historicalStats?.total_snapshots || 0).toLocaleString()}</p>
+            </div>
+            <div className="p-2 rounded-lg bg-white/5">
+              <p className="text-white/50">Markets</p>
+              <p className="text-lg font-bold text-white">{historicalStats?.unique_markets || 0}</p>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs">
+            <span className="text-white/50">Collector:</span>
+            <span className={historicalStats?.collector_running ? 'text-green-400' : 'text-gray-400'}>
+              {historicalStats?.collector_running ? '● Running' : '○ Stopped'}
+            </span>
           </div>
         </div>
 
-        {/* Risk Alert */}
+        {/* Risk Status */}
         <div className="rounded-xl bg-gradient-to-br from-yellow-900/30 to-orange-900/30 border border-yellow-500/20 p-4" data-testid="risk-status-card">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -338,25 +446,35 @@ const Dashboard = () => {
               (performance?.max_drawdown || 0) < 0.2 ? 'bg-yellow-500/20 text-yellow-400' :
               'bg-red-500/20 text-red-400'
             }`}>
-              {(performance?.max_drawdown || 0) < 0.1 ? 'Low Risk' :
-               (performance?.max_drawdown || 0) < 0.2 ? 'Medium' : 'High Risk'}
+              {(performance?.max_drawdown || 0) < 0.1 ? 'Low' :
+               (performance?.max_drawdown || 0) < 0.2 ? 'Medium' : 'High'}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="text-white/60">Max DD: <span className="text-white">{((performance?.max_drawdown || 0) * 100).toFixed(1)}%</span></div>
-            <div className="text-white/60">Positions: <span className="text-white">{positions.length}</span></div>
-            <div className="text-white/60">Kelly: <span className="text-cyan-400">{status?.configuration?.kelly_fraction || 0.25}</span></div>
+            <div className="p-2 rounded-lg bg-white/5">
+              <p className="text-white/50">Max Drawdown</p>
+              <p className="text-lg font-bold text-white">{((performance?.max_drawdown || 0) * 100).toFixed(1)}%</p>
+            </div>
+            <div className="p-2 rounded-lg bg-white/5">
+              <p className="text-white/50">Kelly Fraction</p>
+              <p className="text-lg font-bold text-cyan-400">{status?.configuration?.kelly_fraction || 0.25}</p>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs">
+            <span className="text-white/50">Positions:</span>
+            <span className="text-white font-medium">{positions.length} open</span>
           </div>
         </div>
       </div>
 
-      {/* Live Trade Feed and Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Charts & Feed Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
         {/* P&L Chart */}
-        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="pnl-chart">
+        <div className="lg:col-span-2 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="pnl-chart">
           <h3 className="text-lg font-semibold text-white mb-4">P&L by Trade</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={trades.slice(0, 15).reverse().map((t, i) => ({
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={trades.slice(0, 20).reverse().map((t, i) => ({
               name: `#${i+1}`,
               pnl: t.pnl || (t.price * t.shares - (t.fee || 0)),
               strategy: t.strategy
@@ -372,68 +490,105 @@ const Dashboard = () => {
               <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
               <Tooltip 
                 contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px'}}
-                labelStyle={{color: 'white'}}
               />
               <Area type="monotone" dataKey="pnl" stroke="#06b6d4" fillOpacity={1} fill="url(#colorPnl)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Live Trade Feed */}
-        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="trade-feed">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Live Trade Feed</h3>
-            <span className="text-xs text-white/40">Last {trades.length} trades</span>
-          </div>
-          <div ref={tradesFeedRef} className="space-y-2 max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
-            {trades.length === 0 ? (
-              <p className="text-center text-white/60 py-8">No trades yet</p>
-            ) : (
-              trades.slice(0, 12).map((trade, idx) => (
-                <div 
-                  key={idx} 
-                  className={`flex items-center justify-between p-3 rounded-lg transition ${
-                    idx === 0 ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-white/5 hover:bg-white/10'
-                  }`} 
-                  data-testid={`trade-item-${idx}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${trade.side === 'BUY' ? 'bg-green-400' : 'bg-red-400'}`} />
-                    <div>
-                      <p className="text-sm font-medium text-white">{trade.strategy || 'Manual'}</p>
-                      <p className="text-xs text-white/60">{trade.side} • {(trade.shares || 0).toFixed(2)} shares</p>
+        {/* Strategy Distribution Pie */}
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="strategy-pie">
+          <h3 className="text-lg font-semibold text-white mb-4">Strategy Distribution</h3>
+          {pieData.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={150}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={60}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1 mt-2">
+                {pieData.slice(0, 4).map((entry, idx) => (
+                  <div key={entry.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                      <span className="text-white/70">{entry.name}</span>
                     </div>
+                    <span className="text-white font-medium">{entry.value}</span>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-semibold ${(trade.pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      ${((trade.price || 0) * (trade.shares || 0)).toFixed(2)}
-                    </p>
-                    <p className="text-xs text-white/60">{trade.execution_latency_ms?.toFixed(0) || '0'}ms</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="h-[200px] flex items-center justify-center text-white/40">No trade data</div>
+          )}
         </div>
       </div>
 
-      {/* Open Positions Table */}
-      <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="open-positions">
-        <h3 className="text-lg font-semibold text-white mb-4">Open Positions ({positions.length})</h3>
-        {positions.length === 0 ? (
-          <p className="text-center text-white/60 py-8">No open positions</p>
-        ) : (
+      {/* Live Trade Feed */}
+      <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="trade-feed">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Live Trade Feed</h3>
+          <span className="text-xs text-white/40">{trades.length} trades</span>
+        </div>
+        <div ref={tradesFeedRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto">
+          {trades.length === 0 ? (
+            <p className="text-center text-white/60 py-8 col-span-full">No trades yet</p>
+          ) : (
+            trades.slice(0, 12).map((trade, idx) => (
+              <div 
+                key={idx} 
+                className={`flex items-center justify-between p-3 rounded-lg transition ${
+                  idx === 0 ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-white/5 hover:bg-white/10'
+                }`} 
+                data-testid={`trade-item-${idx}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${trade.side === 'BUY' ? 'bg-green-400' : 'bg-red-400'}`} />
+                  <div>
+                    <p className="text-sm font-medium text-white">{trade.strategy || 'Manual'}</p>
+                    <p className="text-xs text-white/60">{trade.side} • {(trade.shares || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className={`text-sm font-semibold ${(trade.pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    ${((trade.price || 0) * (trade.shares || 0)).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-white/60">{trade.execution_latency_ms?.toFixed(0) || '0'}ms</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Open Positions */}
+      {positions.length > 0 && (
+        <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="open-positions">
+          <h3 className="text-lg font-semibold text-white mb-4">Open Positions ({positions.length})</h3>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="text-left text-sm font-medium text-white/60 pb-3">Market ID</th>
-                  <th className="text-left text-sm font-medium text-white/60 pb-3">Strategy</th>
-                  <th className="text-right text-sm font-medium text-white/60 pb-3">Side</th>
-                  <th className="text-right text-sm font-medium text-white/60 pb-3">Shares</th>
-                  <th className="text-right text-sm font-medium text-white/60 pb-3">Avg Price</th>
-                  <th className="text-right text-sm font-medium text-white/60 pb-3">Current</th>
-                  <th className="text-right text-sm font-medium text-white/60 pb-3">P&L</th>
+                  <th className="text-left text-xs font-medium text-white/60 pb-3">Market</th>
+                  <th className="text-left text-xs font-medium text-white/60 pb-3">Strategy</th>
+                  <th className="text-right text-xs font-medium text-white/60 pb-3">Side</th>
+                  <th className="text-right text-xs font-medium text-white/60 pb-3">Shares</th>
+                  <th className="text-right text-xs font-medium text-white/60 pb-3">Entry</th>
+                  <th className="text-right text-xs font-medium text-white/60 pb-3">Current</th>
+                  <th className="text-right text-xs font-medium text-white/60 pb-3">P&L</th>
                 </tr>
               </thead>
               <tbody>
@@ -441,7 +596,11 @@ const Dashboard = () => {
                   <tr key={idx} className="border-b border-white/5" data-testid={`position-row-${idx}`}>
                     <td className="py-3 text-sm text-white/80">{(pos.market_id || '').substring(0, 12)}...</td>
                     <td className="py-3 text-sm text-cyan-400">{pos.strategy || 'N/A'}</td>
-                    <td className="py-3 text-sm text-right text-white/80">{pos.side || 'N/A'}</td>
+                    <td className="py-3 text-sm text-right">
+                      <span className={`px-2 py-0.5 rounded text-xs ${pos.side === 'BUY' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {pos.side || 'N/A'}
+                      </span>
+                    </td>
                     <td className="py-3 text-sm text-right text-white/80">{(pos.shares || 0).toFixed(2)}</td>
                     <td className="py-3 text-sm text-right text-white/80">${(pos.avg_price || 0).toFixed(3)}</td>
                     <td className="py-3 text-sm text-right text-white/80">${(pos.current_price || 0).toFixed(3)}</td>
@@ -453,36 +612,57 @@ const Dashboard = () => {
               </tbody>
             </table>
           </div>
-        )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Compact Metric Card
+const MetricCard = ({ icon: Icon, label, value, color }) => {
+  const colors = {
+    cyan: 'text-cyan-400',
+    purple: 'text-purple-400',
+    orange: 'text-orange-400',
+    green: 'text-green-400'
+  };
+  
+  return (
+    <div className="rounded-xl bg-white/5 border border-white/10 p-3 hover:bg-white/10 transition">
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className={`w-4 h-4 ${colors[color]}`} />
+        <span className="text-xs text-white/50 uppercase">{label}</span>
       </div>
+      <p className={`text-xl font-bold ${colors[color]}`}>{value}</p>
     </div>
   );
 };
 
 // Stat Card Component
-const StatCard = ({ title, value, subtitle, icon: Icon, color, testId }) => {
+const StatCard = ({ title, value, icon: Icon, color }) => {
   const colorClasses = {
-    cyan: 'from-cyan-400 to-cyan-600',
-    blue: 'from-blue-400 to-blue-600',
-    purple: 'from-purple-400 to-purple-600',
-    indigo: 'from-indigo-400 to-indigo-600',
-    orange: 'from-orange-400 to-orange-600',
-    green: 'from-green-400 to-green-600',
-    teal: 'from-teal-400 to-teal-600',
-    pink: 'from-pink-400 to-pink-600'
+    cyan: 'from-cyan-500/20 to-cyan-600/10 border-cyan-500/30',
+    blue: 'from-blue-500/20 to-blue-600/10 border-blue-500/30',
+    purple: 'from-purple-500/20 to-purple-600/10 border-purple-500/30',
+    indigo: 'from-indigo-500/20 to-indigo-600/10 border-indigo-500/30',
+    orange: 'from-orange-500/20 to-orange-600/10 border-orange-500/30'
+  };
+  const iconColors = {
+    cyan: 'text-cyan-400',
+    blue: 'text-blue-400',
+    purple: 'text-purple-400',
+    indigo: 'text-indigo-400',
+    orange: 'text-orange-400'
   };
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-xl border border-white/10 p-5 hover:border-white/20 transition-all" data-testid={testId}>
-      <div className="flex items-start justify-between">
+    <div className={`rounded-xl bg-gradient-to-br ${colorClasses[color]} border p-3`}>
+      <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs text-white/60 mb-1 uppercase tracking-wide">{title}</p>
-          <h3 className="text-2xl font-bold text-white mb-0.5">{value}</h3>
-          <p className="text-xs text-cyan-400">{subtitle}</p>
+          <p className="text-xs text-white/50 mb-0.5">{title}</p>
+          <p className="text-xl font-bold text-white">{value}</p>
         </div>
-        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center`}>
-          <Icon className="w-5 h-5 text-white" />
-        </div>
+        <Icon className={`w-5 h-5 ${iconColors[color]}`} />
       </div>
     </div>
   );
