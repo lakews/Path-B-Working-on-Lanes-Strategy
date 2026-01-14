@@ -571,9 +571,20 @@ class BacktestEngine:
             self.strategy_performance[strategy]["pnl"] += pnl
             if pnl > 0:
                 self.strategy_performance[strategy]["wins"] += 1
+                self.strategy_performance[strategy]["total_wins_pnl"] += pnl
+            else:
+                self.strategy_performance[strategy]["losses"] += 1
+                self.strategy_performance[strategy]["total_losses_pnl"] += abs(pnl)
         else:
             # Initialize if strategy wasn't pre-registered
-            self.strategy_performance[strategy] = {"trades": 1, "wins": 1 if pnl > 0 else 0, "pnl": pnl}
+            self.strategy_performance[strategy] = {
+                "trades": 1, 
+                "wins": 1 if pnl > 0 else 0, 
+                "losses": 0 if pnl > 0 else 1,
+                "pnl": pnl,
+                "total_wins_pnl": pnl if pnl > 0 else 0,
+                "total_losses_pnl": abs(pnl) if pnl < 0 else 0
+            }
         
         # Update asset class performance  
         if category in self.asset_class_performance:
@@ -581,6 +592,10 @@ class BacktestEngine:
             self.asset_class_performance[category]["pnl"] += pnl
             if pnl > 0:
                 self.asset_class_performance[category]["wins"] += 1
+                self.asset_class_performance[category]["total_wins_pnl"] += pnl
+            else:
+                self.asset_class_performance[category]["losses"] += 1
+                self.asset_class_performance[category]["total_losses_pnl"] += abs(pnl)
         
         # Remove from positions
         if market_id in self.positions:
