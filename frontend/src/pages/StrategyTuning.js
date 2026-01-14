@@ -281,6 +281,52 @@ const StrategyTuning = () => {
           </div>
         </div>
 
+        {/* Parameter Grid Display (Transparency) */}
+        <div className="rounded-xl bg-gradient-to-br from-indigo-500/5 to-purple-500/5 border border-indigo-500/20 p-6">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Sliders className="w-5 h-5 text-indigo-400" />
+            Parameter Search Space for {STRATEGIES.find(s => s.id === selectedStrategy)?.name}
+          </h3>
+          <p className="text-sm text-white/60 mb-4">
+            These are the parameter ranges being tested during optimization. Each combination is evaluated via backtest.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {PARAMETER_GRIDS[selectedStrategy] && Object.entries(PARAMETER_GRIDS[selectedStrategy]).map(([param, config]) => (
+              <div key={param} className="rounded-lg bg-white/5 border border-white/10 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-white">{param.replace(/_/g, ' ')}</span>
+                  <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">{config.range.length} values</span>
+                </div>
+                <p className="text-xs text-white/50 mb-2">{config.desc}</p>
+                <div className="flex flex-wrap gap-1">
+                  {config.range.map((val, idx) => (
+                    <span key={idx} className="text-xs font-mono px-2 py-1 rounded bg-white/10 text-white/80">
+                      {typeof val === 'number' ? val.toFixed(4) : val}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-white/60">Total possible combinations:</span>
+              <span className="text-white font-mono">
+                {PARAMETER_GRIDS[selectedStrategy] 
+                  ? Object.values(PARAMETER_GRIDS[selectedStrategy]).reduce((acc, p) => acc * p.range.length, 1).toLocaleString()
+                  : '?'
+                }
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm mt-1">
+              <span className="text-white/60">Will test (max):</span>
+              <span className="text-cyan-400 font-mono">{maxCombinations}</span>
+            </div>
+          </div>
+        </div>
+
         {/* Results */}
         {results && (
           <div className="rounded-xl bg-white/5 border border-white/10 p-6">
