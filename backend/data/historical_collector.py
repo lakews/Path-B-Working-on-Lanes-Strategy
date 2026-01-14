@@ -18,6 +18,12 @@ class HistoricalDataCollector:
         self.running = False
         self.snapshots_collected = 0
         self.last_collection_time = None
+        self.price_history_running = False
+        self.price_history_stats = {
+            "markets_processed": 0,
+            "price_points_collected": 0,
+            "last_collection": None
+        }
     
     async def start_collection(self):
         """Start collecting historical data"""
@@ -225,3 +231,170 @@ class HistoricalDataCollector:
         except Exception as e:
             logger.error(f"Error cleaning up old data: {e}")
             return 0
+    
+    # ==========================================
+    # HIGH-FIDELITY PRICE HISTORY COLLECTION
+    # ==========================================
+    
+    async def collect_price_history(self, market_limit: int = 50, interval: str = "1w", fidelity: int = 60) -> Dict:
+        """
+        Collect tick-level price history for active markets.
+        This provides REAL price movements instead of static snapshots.
+        
+        Args:
+            market_limit: Number of markets to collect (ordered by volume)
+            interval: Time interval for history ("1h", "6h", "1d", "1w", "max")
+            fidelity: Resolution in minutes
+        
+        Returns:
+            Stats about collected data
+        """
+        self.price_history_running = True
+        stats = {
+            "markets_requested": market_limit,
+            "markets_with_history": 0,
+            "total_price_points": 0,
+            "stored_snapshots": 0,
+            "errors": []
+        }
+        
+        try:
+            async with PolymarketAPI() as api:
+                # Get markets with CLOB token IDs
+                markets = await api.get_markets_with_tokens(limit=market_limit)
+                logger.info(f"Fetched {len(markets)} markets with token IDs")
+                
+                # Fetch price history for each market
+                price_data = await api.get_market_price_history_batch(markets, interval, fidelity)
+                
+                stats["markets_with_history"] = len(price_data)
+                
+                # Store price history as time-series snapshots
+                for condition_id, data in price_data.items():
+                    history = data.get("history", [])
+                    question = data.get("question", "")
+                    
+                    if not history:
+                        continue
+                    
+                    stats["total_price_points"] += len(history)
+                    
+                    # Store each price point as a snapshot
+                    for point in history:
+                        timestamp_unix = point.get("t", 0)
+                        price = float(point.get("p", 0.5))
+                        
+                        # Convert Unix timestamp to ISO
+                        timestamp = datetime.fromtimestamp(timestamp_unix, tz=timezone.utc).isoformat()
+                        
+                        snapshot = {
+                            "id": str(uuid.uuid4()),
+                            "market_id": condition_id,
+                            "question": question,
+                            "category": self._categorize_market(question),
+                            "yes_price": price,
+                            "no_price": round(1.0 - price, 4),
+                            "volume": float(data.get("volume24hr", 0) or 0),
+                            "liquidity": float(data.get("liquidity", 0) or 0),
+                            "timestamp": timestamp,
+                            "source": "price_history",  # Mark as real price data
+                            "token_id": data.get("token_id"),
+                            "raw_data": {"t": timestamp_unix, "p": price}
+                        }
+                        
+                        # Upsert to avoid duplicates (same market + timestamp)
+                        await self.db.historical_data.update_one(
+                            {"market_id": condition_id, "timestamp": timestamp},
+                            {"$set": snapshot},
+                            upsert=True
+                        )
+                        stats["stored_snapshots"] += 1
+                
+                self.price_history_stats = {
+                    "markets_processed": stats["markets_with_history"],
+                    "price_points_collected": stats["total_price_points"],
+                    "last_collection": datetime.now(timezone.utc).isoformat()
+                }
+                
+                logger.info(f"Price history collection complete: {stats['stored_snapshots']} snapshots from {stats['markets_with_history']} markets")
+                
+        except Exception as e:
+            logger.error(f"Error collecting price history: {e}")
+            stats["errors"].append(str(e))
+        finally:
+            self.price_history_running = False
+        
+        return stats
+    
+    async def start_price_history_collection(self, interval_minutes: int = 30, market_limit: int = 50):
+        """Start continuous price history collection"""
+        self.price_history_running = True
+        logger.info(f"Starting continuous price history collection every {interval_minutes} minutes")
+        
+        while self.price_history_running:
+            try:
+                await self.collect_price_history(market_limit=market_limit)
+                await asyncio.sleep(interval_minutes * 60)
+            except Exception as e:
+                logger.error(f"Error in continuous price history collection: {e}")
+                await asyncio.sleep(60)  # Wait 1 minute on error
+    
+    async def stop_price_history_collection(self):
+        """Stop continuous price history collection"""
+        self.price_history_running = False
+        logger.info("Stopped price history collection")
+    
+    async def get_price_history_stats(self) -> Dict:
+        """Get statistics about collected price history data"""
+        try:
+            # Count snapshots with real price data vs simulated
+            total_snapshots = await self.db.historical_data.count_documents({})
+            real_price_snapshots = await self.db.historical_data.count_documents({"source": "price_history"})
+            
+            # Get unique markets with real price data
+            real_markets = await self.db.historical_data.distinct("market_id", {"source": "price_history"})
+            
+            # Get date range for real price data
+            oldest_real = await self.db.historical_data.find_one(
+                {"source": "price_history"}, 
+                {"timestamp": 1, "_id": 0}, 
+                sort=[("timestamp", 1)]
+            )
+            newest_real = await self.db.historical_data.find_one(
+                {"source": "price_history"}, 
+                {"timestamp": 1, "_id": 0}, 
+                sort=[("timestamp", -1)]
+            )
+            
+            # Check price variation in real data
+            price_variation_pipeline = [
+                {"$match": {"source": "price_history"}},
+                {"$group": {
+                    "_id": "$market_id",
+                    "min_price": {"$min": "$yes_price"},
+                    "max_price": {"$max": "$yes_price"},
+                    "count": {"$sum": 1}
+                }},
+                {"$addFields": {
+                    "price_range": {"$subtract": ["$max_price", "$min_price"]}
+                }},
+                {"$match": {"price_range": {"$gt": 0.01}}},  # Markets with >1% price movement
+                {"$count": "markets_with_movement"}
+            ]
+            movement_result = await self.db.historical_data.aggregate(price_variation_pipeline).to_list(length=1)
+            markets_with_movement = movement_result[0]["markets_with_movement"] if movement_result else 0
+            
+            return {
+                "total_snapshots": total_snapshots,
+                "real_price_snapshots": real_price_snapshots,
+                "real_price_percentage": round((real_price_snapshots / total_snapshots * 100) if total_snapshots > 0 else 0, 2),
+                "unique_markets_with_real_data": len(real_markets),
+                "markets_with_price_movement": markets_with_movement,
+                "oldest_real_price_data": oldest_real.get("timestamp") if oldest_real else None,
+                "newest_real_price_data": newest_real.get("timestamp") if newest_real else None,
+                "collection_running": self.price_history_running,
+                "last_collection_stats": self.price_history_stats
+            }
+        except Exception as e:
+            logger.error(f"Error getting price history stats: {e}")
+            return {"error": str(e)}
