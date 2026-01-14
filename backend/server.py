@@ -1074,7 +1074,22 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Initialize database connection on startup"""
+    global user_config
     await connect_db()
+    
+    # Load saved user config from database
+    try:
+        db = get_db()
+        saved_config = await db.user_config.find_one({"type": "trading_preferences"}, {"_id": 0})
+        if saved_config:
+            if "enabled_asset_classes" in saved_config:
+                user_config["enabled_asset_classes"] = saved_config["enabled_asset_classes"]
+            if "enabled_strategies" in saved_config:
+                user_config["enabled_strategies"] = saved_config["enabled_strategies"]
+            logger.info(f"Loaded user config: {len(user_config['enabled_strategies'])} strategies, {len(user_config['enabled_asset_classes'])} asset classes")
+    except Exception as e:
+        logger.warning(f"Could not load saved config: {e}")
+    
     logger.info("APEX TRADER API Started")
 
 @app.on_event("shutdown")
