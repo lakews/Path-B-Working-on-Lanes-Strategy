@@ -852,6 +852,73 @@ const Backtest = () => {
                 </div>
               </div>
 
+              {/* Returns Distribution - Above Equity Curve */}
+              {results.returns_distribution && results.returns_distribution.bins && (
+                <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="returns-distribution">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-purple-400" />
+                      Returns Distribution
+                      <span className="text-xs text-white/40 ml-2">({results.returns_distribution.bins.filter(b => b.count > 0).length} bins with data)</span>
+                    </h3>
+                    {results.returns_distribution.stats && (
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="text-white/50">Mean: <span className={results.returns_distribution.stats.mean >= 0 ? 'text-green-400' : 'text-red-400'}>{results.returns_distribution.stats.mean?.toFixed(2)}%</span></span>
+                        <span className="text-white/50">Median: <span className="text-cyan-400">{results.returns_distribution.stats.median?.toFixed(2)}%</span></span>
+                        <span className="text-white/50">Std Dev: <span className="text-purple-400">{results.returns_distribution.stats.std?.toFixed(2)}%</span></span>
+                      </div>
+                    )}
+                  </div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={results.returns_distribution.bins.filter(b => b.count > 0)} margin={{ top: 10, right: 30, left: 0, bottom: 30 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                      <XAxis 
+                        dataKey="label" 
+                        stroke="rgba(255,255,255,0.5)" 
+                        tick={{ fontSize: 9, fill: 'rgba(255,255,255,0.6)' }}
+                        angle={-45}
+                        textAnchor="end"
+                        interval={0}
+                        height={60}
+                      />
+                      <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.6)' }} />
+                      <Tooltip 
+                        contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px'}}
+                        formatter={(value) => [`${value} trades`, 'Count']}
+                        labelFormatter={(label) => `Return: ${label}`}
+                      />
+                      <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                        {results.returns_distribution.bins.filter(b => b.count > 0).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.min >= 0 ? '#10b981' : '#ef4444'} fillOpacity={0.8} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  {results.returns_distribution.stats && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-white/10">
+                      <div className="text-center">
+                        <p className="text-xs text-white/50">Positive Returns</p>
+                        <p className="text-lg font-bold text-green-400">{results.returns_distribution.stats.positive_returns || 0}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-white/50">Negative Returns</p>
+                        <p className="text-lg font-bold text-red-400">{results.returns_distribution.stats.negative_returns || 0}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-white/50">Skewness</p>
+                        <p className={`text-lg font-bold ${(results.returns_distribution.stats.skewness || 0) > 0 ? 'text-green-400' : 'text-yellow-400'}`}>
+                          {results.returns_distribution.stats.skewness?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-white/50">Kurtosis</p>
+                        <p className="text-lg font-bold text-purple-400">{results.returns_distribution.stats.kurtosis?.toFixed(2) || '0.00'}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Equity Curve - Full Width */}
               <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="equity-curve">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -880,37 +947,6 @@ const Backtest = () => {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-
-              {/* Returns Distribution */}
-              {results.returns_distribution && results.returns_distribution.bins && results.returns_distribution.bins.length > 0 && (
-                <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="returns-distribution">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5 text-purple-400" />
-                      Returns Distribution
-                    </h3>
-                    {results.returns_distribution.stats && (
-                      <div className="flex items-center gap-4 text-xs">
-                        <span className="text-white/50">Mean: <span className={results.returns_distribution.stats.mean >= 0 ? 'text-green-400' : 'text-red-400'}>{results.returns_distribution.stats.mean?.toFixed(2)}%</span></span>
-                        <span className="text-white/50">Median: <span className="text-cyan-400">{results.returns_distribution.stats.median?.toFixed(2)}%</span></span>
-                        <span className="text-white/50">Std Dev: <span className="text-purple-400">{results.returns_distribution.stats.std?.toFixed(2)}%</span></span>
-                      </div>
-                    )}
-                  </div>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={results.returns_distribution.bins}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis dataKey="range" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 9 }} />
-                      <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
-                      <Tooltip 
-                        contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px'}}
-                        formatter={(value) => [value, 'Trades']}
-                      />
-                      <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
 
               {/* AI Model Learning Stats - Enhanced */}
               <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/20 p-6">
