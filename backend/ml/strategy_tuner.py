@@ -7,7 +7,6 @@ import asyncio
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
-from database import get_db
 from itertools import product
 import uuid
 
@@ -21,7 +20,7 @@ class StrategyTuner:
     """
     
     def __init__(self):
-        self.db = get_db()
+        self._db = None
         self.running = False
         self.current_tune_id = None
         self.results = []
