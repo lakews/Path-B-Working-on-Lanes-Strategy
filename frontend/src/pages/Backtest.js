@@ -65,7 +65,10 @@ const METRIC_TOOLTIPS = {
   sharpe_ratio: "Risk-adjusted return. Measures excess return per unit of risk. >1 is good, >2 is excellent.",
   profit_factor: "Gross profits divided by gross losses. >1.5 indicates strong profitability.",
   max_drawdown: "Largest peak-to-trough decline. Lower is better for risk management.",
-  win_rate: "Percentage of trades that were profitable."
+  win_rate: "Percentage of trades that were profitable.",
+  equity_curve: "Shows portfolio value over time as trades execute. Upward slope = profitable, volatility = risk.",
+  returns_distribution: "Histogram of individual trade returns. Bell curve centered right of 0 = consistent profits. Skew indicates asymmetry.",
+  data_source: "Auto: Uses real prices when available, falls back to snapshots/simulated. Real: Only actual tick data. Hybrid: Mix of real + fills."
 };
 
 // Tooltip Component
