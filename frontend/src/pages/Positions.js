@@ -27,11 +27,58 @@ const Positions = () => {
   const [sortOrder, setSortOrder] = useState('desc');
   const [filterStrategy, setFilterStrategy] = useState('all');
   const [expandedPosition, setExpandedPosition] = useState(null);
+  const [wsConnected, setWsConnected] = useState(false);
 
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
+  }, []);
+
+  // WebSocket connection for real-time position updates
+  useEffect(() => {
+    let ws = null;
+    let reconnectTimeout = null;
+    
+    const connectWs = () => {
+      try {
+        const wsUrl = BACKEND_URL.replace('https', 'wss').replace('http', 'ws') + '/ws';
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('Positions WebSocket connected');
+          setWsConnected(true);
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'position_update' || data.positions) {
+              setPositions(data.positions || []);
+            } else if (data.type === 'trade' && data.trade) {
+              setTrades(prev => [data.trade, ...prev].slice(0, 100));
+            }
+          } catch (e) {
+            console.error('Error parsing WebSocket message:', e);
+          }
+        };
+        
+        ws.onclose = () => {
+          setWsConnected(false);
+          reconnectTimeout = setTimeout(connectWs, 5000);
+        };
+        
+        ws.onerror = () => setWsConnected(false);
+      } catch (e) {
+        console.error('WS connection error:', e);
+      }
+    };
+    
+    connectWs();
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
   }, []);
 
   const fetchData = async () => {
