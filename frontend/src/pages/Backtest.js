@@ -1515,25 +1515,10 @@ const Backtest = () => {
         </>
       )}
 
-      {/* HISTORY TAB */}
-      {activeTab === 'history' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Backtest History</h2>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-white/60">{selectedBacktests.length} selected</span>
-              <button
-                onClick={compareSelectedBacktests}
-                disabled={selectedBacktests.length === 0}
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                <GitCompare className="w-4 h-4" />
-                Analyze Selected
-              </button>
-            </div>
-          </div>
+        </>
+      )}
 
-          {history.length === 0 ? (
+      {/* HISTORY TAB */}
             <div className="rounded-xl bg-white/5 border border-white/10 p-12 text-center">
               <History className="w-16 h-16 text-white/20 mx-auto mb-4" />
               <p className="text-white/60 text-lg">No backtest history</p>
