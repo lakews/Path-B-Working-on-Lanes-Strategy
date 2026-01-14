@@ -543,34 +543,37 @@ class BacktestEngine:
         
         # Strategy-specific parameters
         if strategy == "delta_neutral":
-            # Delta-Neutral: Quick, small wins with very tight risk management
-            # Key insight: Need to maintain HIGH win rate while keeping losses small
-            dn_profit_target = 0.006  # 0.6% profit target (very small but frequent)
-            dn_stop_loss = 0.008  # 0.8% stop loss (very tight, 1.33x profit target)
+            # Delta-Neutral: Market Making Strategy
+            # Key insight: Focus on TIME-BASED exits rather than price-based stops
+            # Market making profits come from spread capture, not price movement
             
-            # Take profit quickly
-            if pnl_pct >= dn_profit_target:
+            # Immediate profit capture - any positive P&L is good
+            if pnl_pct >= 0.004:  # 0.4% profit target
                 return "profit_target"
             
-            # Very tight stop loss
-            if pnl_pct <= -dn_stop_loss:
-                return "stop_loss"
-            
-            # Bank ANY profit after 3 snapshots (market making style)
-            if pnl_pct > 0.002 and snapshots_held >= 3:
+            # Bank small profits quickly
+            if pnl_pct > 0.001 and snapshots_held >= 2:  # 0.1% after 2 snapshots
                 return "bank_profit"
             
-            # Exit if spread narrows - this is key for delta-neutral
-            if spread < 0.015 and pnl_pct > 0:
+            # Spread capture - exit when spread narrows (profit taken)
+            if spread < 0.012 and pnl_pct > 0:
                 return "spread_capture"
             
-            # Timeout with profit protection - exit early if any profit
-            if snapshots_held > 10:
+            # Time-based profit protection
+            if snapshots_held >= 5:
                 if pnl_pct > 0:
                     return "bank_profit"
             
-            # Strict timeout - don't hold losing delta-neutral positions
-            if snapshots_held > 20:
+            # Moderate stop loss - give some room
+            if pnl_pct <= -0.015:  # 1.5% stop loss
+                return "stop_loss"
+            
+            # Strict timeout for losing positions
+            if snapshots_held > 12 and pnl_pct < 0:
+                return "timeout"
+            
+            # Maximum hold time
+            if snapshots_held > 25:
                 return "timeout"
             
             return None
