@@ -376,7 +376,7 @@ const Backtest = () => {
         ))}
       </div>
 
-      {/* Historical Data Summary */}
+      {/* Historical Data Summary with Data Source Selector */}
       {historicalStats && (
         <div className="rounded-xl bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -414,7 +414,23 @@ const Backtest = () => {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
+              {/* Data Source Selector - Moved here */}
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-blue-400" />
+                <select
+                  value={config.data_source}
+                  onChange={(e) => setConfig({...config, data_source: e.target.value})}
+                  disabled={backtestRunning}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 border border-blue-500/30 text-white text-xs font-medium focus:outline-none focus:border-cyan-500"
+                  data-testid="data-source-select-header"
+                  style={{ colorScheme: 'dark' }}
+                >
+                  {DATA_SOURCE_OPTIONS.map(opt => (
+                    <option key={opt.id} value={opt.id} className="bg-slate-800 text-white">{opt.icon} {opt.name}</option>
+                  ))}
+                </select>
+              </div>
               <button
                 onClick={collectPriceHistory}
                 disabled={collectingPrices}
