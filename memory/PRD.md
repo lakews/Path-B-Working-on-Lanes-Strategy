@@ -14,9 +14,63 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Backend**: FastAPI (Python)
 - **Frontend**: React + Tailwind CSS + Recharts
 - **Database**: MongoDB
-- **Deployment**: AWS (planned)
+- **Deployment**: AWS with Terraform IaC
 
 ## What's Been Implemented
+
+### January 14, 2026 - Session 11 (RL Enhancement, Alerts, Data Sources, Deep Dive Modal, AWS IaC)
+
+- ✅ **Enhanced RL/ML with Detailed Performance Metrics** (`/app/backend/ml/rl_engine.py`)
+  - Expanded `get_training_stats()` with:
+    - Positive/negative reward tracking
+    - Q-table analysis (nonzero %, mean, max values)
+    - Action distribution across all strategies
+    - Standard deviation of rewards
+  - New `learn_from_backtest_results()` - RL learns from completed backtests
+  - New `get_strategy_confidence()` - Get RL confidence for specific strategies
+  - API endpoints:
+    - `POST /api/rl/learn-from-backtest/{backtest_id}` - Trigger RL learning
+    - `GET /api/rl/detailed-stats` - Get comprehensive RL stats
+
+- ✅ **Backtest Data Source Selection** (`/app/backend/backtest/backtest_engine.py`)
+  - New `data_source` parameter: `auto`, `real`, `snapshots`, `live`, `hybrid`
+  - `auto`: Automatically selects best available data
+  - `real`: Only real tick-level price history
+  - `snapshots`: Only historical snapshots (faster)
+  - `hybrid`: Combines real prices with snapshots for gaps
+  - Data source breakdown in results
+
+- ✅ **Clickable Backtest History with Deep Dive Modal** (`/app/frontend/src/pages/Backtest.js`)
+  - Click any history row to open detailed modal overlay
+  - Shows all key metrics, strategy breakdown, asset class breakdown
+  - AI signal usage stats
+  - Data quality information
+
+- ✅ **SendGrid Email Alerts System** (`/app/backend/services/alert_service.py`)
+  - Whale activity alerts (when score > 0.7)
+  - Sentiment shift alerts (when change > 30%)
+  - Drawdown alerts (when > 5%)
+  - Trade execution alerts (for trades > $50)
+  - Backtest completion alerts
+  - Cooldown periods to prevent spam
+  - Beautiful HTML email templates
+  - API endpoints:
+    - `GET /api/alerts/config` - Get alert configuration
+    - `POST /api/alerts/config` - Update alert thresholds
+    - `GET /api/alerts/history` - Get alert history
+    - `POST /api/alerts/test` - Send test alert
+
+- ✅ **AWS Infrastructure as Code (Terraform)** (`/app/infrastructure/terraform/`)
+  - Complete production-ready infrastructure:
+    - VPC with public/private subnets
+    - ECS Fargate cluster for containers
+    - ECR repositories for backend/frontend
+    - Application Load Balancer with path-based routing
+    - AWS Secrets Manager for credentials
+    - CloudWatch logging and alarms
+    - Auto-scaling policies (70% CPU target)
+  - Estimated cost: ~$120-150/month for production
+  - Deployment guide in `README.md`
 
 ### January 14, 2026 - Session 10 (AI Signal Integration, WebSocket & Documentation)
 
