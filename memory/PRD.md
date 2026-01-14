@@ -14,9 +14,39 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Backend**: FastAPI (Python)
 - **Frontend**: React + Tailwind CSS + Recharts
 - **Database**: MongoDB
-- **Deployment**: AWS with Terraform IaC
+- **Deployment**: AWS EC2 with Terraform IaC
 
 ## What's Been Implemented
+
+### January 14, 2026 - Session 14 (Multi-Select Filters, AWS Terraform, Documentation)
+
+- ✅ **Multi-Select Pill/Tag Filter UI** (`/app/frontend/src/pages/Positions.js`)
+  - Replaced dropdowns with clickable pill/tag buttons
+  - **Strategy Filter**: Select multiple strategies (Delta-Neutral, Volatility, Alpha, Arbitrage)
+  - **Asset Class Filter**: Select multiple asset classes (Politics, Crypto, Finance, Entertainment, Science, Sports)
+  - Combination filtering: Filter by Strategy AND Asset Class simultaneously
+  - Color-coded pills with checkmarks when selected
+  - "Clear (N)" buttons for each filter section
+  - "Clear All Filters" button
+  - Summary bar showing: "Showing: X of Y positions • N strategies • M asset classes"
+
+- ✅ **AWS EC2 Terraform Scripts Finalized** (`/app/infrastructure/terraform/ec2/`)
+  - `main.tf`: Complete VPC, EC2, Security Group, CloudWatch Alarms
+  - `variables.tf`: All configurable variables with validation
+  - `outputs.tf`: Connection info, URLs, security reminders
+  - `user_data.sh`: Server bootstrap (Docker, Nginx, Node, Python)
+  - `terraform.tfvars.example`: Complete example configuration
+  - `README.md`: Quick start guide
+
+- ✅ **Deployment Documentation** (`/app/docs/DEPLOYMENT.md`)
+  - Prerequisites (AWS, Terraform, SSH, MongoDB Atlas, Polymarket API)
+  - Step-by-step deployment guide
+  - Post-deployment setup instructions
+  - SSL setup with Let's Encrypt
+  - Monitoring and logging
+  - Troubleshooting guide
+  - Cost estimates (~$33/month)
+  - Security best practices
 
 ### January 14, 2026 - Session 13 (Live Trading Tables, WebSocket Integration, UI Fixes)
 
