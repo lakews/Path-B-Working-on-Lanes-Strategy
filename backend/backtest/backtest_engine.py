@@ -480,25 +480,28 @@ class BacktestEngine:
         if recent_range < 0.005:  # Less than 0.5% recent movement
             return False
         
-        # Strategy-specific entry conditions
+        # Strategy-specific entry conditions with tuned parameters
         if "delta_neutral" in strategies:
-            # Delta-Neutral: Market making with selective entry
-            # Requirements for high win rate:
-            # 1. Good spread (> 1.5%)
-            # 2. LOW volatility (< 4%) - stable prices for market making
-            # 3. Price in liquid range (20%-80%)
-            # 4. Low recent trend (stable market)
-            if spread > 0.015 and volatility < 0.04 and 0.20 < current_price < 0.80 and abs(trend) < 0.015:
-                return random.random() < 0.45  # 45% entry rate when conditions met
+            params = self._get_strategy_params('delta_neutral')
+            spread_threshold = params.get('spread_threshold', 0.015)
+            
+            if spread > spread_threshold and volatility < 0.04 and 0.20 < current_price < 0.80 and abs(trend) < 0.015:
+                return random.random() < 0.45
         
         if "volatility_exploitation" in strategies:
-            # Enter when volatility is moderate and trend is clear
-            if 0.02 < volatility < 0.08 and abs(trend) > 0.02:
+            params = self._get_strategy_params('volatility_exploitation')
+            min_vol = params.get('min_volatility', 0.02)
+            max_vol = params.get('max_volatility', 0.10)
+            trend_thresh = params.get('trend_threshold', 0.02)
+            
+            if min_vol < volatility < max_vol and abs(trend) > trend_thresh:
                 return random.random() < 0.35
         
         if "alpha_directional" in strategies:
-            # Enter on strong trend signals with recent momentum
-            if abs(trend) > 0.03 and recent_range > 0.01:
+            params = self._get_strategy_params('alpha_directional')
+            trend_thresh = params.get('trend_threshold', 0.03)
+            
+            if abs(trend) > trend_thresh and recent_range > 0.01:
                 return random.random() < 0.3
         
         # Base probability for exploration
