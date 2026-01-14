@@ -1051,22 +1051,15 @@ const Backtest = () => {
 
       {/* HISTORY TAB */}
       {activeTab === 'history' && (
-                <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Strategy P&L Comparison</h3>
-                  {results.strategy_results && Object.keys(results.strategy_results).length > 0 ? (
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={Object.entries(results.strategy_results || {}).map(([strategy, data]) => ({
-                        name: STRATEGY_INFO[strategy]?.name || strategy,
-                        pnl: data.pnl || 0,
-                        trades: data.trades || 0,
-                        winRate: (data.win_rate || 0) * 100,
-                        avgWin: data.avg_win || 0,
-                        avgLoss: data.avg_loss || 0,
-                        profitFactor: data.profit_factor || 0
-                      }))}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                        <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 9 }} />
-                        <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} label={{ value: 'P&L ($)', angle: -90, position: 'insideLeft', fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} />
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white">Backtest History</h2>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-white/60">{selectedBacktests.length} selected</span>
+              <button
+                onClick={compareSelectedBacktests}
+                disabled={selectedBacktests.length === 0}
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         <Tooltip 
                           contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '12px'}}
                           labelStyle={{color: 'rgba(255,255,255,0.9)', fontWeight: 'bold', marginBottom: '8px'}}
