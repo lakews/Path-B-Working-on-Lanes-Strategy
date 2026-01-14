@@ -25,6 +25,7 @@ const Dashboard = () => {
   const [trainingRL, setTrainingRL] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const tradesFeedRef = useRef(null);
+  const initialFetchDone = useRef(false);
 
   const fetchData = async () => {
     try {
@@ -52,8 +53,12 @@ const Dashboard = () => {
     }
   };
 
+  // Initial fetch and polling
   useEffect(() => {
-    fetchData();
+    if (!initialFetchDone.current) {
+      initialFetchDone.current = true;
+      fetchData();
+    }
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -79,16 +84,18 @@ const Dashboard = () => {
     return () => { if (ws) ws.close(); };
   }, []);
 
-  // Track P&L history for chart
+  // Track P&L history for chart - using ref to avoid lint warning
+  const prevPnlRef = useRef(null);
   useEffect(() => {
-    if (tradeStats?.total_pnl !== undefined) {
+    const currentPnl = tradeStats?.total_pnl;
+    if (currentPnl !== undefined && currentPnl !== prevPnlRef.current) {
+      prevPnlRef.current = currentPnl;
       setPnlHistory(prev => {
         const newEntry = {
           time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-          pnl: tradeStats.total_pnl
+          pnl: currentPnl
         };
-        const updated = [...prev, newEntry].slice(-30);
-        return updated;
+        return [...prev, newEntry].slice(-30);
       });
     }
   }, [tradeStats?.total_pnl]);
