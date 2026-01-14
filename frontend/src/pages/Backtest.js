@@ -96,6 +96,7 @@ const Backtest = () => {
   const [collectingPrices, setCollectingPrices] = useState(false);
   const [progress, setProgress] = useState(0);
   const [liveRLStats, setLiveRLStats] = useState(null); // Live RL stats independent of backtest
+  const [trainingRL, setTrainingRL] = useState(false); // RL training state
   
   // History & Comparison State
   const [history, setHistory] = useState([]);
@@ -129,6 +130,38 @@ const Backtest = () => {
     } catch (e) {
       console.error('Error fetching RL stats:', e);
     }
+  };
+
+  // Train RL from all historical backtests
+  const trainRLNow = async () => {
+    setTrainingRL(true);
+    try {
+      const historyRes = await axios.get(`${API}/backtest/history?limit=100`);
+      const backtests = historyRes.data?.history || [];
+      
+      if (backtests.length === 0) {
+        alert('No backtests found. Run some backtests first to generate training data.');
+        setTrainingRL(false);
+        return;
+      }
+
+      let trained = 0;
+      for (const bt of backtests) {
+        try {
+          await axios.post(`${API}/rl/learn-from-backtest/${bt.backtest_id}`);
+          trained++;
+        } catch (e) {
+          console.error(`Failed to learn from ${bt.backtest_id}:`, e);
+        }
+      }
+      
+      fetchLiveRLStats();
+      alert(`RL Training Complete! Trained on ${trained} backtests.`);
+    } catch (e) {
+      console.error('RL Training failed:', e);
+      alert('RL Training failed. Check console for details.');
+    }
+    setTrainingRL(false);
   };
 
   useEffect(() => {
