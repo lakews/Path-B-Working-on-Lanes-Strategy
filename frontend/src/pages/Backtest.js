@@ -315,6 +315,16 @@ const Backtest = () => {
               </div>
               <div className="w-px h-8 bg-white/10" />
               <div>
+                <p className="text-xs text-blue-400/80 uppercase">Real Price Data</p>
+                <p className="text-sm text-white font-medium">
+                  {priceHistoryStats?.real_price_snapshots?.toLocaleString() || 0} pts
+                  <span className={`ml-2 text-xs ${priceHistoryStats?.real_price_percentage > 50 ? 'text-green-400' : 'text-yellow-400'}`}>
+                    ({priceHistoryStats?.real_price_percentage || 0}%)
+                  </span>
+                </p>
+              </div>
+              <div className="w-px h-8 bg-white/10" />
+              <div>
                 <p className="text-xs text-blue-400/80 uppercase">Categories</p>
                 <div className="flex gap-2 mt-1">
                   {historicalStats.category_distribution && Object.entries(historicalStats.category_distribution).slice(0,4).map(([cat, count]) => (
