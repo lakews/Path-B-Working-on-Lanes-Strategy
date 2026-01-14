@@ -494,26 +494,30 @@ class PaperTrader:
         
         return round(position_size, 2)
     
-    def _determine_strategy(self, signals: Dict, rl_action: str) -> str:
-        """Determine which strategy to use based on signals"""
+    def _determine_strategy(self, signals: Dict, rl_action: str) -> Optional[str]:
+        """Determine which strategy to use based on signals and enabled strategies"""
         volatility = signals.get('volatility', 0.02)
         sentiment_strength = abs(signals.get('sentiment', 0.5) - 0.5)
         sharp_alignment = signals.get('sharp_alignment', 0.5)
         
         # High volatility -> volatility exploitation
-        if volatility > 0.05:
+        if volatility > 0.05 and 'volatility_exploitation' in self.enabled_strategies:
             return 'volatility_exploitation'
         
         # Strong sentiment + sharp alignment -> alpha directional
-        if sentiment_strength > 0.2 and sharp_alignment > 0.6:
+        if sentiment_strength > 0.2 and sharp_alignment > 0.6 and 'alpha_directional' in self.enabled_strategies:
             return 'alpha_directional'
         
         # Low volatility, neutral -> delta neutral
-        if volatility < 0.02:
+        if volatility < 0.02 and 'delta_neutral' in self.enabled_strategies:
             return 'delta_neutral'
         
-        # Default to arbitrage if conditions allow
-        return 'arbitrage'
+        # Default to arbitrage if enabled
+        if 'arbitrage' in self.enabled_strategies:
+            return 'arbitrage'
+        
+        # Return first enabled strategy as fallback
+        return self.enabled_strategies[0] if self.enabled_strategies else None
     
     async def _get_signals(self, market_data: Dict) -> Dict:
         """Get ML signals for market evaluation"""
