@@ -14,10 +14,10 @@ const API = `${BACKEND_URL}/api`;
 
 // Data Source Options
 const DATA_SOURCE_OPTIONS = [
-  { id: 'auto', name: 'Auto (Best Available)', desc: 'Automatically selects best data', icon: '🔄' },
-  { id: 'real', name: 'Real Price History', desc: 'Most accurate, tick-level data', icon: '📈' },
-  { id: 'snapshots', name: 'Historical Snapshots', desc: 'Faster, periodic snapshots', icon: '📸' },
-  { id: 'hybrid', name: 'Hybrid Mode', desc: 'Combines real prices + snapshots', icon: '🔀' }
+  { id: 'auto', name: 'Auto (Best Available)', desc: 'Real prices → Snapshots → Simulated (uses highest quality available for each market)', icon: '🔄' },
+  { id: 'real', name: 'Real Price History', desc: 'Tick-level Polymarket CLOB data. Most accurate but may have gaps for newer markets', icon: '📈' },
+  { id: 'snapshots', name: 'Historical Snapshots', desc: 'Periodic market snapshots (every few minutes). Faster processing, less granular', icon: '📸' },
+  { id: 'hybrid', name: 'Hybrid Mode', desc: 'Real prices where available + simulated fills for gaps. Good balance of accuracy', icon: '🔀' }
 ];
 
 const STRATEGY_INFO = {
