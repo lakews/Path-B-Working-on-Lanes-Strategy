@@ -19,6 +19,23 @@ const STRATEGY_COLORS = {
   'arbitrage': '#10b981'
 };
 
+// All available strategies and asset classes
+const ALL_STRATEGIES = [
+  { value: 'delta_neutral', label: 'Delta-Neutral Market Making' },
+  { value: 'volatility_exploitation', label: 'Volatility Exploitation' },
+  { value: 'alpha_directional', label: 'Alpha-Directional' },
+  { value: 'arbitrage', label: 'Multi-Market Arbitrage' }
+];
+
+const ALL_ASSET_CLASSES = [
+  { value: 'politics', label: 'Politics' },
+  { value: 'crypto', label: 'Crypto' },
+  { value: 'finance', label: 'Finance' },
+  { value: 'entertainment', label: 'Entertainment' },
+  { value: 'science', label: 'Science' },
+  { value: 'sports', label: 'Sports' }
+];
+
 const Positions = () => {
   const [positions, setPositions] = useState([]);
   const [trades, setTrades] = useState([]);
@@ -27,6 +44,7 @@ const Positions = () => {
   const [sortBy, setSortBy] = useState('pnl');
   const [sortOrder, setSortOrder] = useState('desc');
   const [filterStrategy, setFilterStrategy] = useState('all');
+  const [filterAssetClass, setFilterAssetClass] = useState('all');
   const [expandedPosition, setExpandedPosition] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
 
