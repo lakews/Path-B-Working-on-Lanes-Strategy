@@ -1067,7 +1067,9 @@ class BacktestEngine:
                 "real_price_data_points": self.real_price_data_used,
                 "simulated_price_data_points": self.simulated_price_data_used,
                 "real_data_percentage": round((self.real_price_data_used / total_price_points * 100) if total_price_points > 0 else 0, 2),
-                "data_source": "real" if self.real_price_data_used > self.simulated_price_data_used else "simulated"
+                "data_source": "real" if self.real_price_data_used > self.simulated_price_data_used else "simulated",
+                "data_source_mode": getattr(self, 'data_source_mode', 'auto'),
+                "data_source_options": ["auto", "real", "snapshots", "live", "hybrid"]
             }
             
             # AI Signal Integration Stats
