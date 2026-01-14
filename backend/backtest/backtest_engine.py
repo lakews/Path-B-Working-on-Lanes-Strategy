@@ -415,9 +415,15 @@ class BacktestEngine:
         
         # Strategy-specific entry conditions
         if "delta_neutral" in strategies:
-            # Market making: enter when spread is favorable and price is stable
-            if spread > 0.02 and volatility < 0.05:
-                return random.random() < 0.4
+            # Delta-Neutral: Market making with VERY selective entry
+            # Only enter when conditions are ideal for quick spread capture
+            # Requirements:
+            # 1. Good spread (> 2%)
+            # 2. LOW volatility (< 3%) - stable prices for market making
+            # 3. Price near middle range (best liquidity)
+            # 4. Low recent trend (no strong directional movement)
+            if spread > 0.02 and volatility < 0.03 and 0.25 < current_price < 0.75 and abs(trend) < 0.01:
+                return random.random() < 0.5  # 50% chance when all conditions met
         
         if "volatility_exploitation" in strategies:
             # Enter when volatility is moderate and trend is clear
