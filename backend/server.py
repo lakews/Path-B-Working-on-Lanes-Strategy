@@ -231,7 +231,7 @@ async def health_check():
 @api_router.get("/status", response_model=SystemStatus)
 async def get_system_status():
     """Get system status and configuration"""
-    global trading_mode, backtest_engine, user_config
+    global trading_mode, backtest_engine, user_config, paper_trading_enabled
     
     # Auto-correct trading mode if backtest has completed
     if trading_mode == "backtest":
@@ -252,10 +252,50 @@ async def get_system_status():
             "min_kelly_fraction": config.MIN_KELLY_FRACTION,
             "max_kelly_fraction": config.MAX_KELLY_FRACTION,
             "enabled_asset_classes": user_config.get("enabled_asset_classes", []),
-            "enabled_strategies": user_config.get("enabled_strategies", [])
+            "enabled_strategies": user_config.get("enabled_strategies", []),
+            "paper_trading": paper_trading_enabled
         },
         timestamp=datetime.now(timezone.utc).isoformat()
     )
+
+@api_router.post("/mode/paper")
+async def enable_paper_trading(username: str = Depends(verify_credentials)):
+    """Enable paper trading mode - simulates live trading without real money"""
+    global trading_mode, paper_trading_enabled
+    paper_trading_enabled = True
+    trading_mode = "paper"
+    logger.info(f"Paper trading enabled by {username}")
+    return {
+        "message": "Paper trading mode enabled",
+        "mode": "paper",
+        "description": "Trading signals will be generated and logged, but NO real trades will be executed"
+    }
+
+@api_router.post("/mode/live")
+async def enable_live_trading(username: str = Depends(verify_credentials)):
+    """Enable live trading mode - CAUTION: Real money will be used"""
+    global trading_mode, paper_trading_enabled
+    paper_trading_enabled = False
+    trading_mode = "live"
+    logger.info(f"LIVE trading enabled by {username}")
+    return {
+        "message": "⚠️ LIVE trading mode enabled - Real money will be used!",
+        "mode": "live",
+        "warning": "All trades will be executed with real funds"
+    }
+
+@api_router.post("/mode/stop")
+async def stop_trading():
+    """Stop all trading"""
+    global trading_mode, paper_trading_enabled
+    paper_trading_enabled = False
+    trading_mode = "stopped"
+    
+    # Stop the bot if running
+    if trading_bot and trading_bot.running:
+        await trading_bot.stop()
+    
+    return {"message": "Trading stopped", "mode": "stopped"}
 
 @api_router.post("/bot/start")
 async def start_bot(background_tasks: BackgroundTasks):
