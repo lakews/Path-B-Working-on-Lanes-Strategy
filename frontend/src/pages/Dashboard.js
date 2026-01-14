@@ -59,25 +59,63 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // WebSocket connection
+  // WebSocket connection for real-time updates
   useEffect(() => {
     let ws = null;
+    let reconnectTimeout = null;
+    
     const connectWs = () => {
       try {
-        const wsUrl = BACKEND_URL.replace('http', 'ws').replace('/api', '') + '/ws/status';
+        // WebSocket endpoint is at /ws (not /ws/status)
+        const wsUrl = BACKEND_URL.replace('https', 'wss').replace('http', 'ws') + '/ws';
         ws = new WebSocket(wsUrl);
-        ws.onopen = () => setWsConnected(true);
-        ws.onclose = () => {
-          setWsConnected(false);
-          setTimeout(connectWs, 5000);
+        
+        ws.onopen = () => {
+          console.log('WebSocket connected');
+          setWsConnected(true);
         };
-        ws.onerror = () => setWsConnected(false);
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            // Handle different message types
+            if (data.type === 'trade') {
+              setTrades(prev => [data.trade, ...prev].slice(0, 50));
+            } else if (data.type === 'position_update') {
+              setPositions(data.positions || []);
+            } else if (data.type === 'performance_update') {
+              setPerformance(data.performance);
+            } else if (data.type === 'status_update') {
+              setStatus(data.status);
+            }
+          } catch (e) {
+            console.error('Error parsing WebSocket message:', e);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('WebSocket disconnected');
+          setWsConnected(false);
+          // Reconnect after 5 seconds
+          reconnectTimeout = setTimeout(connectWs, 5000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          setWsConnected(false);
+        };
       } catch (e) {
-        console.error('WS error:', e);
+        console.error('WS connection error:', e);
+        setWsConnected(false);
       }
     };
+    
     connectWs();
-    return () => { if (ws) ws.close(); };
+    
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
   }, []);
 
   // Track P&L history for chart
