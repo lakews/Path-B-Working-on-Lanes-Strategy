@@ -186,7 +186,25 @@ const Backtest = () => {
   const checkStatus = async () => {
     try {
       const response = await axios.get(`${API}/status`);
-      setBacktestRunning(response.data.trading_mode === 'backtest');
+      const wasRunning = backtestRunning;
+      const isNowRunning = response.data.trading_mode === 'backtest';
+      setBacktestRunning(isNowRunning);
+      
+      // Backtest just completed - trigger auto-train if enabled
+      if (wasRunning && !isNowRunning && autoTrainRL) {
+        // Get the latest backtest and train on it
+        const historyRes = await axios.get(`${API}/backtest/history?limit=1`);
+        const latestBacktest = historyRes.data?.history?.[0];
+        if (latestBacktest) {
+          try {
+            await axios.post(`${API}/rl/learn-from-backtest/${latestBacktest.backtest_id}`);
+            toast.success('RL auto-trained on latest backtest!');
+            fetchLiveRLStats();
+          } catch (e) {
+            console.error('Auto-train failed:', e);
+          }
+        }
+      }
       
       // Load user's configured strategies and asset classes
       const serverConfig = response.data.configuration || {};
