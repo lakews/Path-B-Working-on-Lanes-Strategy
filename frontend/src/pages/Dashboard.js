@@ -251,11 +251,13 @@ const Dashboard = () => {
         <div className="relative p-6">
           {/* Top Row: Mode Control & Status */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
-            {/* Left: Title & Mode */}
+            {/* Left: Logo & Title */}
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
-                <Cpu className="w-6 h-6 text-white" />
-              </div>
+              <img 
+                src="https://customer-assets.emergentagent.com/job_aitrader-96/artifacts/adp4pnam_swaye%20logo.png" 
+                alt="Swaye Ventures" 
+                className="h-12 w-auto"
+              />
               <div>
                 <h1 className="text-2xl font-bold text-white">APEX TRADER</h1>
                 <p className="text-sm text-white/50">AI-Powered Prediction Market Engine</p>
