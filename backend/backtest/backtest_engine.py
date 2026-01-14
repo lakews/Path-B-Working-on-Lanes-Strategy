@@ -294,11 +294,13 @@ class BacktestEngine:
             return {}
     
     async def _process_market_timeseries(self, market_id: str, timeseries: List[Dict], enabled_strategies: List[str]):
-        """Process a single market's timeseries for HFT opportunities"""
+        """Process a single market's timeseries for HFT opportunities with AI signal integration"""
         if len(timeseries) < 5:
             return  # Need enough data points
         
         category = timeseries[0].get("category", "unknown")
+        question = timeseries[0].get("question", "")
+        
         if category not in self.asset_class_performance:
             self.asset_class_performance[category] = {"trades": 0, "wins": 0, "losses": 0, "pnl": 0.0, "total_wins_pnl": 0.0, "total_losses_pnl": 0.0}
         
@@ -341,6 +343,18 @@ class BacktestEngine:
         # Adaptive parameters based on market characteristics
         profit_target, stop_loss, position_size_mult = self._get_adaptive_params(volatility, avg_volume)
         
+        # Apply AI signal adjustments to position sizing
+        sentiment_data = self.sentiment_cache.get(market_id, {})
+        whale_data = self.whale_cache.get(market_id, {})
+        
+        # High confidence sentiment/whale signals can boost position size
+        ai_confidence = (
+            sentiment_data.get('confidence', 0) * 0.5 +
+            whale_data.get('confidence', 0) * 0.5
+        )
+        if ai_confidence > 0.6:
+            position_size_mult *= 1.2  # 20% larger positions with confident AI signals
+        
         position = None
         entry_idx = None
         highest_price = 0
@@ -358,7 +372,7 @@ class BacktestEngine:
                 # Check for entry signal
                 if self._should_enter(prices[:idx+1], volatility, trend, enabled_strategies, current_price, spread):
                     if len(self.positions) < self.max_positions and self.current_capital > 50:
-                        strategy = self._select_best_strategy(volatility, trend, enabled_strategies)
+                        strategy = self._select_best_strategy(volatility, trend, enabled_strategies, market_id, category)
                         position = await self._open_position(
                             market_id, current_price, strategy, category, 
                             timestamp, profit_target, stop_loss, position_size_mult
