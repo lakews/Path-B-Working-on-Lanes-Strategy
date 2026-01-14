@@ -192,11 +192,13 @@ const PaperTrading = () => {
     fetchSessions();
     fetchRlStats();
     fetchOptimizerParams();
+    fetchAiStats();
     
     const interval = setInterval(() => {
       fetchData();
       if (running) {
         fetchRlStats();
+        fetchAiStats();
       }
     }, 5000);
     
