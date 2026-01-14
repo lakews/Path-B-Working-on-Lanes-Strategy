@@ -265,13 +265,16 @@ const Dashboard = () => {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
             {/* Left: Logo & Title */}
             <div className="flex items-center gap-4">
-              <img 
-                src="https://customer-assets.emergentagent.com/job_aitrader-96/artifacts/adp4pnam_swaye%20logo.png" 
-                alt="Swaye Ventures" 
-                className="h-12 w-auto"
-              />
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-2 border border-white/10">
+                <img 
+                  src="https://customer-assets.emergentagent.com/job_aitrader-96/artifacts/adp4pnam_swaye%20logo.png" 
+                  alt="Swaye Ventures" 
+                  className="h-10 w-auto object-contain"
+                  style={{ imageRendering: 'crisp-edges', filter: 'contrast(1.1) brightness(1.05)' }}
+                />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">APEX TRADER</h1>
+                <h1 className="text-2xl font-bold text-white tracking-tight">APEX TRADER</h1>
                 <p className="text-sm text-white/50">AI-Powered Prediction Market Engine</p>
               </div>
             </div>
