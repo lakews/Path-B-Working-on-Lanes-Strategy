@@ -1081,6 +1081,73 @@ async def train_all_ml_models(background_tasks: BackgroundTasks):
             content={"message": f"Failed to train ML models: {str(e)}"}
         )
 
+@api_router.post("/rl/learn-from-backtest/{backtest_id}")
+async def rl_learn_from_backtest(backtest_id: str):
+    """Trigger RL engine to learn from a specific backtest's results"""
+    try:
+        db = get_db()
+        
+        # Get the backtest results
+        backtest_result = await db.backtest_results.find_one(
+            {"backtest_id": backtest_id},
+            {"_id": 0}
+        )
+        
+        if not backtest_result:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "Backtest not found"}
+            )
+        
+        # Create RL engine and learn from results
+        from ml.rl_engine import RLAdaptiveEngine
+        rl = RLAdaptiveEngine()
+        
+        # Try to load existing model first
+        await rl.load_model()
+        
+        # Learn from this backtest
+        await rl.learn_from_backtest_results(backtest_result)
+        
+        # Get updated stats
+        stats = await rl.get_training_stats()
+        
+        return {
+            "message": f"RL engine learned from backtest {backtest_id}",
+            "backtest_return": backtest_result.get('total_return_pct', 0),
+            "strategies_learned": list(backtest_result.get('strategy_results', {}).keys()),
+            "rl_stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Error in RL learning from backtest: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to learn from backtest: {str(e)}"}
+        )
+
+@api_router.get("/rl/detailed-stats")
+async def get_detailed_rl_stats():
+    """Get detailed RL training statistics including Q-table analysis"""
+    try:
+        from ml.rl_engine import RLAdaptiveEngine
+        rl = RLAdaptiveEngine()
+        
+        # Load existing model
+        await rl.load_model()
+        
+        stats = await rl.get_training_stats()
+        
+        return {
+            "rl_stats": stats,
+            "model_status": "loaded" if rl.training_iterations > 0 else "fresh"
+        }
+    except Exception as e:
+        logger.error(f"Error getting detailed RL stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get RL stats: {str(e)}"}
+        )
+
 @api_router.post("/ml/train/volatility")
 async def train_volatility_model():
     """Train volatility prediction model"""
