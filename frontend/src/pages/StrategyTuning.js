@@ -17,6 +17,37 @@ const STRATEGIES = [
   { id: 'arbitrage', name: 'Multi-Market Arbitrage', icon: GitBranch, color: '#8b5cf6' },
 ];
 
+// Define the parameter grids for transparency
+const PARAMETER_GRIDS = {
+  delta_neutral: {
+    profit_target: { range: [0.003, 0.005, 0.008, 0.01], desc: 'Target profit %' },
+    stop_loss: { range: [0.01, 0.015, 0.02, 0.025], desc: 'Stop loss %' },
+    bank_profit_threshold: { range: [0.0005, 0.001, 0.0015, 0.002], desc: 'Bank small profits at %' },
+    timeout_snapshots: { range: [8, 12, 16, 20], desc: 'Max hold time (snapshots)' },
+    spread_threshold: { range: [0.008, 0.01, 0.012, 0.015], desc: 'Spread capture threshold' }
+  },
+  volatility_exploitation: {
+    profit_target: { range: [0.02, 0.03, 0.04, 0.05], desc: 'Target profit %' },
+    stop_loss: { range: [0.01, 0.015, 0.02, 0.025], desc: 'Stop loss %' },
+    min_volatility: { range: [0.02, 0.03, 0.04], desc: 'Min volatility to enter' },
+    max_volatility: { range: [0.08, 0.1, 0.15], desc: 'Max volatility cap' },
+    trend_threshold: { range: [0.005, 0.01, 0.015], desc: 'Trend strength threshold' }
+  },
+  alpha_directional: {
+    profit_target: { range: [0.02, 0.03, 0.05, 0.08], desc: 'Target profit %' },
+    stop_loss: { range: [0.01, 0.02, 0.03], desc: 'Stop loss %' },
+    trend_threshold: { range: [0.005, 0.01, 0.02], desc: 'Trend threshold to enter' },
+    trailing_stop_activation: { range: [0.01, 0.015, 0.02], desc: 'Trailing stop activation %' },
+    trailing_stop_distance: { range: [0.005, 0.008, 0.01], desc: 'Trailing stop distance %' }
+  },
+  arbitrage: {
+    profit_target: { range: [0.005, 0.008, 0.01, 0.015], desc: 'Target profit %' },
+    stop_loss: { range: [0.005, 0.008, 0.01, 0.015], desc: 'Stop loss %' },
+    min_spread: { range: [0.005, 0.008, 0.01], desc: 'Min spread to enter' },
+    position_timeout: { range: [5, 10, 15, 20], desc: 'Position timeout (snapshots)' }
+  }
+};
+
 const StrategyTuning = () => {
   const [selectedStrategy, setSelectedStrategy] = useState('delta_neutral');
   const [tuning, setTuning] = useState(false);
