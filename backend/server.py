@@ -86,7 +86,7 @@ async def root():
 @api_router.get("/status", response_model=SystemStatus)
 async def get_system_status():
     """Get system status and configuration"""
-    global trading_mode, backtest_engine
+    global trading_mode, backtest_engine, user_config
     
     # Auto-correct trading mode if backtest has completed
     if trading_mode == "backtest":
@@ -105,7 +105,9 @@ async def get_system_status():
             "max_drawdown_pct": config.MAX_DRAWDOWN_PCT,
             "kelly_fraction": config.KELLY_FRACTION,
             "min_kelly_fraction": config.MIN_KELLY_FRACTION,
-            "max_kelly_fraction": config.MAX_KELLY_FRACTION
+            "max_kelly_fraction": config.MAX_KELLY_FRACTION,
+            "enabled_asset_classes": user_config.get("enabled_asset_classes", []),
+            "enabled_strategies": user_config.get("enabled_strategies", [])
         },
         timestamp=datetime.now(timezone.utc).isoformat()
     )
