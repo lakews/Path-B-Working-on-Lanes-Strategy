@@ -1,0 +1,82 @@
+{
+  "summary": "Verified critical backtest data source fix - real_data_percentage now shows 99% (was 0% before fix). Backend correctly queries historical_data collection with source='price_history' filter instead of non-existent price_history collection. All 14 backend tests passed. Frontend Data Summary card and Data Quality Breakdown bar working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_backtest_data_source_fix.py",
+    "/app/test_reports/pytest/pytest_results_iteration8.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "CRITICAL FIX VERIFIED: backtest_engine.py _get_market_timeseries() now queries db.historical_data with source='price_history' filter instead of non-existent db.price_history collection",
+    "real_data_percentage correctly shows 99% when using data_source='real' (was 0% before fix)",
+    "live_data_points reset at backtest start prevents stale data",
+    "Data Summary card consolidates: Source Mode, Real Prices, Simulated, Total Snapshots, Unique Markets, Total Trades",
+    "Data Quality Breakdown bar shows correct percentages with color-coded segments (green=real, yellow=simulated, red=live)"
+  ],
+  "updated_files": [
+    "/app/tests/test_backtest_data_source_fix.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 tests passed)",
+    "frontend": "100% - All features verified working"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "Used existing historical_data collection with 22k+ real price documents",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backtest data source fix verified. Key changes: 1) _get_market_timeseries queries historical_data with source='price_history' filter, 2) live_data_points reset at start, 3) Data Summary card consolidates all data info, 4) Data Quality Breakdown bar shows real/simulated/live percentages. All 5 data source modes work: auto, real, live, snapshots, hybrid.",
+  "features_verified": {
+    "backtest_real_data_percentage": {
+      "status": "WORKING",
+      "notes": "Shows 99% real data when using data_source='real' (was 0% before fix)"
+    },
+    "backtest_live_data_source": {
+      "status": "WORKING",
+      "notes": "Fetches from Polymarket API, shows live_data_points > 0"
+    },
+    "data_summary_card": {
+      "status": "WORKING",
+      "components": ["Source Mode", "Real Prices", "Simulated", "Total Snapshots", "Unique Markets", "Total Trades"]
+    },
+    "data_quality_breakdown_bar": {
+      "status": "WORKING",
+      "notes": "Shows correct percentages with color-coded segments"
+    },
+    "live_markets_card_visibility": {
+      "status": "WORKING",
+      "notes": "Only appears when live_data_points > 0"
+    },
+    "history_data_source_badges": {
+      "status": "WORKING",
+      "badges": ["auto", "real", "live", "snapshots", "hybrid"]
+    },
+    "deep_dive_modal_data_source": {
+      "status": "WORKING",
+      "notes": "Shows Data Source info with real/simulated counts and percentage"
+    },
+    "data_source_dropdown": {
+      "status": "WORKING",
+      "options": ["Auto (Best Available)", "Live Market Data", "Real Price History", "Historical Snapshots", "Hybrid Mode"]
+    }
+  },
+  "mocked_apis": {
+    "Whale tracker": "Uses simulated whale activity (not real large trade data)",
+    "SendGrid alerts": "Requires SENDGRID_API_KEY in .env to function"
+  },
+  "key_metrics_verified": {
+    "real_data_percentage": "99.03% (was 0% before fix)",
+    "real_price_data_points": "10,956",
+    "simulated_price_data_points": "107",
+    "total_snapshots": "21,103",
+    "unique_markets": "125",
+    "total_trades": "986"
+  }
+}
