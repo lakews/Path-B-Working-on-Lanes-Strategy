@@ -85,6 +85,15 @@ const Backtest = () => {
     try {
       const response = await axios.get(`${API}/status`);
       setBacktestRunning(response.data.trading_mode === 'backtest');
+      
+      // Load user's configured strategies and asset classes
+      const serverConfig = response.data.configuration || {};
+      if (serverConfig.enabled_strategies && serverConfig.enabled_strategies.length > 0) {
+        setConfig(prev => ({
+          ...prev,
+          strategies: serverConfig.enabled_strategies
+        }));
+      }
     } catch (e) {
       console.error('Error checking status:', e);
     }
