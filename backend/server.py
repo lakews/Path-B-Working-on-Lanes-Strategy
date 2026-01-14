@@ -196,6 +196,14 @@ async def root():
         "status": "operational"
     }
 
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
 @api_router.get("/status", response_model=SystemStatus)
 async def get_system_status():
     """Get system status and configuration"""
