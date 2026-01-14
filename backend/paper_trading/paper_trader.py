@@ -42,6 +42,10 @@ class PaperTrader:
         self.initial_capital = initial_capital
         self.current_capital = initial_capital
         
+        # User configuration (loaded from DB)
+        self.enabled_strategies = ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
+        self.enabled_asset_classes = ['finance', 'politics', 'crypto', 'entertainment', 'science', 'sports']
+        
         # Paper positions tracking
         self.paper_positions: Dict[str, Dict] = {}
         self.closed_trades: List[Dict] = []
@@ -54,16 +58,22 @@ class PaperTrader:
         self.max_drawdown = 0.0
         self.peak_capital = initial_capital
         
-        # Strategy performance tracking
+        # Strategy performance tracking (with full metrics like backtest)
         self.strategy_stats = {
-            'delta_neutral': {'trades': 0, 'wins': 0, 'pnl': 0.0},
-            'volatility_exploitation': {'trades': 0, 'wins': 0, 'pnl': 0.0},
-            'alpha_directional': {'trades': 0, 'wins': 0, 'pnl': 0.0},
-            'arbitrage': {'trades': 0, 'wins': 0, 'pnl': 0.0}
+            'delta_neutral': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0},
+            'volatility_exploitation': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0},
+            'alpha_directional': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0},
+            'arbitrage': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
         }
         
-        # Asset class tracking
+        # Asset class tracking (with full metrics like backtest)
         self.asset_class_stats = {}
+        
+        # Returns distribution tracking
+        self.trade_returns: List[float] = []
+        
+        # Equity curve tracking
+        self.equity_curve: List[Dict] = []
         
         # Learning parameters
         self.kelly_fraction = 0.25
@@ -72,10 +82,26 @@ class PaperTrader:
         
         logger.info(f"Paper Trader initialized - Session: {self.session_id}, Capital: ${initial_capital}")
     
+    async def _load_user_config(self):
+        """Load user trading configuration from database"""
+        try:
+            config = await self.db.user_config.find_one({"type": "trading_preferences"})
+            if config:
+                if "enabled_strategies" in config:
+                    self.enabled_strategies = config["enabled_strategies"]
+                if "enabled_asset_classes" in config:
+                    self.enabled_asset_classes = config["enabled_asset_classes"]
+                logger.info(f"Loaded user config: {len(self.enabled_strategies)} strategies, {len(self.enabled_asset_classes)} asset classes")
+        except Exception as e:
+            logger.warning(f"Could not load user config: {e}")
+    
     async def start(self):
         """Start paper trading session"""
         self.running = True
         logger.info(f"Starting Paper Trading Session: {self.session_id}")
+        
+        # Load user configuration
+        await self._load_user_config()
         
         # Load RL model
         await self.rl_engine.load_model()
