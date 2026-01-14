@@ -525,36 +525,15 @@ const Backtest = () => {
                     value={config.kelly_fraction}
                     onChange={(e) => setConfig({...config, kelly_fraction: parseFloat(e.target.value)})}
                     disabled={backtestRunning}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-500"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-500"
+                    style={{ colorScheme: 'dark' }}
                   >
-                    <option value={0.1}>10% (Very Conservative)</option>
-                    <option value={0.15}>15% (Conservative)</option>
-                    <option value={0.25}>25% (Moderate)</option>
-                    <option value={0.35}>35% (Aggressive)</option>
-                    <option value={0.5}>50% (Full Kelly)</option>
+                    <option value={0.1} className="bg-slate-800 text-white">10% (Very Conservative)</option>
+                    <option value={0.15} className="bg-slate-800 text-white">15% (Conservative)</option>
+                    <option value={0.25} className="bg-slate-800 text-white">25% (Moderate)</option>
+                    <option value={0.35} className="bg-slate-800 text-white">35% (Aggressive)</option>
+                    <option value={0.5} className="bg-slate-800 text-white">50% (Full Kelly)</option>
                   </select>
-                </div>
-
-                {/* Data Source Selection */}
-                <div>
-                  <label className="block text-xs text-white/60 mb-1 flex items-center gap-1">
-                    <Layers className="w-3 h-3" />
-                    Data Source
-                  </label>
-                  <select
-                    value={config.data_source}
-                    onChange={(e) => setConfig({...config, data_source: e.target.value})}
-                    disabled={backtestRunning}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-500"
-                    data-testid="data-source-select"
-                  >
-                    {DATA_SOURCE_OPTIONS.map(opt => (
-                      <option key={opt.id} value={opt.id}>{opt.icon} {opt.name}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-white/40 mt-1">
-                    {DATA_SOURCE_OPTIONS.find(o => o.id === config.data_source)?.desc}
-                  </p>
                 </div>
               </div>
             </div>
