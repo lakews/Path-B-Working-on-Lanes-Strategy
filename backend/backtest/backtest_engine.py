@@ -517,10 +517,21 @@ class BacktestEngine:
         # Base probability for exploration
         return random.random() < 0.20
     
-    def _select_best_strategy(self, volatility: float, trend: float, strategies: List[str]) -> str:
-        """Select the best strategy for current market conditions"""
+    def _select_best_strategy(self, volatility: float, trend: float, strategies: List[str], 
+                               market_id: str = None, category: str = None) -> str:
+        """Select the best strategy for current market conditions with AI signal integration"""
         if not strategies:
             return "delta_neutral"
+        
+        # Get AI signals from cache
+        sentiment_data = self.sentiment_cache.get(market_id, {}) if market_id else {}
+        whale_data = self.whale_cache.get(market_id, {}) if market_id else {}
+        
+        # Extract key AI signals
+        sentiment_score = sentiment_data.get('overall_sentiment', 0.5)
+        sentiment_confidence = sentiment_data.get('confidence', 0.3)
+        whale_activity = whale_data.get('whale_activity_score', 0)
+        whale_direction = whale_data.get('whale_direction', 'neutral')
         
         # Score each strategy
         scores = {}
@@ -529,24 +540,61 @@ class BacktestEngine:
             score = 0
             
             if strategy == "delta_neutral":
-                # Best for low volatility, no trend
-                score = (1 - volatility * 10) * (1 - abs(trend) * 5)
+                # Best for low volatility, no trend, neutral sentiment
+                base_score = (1 - volatility * 10) * (1 - abs(trend) * 5)
+                # Sentiment adjustment: delta-neutral prefers neutral markets
+                sentiment_adj = 1.0 - abs(sentiment_score - 0.5) * 0.5
+                # Whale adjustment: avoid when whales are active (they create directional moves)
+                whale_adj = 1.0 - whale_activity * 0.3
+                score = base_score * sentiment_adj * whale_adj
+                
             elif strategy == "volatility_exploitation":
-                # Best for moderate-high volatility
-                score = volatility * 10 if volatility < 0.1 else 0.5
+                # Best for moderate-high volatility and strong sentiment
+                base_score = volatility * 10 if volatility < 0.1 else 0.5
+                # Strong sentiment (either direction) boosts volatility trades
+                sentiment_adj = 1.0 + abs(sentiment_score - 0.5) * sentiment_confidence
+                # High whale activity often precedes volatility
+                whale_adj = 1.0 + whale_activity * 0.4
+                score = base_score * sentiment_adj * whale_adj
+                
             elif strategy == "alpha_directional":
-                # Best for trending markets
-                score = abs(trend) * 5
+                # Best for trending markets with strong sentiment signal
+                base_score = abs(trend) * 5
+                # Align with sentiment direction
+                if (sentiment_score > 0.6 and trend > 0) or (sentiment_score < 0.4 and trend < 0):
+                    sentiment_adj = 1.5 * sentiment_confidence
+                elif (sentiment_score > 0.6 and trend < 0) or (sentiment_score < 0.4 and trend > 0):
+                    sentiment_adj = 0.5  # Sentiment conflicts with trend
+                else:
+                    sentiment_adj = 1.0
+                # Whale alignment boosts directional confidence
+                whale_adj = 1.0
+                if whale_direction == 'bullish' and trend > 0:
+                    whale_adj = 1.3
+                elif whale_direction == 'bearish' and trend < 0:
+                    whale_adj = 1.3
+                elif whale_direction != 'neutral':
+                    whale_adj = 0.7  # Whale against our direction
+                score = base_score * sentiment_adj * whale_adj
+                
             elif strategy == "arbitrage":
-                # Best for stable markets
-                score = (1 - volatility * 5) * 0.8
+                # Best for stable markets with predictable prices
+                base_score = (1 - volatility * 5) * 0.8
+                # Neutral sentiment is good for arbitrage
+                sentiment_adj = 1.0 - abs(sentiment_score - 0.5) * 0.4
+                # Low whale activity preferred (less disruption)
+                whale_adj = 1.0 - whale_activity * 0.4
+                score = base_score * sentiment_adj * whale_adj
             
-            # Add performance history
+            # Add performance history weight
             if strategy in self.strategy_performance:
                 perf = self.strategy_performance[strategy]
                 if perf["trades"] > 0:
                     win_rate = perf["wins"] / perf["trades"]
-                    score *= (0.5 + win_rate)
+                    profit_factor = perf.get("total_wins_pnl", 0) / max(perf.get("total_losses_pnl", 1), 0.001)
+                    # Combine win rate and profit factor
+                    perf_adj = 0.5 + (win_rate * 0.3) + (min(profit_factor, 2) / 2 * 0.2)
+                    score *= perf_adj
             
             scores[strategy] = max(score, 0.1)
         
