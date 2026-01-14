@@ -27,9 +27,11 @@ class PaperTrader:
     - Feeds trade outcomes to RL for learning
     - Uses same signals as live trading
     - Records all decisions for analysis
+    - Continuous mode with auto-restart
+    - Graceful stop (lets positions close naturally)
     """
     
-    def __init__(self, initial_capital: float = 10000.0):
+    def __init__(self, initial_capital: float = 10000.0, continuous_mode: bool = False):
         self.db = get_db()
         self.rl_engine = RLAdaptiveEngine()
         self.market_data_service = MarketDataService()
@@ -41,6 +43,11 @@ class PaperTrader:
         self.session_id = str(uuid.uuid4())[:8]
         self.initial_capital = initial_capital
         self.current_capital = initial_capital
+        
+        # Continuous mode settings
+        self.continuous_mode = continuous_mode
+        self.graceful_stop = False  # When True, stop accepting new trades but close existing
+        self.stop_requested = False
         
         # User configuration (loaded from DB)
         self.enabled_strategies = ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
