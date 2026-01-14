@@ -62,7 +62,16 @@ const Configuration = () => {
   };
 
   const resetToDefaults = () => {
-    setConfig({ trades_per_10min: 500, initial_capital: 100, capital_deployment_pct: 80, max_position_size_pct: 3, kelly_fraction: 0.25, max_drawdown_pct: 3, enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'] });
+    setConfig({ 
+      trades_per_10min: 500, 
+      initial_capital: 100, 
+      capital_deployment_pct: 80, 
+      max_position_size_pct: 3, 
+      kelly_fraction: 0.25, 
+      max_drawdown_pct: 3, 
+      enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'],
+      enabled_strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
+    });
     toast.info('Reset to defaults');
   };
 
@@ -70,7 +79,6 @@ const Configuration = () => {
     setConfig(prev => {
       const current = prev.enabled_asset_classes || [];
       if (current.includes(assetId)) {
-        // Don't allow disabling all - must have at least one
         if (current.length === 1) {
           toast.error('Must have at least one asset class enabled');
           return prev;
@@ -82,14 +90,27 @@ const Configuration = () => {
     });
   };
 
+  const toggleStrategy = (strategyId) => {
+    setConfig(prev => {
+      const current = prev.enabled_strategies || [];
+      if (current.includes(strategyId)) {
+        if (current.length === 1) {
+          toast.error('Must have at least one strategy enabled');
+          return prev;
+        }
+        return { ...prev, enabled_strategies: current.filter(id => id !== strategyId) };
+      } else {
+        return { ...prev, enabled_strategies: [...current, strategyId] };
+      }
+    });
+  };
+
   const selectAllAssetClasses = () => {
     setConfig(prev => ({ ...prev, enabled_asset_classes: ASSET_CLASSES.map(a => a.id) }));
   };
 
-  const selectNoneAssetClasses = () => {
-    // Keep at least finance enabled
-    setConfig(prev => ({ ...prev, enabled_asset_classes: ['finance'] }));
-    toast.info('Kept Finance enabled (minimum 1 required)');
+  const selectAllStrategies = () => {
+    setConfig(prev => ({ ...prev, enabled_strategies: STRATEGIES.map(s => s.id) }));
   };
 
   const deployedCapital = (config.initial_capital * (config.capital_deployment_pct || 80) / 100);
