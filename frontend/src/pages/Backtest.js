@@ -604,9 +604,13 @@ const Backtest = () => {
                       <XAxis dataKey="timestamp" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
                       <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
                       <Tooltip 
-                        contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px'}}
+                        contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '12px'}}
+                        labelStyle={{color: 'rgba(255,255,255,0.7)', marginBottom: '4px'}}
+                        itemStyle={{color: '#06b6d4'}}
+                        formatter={(value, name) => [`$${Number(value).toFixed(2)}`, 'Equity']}
+                        labelFormatter={(label) => `Time: ${label}`}
                       />
-                      <Area type="monotone" dataKey="equity" stroke="#06b6d4" strokeWidth={2} fill="url(#equityGradient)" />
+                      <Area type="monotone" dataKey="equity" stroke="#06b6d4" strokeWidth={2} fill="url(#equityGradient)" name="Equity" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -620,17 +624,39 @@ const Backtest = () => {
                         name: STRATEGY_INFO[strategy]?.name || strategy,
                         pnl: data.pnl || 0,
                         trades: data.trades || 0,
-                        winRate: (data.win_rate || 0) * 100
+                        winRate: (data.win_rate || 0) * 100,
+                        avgWin: data.avg_win || 0,
+                        avgLoss: data.avg_loss || 0,
+                        profitFactor: data.profit_factor || 0
                       }))}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                         <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 9 }} />
                         <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} label={{ value: 'P&L ($)', angle: -90, position: 'insideLeft', fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} />
                         <Tooltip 
-                          contentStyle={{backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px'}}
-                          formatter={(value, name) => {
-                            if (name === 'pnl') return [`$${value.toFixed(2)}`, 'P&L'];
-                            if (name === 'winRate') return [`${value.toFixed(1)}%`, 'Win Rate'];
-                            return [value, name];
+                          contentStyle={{backgroundColor: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '12px'}}
+                          labelStyle={{color: 'rgba(255,255,255,0.9)', fontWeight: 'bold', marginBottom: '8px'}}
+                          formatter={(value, name, props) => {
+                            const { payload } = props;
+                            return null; // Custom content below
+                          }}
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-black/95 border border-white/20 rounded-lg p-3 text-sm">
+                                  <p className="text-white font-bold mb-2">{data.name}</p>
+                                  <div className="space-y-1">
+                                    <p className="text-white/80">P&L: <span className={data.pnl >= 0 ? 'text-green-400' : 'text-red-400'}>${data.pnl.toFixed(2)}</span></p>
+                                    <p className="text-white/80">Trades: <span className="text-cyan-400">{data.trades}</span></p>
+                                    <p className="text-white/80">Win Rate: <span className="text-purple-400">{data.winRate.toFixed(1)}%</span></p>
+                                    <p className="text-white/80">Avg Win: <span className="text-green-400">${data.avgWin.toFixed(3)}</span></p>
+                                    <p className="text-white/80">Avg Loss: <span className="text-red-400">${data.avgLoss.toFixed(3)}</span></p>
+                                    <p className="text-white/80">Profit Factor: <span className="text-yellow-400">{data.profitFactor.toFixed(2)}</span></p>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
                           }}
                         />
                         <Bar dataKey="pnl" name="P&L">
