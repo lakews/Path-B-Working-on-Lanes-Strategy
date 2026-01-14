@@ -180,7 +180,6 @@ class BacktestEngine:
         
         # Get base prices and volumes
         base_prices = [s.get("yes_price", 0.5) for s in timeseries]
-        no_prices = [s.get("no_price", 0.5) for s in timeseries]
         volumes = [s.get("volume", 0) for s in timeseries]
         
         base_price = base_prices[0] if base_prices else 0.5

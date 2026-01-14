@@ -114,7 +114,7 @@ class PolymarketAPI:
                         if isinstance(token_ids, str):
                             try:
                                 market['clobTokenIds'] = json.loads(token_ids)
-                            except:
+                            except json.JSONDecodeError:
                                 market['clobTokenIds'] = []
                     
                     return markets
