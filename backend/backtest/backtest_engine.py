@@ -706,6 +706,74 @@ class BacktestEngine:
         except Exception as e:
             logger.error(f"Error storing backtest results: {e}")
     
+    def _calculate_returns_distribution(self) -> Dict:
+        """Calculate returns distribution for histogram chart"""
+        if not self.trade_returns:
+            return {
+                "bins": [],
+                "histogram": [],
+                "stats": {}
+            }
+        
+        returns = np.array(self.trade_returns)
+        
+        # Calculate histogram bins
+        # Use fixed bins from -20% to +20% for consistency
+        bin_edges = np.linspace(-20, 20, 21)  # 20 bins
+        histogram, _ = np.histogram(returns, bins=bin_edges)
+        
+        # Create bin labels
+        bins = []
+        for i in range(len(bin_edges) - 1):
+            label = f"{bin_edges[i]:.0f}% to {bin_edges[i+1]:.0f}%"
+            bins.append({
+                "label": label,
+                "min": float(bin_edges[i]),
+                "max": float(bin_edges[i+1]),
+                "count": int(histogram[i]),
+                "percentage": float(round(histogram[i] / len(returns) * 100, 2)) if len(returns) > 0 else 0
+            })
+        
+        # Calculate distribution stats
+        stats = {
+            "mean": float(np.mean(returns)),
+            "median": float(np.median(returns)),
+            "std": float(np.std(returns)),
+            "min": float(np.min(returns)),
+            "max": float(np.max(returns)),
+            "skewness": float(self._calculate_skewness(returns)),
+            "kurtosis": float(self._calculate_kurtosis(returns)),
+            "positive_returns": int(np.sum(returns > 0)),
+            "negative_returns": int(np.sum(returns < 0)),
+            "total_returns": len(returns)
+        }
+        
+        return {
+            "bins": bins,
+            "raw_returns": [float(r) for r in returns[:500]],  # Cap at 500 for performance
+            "stats": stats
+        }
+    
+    def _calculate_skewness(self, data: np.ndarray) -> float:
+        """Calculate skewness of returns"""
+        if len(data) < 3:
+            return 0.0
+        mean = np.mean(data)
+        std = np.std(data)
+        if std == 0:
+            return 0.0
+        return float(np.mean(((data - mean) / std) ** 3))
+    
+    def _calculate_kurtosis(self, data: np.ndarray) -> float:
+        """Calculate kurtosis of returns (excess kurtosis)"""
+        if len(data) < 4:
+            return 0.0
+        mean = np.mean(data)
+        std = np.std(data)
+        if std == 0:
+            return 0.0
+        return float(np.mean(((data - mean) / std) ** 4) - 3)
+    
     async def stop_backtest(self):
         """Stop running backtest"""
         self.running = False
