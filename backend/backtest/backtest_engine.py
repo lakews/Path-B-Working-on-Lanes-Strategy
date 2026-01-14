@@ -340,11 +340,46 @@ class BacktestEngine:
                 - auto: Best available (prefers real prices)
                 - real: Only real price history
                 - snapshots: Only historical snapshots
-                - live: Not supported in backtest (falls back to auto)
+                - live: Fetch current live prices from Polymarket API
                 - hybrid: Combine both sources
         """
         try:
             market_timeseries = {}
+            
+            # Handle LIVE data source - fetch current market data from Polymarket API
+            if data_source == "live":
+                logger.info("Fetching LIVE market data from Polymarket API...")
+                live_markets = await self._fetch_live_market_data()
+                if live_markets:
+                    current_time = datetime.now(timezone.utc).isoformat()
+                    for market in live_markets:
+                        market_id = market.get("condition_id") or market.get("id")
+                        if not market_id:
+                            continue
+                        
+                        # Create a snapshot from live data
+                        live_snapshot = {
+                            "market_id": market_id,
+                            "timestamp": current_time,
+                            "yes_price": market.get("outcomePrices", [0.5, 0.5])[0] if isinstance(market.get("outcomePrices"), list) else 0.5,
+                            "no_price": market.get("outcomePrices", [0.5, 0.5])[1] if isinstance(market.get("outcomePrices"), list) and len(market.get("outcomePrices", [])) > 1 else 0.5,
+                            "volume": float(market.get("volume", 0) or 0),
+                            "liquidity": float(market.get("liquidity", 0) or 0),
+                            "question": market.get("question", ""),
+                            "category": market.get("groupItemTitle", "") or market.get("category", ""),
+                            "source": "live_api",
+                            "spread": market.get("spread", 0)
+                        }
+                        
+                        if market_id not in market_timeseries:
+                            market_timeseries[market_id] = []
+                        market_timeseries[market_id].append(live_snapshot)
+                    
+                    logger.info(f"Loaded {len(market_timeseries)} live markets from Polymarket API")
+                    
+                    # Store live count for stats
+                    self.live_data_points = len(market_timeseries)
+                    return market_timeseries
             
             if data_source in ["auto", "real", "hybrid"]:
                 # Try to get real price history data first
@@ -401,13 +436,40 @@ class BacktestEngine:
             # Log data source summary
             real_count = sum(1 for m in market_timeseries.values() for s in m if s.get("source") == "price_history")
             snapshot_count = sum(1 for m in market_timeseries.values() for s in m if s.get("source") == "snapshot")
-            logger.info(f"Data source breakdown: {real_count} real prices, {snapshot_count} snapshots (mode: {data_source})")
+            live_count = sum(1 for m in market_timeseries.values() for s in m if s.get("source") == "live_api")
+            logger.info(f"Data source breakdown: {real_count} real prices, {snapshot_count} snapshots, {live_count} live (mode: {data_source})")
             
             return market_timeseries
             
         except Exception as e:
             logger.error(f"Error getting market timeseries: {e}")
             return {}
+    
+    async def _fetch_live_market_data(self) -> List[Dict]:
+        """Fetch current live market data from Polymarket API"""
+        try:
+            import aiohttp
+            
+            # Polymarket Gamma API endpoint for active markets
+            url = "https://gamma-api.polymarket.com/markets"
+            params = {
+                "closed": "false",
+                "limit": 200,
+                "active": "true"
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params, timeout=30) as response:
+                    if response.status == 200:
+                        markets = await response.json()
+                        logger.info(f"Fetched {len(markets)} live markets from Polymarket")
+                        return markets
+                    else:
+                        logger.warning(f"Failed to fetch live markets: {response.status}")
+                        return []
+        except Exception as e:
+            logger.error(f"Error fetching live market data: {e}")
+            return []
     
     async def _process_market_timeseries(self, market_id: str, timeseries: List[Dict], enabled_strategies: List[str]):
         """Process a single market's timeseries for HFT opportunities with AI signal integration"""
