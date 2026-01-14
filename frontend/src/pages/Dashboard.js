@@ -275,6 +275,7 @@ const Dashboard = () => {
               <div className="flex items-center bg-slate-800/80 rounded-xl p-1 border border-white/10">
                 {[
                   { mode: 'live', icon: Zap, label: 'LIVE', activeColor: 'bg-gradient-to-r from-green-500 to-emerald-500' },
+                  { mode: 'paper', icon: FileText, label: 'PAPER', activeColor: 'bg-gradient-to-r from-blue-500 to-cyan-500' },
                   { mode: 'backtest', icon: BarChart3, label: 'BACKTEST', activeColor: 'bg-gradient-to-r from-orange-500 to-amber-500' },
                   { mode: 'stopped', icon: Pause, label: 'STOP', activeColor: 'bg-gradient-to-r from-red-500 to-rose-500' }
                 ].map(({ mode, icon: Icon, label, activeColor }) => (
