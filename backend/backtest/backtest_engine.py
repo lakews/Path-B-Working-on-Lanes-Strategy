@@ -175,6 +175,9 @@ class BacktestEngine:
         if category not in self.asset_class_performance:
             self.asset_class_performance[category] = {"trades": 0, "wins": 0, "pnl": 0.0}
         
+        # Check if we have real price data (source = "price_history")
+        has_real_prices = any(s.get("source") == "price_history" for s in timeseries)
+        
         # Get base prices and volumes
         base_prices = [s.get("yes_price", 0.5) for s in timeseries]
         no_prices = [s.get("no_price", 0.5) for s in timeseries]
@@ -187,11 +190,24 @@ class BacktestEngine:
         if base_price < 0.05 or base_price > 0.95:
             return
         
-        # Simulate realistic price movements based on market characteristics
-        prices = self._simulate_price_series(base_price, len(timeseries), avg_volume, category)
-        
-        unique_prices = len(set(round(p, 4) for p in prices))
-        price_range = max(prices) - min(prices)
+        # Use real prices if available, otherwise simulate
+        if has_real_prices:
+            # Use actual prices from the data
+            prices = base_prices
+            unique_prices = len(set(round(p, 4) for p in prices))
+            
+            # Only use real data if there's actual price variation
+            if unique_prices > 3:
+                self.real_price_data_used += len(prices)
+                logger.debug(f"Using REAL price data for {market_id[:12]}... ({unique_prices} unique prices)")
+            else:
+                # Fall back to simulation if real data has no variation
+                prices = self._simulate_price_series(base_price, len(timeseries), avg_volume, category)
+                self.simulated_price_data_used += len(prices)
+        else:
+            # Simulate realistic price movements
+            prices = self._simulate_price_series(base_price, len(timeseries), avg_volume, category)
+            self.simulated_price_data_used += len(prices)
         
         volatility = self._calculate_volatility(prices)
         trend = self._calculate_trend(prices)
