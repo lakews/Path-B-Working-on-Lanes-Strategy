@@ -146,16 +146,21 @@ class PaperTrader:
     
     async def _trading_loop(self):
         """Main paper trading loop - evaluates markets and executes paper trades"""
-        logger.info("Paper Trading loop started")
+        logger.info(f"Paper Trading loop started with {len(self.enabled_strategies)} strategies, {len(self.enabled_asset_classes)} asset classes")
         
         while self.running:
             try:
-                # Fetch active markets
+                # Fetch active markets filtered by enabled asset classes
                 markets = await self._get_active_markets()
                 
                 for market_data in markets[:20]:  # Limit to top 20 markets
                     if not self.running:
                         break
+                    
+                    # Filter by asset class
+                    asset_class = market_data.get('asset_class', market_data.get('category', 'unknown')).lower()
+                    if asset_class not in [ac.lower() for ac in self.enabled_asset_classes]:
+                        continue
                     
                     # Check existing paper position
                     market_id = market_data.get('id')
@@ -165,6 +170,14 @@ class PaperTrader:
                         await self._evaluate_entry(market_data)
                     
                     await asyncio.sleep(0.5)  # Brief pause between markets
+                
+                # Record equity curve point
+                self.equity_curve.append({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "capital": self.current_capital,
+                    "pnl": self.total_pnl,
+                    "open_positions": len(self.paper_positions)
+                })
                 
                 await asyncio.sleep(self.trade_interval)
                 
