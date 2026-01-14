@@ -35,7 +35,7 @@ class PaperTrader:
         self.market_data_service = MarketDataService()
         self.sharp_detector = SharpDetector()
         self.volatility_predictor = VolatilityPredictor()
-        self.sentiment_fusion = SentimentFusionEngine()
+        self.signal_fusion = SignalFusionEngine()
         
         self.running = False
         self.session_id = str(uuid.uuid4())[:8]
