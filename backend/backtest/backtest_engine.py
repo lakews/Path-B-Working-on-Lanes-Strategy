@@ -648,22 +648,48 @@ class BacktestEngine:
             strategy_results = {}
             for strategy, perf in self.strategy_performance.items():
                 trades = perf["trades"]
+                wins = perf.get("wins", 0)
+                losses = perf.get("losses", 0)
+                total_wins_pnl = perf.get("total_wins_pnl", 0)
+                total_losses_pnl = perf.get("total_losses_pnl", 0)
+                
+                strategy_avg_win = total_wins_pnl / wins if wins > 0 else 0
+                strategy_avg_loss = total_losses_pnl / losses if losses > 0 else 0
+                strategy_profit_factor = total_wins_pnl / total_losses_pnl if total_losses_pnl > 0 else 0
+                
                 strategy_results[strategy] = {
                     "trades": int(trades),
-                    "wins": int(perf["wins"]),
+                    "wins": int(wins),
+                    "losses": int(losses),
                     "pnl": float(perf["pnl"]),
-                    "win_rate": float(perf["wins"] / trades) if trades > 0 else 0.0
+                    "win_rate": float(wins / trades) if trades > 0 else 0.0,
+                    "avg_win": float(strategy_avg_win),
+                    "avg_loss": float(strategy_avg_loss),
+                    "profit_factor": float(strategy_profit_factor)
                 }
             
             # Asset class results - convert numpy types
             asset_class_results = {}
             for category, perf in self.asset_class_performance.items():
                 trades = perf["trades"]
+                wins = perf.get("wins", 0)
+                losses = perf.get("losses", 0)
+                total_wins_pnl = perf.get("total_wins_pnl", 0)
+                total_losses_pnl = perf.get("total_losses_pnl", 0)
+                
+                cat_avg_win = total_wins_pnl / wins if wins > 0 else 0
+                cat_avg_loss = total_losses_pnl / losses if losses > 0 else 0
+                cat_profit_factor = total_wins_pnl / total_losses_pnl if total_losses_pnl > 0 else 0
+                
                 asset_class_results[category] = {
                     "trades": int(trades),
-                    "wins": int(perf["wins"]),
+                    "wins": int(wins),
+                    "losses": int(losses),
                     "pnl": float(perf["pnl"]),
-                    "win_rate": float(perf["wins"] / trades) if trades > 0 else 0.0
+                    "win_rate": float(wins / trades) if trades > 0 else 0.0,
+                    "avg_win": float(cat_avg_win),
+                    "avg_loss": float(cat_avg_loss),
+                    "profit_factor": float(cat_profit_factor)
                 }
             
             # Calculate returns distribution for histogram
