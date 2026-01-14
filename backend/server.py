@@ -1387,6 +1387,72 @@ async def stop_tuning():
         )
 
 # =============================================
+# ALERTS SYSTEM ENDPOINTS
+# =============================================
+
+from services.alert_service import alert_service, AlertType
+
+class AlertConfigUpdate(BaseModel):
+    whale_activity_min: Optional[float] = None
+    sentiment_shift_min: Optional[float] = None
+    drawdown_max: Optional[float] = None
+    profit_notification_min: Optional[float] = None
+
+class TestAlertRequest(BaseModel):
+    recipient_email: str
+    alert_type: str = "test"
+
+@api_router.get("/alerts/config")
+async def get_alert_config():
+    """Get current alert configuration"""
+    return await alert_service.get_alert_config()
+
+@api_router.post("/alerts/config")
+async def update_alert_config(config_update: AlertConfigUpdate):
+    """Update alert thresholds"""
+    updates = {k: v for k, v in config_update.dict().items() if v is not None}
+    await alert_service.update_thresholds(updates)
+    return {"message": "Alert config updated", "new_config": await alert_service.get_alert_config()}
+
+@api_router.get("/alerts/history")
+async def get_alert_history(limit: int = Query(50, ge=1, le=200)):
+    """Get alert history"""
+    return {"history": await alert_service.get_alert_history(limit)}
+
+@api_router.post("/alerts/test")
+async def send_test_alert(request: TestAlertRequest):
+    """Send a test alert email"""
+    if not alert_service.enabled:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Alerts disabled - SENDGRID_API_KEY not configured"}
+        )
+    
+    # Send test backtest complete alert
+    test_results = {
+        "backtest_id": "test-alert",
+        "total_pnl": 125.50,
+        "total_return_pct": 12.55,
+        "total_trades": 150,
+        "win_rate": 0.65,
+        "sharpe_ratio": 1.25,
+        "max_drawdown": 0.03
+    }
+    
+    success = await alert_service.send_backtest_complete_alert(
+        request.recipient_email,
+        test_results
+    )
+    
+    if success:
+        return {"message": f"Test alert sent to {request.recipient_email}"}
+    else:
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to send test alert"}
+        )
+
+# =============================================
 # WEBSOCKET ENDPOINT FOR REAL-TIME UPDATES
 # =============================================
 
