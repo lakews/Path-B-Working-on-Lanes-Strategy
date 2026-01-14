@@ -1336,7 +1336,7 @@ const Backtest = () => {
             <div className="rounded-xl bg-white/5 border border-white/10 p-12 text-center">
               <GitCompare className="w-16 h-16 text-white/20 mx-auto mb-4" />
               <p className="text-white/60 text-lg">No comparison data</p>
-              <p className="text-white/40 text-sm mt-2">Select backtests from History tab and click "Analyze Selected"</p>
+              <p className="text-white/40 text-sm mt-2">Select backtests from History tab and click &quot;Analyze Selected&quot;</p>
               <button
                 onClick={() => setActiveTab('history')}
                 className="mt-4 px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 text-sm font-medium hover:bg-purple-500/30 transition"
@@ -1647,13 +1647,13 @@ const Backtest = () => {
                 <h4 className="text-sm font-medium text-white mb-2">Win Rate vs Profit Factor</h4>
                 <p className="text-xs text-white/60">
                   A 90% win rate with a 0.8 profit factor means many small wins but devastating losses. 
-                  A 30% win rate with a 2.5 profit factor can be more profitable - few wins but they're big.
+                  A 30% win rate with a 2.5 profit factor can be more profitable - few wins but they&apos;re big.
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-white/5">
                 <h4 className="text-sm font-medium text-white mb-2">Sample Size Matters</h4>
                 <p className="text-xs text-white/60">
-                  Don't trust results from &lt;100 trades. Statistical significance requires enough data.
+                  Don&apos;t trust results from &lt;100 trades. Statistical significance requires enough data.
                   Run multiple backtests across different time periods.
                 </p>
               </div>
@@ -1667,7 +1667,7 @@ const Backtest = () => {
               <div className="p-4 rounded-lg bg-white/5">
                 <h4 className="text-sm font-medium text-white mb-2">Overfitting Warning</h4>
                 <p className="text-xs text-white/60">
-                  If results are "too good" (Sharpe &gt; 3), you may be overfitting to historical data.
+                  If results are &quot;too good&quot; (Sharpe &gt; 3), you may be overfitting to historical data.
                   Test on out-of-sample data before going live.
                 </p>
               </div>
