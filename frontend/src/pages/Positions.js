@@ -21,19 +21,19 @@ const STRATEGY_COLORS = {
 
 // All available strategies and asset classes
 const ALL_STRATEGIES = [
-  { value: 'delta_neutral', label: 'Delta-Neutral Market Making' },
-  { value: 'volatility_exploitation', label: 'Volatility Exploitation' },
-  { value: 'alpha_directional', label: 'Alpha-Directional' },
-  { value: 'arbitrage', label: 'Multi-Market Arbitrage' }
+  { value: 'delta_neutral', label: 'Delta-Neutral', shortLabel: 'Delta', color: '#06b6d4' },
+  { value: 'volatility_exploitation', label: 'Volatility', shortLabel: 'Vol', color: '#f59e0b' },
+  { value: 'alpha_directional', label: 'Alpha', shortLabel: 'Alpha', color: '#10b981' },
+  { value: 'arbitrage', label: 'Arbitrage', shortLabel: 'Arb', color: '#8b5cf6' }
 ];
 
 const ALL_ASSET_CLASSES = [
-  { value: 'politics', label: 'Politics' },
-  { value: 'crypto', label: 'Crypto' },
-  { value: 'finance', label: 'Finance' },
-  { value: 'entertainment', label: 'Entertainment' },
-  { value: 'science', label: 'Science' },
-  { value: 'sports', label: 'Sports' }
+  { value: 'politics', label: 'Politics', color: '#ef4444' },
+  { value: 'crypto', label: 'Crypto', color: '#f59e0b' },
+  { value: 'finance', label: 'Finance', color: '#10b981' },
+  { value: 'entertainment', label: 'Entertainment', color: '#ec4899' },
+  { value: 'science', label: 'Science', color: '#06b6d4' },
+  { value: 'sports', label: 'Sports', color: '#8b5cf6' }
 ];
 
 const Positions = () => {
@@ -43,10 +43,35 @@ const Positions = () => {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('pnl');
   const [sortOrder, setSortOrder] = useState('desc');
-  const [filterStrategy, setFilterStrategy] = useState('all');
-  const [filterAssetClass, setFilterAssetClass] = useState('all');
+  // Multi-select arrays instead of single values
+  const [selectedStrategies, setSelectedStrategies] = useState([]);
+  const [selectedAssetClasses, setSelectedAssetClasses] = useState([]);
   const [expandedPosition, setExpandedPosition] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
+
+  // Toggle strategy selection
+  const toggleStrategy = (strategyValue) => {
+    setSelectedStrategies(prev => 
+      prev.includes(strategyValue) 
+        ? prev.filter(s => s !== strategyValue)
+        : [...prev, strategyValue]
+    );
+  };
+
+  // Toggle asset class selection
+  const toggleAssetClass = (assetValue) => {
+    setSelectedAssetClasses(prev => 
+      prev.includes(assetValue) 
+        ? prev.filter(a => a !== assetValue)
+        : [...prev, assetValue]
+    );
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSelectedStrategies([]);
+    setSelectedAssetClasses([]);
+  };
 
   useEffect(() => {
     fetchData();
