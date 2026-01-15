@@ -186,3 +186,44 @@ class PolymarketAPI:
         except Exception as e:
             logger.error(f"Error fetching price history: {e}")
             return []
+
+    async def get_market_price_history_batch(self, markets: List[Dict], interval: str = "1w", fidelity: int = 60) -> Dict[str, Dict]:
+        """
+        Fetch price history for multiple markets in batch.
+        
+        Args:
+            markets: List of market dictionaries with clobTokenIds
+            interval: Time interval ("1h", "6h", "1d", "1w", "max")
+            fidelity: Resolution in minutes
+            
+        Returns:
+            Dict mapping condition_id to {history, question, token_id, ...}
+        """
+        results = {}
+        
+        for market in markets:
+            condition_id = market.get('condition_id') or market.get('id')
+            token_ids = market.get('clobTokenIds', market.get('tokens', []))
+            
+            if not token_ids or not condition_id:
+                continue
+            
+            # Use the first token ID (YES token) for price history
+            token_id = token_ids[0] if isinstance(token_ids, list) else token_ids
+            
+            try:
+                history = await self.get_price_history(token_id, interval, fidelity)
+                if history:
+                    results[condition_id] = {
+                        "history": history,
+                        "question": market.get('question', ''),
+                        "token_id": token_id,
+                        "volume24hr": market.get('volume_24h', 0),
+                        "liquidity": market.get('liquidity', 0)
+                    }
+            except Exception as e:
+                logger.debug(f"Error fetching price history for {condition_id}: {e}")
+        
+        logger.info(f"Fetched price history for {len(results)} markets")
+        return results
+
