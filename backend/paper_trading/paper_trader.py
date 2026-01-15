@@ -307,6 +307,13 @@ class PaperTrader:
                 # Fetch active markets filtered by enabled asset classes
                 markets = await self._get_active_markets()
                 
+                if not markets:
+                    logger.warning("No markets available for trading - waiting 10 seconds before retry")
+                    await asyncio.sleep(10)
+                    continue
+                
+                logger.info(f"Processing {len(markets)} markets for trading opportunities")
+                
                 for market_data in markets[:20]:  # Limit to top 20 markets
                     if not self.running:
                         break
