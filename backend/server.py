@@ -1644,6 +1644,11 @@ async def start_paper_trading(
     
     try:
         paper_trader = PaperTrader(initial_capital=initial_capital, continuous_mode=continuous_mode)
+        
+        # Set up WebSocket broadcast callback for real-time updates
+        from paper_trading.paper_trader import set_broadcast_callback
+        set_broadcast_callback(ws_manager.broadcast)
+        
         background_tasks.add_task(paper_trader.start)
         trading_mode = "paper"
         
