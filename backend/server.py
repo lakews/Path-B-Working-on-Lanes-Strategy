@@ -2073,6 +2073,99 @@ async def get_paper_session_details(session_id: str):
             content={"message": f"Failed to get session: {str(e)}"}
         )
 
+@api_router.get("/paper/session/{session_id}/trades")
+async def get_session_trades(session_id: str):
+    """Get all trades for a specific paper trading session with entry/exit details"""
+    try:
+        db = get_db()
+        
+        # Get all exit trades for this session (which contain entry/exit info)
+        cursor = db.paper_trades.find(
+            {"session_id": session_id, "type": "exit"},
+            {"_id": 0}
+        ).sort("timestamp", -1)
+        trades = await cursor.to_list(length=1000)
+        
+        # Format trades with all required info
+        formatted_trades = []
+        for trade in trades:
+            formatted_trades.append({
+                "market_id": trade.get("market_id"),
+                "market_question": trade.get("market_question", "Unknown"),
+                "strategy": trade.get("strategy"),
+                "side": trade.get("side"),
+                "entry_price": trade.get("entry_price", 0),
+                "exit_price": trade.get("price", 0),
+                "size": trade.get("size", 0),
+                "pnl": trade.get("pnl", 0),
+                "hold_time_seconds": trade.get("hold_time_seconds", 0),
+                "exit_reason": trade.get("exit_reason", "unknown"),
+                "timestamp": trade.get("timestamp")
+            })
+        
+        return {"trades": formatted_trades, "count": len(formatted_trades)}
+    except Exception as e:
+        logger.error(f"Error getting session trades: {e}")
+        return JSONResponse(status_code=500, content={"message": str(e)})
+
+@api_router.post("/paper/reset-live-stats")
+async def reset_live_stats(current_user: str = Depends(get_current_user)):
+    """Reset live session statistics without stopping the trading session"""
+    global paper_trader
+    try:
+        if not paper_trader:
+            return JSONResponse(status_code=400, content={"message": "No paper trader running"})
+        
+        # Reset stats
+        paper_trader.total_trades = 0
+        paper_trader.winning_trades = 0
+        paper_trader.total_pnl = 0.0
+        paper_trader.unrealized_pnl = 0.0
+        paper_trader.max_drawdown = 0.0
+        paper_trader.peak_capital = paper_trader.initial_capital
+        paper_trader.current_capital = paper_trader.initial_capital
+        paper_trader.closed_trades = []
+        paper_trader.trade_history = []
+        paper_trader.trade_returns = []
+        paper_trader.equity_curve = []
+        paper_trader.strategy_equity = {s: 0.0 for s in paper_trader.strategy_equity}
+        paper_trader.asset_class_equity = {}
+        paper_trader.strategy_stats = {
+            'delta_neutral': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0},
+            'volatility_exploitation': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0},
+            'alpha_directional': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0},
+            'arbitrage': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
+        }
+        paper_trader.asset_class_stats = {}
+        
+        logger.info("Live session stats reset")
+        return {"message": "Live stats reset successfully"}
+    except Exception as e:
+        logger.error(f"Error resetting live stats: {e}")
+        return JSONResponse(status_code=500, content={"message": str(e)})
+
+@api_router.post("/paper/reset-cumulative-stats")
+async def reset_cumulative_stats(current_user: str = Depends(get_current_user)):
+    """Reset ALL cumulative trading statistics across all sessions"""
+    try:
+        db = get_db()
+        
+        # Delete all paper trading sessions
+        result1 = await db.paper_trading_sessions.delete_many({"type": "paper_trading"})
+        
+        # Delete all paper trades
+        result2 = await db.paper_trades.delete_many({})
+        
+        logger.info(f"Cumulative stats reset: {result1.deleted_count} sessions, {result2.deleted_count} trades deleted")
+        return {
+            "message": "Cumulative stats reset successfully",
+            "sessions_deleted": result1.deleted_count,
+            "trades_deleted": result2.deleted_count
+        }
+    except Exception as e:
+        logger.error(f"Error resetting cumulative stats: {e}")
+        return JSONResponse(status_code=500, content={"message": str(e)})
+
 @api_router.get("/paper/analytics")
 async def get_paper_analytics():
     """Get comprehensive paper trading analytics with live market data"""
