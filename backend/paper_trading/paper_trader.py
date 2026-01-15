@@ -113,6 +113,7 @@ class PaperTrader:
         self.unrealized_pnl = 0.0  # Unrealized P&L from open positions
         self.max_drawdown = 0.0
         self.peak_capital = self.initial_capital
+        self.circuit_breaker_triggered = False  # Circuit breaker flag
         
         # Strategy performance tracking (with full metrics like backtest)
         self.strategy_stats = {
