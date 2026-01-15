@@ -23,27 +23,33 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
-### January 15, 2026 - Session 18 (Live Data Pipeline Fix, gross_loss KeyError Fix)
+### January 15, 2026 - Session 18 (Live Data Pipeline Fix, gross_loss KeyError Fix, UI Improvements)
 
 - ✅ **CRITICAL FIX: Live Market Data Pipeline** (`/app/backend/data/polymarket_api.py`, `/app/backend/server.py`)
   - **Problem**: Application was using deprecated Polymarket CLOB API that returned stale/mock data from 2023
   - **Solution**: Switched to Polymarket Gamma API for real, live market data
   - `/api/markets` endpoint now returns `source='gamma_api_live'` with real market prices
   - Markets show real liquidity ($100K to $9.5M), actual prices (0.0005, 0.026, etc.), and 2026 end dates
-  - Fixed bug where `token.get('price')` was called on string token IDs
 
 - ✅ **CRITICAL FIX: gross_loss KeyError in Paper Trading** (`/app/backend/paper_trading/paper_trader.py`)
   - **Problem**: `KeyError: 'gross_loss'` during P&L calculation when positions closed
-  - **Solution**: Initialize `asset_class_stats` with `gross_profit` and `gross_loss` fields at entry (line 507)
-  - Added defensive check at exit to ensure fields exist for positions opened before fix (lines 592-596)
-  - Both `strategy_results` and `asset_class_results` now include complete metrics
+  - **Solution**: Initialize `asset_class_stats` with `gross_profit` and `gross_loss` fields at entry
+  - Added defensive check at exit for positions opened before fix
 
-- ✅ **Added Missing API Method** (`/app/backend/data/polymarket_api.py`)
-  - `get_market_price_history_batch()`: Batch fetch price history for multiple markets
+- ✅ **CRITICAL FIX: Paper Trading Authentication** (`/app/frontend/src/pages/PaperTrading.js`)
+  - **Problem**: Frontend wasn't sending auth credentials to protected endpoints
+  - **Solution**: Added Basic Auth (`admin:apex2026!`) to start, stop, RL train, optimizer API calls
 
-- ✅ **Test Suite Created** (`/app/tests/test_gamma_api_paper_trading_fix.py`)
-  - 13 tests verifying live data pipeline and paper trading fixes
-  - All tests passing (100% success rate)
+- ✅ **UI Redesign: Paper Trading Control Panel**
+  - New "Control Room" style header with clear status indicators
+  - Mode toggle: SINGLE (cyan) / CONTINUOUS (purple + spinning icon) with clear active states
+  - Status badge: STOPPED (gray) / TRADING (green glow) / CONTINUOUS / CLOSING (amber)
+  - Config HUD strip always visible: Capital, Deployed, Max Pos, Kelly, Max DD
+  - Mode buttons disabled (grayed out) when trading is running
+  - Tab navigation with color-coded active states
+
+- ✅ **Test Suite** (`/app/test_reports/iteration_14.json`)
+  - 13 tests verifying live data pipeline and paper trading fixes - all passing
 
 ### January 15, 2026 - Session 17 (Adaptive Position Sizing, Config Integration, JWT Auth)
 
