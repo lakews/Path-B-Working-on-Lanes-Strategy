@@ -759,19 +759,24 @@ class PaperTrader:
                 sizing_used=position.get('sizing_breakdown', {})
             )
             
-            # Store closed trade
+            # Store closed trade with hold time calculation
+            entry_time = datetime.fromisoformat(position['entry_time'].replace('Z', '+00:00'))
+            exit_time = datetime.now(timezone.utc)
+            hold_time_seconds = (exit_time - entry_time).total_seconds()
+            
             closed_trade = {
                 **position,
                 "exit_price": current_price,
-                "exit_time": datetime.now(timezone.utc).isoformat(),
+                "exit_time": exit_time.isoformat(),
                 "exit_reason": exit_reason,
                 "pnl": pnl,
                 "pnl_pct": pnl_pct,
+                "hold_time_seconds": hold_time_seconds,
                 "reward_signal": reward
             }
             self.closed_trades.append(closed_trade)
             
-            # Log trade
+            # Log trade with hold time
             trade_log = {
                 "trade_id": str(uuid.uuid4()),
                 "session_id": self.session_id,
@@ -784,11 +789,12 @@ class PaperTrader:
                 "exit_price": current_price,
                 "pnl": pnl,
                 "pnl_pct": pnl_pct,
+                "hold_time_seconds": hold_time_seconds,
                 "strategy": strategy,
                 "asset_class": asset_class,
                 "exit_reason": exit_reason,
                 "reward_signal": reward,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": exit_time.isoformat()
             }
             self.trade_history.append(trade_log.copy())  # Use copy to prevent MongoDB _id mutation
             await self.db.paper_trades.insert_one(trade_log)
