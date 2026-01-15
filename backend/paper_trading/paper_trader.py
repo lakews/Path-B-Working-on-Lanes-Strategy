@@ -642,6 +642,7 @@ class PaperTrader:
                 "session_id": self.session_id,
                 "type": "exit",
                 "market_id": market_id,
+                "market_question": position.get('market_question', ''),
                 "side": side,
                 "size": size,
                 "entry_price": entry_price,
@@ -649,6 +650,7 @@ class PaperTrader:
                 "pnl": pnl,
                 "pnl_pct": pnl_pct,
                 "strategy": strategy,
+                "asset_class": asset_class,
                 "exit_reason": exit_reason,
                 "reward_signal": reward,
                 "timestamp": datetime.now(timezone.utc).isoformat()
