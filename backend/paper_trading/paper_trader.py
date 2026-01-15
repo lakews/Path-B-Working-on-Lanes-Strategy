@@ -438,10 +438,10 @@ class PaperTrader:
             # Check for stuck/stale prices - skip markets with default prices unless high volume confirms they're real
             yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
             if yes_price in [0.0, 0.5, 1.0]:  # Default/stuck prices
-                # Need significantly higher volume to trust these prices
-                stale_price_min_volume = min_vol_threshold * 2  # Double the normal threshold
+                # Use user-configured multiplier for stuck price volume requirement
+                stale_price_min_volume = min_vol_threshold * self.stuck_price_multiplier
                 if effective_volume < stale_price_min_volume:
-                    logger.debug(f"Skipping {market_id[:16]}: possibly stale price ({yes_price}) with low volume ({effective_volume} < {stale_price_min_volume})")
+                    logger.debug(f"Skipping {market_id[:16]}: stuck price ({yes_price}) requires {self.stuck_price_multiplier}x volume ({effective_volume} < {stale_price_min_volume})")
                     return
             
             # Get ML signals
