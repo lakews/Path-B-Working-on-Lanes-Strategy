@@ -741,6 +741,14 @@ class PaperTrader:
             drawdown = (self.peak_capital - self.current_capital) / self.peak_capital
             self.max_drawdown = max(self.max_drawdown, drawdown)
             
+            # CIRCUIT BREAKER: Check if drawdown exceeds max allowed (from Settings)
+            drawdown_pct = drawdown * 100
+            if drawdown_pct >= self.max_drawdown_pct:
+                logger.warning(f"🚨 CIRCUIT BREAKER TRIGGERED! Drawdown {drawdown_pct:.2f}% >= {self.max_drawdown_pct}% limit")
+                logger.warning(f"   Peak: ${self.peak_capital:.2f} | Current: ${self.current_capital:.2f} | Loss: ${self.peak_capital - self.current_capital:.2f}")
+                self.circuit_breaker_triggered = True
+                # Stop accepting new trades - will be checked in main loop
+            
             # Track wins
             is_win = pnl > 0
             if is_win:
