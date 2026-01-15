@@ -917,13 +917,20 @@ class PaperTrader:
         # Calculate returns distribution
         returns_distribution = self._calculate_returns_distribution()
         
+        # Calculate total P&L including unrealized
+        combined_pnl = self.total_pnl + self.unrealized_pnl
+        
         return {
             "session_id": self.session_id,
             "running": self.running,
             "initial_capital": self.initial_capital,
             "current_capital": self.current_capital,
-            "total_pnl": self.total_pnl,
+            "deployed_capital": self.deployed_capital,  # Capital available for trading
+            "total_pnl": self.total_pnl,  # Realized P&L (closed trades)
+            "unrealized_pnl": self.unrealized_pnl,  # Unrealized P&L (open positions)
+            "combined_pnl": combined_pnl,  # Total = Realized + Unrealized
             "total_pnl_pct": (self.total_pnl / self.initial_capital) * 100,
+            "combined_pnl_pct": (combined_pnl / self.initial_capital) * 100,
             "total_trades": self.total_trades,
             "winning_trades": self.winning_trades,
             "win_rate": win_rate,
@@ -939,6 +946,16 @@ class PaperTrader:
             "enabled_asset_classes": self.enabled_asset_classes,
             "continuous_mode": self.continuous_mode,
             "graceful_stop": self.graceful_stop,
+            # Configuration parameters being used
+            "config": {
+                "capital_deployment_pct": self.capital_deployment_pct,
+                "max_position_size_pct": self.max_position_size_pct,
+                "max_position_size": self.max_position_size,
+                "kelly_fraction": self.kelly_fraction,
+                "max_drawdown_pct": self.max_drawdown_pct,
+                "trades_per_10min": self.trades_per_10min,
+                "trade_interval_seconds": self.trade_interval
+            },
             "ai_learning": {
                 "rl_updates_this_session": len(self.closed_trades),
                 "learning_active": self.running,
