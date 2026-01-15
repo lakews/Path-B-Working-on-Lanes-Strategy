@@ -14,6 +14,14 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Basic Auth credentials for protected endpoints
+const AUTH_CONFIG = {
+  auth: {
+    username: 'admin',
+    password: 'apex2026!'
+  }
+};
+
 const STRATEGY_INFO = {
   delta_neutral: { 
     name: 'Delta-Neutral', 
