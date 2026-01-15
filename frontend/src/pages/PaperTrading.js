@@ -351,10 +351,18 @@ const PnLDistributionChart = ({ data, title = "P&L Distribution" }) => {
             />
             <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.6)' }} />
             <Tooltip 
-              contentStyle={{backgroundColor: 'rgba(15,23,42,0.95)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px'}}
-              labelStyle={{ color: '#94a3b8' }}
-              formatter={(value, name) => [`${value} trades`, 'Count']}
-              labelFormatter={(label) => `Return: ${label}`}
+              contentStyle={{
+                backgroundColor: 'rgba(15,23,42,0.98)', 
+                border: '1px solid rgba(255,255,255,0.2)', 
+                borderRadius: '8px',
+                padding: '12px 16px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+              }}
+              labelStyle={{ color: '#e2e8f0', fontWeight: 'bold', fontSize: '13px', marginBottom: '4px' }}
+              itemStyle={{ color: '#94a3b8', fontSize: '12px' }}
+              formatter={(value, name) => [<span style={{color: '#22d3ee', fontWeight: 'bold'}}>{value} trades</span>, 'Count']}
+              labelFormatter={(label) => <span style={{color: '#f1f5f9'}}>Return Range: {label}</span>}
+              cursor={{ fill: 'rgba(255,255,255,0.1)' }}
             />
             <Bar dataKey="count" radius={[4, 4, 0, 0]}>
               {filteredBins.map((entry, index) => (
