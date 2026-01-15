@@ -383,13 +383,16 @@ const PaperTrading = () => {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={initialCapital}
-                onChange={(e) => setInitialCapital(Number(e.target.value))}
-                className="w-28 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm"
-                placeholder="Capital"
-              />
+              <div className="relative">
+                <label className="absolute -top-2 left-2 px-1 text-[10px] text-white/50 bg-slate-900">Initial Capital</label>
+                <input
+                  type="number"
+                  value={initialCapital}
+                  onChange={(e) => setInitialCapital(Number(e.target.value))}
+                  className="w-32 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm"
+                  placeholder="10000"
+                />
+              </div>
               {/* Continuous Mode Toggle */}
               <button
                 onClick={() => setContinuousMode(!continuousMode)}
@@ -398,7 +401,7 @@ const PaperTrading = () => {
                     ? 'bg-purple-500/20 border-purple-500/30 text-purple-400' 
                     : 'bg-white/5 border-white/20 text-white/60 hover:text-white'
                 }`}
-                title="Continuous mode runs indefinitely until manually stopped"
+                title="Continuous mode runs indefinitely until manually stopped. Learning is applied immediately to subsequent trades."
               >
                 <RefreshCw className={`w-4 h-4 ${continuousMode ? 'animate-spin' : ''}`} />
                 {continuousMode ? 'Continuous' : 'Single'}
