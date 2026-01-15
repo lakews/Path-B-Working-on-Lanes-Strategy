@@ -89,13 +89,16 @@ const Configuration = () => {
   };
 
   const resetToDefaults = () => {
-    setConfig({ 
-      trades_per_10min: 500, 
-      initial_capital: 10000,  // Updated default
-      capital_deployment_pct: 80, 
-      max_position_size_pct: 3, 
-      kelly_fraction: 0.25, 
-      max_drawdown_pct: 5,  // Updated default
+    setConfig({
+      trades_per_10min: 500,
+      initial_capital: 10000,
+      capital_deployment_pct: 80,
+      max_position_size_pct: 3,
+      kelly_fraction: 0.25,
+      max_drawdown_pct: 5,
+      min_liquidity: 100,
+      min_volume_24h: 1000,
+      max_spread: 0.05,
       enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'],
       enabled_strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
     });
