@@ -589,6 +589,11 @@ class PaperTrader:
             # Update asset class stats with full metrics
             if asset_class not in self.asset_class_stats:
                 self.asset_class_stats[asset_class] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
+            # Ensure gross_profit and gross_loss exist (for positions opened before fix)
+            if 'gross_profit' not in self.asset_class_stats[asset_class]:
+                self.asset_class_stats[asset_class]['gross_profit'] = 0.0
+            if 'gross_loss' not in self.asset_class_stats[asset_class]:
+                self.asset_class_stats[asset_class]['gross_loss'] = 0.0
             self.asset_class_stats[asset_class]['pnl'] += pnl
             if is_win:
                 self.asset_class_stats[asset_class]['wins'] += 1
