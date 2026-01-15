@@ -640,22 +640,83 @@ class PaperTrader:
                 await asyncio.sleep(10)
     
     async def _learning_loop(self):
-        """Periodic RL learning from replay buffer"""
+        """Periodic RL learning from replay buffer - more aggressive in continuous mode"""
+        last_trade_count = 0
+        
         while self.running:
             try:
-                # Train from replay buffer every few minutes
+                # Train from replay buffer
                 await self.rl_engine.train_from_replay()
                 
-                # Save model periodically
-                if self.total_trades > 0 and self.total_trades % 10 == 0:
-                    await self.rl_engine.save_model()
-                    logger.info("RL model saved during paper trading")
+                # In continuous mode, learn more aggressively
+                learning_interval = 30 if self.continuous_mode else 60
                 
-                await asyncio.sleep(60)  # Learn every minute
+                # Save model periodically (every 10 trades or every 5 minutes in continuous mode)
+                trades_since_last_save = self.total_trades - last_trade_count
+                if self.total_trades > 0:
+                    should_save = (
+                        trades_since_last_save >= 10 or 
+                        (self.continuous_mode and trades_since_last_save >= 5)
+                    )
+                    if should_save:
+                        await self.rl_engine.save_model()
+                        last_trade_count = self.total_trades
+                        logger.info(f"RL model saved - {self.total_trades} total trades, continuous={self.continuous_mode}")
+                
+                # Update cumulative stats in database for running totals
+                await self._update_cumulative_stats()
+                
+                await asyncio.sleep(learning_interval)
                 
             except Exception as e:
                 logger.error(f"Error in learning loop: {e}")
-                await asyncio.sleep(60)
+                await asyncio.sleep(30)
+    
+    async def _update_cumulative_stats(self):
+        """Update cumulative trading stats across all sessions"""
+        try:
+            # Update cumulative strategy stats
+            for strategy, stats in self.strategy_stats.items():
+                if stats['trades'] > 0:
+                    await self.db.cumulative_stats.update_one(
+                        {"type": "strategy", "name": strategy},
+                        {
+                            "$inc": {
+                                "total_trades": 0,  # Don't double count, just ensure doc exists
+                            },
+                            "$set": {
+                                "last_updated": datetime.now(timezone.utc).isoformat(),
+                                "last_session_id": self.session_id
+                            },
+                            "$setOnInsert": {
+                                "type": "strategy",
+                                "name": strategy,
+                                "created": datetime.now(timezone.utc).isoformat()
+                            }
+                        },
+                        upsert=True
+                    )
+            
+            # Update cumulative asset class stats
+            for asset_class, stats in self.asset_class_stats.items():
+                if stats['trades'] > 0:
+                    await self.db.cumulative_stats.update_one(
+                        {"type": "asset_class", "name": asset_class},
+                        {
+                            "$set": {
+                                "last_updated": datetime.now(timezone.utc).isoformat(),
+                                "last_session_id": self.session_id
+                            },
+                            "$setOnInsert": {
+                                "type": "asset_class",
+                                "name": asset_class,
+                                "created": datetime.now(timezone.utc).isoformat()
+                            }
+                        },
+                        upsert=True
+                    )
+        except Exception as e:
+            logger.debug(f"Error updating cumulative stats: {e}")
     
     async def _close_all_positions(self):
         """Close all open paper positions"""
