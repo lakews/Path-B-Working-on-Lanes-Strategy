@@ -990,7 +990,7 @@ const PaperTrading = () => {
                 </tr></thead>
                 <tbody>
                   {sortedTrades.slice(0, 50).map((trade, idx) => <TradeRow key={idx} trade={trade} />)}
-                  {trades.filter(t => t.type === 'exit').length === 0 && <tr><td colSpan={9} className="py-8 text-center text-white/40">No completed trades yet. Start paper trading to see activity.</td></tr>}
+                  {sortedTrades.length === 0 && <tr><td colSpan={9} className="py-8 text-center text-white/40">No trades yet. Start paper trading to see activity.</td></tr>}
                 </tbody>
               </table>
             </div>
