@@ -110,15 +110,38 @@ class PaperTrader:
         logger.info(f"  Kelly: {self.kelly_fraction} | Max Drawdown: {self.max_drawdown_pct}% | Trade Interval: {self.trade_interval:.1f}s")
     
     async def _load_user_config(self):
-        """Load user trading configuration from database"""
+        """Load ALL user trading configuration from database"""
         try:
-            config = await self.db.user_config.find_one({"type": "trading_preferences"})
-            if config:
-                if "enabled_strategies" in config:
-                    self.enabled_strategies = config["enabled_strategies"]
-                if "enabled_asset_classes" in config:
-                    self.enabled_asset_classes = config["enabled_asset_classes"]
-                logger.info(f"Loaded user config: {len(self.enabled_strategies)} strategies, {len(self.enabled_asset_classes)} asset classes")
+            user_config = await self.db.user_config.find_one({"type": "trading_preferences"})
+            if user_config:
+                # Load enabled strategies and asset classes
+                if "enabled_strategies" in user_config:
+                    self.enabled_strategies = user_config["enabled_strategies"]
+                if "enabled_asset_classes" in user_config:
+                    self.enabled_asset_classes = user_config["enabled_asset_classes"]
+                
+                # Load trading parameters
+                if "capital_deployment_pct" in user_config:
+                    self.capital_deployment_pct = float(user_config["capital_deployment_pct"])
+                if "max_position_size_pct" in user_config:
+                    self.max_position_size_pct = float(user_config["max_position_size_pct"])
+                if "kelly_fraction" in user_config:
+                    self.kelly_fraction = float(user_config["kelly_fraction"])
+                if "max_drawdown_pct" in user_config:
+                    self.max_drawdown_pct = float(user_config["max_drawdown_pct"])
+                if "trades_per_10min" in user_config:
+                    self.trades_per_10min = int(user_config["trades_per_10min"])
+                
+                # Recalculate derived values based on loaded config
+                self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
+                self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
+                self.trade_interval = max(1, 600 / self.trades_per_10min)
+                
+                logger.info(f"Loaded user config from DB:")
+                logger.info(f"  Strategies: {len(self.enabled_strategies)} | Asset Classes: {len(self.enabled_asset_classes)}")
+                logger.info(f"  Capital Deployment: {self.capital_deployment_pct}% | Max Position: {self.max_position_size_pct}%")
+                logger.info(f"  Deployed Capital: ${self.deployed_capital} | Max Position Size: ${self.max_position_size}")
+                logger.info(f"  Kelly: {self.kelly_fraction} | Max Drawdown: {self.max_drawdown_pct}%")
         except Exception as e:
             logger.warning(f"Could not load user config: {e}")
     
