@@ -401,7 +401,7 @@ class PaperTrader:
                 "rl_confidence": rl_confidence,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
-            self.trade_history.append(trade_log)
+            self.trade_history.append(trade_log.copy())  # Use copy to prevent MongoDB _id mutation
             await self.db.paper_trades.insert_one(trade_log)
             
             logger.info(f"📝 PAPER ENTRY: {side} ${size:.2f} @ {current_price:.4f} | Strategy: {strategy} | RL: {rl_action} ({rl_confidence:.2f})")
