@@ -203,11 +203,13 @@ class AdaptivePositionSizer:
         
         Higher volatility = smaller positions (risk management)
         But also higher potential returns, so not linear reduction.
+        
+        NOTE: Reduced dampening to ensure trades can execute with small capital.
         """
         # Volatility ratio vs historical
         vol_ratio = predicted_volatility / max(historical_volatility, 0.01)
         
-        # Regime classification
+        # Regime classification - less aggressive dampening
         if vol_ratio < 0.5:
             # Very low vol - can size up slightly
             return 1.1
@@ -215,14 +217,14 @@ class AdaptivePositionSizer:
             # Normal vol
             return 1.0
         elif vol_ratio < 2.0:
-            # Elevated vol - reduce moderately
-            return 0.8
+            # Elevated vol - mild reduction
+            return 0.9
         elif vol_ratio < 3.0:
-            # High vol - reduce significantly
-            return 0.6
+            # High vol - moderate reduction
+            return 0.8
         else:
-            # Extreme vol - minimum sizing
-            return 0.4
+            # Extreme vol - reduced sizing but still viable
+            return 0.7
     
     def calculate_rl_confidence_multiplier(
         self,
@@ -234,17 +236,19 @@ class AdaptivePositionSizer:
         
         Higher confidence = larger position.
         Also considers action type (HOLD actions get smaller sizes).
+        
+        NOTE: Less aggressive dampening - RL confidence shouldn't block trades entirely.
         """
-        # Base multiplier from confidence
-        base_mult = 0.5 + (rl_confidence * 0.5)  # 0.5 to 1.0
+        # Base multiplier from confidence - higher floor (0.7 to 1.2)
+        base_mult = 0.7 + (rl_confidence * 0.5)  # Range: 0.7 to 1.2
         
         # Action-based adjustment
-        if 'HOLD' in rl_action:
-            base_mult *= 0.5  # Reduce if model suggests holding
+        if 'HOLD' in rl_action or 'WAIT' in rl_action:
+            base_mult *= 0.7  # Reduce if model suggests holding
         elif 'STRONG' in rl_action or 'LARGE' in rl_action:
             base_mult *= 1.2  # Increase for strong signals
         
-        return min(1.2, base_mult)
+        return min(1.3, base_mult)
     
     def calculate_optimal_position_size(
         self,
@@ -295,31 +299,39 @@ class AdaptivePositionSizer:
         # 6. Strategy risk multiplier
         strat_mult = self.STRATEGY_RISK.get(strategy, 1.0)
         
-        # Combine all factors
+        # Combine all factors - note: these multipliers shouldn't reduce position too aggressively
         combined_mult = liquidity_mult * vol_mult * rl_mult * asset_mult * strat_mult
         
         # Adaptive sizing: use Kelly when available, fall back to base position when Kelly is too conservative
-        min_base_position = max_position_usd * 0.1  # Minimum 10% of max for HFT
+        # NOTE: With small capital ($800-1000), max_position_usd might be only $24-30
+        # We need to ensure trades can still execute
+        min_base_position = max_position_usd * 0.25  # Minimum 25% of max for HFT
         
         if kelly_enabled and kelly_position > min_base_position:
             # Kelly has sufficient data - use it as primary with multipliers
             raw_position = kelly_position * combined_mult
         else:
             # Kelly is too conservative (new strategy/no data) or disabled - use adaptive base
-            # Start with 30% of max, scaled by multipliers
-            base_position = max_position_usd * 0.3
+            # Start with 60% of max, scaled by multipliers (increased from 30% to ensure viability)
+            base_position = max_position_usd * 0.6
             raw_position = base_position * combined_mult
             
             # If Kelly is positive but small (and enabled), blend it in for learning
             if kelly_enabled and kelly_position > 0:
-                raw_position = raw_position * 0.7 + kelly_position * combined_mult * 0.3
+                raw_position = raw_position * 0.8 + kelly_position * combined_mult * 0.2
         
         # Apply hard caps
         final_position = min(raw_position, max_position_usd)
         final_position = min(final_position, deployed_capital * 0.10)  # Never more than 10% in one trade
         
-        # Minimum trade size check for HFT
+        # Ensure minimum viable trade when liquidity is good
+        # If combined_mult killed the position but liquidity is fine, use a floor
         min_trade_size = 5  # $5 minimum
+        if liquidity_mult >= 0.5 and final_position < min_trade_size and final_position > 0:
+            # Liquidity is good but position got too small from multipliers
+            # Use minimum viable size
+            final_position = min_trade_size
+        
         should_trade = final_position >= min_trade_size and liquidity_mult > 0
         
         return {
