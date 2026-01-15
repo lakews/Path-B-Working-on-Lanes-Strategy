@@ -79,8 +79,15 @@ class PaperTrader:
         # Returns distribution tracking
         self.trade_returns: List[float] = []
         
-        # Equity curve tracking
+        # Equity curve tracking - now with strategy and asset class breakdowns
         self.equity_curve: List[Dict] = []
+        self.strategy_equity: Dict[str, float] = {
+            'delta_neutral': 0.0,
+            'volatility_exploitation': 0.0,
+            'alpha_directional': 0.0,
+            'arbitrage': 0.0
+        }
+        self.asset_class_equity: Dict[str, float] = {}
         
         # Learning parameters
         self.kelly_fraction = 0.25
