@@ -270,20 +270,41 @@ const Configuration = () => {
 
       {activeTab === 'risk' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Kelly Criterion Section with Toggle */}
           <div className="rounded-xl bg-white/5 border border-white/10 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center"><Target className="w-5 h-5 text-purple-400" /></div>
-              <div><h3 className="text-white font-semibold">Kelly Fraction</h3><p className="text-xs text-white/50">Position sizing based on edge</p></div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center"><Target className="w-5 h-5 text-purple-400" /></div>
+                <div><h3 className="text-white font-semibold">Kelly Criterion</h3><p className="text-xs text-white/50">Position sizing based on edge</p></div>
+              </div>
+              {/* Kelly Enable Toggle */}
+              <button
+                onClick={() => setConfig({...config, kelly_enabled: !config.kelly_enabled})}
+                data-testid="kelly-toggle"
+                className={`relative w-14 h-7 rounded-full transition-colors ${config.kelly_enabled ? 'bg-purple-500' : 'bg-white/20'}`}
+              >
+                <div className={`absolute w-5 h-5 bg-white rounded-full top-1 transition-transform ${config.kelly_enabled ? 'translate-x-8' : 'translate-x-1'}`} />
+              </button>
             </div>
-            <div className="flex items-center gap-4">
-              <input type="range" value={config.kelly_fraction || 0.25} onChange={(e) => setConfig({...config, kelly_fraction: parseFloat(e.target.value)})} className="flex-1 h-2 bg-white/10 rounded-lg" min="0.10" max="0.50" step="0.05" />
-              <span className="text-white font-bold text-xl w-16 text-right">{(config.kelly_fraction * 100).toFixed(0)}%</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mt-4">
-              {[{ val: 0.15, label: 'Conservative' }, { val: 0.25, label: 'Moderate' }, { val: 0.50, label: 'Aggressive' }].map(({ val, label }) => (
-                <button key={val} onClick={() => setConfig({...config, kelly_fraction: val})} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${config.kelly_fraction === val ? 'bg-purple-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>{label}</button>
-              ))}
-            </div>
+            {config.kelly_enabled ? (
+              <>
+                <p className="text-xs text-purple-400 mb-3">Kelly Fraction determines position sizing based on historical win rate</p>
+                <div className="flex items-center gap-4">
+                  <input type="range" value={config.kelly_fraction || 0.25} onChange={(e) => setConfig({...config, kelly_fraction: parseFloat(e.target.value)})} className="flex-1 h-2 bg-white/10 rounded-lg" min="0.10" max="0.50" step="0.05" />
+                  <span className="text-white font-bold text-xl w-16 text-right">{(config.kelly_fraction * 100).toFixed(0)}%</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  {[{ val: 0.15, label: 'Conservative' }, { val: 0.25, label: 'Moderate' }, { val: 0.50, label: 'Aggressive' }].map(({ val, label }) => (
+                    <button key={val} onClick={() => setConfig({...config, kelly_fraction: val})} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${config.kelly_fraction === val ? 'bg-purple-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>{label}</button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                <p className="text-sm text-yellow-400">Kelly disabled - using fixed position sizing</p>
+                <p className="text-xs text-white/50 mt-1">Positions will be sized at 30% of max position without adaptive edge-based scaling</p>
+              </div>
+            )}
           </div>
           <div className="rounded-xl bg-white/5 border border-white/10 p-6">
             <div className="flex items-center gap-3 mb-4">
