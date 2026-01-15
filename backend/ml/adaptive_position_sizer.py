@@ -171,9 +171,10 @@ class AdaptivePositionSizer:
         # Log for debugging
         logger.debug(f"Liquidity calc: volume={volume}, volume_24h={volume_24h}, effective={effective_volume}, outstanding={outstanding}")
         
-        # Volume check - for high-frequency trading, use lower threshold
-        if effective_volume < 100:  # Very low threshold for HFT
-            logger.debug(f"Volume too low: {effective_volume} < 100")
+        # Volume check - use configurable minimum (passed via market_data or use sensible default)
+        min_volume_threshold = market_data.get('_min_volume_threshold', 100)  # User config or default
+        if effective_volume < min_volume_threshold:
+            logger.debug(f"Volume too low: {effective_volume} < {min_volume_threshold}")
             return 0.0
         
         # Volume-based multiplier (linear scale up to full size threshold)
