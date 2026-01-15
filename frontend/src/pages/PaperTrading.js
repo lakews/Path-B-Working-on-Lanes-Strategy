@@ -536,60 +536,55 @@ const PaperTrading = () => {
         {/* Config HUD Strip + Mode Toggle */}
         <div className="flex items-center justify-between px-4 py-3 bg-slate-950/50">
           {/* Mode Toggle - Very Prominent */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-white/40 uppercase tracking-wider">Mode:</span>
-            <div className="flex rounded-lg overflow-hidden border border-white/10">
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-white/40 uppercase tracking-wider font-medium">Mode:</span>
+            <div className="flex rounded-lg overflow-hidden border-2 border-white/20 shadow-lg">
               <button
                 onClick={() => setContinuousMode(false)}
                 disabled={running}
                 data-testid="mode-single-btn"
-                className={`px-4 py-2 text-sm font-medium transition-all flex items-center gap-2 ${
+                className={`px-5 py-2.5 text-sm font-bold transition-all flex items-center gap-2 ${
                   !continuousMode 
-                    ? 'bg-cyan-500/20 text-cyan-400 border-r border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]' 
-                    : 'bg-slate-800/50 text-slate-400 border-r border-white/10 hover:bg-slate-700/50'
+                    ? 'bg-cyan-500 text-black shadow-[0_0_20px_rgba(6,182,212,0.4)]' 
+                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 } ${running ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <div className={`w-2 h-2 rounded-full ${!continuousMode ? 'bg-cyan-400' : 'bg-slate-500'}`}></div>
+                <div className={`w-2.5 h-2.5 rounded-full ${!continuousMode ? 'bg-black' : 'bg-slate-500'}`}></div>
                 SINGLE
               </button>
               <button
                 onClick={() => setContinuousMode(true)}
                 disabled={running}
                 data-testid="mode-continuous-btn"
-                className={`px-4 py-2 text-sm font-medium transition-all flex items-center gap-2 ${
+                className={`px-5 py-2.5 text-sm font-bold transition-all flex items-center gap-2 ${
                   continuousMode 
-                    ? 'bg-purple-500/20 text-purple-400 shadow-[inset_0_0_20px_rgba(139,92,246,0.1),0_0_15px_rgba(139,92,246,0.2)]' 
-                    : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                    ? 'bg-purple-500 text-white shadow-[0_0_20px_rgba(139,92,246,0.4)]' 
+                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 } ${running ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${continuousMode ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${continuousMode ? 'animate-spin' : ''}`} />
                 CONTINUOUS
               </button>
             </div>
-            {continuousMode && !running && (
-              <span className="text-xs text-purple-400/80 bg-purple-500/10 px-2 py-1 rounded">
-                RL learning applied in real-time
-              </span>
-            )}
           </div>
           
           {/* Config Stats HUD */}
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-white/40 uppercase tracking-wider">Capital</span>
-              <span className="text-sm font-mono text-white">${savedConfig?.initial_capital?.toLocaleString() || '—'}</span>
+              <span className="text-sm font-mono text-white">${savedConfig?.initial_capital?.toLocaleString() || '10,000'}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-white/40 uppercase tracking-wider">Deployed</span>
               <span className="text-sm font-mono text-cyan-400">
-                ${((savedConfig?.initial_capital || 0) * (savedConfig?.capital_deployment_pct || 80) / 100).toLocaleString()}
+                ${((savedConfig?.initial_capital || 10000) * (savedConfig?.capital_deployment_pct || 80) / 100).toLocaleString()}
                 <span className="text-white/40 ml-1">({savedConfig?.capital_deployment_pct || 80}%)</span>
               </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Pos</span>
               <span className="text-sm font-mono text-amber-400">
-                ${(((savedConfig?.initial_capital || 0) * (savedConfig?.capital_deployment_pct || 80) / 100) * (savedConfig?.max_position_size_pct || 3) / 100).toFixed(0)}
+                ${(((savedConfig?.initial_capital || 10000) * (savedConfig?.capital_deployment_pct || 80) / 100) * (savedConfig?.max_position_size_pct || 3) / 100).toFixed(0)}
                 <span className="text-white/40 ml-1">({savedConfig?.max_position_size_pct || 3}%)</span>
               </span>
             </div>
