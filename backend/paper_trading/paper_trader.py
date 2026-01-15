@@ -858,58 +858,45 @@ class PaperTrader:
         return result.get('position_size', 0)
     
     def _determine_strategy(self, signals: Dict, rl_action: str, market_data: Dict = None) -> Optional[str]:
-        """Determine which strategy to use based on signals, RL action, and market conditions"""
-        volatility = signals.get('volatility', 0.02)
-        sentiment_strength = abs(signals.get('sentiment', 0.5) - 0.5)
+        """Determine strategy based on REAL signals from market data"""
+        volatility = signals.get('volatility', 0.05)
+        sentiment = signals.get('sentiment', 0.5)
+        sentiment_strength = abs(sentiment - 0.5)
         sharp_alignment = signals.get('sharp_alignment', 0.5)
+        price_uncertainty = signals.get('price_uncertainty', 0.5)
         
-        # Get price from market data for additional strategy logic
+        # Get price from market data
         yes_price = 0.5
         if market_data:
             yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
         
-        # Rotate strategies based on market conditions for diversity
-        import random
+        # Strategy selection based on ACTUAL signals
         
-        # Extreme prices (< 0.1 or > 0.9) suggest alpha directional opportunities
-        if (yes_price < 0.1 or yes_price > 0.9) and 'alpha_directional' in self.enabled_strategies:
-            if random.random() < 0.6:  # 60% chance for extreme prices
-                return 'alpha_directional'
+        # 1. VOLATILITY EXPLOITATION: High volatility markets
+        if volatility > 0.08 and 'volatility_exploitation' in self.enabled_strategies:
+            return 'volatility_exploitation'
         
-        # Mid-range prices (0.4-0.6) good for delta neutral
-        if 0.4 <= yes_price <= 0.6 and 'delta_neutral' in self.enabled_strategies:
-            if random.random() < 0.4:  # 40% chance for mid-range
-                return 'delta_neutral'
+        # 2. ALPHA DIRECTIONAL: Strong sentiment + sharp trader agreement
+        if sentiment_strength > 0.15 and sharp_alignment > 0.4 and 'alpha_directional' in self.enabled_strategies:
+            return 'alpha_directional'
         
-        # High volatility -> volatility exploitation
-        if volatility > 0.03 and 'volatility_exploitation' in self.enabled_strategies:
-            if random.random() < 0.5:  # 50% chance when volatile
-                return 'volatility_exploitation'
+        # 3. ALPHA DIRECTIONAL: Extreme prices (< 0.15 or > 0.85) - high conviction
+        if (yes_price < 0.15 or yes_price > 0.85) and 'alpha_directional' in self.enabled_strategies:
+            return 'alpha_directional'
         
-        # Strong RL signals -> alpha directional
-        if rl_action in ['BUY_LARGE', 'SELL_LARGE'] and 'alpha_directional' in self.enabled_strategies:
-            if random.random() < 0.3:  # 30% chance for strong signals
-                return 'alpha_directional'
+        # 4. DELTA NEUTRAL: Low volatility, mid-range price, low uncertainty
+        if volatility < 0.04 and 0.35 <= yes_price <= 0.65 and 'delta_neutral' in self.enabled_strategies:
+            return 'delta_neutral'
         
-        # Default distribution for remaining trades
-        weights = []
-        strategies = []
+        # 5. DELTA NEUTRAL: High liquidity (sharp_alignment proxy) with tight spreads
+        if sharp_alignment > 0.6 and volatility < 0.06 and 'delta_neutral' in self.enabled_strategies:
+            return 'delta_neutral'
+        
+        # 6. ARBITRAGE: Default for moderate conditions
         if 'arbitrage' in self.enabled_strategies:
-            strategies.append('arbitrage')
-            weights.append(0.4)  # 40%
-        if 'delta_neutral' in self.enabled_strategies:
-            strategies.append('delta_neutral')
-            weights.append(0.25)  # 25%
-        if 'volatility_exploitation' in self.enabled_strategies:
-            strategies.append('volatility_exploitation')
-            weights.append(0.20)  # 20%
-        if 'alpha_directional' in self.enabled_strategies:
-            strategies.append('alpha_directional')
-            weights.append(0.15)  # 15%
+            return 'arbitrage'
         
-        if strategies:
-            return random.choices(strategies, weights=weights[:len(strategies)])[0]
-        
+        # Fallback
         return self.enabled_strategies[0] if self.enabled_strategies else None
     
     async def _get_signals(self, market_data: Dict) -> Dict:
