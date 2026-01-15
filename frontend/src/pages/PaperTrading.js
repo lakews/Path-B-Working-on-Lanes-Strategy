@@ -470,6 +470,50 @@ const PaperTrading = () => {
   // Modal states
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [sessionTradesModal, setSessionTradesModal] = useState({ isOpen: false, session: null, trades: [] });
+  
+  // Sorting state for trades table
+  const [tradeSort, setTradeSort] = useState({ key: 'timestamp', direction: 'desc' });
+
+  // Sort handler
+  const handleTradeSort = (key) => {
+    setTradeSort(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
+  // Sort trades based on current sort state
+  const sortedTrades = [...trades].sort((a, b) => {
+    const dir = tradeSort.direction === 'asc' ? 1 : -1;
+    const key = tradeSort.key;
+    
+    // Handle different sort keys
+    switch (key) {
+      case 'type':
+        return dir * (a.type || '').localeCompare(b.type || '');
+      case 'market':
+        return dir * ((a.market_question || a.market_id || '').localeCompare(b.market_question || b.market_id || ''));
+      case 'strategy':
+        return dir * (a.strategy || '').localeCompare(b.strategy || '');
+      case 'side':
+        return dir * (a.side || '').localeCompare(b.side || '');
+      case 'size':
+        return dir * ((a.size || 0) - (b.size || 0));
+      case 'entry':
+        const aEntry = a.type === 'entry' ? (a.price || 0) : (a.entry_price || 0);
+        const bEntry = b.type === 'entry' ? (b.price || 0) : (b.entry_price || 0);
+        return dir * (aEntry - bEntry);
+      case 'pnl':
+        return dir * ((a.pnl || 0) - (b.pnl || 0));
+      case 'return':
+        const aReturn = a.type === 'exit' && a.entry_price > 0 ? ((a.exit_price - a.entry_price) / a.entry_price * 100) : 0;
+        const bReturn = b.type === 'exit' && b.entry_price > 0 ? ((b.exit_price - b.entry_price) / b.entry_price * 100) : 0;
+        return dir * (aReturn - bReturn);
+      case 'timestamp':
+      default:
+        return dir * (new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+    }
+  });
 
   // Fetch saved config
   const fetchSavedConfig = useCallback(async () => {
