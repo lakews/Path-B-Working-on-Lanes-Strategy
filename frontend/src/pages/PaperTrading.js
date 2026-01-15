@@ -473,16 +473,25 @@ const PaperTrading = () => {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <label className="absolute -top-2 left-2 px-1 text-[10px] text-white/50 bg-slate-900">Initial Capital</label>
-                <input
-                  type="number"
-                  value={initialCapital}
-                  onChange={(e) => setInitialCapital(Number(e.target.value))}
-                  className="w-32 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm"
-                  placeholder="10000"
-                />
+            <div className="flex items-center gap-3">
+              {/* Config Summary from Config Tab */}
+              <div className="flex items-center gap-4 px-4 py-2 rounded-lg bg-white/5 border border-white/10">
+                <div className="text-xs">
+                  <span className="text-white/50">Capital:</span>
+                  <span className="text-white ml-1 font-medium">${status?.config?.initial_capital || status?.initial_capital || '—'}</span>
+                </div>
+                <div className="text-xs">
+                  <span className="text-white/50">Deployed:</span>
+                  <span className="text-cyan-400 ml-1 font-medium">${(status?.deployed_capital || 0).toFixed(0)} ({status?.config?.capital_deployment_pct || 80}%)</span>
+                </div>
+                <div className="text-xs">
+                  <span className="text-white/50">Max Pos:</span>
+                  <span className="text-orange-400 ml-1 font-medium">${(status?.config?.max_position_size || 0).toFixed(0)} ({status?.config?.max_position_size_pct || 3}%)</span>
+                </div>
+                <div className="text-xs">
+                  <span className="text-white/50">Kelly:</span>
+                  <span className="text-purple-400 ml-1 font-medium">{((status?.config?.kelly_fraction || 0.25) * 100).toFixed(0)}%</span>
+                </div>
               </div>
               {/* Continuous Mode Toggle */}
               <button
