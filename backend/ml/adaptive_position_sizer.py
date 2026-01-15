@@ -160,13 +160,21 @@ class AdaptivePositionSizer:
         
         Returns multiplier between 0 and 1.
         """
-        volume_24h = market_data.get('volume_24h', 0)
-        volume = market_data.get('volume', volume_24h)
-        outstanding = market_data.get('outstanding_contracts', market_data.get('liquidity', 1000))
-        spread = market_data.get('spread', market_data.get('yes_price', 0.5) * 0.02)  # Est 2% spread
+        volume_24h = market_data.get('volume_24h', 0) or 0
+        volume = market_data.get('volume', volume_24h) or 0
+        outstanding = market_data.get('outstanding_contracts', market_data.get('liquidity', 1000)) or 1000
+        spread = market_data.get('spread', market_data.get('yes_price', 0.5) * 0.02) or 0.02
         
-        # Volume check - don't trade below minimum
-        if volume < self.MIN_LIQUIDITY_FOR_TRADE:
+        # Use volume_24h as primary indicator - more relevant for active markets
+        effective_volume = max(volume_24h, volume)
+        
+        # Log for debugging
+        logger.debug(f"Liquidity calc: volume={volume}, volume_24h={volume_24h}, effective={effective_volume}, outstanding={outstanding}")
+        
+        # Volume check - for high-frequency trading, use lower threshold
+        if effective_volume < 100:  # Very low threshold for HFT
+            logger.debug(f"Volume too low: {effective_volume} < 100")
+            return 0.0
             return 0.0
         
         # Volume-based multiplier (linear scale up to full size threshold)
