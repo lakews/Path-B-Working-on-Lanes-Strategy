@@ -990,60 +990,64 @@ class PaperTrader:
             logger.error(f"Error in session learning: {e}")
     
     async def _get_active_markets(self) -> List[Dict]:
-        """Get active markets from database, or fetch live if empty"""
+        """Get active markets from Gamma API with configurable filters"""
         try:
-            # First try database
-            cursor = self.db.markets.find(
-                {"liquidity": {"$gte": 1000}},
-                {"_id": 0}
-            ).limit(100)
-            markets = await cursor.to_list(length=100)
+            # Always fetch fresh from Gamma API for high-frequency trading
+            logger.info(f"Fetching markets (min_liquidity: ${self.min_liquidity}, min_volume: ${self.min_volume_24h})")
             
-            logger.info(f"Found {len(markets)} markets in DB with liquidity >= 1000")
-            
-            # If no markets in DB, fetch live from Gamma API
-            if not markets:
-                logger.info("No markets in DB with sufficient liquidity, fetching live from Gamma API...")
-                try:
-                    from data.polymarket_api import PolymarketAPI
-                    async with PolymarketAPI() as api:
-                        live_markets = await api.get_markets(limit=100)
-                        logger.info(f"Gamma API returned {len(live_markets) if live_markets else 0} markets")
-                        if live_markets:
-                            # Filter for good liquidity
-                            markets = [m for m in live_markets if float(m.get('liquidity', 0) or 0) >= 1000]
-                            logger.info(f"After liquidity filter: {len(markets)} markets with liquidity >= 1000")
-                            
-                            # Store in DB for caching
-                            if markets:
-                                stored_count = 0
-                                for m in markets[:50]:  # Store top 50
-                                    market_doc = {
-                                        "condition_id": m.get('condition_id') or m.get('id'),
-                                        "id": m.get('id'),
-                                        "question": m.get('question', ''),
-                                        "category": m.get('category', 'unknown'),
-                                        "yes_price": float(m.get('yes_price', 0.5) or 0.5),
-                                        "no_price": float(m.get('no_price', 0.5) or 0.5),
-                                        "liquidity": float(m.get('liquidity', 0) or 0),
-                                        "volume": float(m.get('volume', 0) or 0),
-                                        "volume_24h": float(m.get('volume_24h', 0) or 0),
-                                        "end_date": m.get('end_date'),
-                                        "active": m.get('active', True)
-                                    }
-                                    await self.db.markets.update_one(
-                                        {"condition_id": market_doc['condition_id']},
-                                        {"$set": market_doc},
-                                        upsert=True
-                                    )
-                                    stored_count += 1
-                                logger.info(f"Stored {stored_count} markets in DB for caching")
-                except Exception as api_err:
-                    logger.error(f"Failed to fetch live markets: {api_err}")
-                    import traceback
-                    traceback.print_exc()
-            
-            return markets
+            from data.polymarket_api import PolymarketAPI
+            async with PolymarketAPI() as api:
+                live_markets = await api.get_markets(limit=200)  # Fetch more markets
+                
+                if not live_markets:
+                    logger.warning("No markets returned from Gamma API")
+                    return []
+                
+                # Filter markets by liquidity, volume, and spread
+                filtered_markets = []
+                for m in live_markets:
+                    liquidity = float(m.get('liquidity', 0) or 0)
+                    volume_24h = float(m.get('volume_24h', 0) or 0)
+                    spread = float(m.get('spread', 1) or 1)
+                    
+                    # Apply filters
+                    if liquidity < self.min_liquidity:
+                        continue
+                    if volume_24h < self.min_volume_24h:
+                        continue
+                    if spread > self.max_spread:
+                        continue
+                    
+                    filtered_markets.append(m)
+                
+                logger.info(f"Filtered to {len(filtered_markets)} tradeable markets (from {len(live_markets)} total)")
+                
+                # Cache top markets in DB for analytics
+                if filtered_markets:
+                    for m in filtered_markets[:100]:
+                        market_doc = {
+                            "condition_id": m.get('condition_id') or m.get('id'),
+                            "id": m.get('id'),
+                            "question": m.get('question', ''),
+                            "category": m.get('category', 'unknown'),
+                            "yes_price": float(m.get('yes_price', 0.5) or 0.5),
+                            "no_price": float(m.get('no_price', 0.5) or 0.5),
+                            "liquidity": float(m.get('liquidity', 0) or 0),
+                            "volume": float(m.get('volume', 0) or 0),
+                            "volume_24h": float(m.get('volume_24h', 0) or 0),
+                            "spread": float(m.get('spread', 0) or 0),
+                            "end_date": m.get('end_date'),
+                            "active": m.get('active', True),
+                            "last_update": datetime.now(timezone.utc).isoformat()
+                        }
+                        await self.db.markets.update_one(
+                            {"condition_id": market_doc['condition_id']},
+                            {"$set": market_doc},
+                            upsert=True
+                        )
+                
+                return filtered_markets
+                
         except Exception as e:
             logger.error(f"Error getting markets: {e}")
             import traceback
