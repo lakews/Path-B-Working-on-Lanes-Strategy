@@ -363,8 +363,7 @@ const PaperTrading = () => {
   const trainRLFromSession = async () => {
     try {
       toast.info('Training RL from paper trading session...');
-      // Trigger RL training from current session
-      await axios.post(`${API}/rl/train`);
+      await axios.post(`${API}/rl/train`, {}, AUTH_CONFIG);
       toast.success('RL training complete!');
       fetchRlStats();
       fetchAiStats();
@@ -376,7 +375,7 @@ const PaperTrading = () => {
   const runOptimization = async (sessionId) => {
     try {
       toast.info('Running strategy optimization...');
-      const response = await axios.post(`${API}/optimizer/run/${sessionId}`);
+      const response = await axios.post(`${API}/optimizer/run/${sessionId}`, {}, AUTH_CONFIG);
       toast.success('Optimization complete!');
       setOptimizerParams(response.data?.new_params);
       fetchOptimizerParams();
@@ -387,7 +386,7 @@ const PaperTrading = () => {
 
   const applyOptimizedParams = async () => {
     try {
-      await axios.post(`${API}/optimizer/apply`);
+      await axios.post(`${API}/optimizer/apply`, {}, AUTH_CONFIG);
       toast.success('Optimized parameters applied!');
     } catch (e) {
       toast.error('Failed to apply parameters');
