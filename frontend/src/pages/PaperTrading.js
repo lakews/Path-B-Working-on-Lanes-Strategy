@@ -409,6 +409,7 @@ const PaperTrading = () => {
       <div className="flex gap-2 p-1 rounded-xl bg-white/5 border border-white/10">
         {[
           { id: 'live', label: 'Live Session', icon: Activity },
+          { id: 'cumulative', label: 'Cumulative Stats', icon: TrendingUp },
           { id: 'history', label: `Sessions (${sessions.length})`, icon: History },
           { id: 'optimizer', label: 'Strategy Optimizer', icon: Settings },
           { id: 'rl', label: 'RL Learning', icon: Brain }
