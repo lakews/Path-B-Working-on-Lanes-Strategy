@@ -184,6 +184,8 @@ class PaperTrader:
                     self.max_spread = float(user_config["max_spread"])
                 if "max_open_positions" in user_config:
                     self.max_open_positions = int(user_config["max_open_positions"])
+                if "stuck_price_multiplier" in user_config:
+                    self.stuck_price_multiplier = float(user_config["stuck_price_multiplier"])
                 
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
@@ -199,6 +201,7 @@ class PaperTrader:
                 logger.info(f"  Max Drawdown: {self.max_drawdown_pct}%")
                 logger.info(f"  Trades/10min: {self.trades_per_10min} | Interval: {self.trade_interval:.2f}s")
                 logger.info(f"  Market Filters: Liq ${self.min_liquidity:,.0f}-${self.max_liquidity:,.0f}, Vol >= ${self.min_volume_24h:,.0f}, Spread <= {self.max_spread*100:.1f}%")
+                logger.info(f"  Stuck Price Multiplier: {self.stuck_price_multiplier}x")
                 logger.info(f"  Max Open Positions: {self.max_open_positions}")
                 logger.info(f"  Strategies: {len(self.enabled_strategies)} | Asset Classes: {len(self.enabled_asset_classes)}")
                 logger.info("=" * 60)
