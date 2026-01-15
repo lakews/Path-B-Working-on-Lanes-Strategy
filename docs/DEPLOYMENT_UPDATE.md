@@ -97,19 +97,37 @@ The following new features have been added and need to be deployed:
 
 ### Backend Changes
 
-1. **Paper Trading Engine** (`/backend/paper_trading/`)
+1. **JWT Authentication** (`/backend/auth.py`) - NEW
+   - Secure JWT-based authentication replacing weak API key
+   - Token expiry configurable via `JWT_EXPIRY_MINUTES`
+   - Dual auth mode: JWT Bearer token OR HTTP Basic Auth (legacy)
+   - `/api/auth/login` - Get JWT token
+   - `/api/auth/login/json` - Get JWT token (JSON body)
+   - `/api/auth/me` - Get current user info
+   - `/api/auth/register` - Register new user (admin only)
+   - `/api/auth/change-password` - Change password
+
+2. **Paper Trading Engine** (`/backend/paper_trading/`)
    - `paper_trader.py` - Full paper trading simulation with RL learning
    - `strategy_optimizer.py` - Auto-tunes parameters from paper trading results
+   - **NEW: Full config parameter integration** - Uses ALL config tab parameters:
+     - `capital_deployment_pct` - % of capital to deploy
+     - `max_position_size_pct` - % of DEPLOYED capital per position
+     - `kelly_fraction` - Kelly criterion multiplier
+     - `max_drawdown_pct` - Maximum allowed drawdown
+     - `trades_per_10min` - Trading frequency
+   - **NEW: Unrealized P&L tracking** - Shows both realized and unrealized P&L
+   - **NEW: WebSocket broadcasting** - Real-time trade updates
 
-2. **Trading Bot Update** (`/backend/trading_bot.py`)
+3. **Trading Bot Update** (`/backend/trading_bot.py`)
    - Full RL integration
    - Paper mode support
    - ML signal fusion
 
-3. **Server Routes** (`/backend/server.py`)
+4. **Server Routes** (`/backend/server.py`)
    - `/api/paper/start` - Start paper trading
    - `/api/paper/stop` - Stop paper trading
-   - `/api/paper/status` - Get status
+   - `/api/paper/status` - Get status (now includes config and unrealized P&L)
    - `/api/paper/positions` - Get open positions
    - `/api/paper/trades` - Get trade history
    - `/api/paper/sessions` - List all sessions
@@ -125,6 +143,9 @@ The following new features have been added and need to be deployed:
    - Session history
    - Strategy optimizer UI
    - RL learning status
+   - **NEW: WebSocket real-time updates** - Replaces 5-second polling when connected
+   - **NEW: Config info display** - Shows Kelly %, position limits, etc.
+   - **NEW: Realized + Unrealized P&L** - Both shown in metrics
 
 2. **Navigation Update** (`/frontend/src/App.js`)
    - Added "Paper Trade" navigation link
