@@ -38,6 +38,7 @@ const Configuration = () => {
     min_volume_24h: 1000,
     max_spread: 0.05,
     max_open_positions: 50,
+    stuck_price_multiplier: 2.0,  // Volume multiplier for stuck prices (0.0, 0.5, 1.0)
     enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'],
     enabled_strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
   });
