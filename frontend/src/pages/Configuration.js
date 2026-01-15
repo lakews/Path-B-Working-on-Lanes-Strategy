@@ -100,6 +100,7 @@ const Configuration = () => {
       min_liquidity: 100,
       min_volume_24h: 1000,
       max_spread: 0.05,
+      max_open_positions: 50,
       enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'],
       enabled_strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
     });
