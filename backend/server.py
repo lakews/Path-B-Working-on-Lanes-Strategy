@@ -233,7 +233,14 @@ class TradingConfig(BaseModel):
     capital_deployment_pct: Optional[float] = None
     max_position_size_pct: Optional[float] = None
     kelly_fraction: Optional[float] = None
+    kelly_enabled: Optional[bool] = None  # Toggle Kelly Criterion on/off
     max_drawdown_pct: Optional[float] = None
+    # Market selection filters
+    min_liquidity: Optional[float] = None
+    max_liquidity: Optional[float] = None  # New: max liquidity filter
+    min_volume_24h: Optional[float] = None
+    max_spread: Optional[float] = None
+    max_open_positions: Optional[int] = None
     enabled_asset_classes: Optional[List[str]] = None
     enabled_strategies: Optional[List[str]] = None
 
@@ -1019,6 +1026,30 @@ async def update_config(config_update: TradingConfig):
         if config_update.max_drawdown_pct:
             os.environ['MAX_DRAWDOWN_PCT'] = str(config_update.max_drawdown_pct)
             db_update["max_drawdown_pct"] = config_update.max_drawdown_pct
+        
+        # Kelly enabled toggle
+        if config_update.kelly_enabled is not None:
+            db_update["kelly_enabled"] = config_update.kelly_enabled
+        
+        # Market selection filters
+        if config_update.min_liquidity is not None:
+            os.environ['MIN_LIQUIDITY'] = str(config_update.min_liquidity)
+            db_update["min_liquidity"] = config_update.min_liquidity
+        
+        if config_update.max_liquidity is not None:
+            db_update["max_liquidity"] = config_update.max_liquidity
+        
+        if config_update.min_volume_24h is not None:
+            os.environ['MIN_VOLUME_24H'] = str(config_update.min_volume_24h)
+            db_update["min_volume_24h"] = config_update.min_volume_24h
+        
+        if config_update.max_spread is not None:
+            os.environ['MAX_SPREAD'] = str(config_update.max_spread)
+            db_update["max_spread"] = config_update.max_spread
+        
+        if config_update.max_open_positions is not None:
+            os.environ['MAX_OPEN_POSITIONS'] = str(config_update.max_open_positions)
+            db_update["max_open_positions"] = config_update.max_open_positions
         
         # Update asset classes and strategies
         if config_update.enabled_asset_classes is not None:
