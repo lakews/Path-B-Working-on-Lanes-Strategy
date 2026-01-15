@@ -772,31 +772,28 @@ async def get_trades(limit: int = 100):
 
 @api_router.get("/markets")
 async def get_markets(limit: int = 50, category: str = None):
-    """Get active markets from Polymarket or historical data"""
+    """Get active markets from Polymarket Gamma API (LIVE data) or historical fallback"""
     db = get_db()
     
     try:
-        # First try to get fresh markets from Polymarket API
+        # First try to get fresh markets from Polymarket Gamma API
         from data.polymarket_api import PolymarketAPI
         
         try:
             async with PolymarketAPI() as api:
+                # get_markets() returns normalized data with yes_price, no_price already set
                 raw_markets = await api.get_markets(limit=limit)
                 
                 if raw_markets:
                     markets = []
                     for m in raw_markets:
-                        # Extract prices from tokens
-                        yes_price = 0.5
-                        no_price = 0.5
-                        tokens = m.get('tokens', [])
-                        if tokens and len(tokens) >= 2:
-                            yes_price = float(tokens[0].get('price', 0.5) or 0.5)
-                            no_price = float(tokens[1].get('price', 0.5) or 0.5)
+                        # Prices are already normalized by the API
+                        yes_price = float(m.get('yes_price', 0.5))
+                        no_price = float(m.get('no_price', 0.5))
                         
-                        # Categorize market
+                        # Get category from normalized data or categorize
                         question = m.get('question', '')
-                        cat = categorize_market(question)
+                        cat = m.get('category') or categorize_market(question)
                         
                         if category and cat.lower() != category.lower():
                             continue
@@ -808,14 +805,17 @@ async def get_markets(limit: int = 50, category: str = None):
                             "yes_price": yes_price,
                             "no_price": no_price,
                             "volume": float(m.get('volume', 0) or 0),
+                            "volume_24h": float(m.get('volume_24h', 0) or 0),
                             "liquidity": float(m.get('liquidity', 0) or 0),
-                            "end_date": m.get('end_date_iso') or m.get('endDate'),
+                            "end_date": m.get('end_date'),
                             "active": m.get('active', True)
                         })
                     
-                    return {"markets": markets[:limit], "count": len(markets[:limit]), "source": "polymarket_api"}
+                    if markets:
+                        logger.info(f"Returning {len(markets)} LIVE markets from Gamma API")
+                        return {"markets": markets[:limit], "count": len(markets[:limit]), "source": "gamma_api_live"}
         except Exception as api_error:
-            logger.warning(f"Polymarket API failed, falling back to historical data: {api_error}")
+            logger.warning(f"Polymarket Gamma API failed, falling back to historical data: {api_error}")
         
         # Fallback: Get unique markets from historical data
         pipeline = [
