@@ -994,7 +994,7 @@ class PaperTrader:
             ).limit(100)
             markets = await cursor.to_list(length=100)
             
-            logger.debug(f"Found {len(markets)} markets in DB with liquidity >= 1000")
+            logger.info(f"Found {len(markets)} markets in DB with liquidity >= 1000")
             
             # If no markets in DB, fetch live from Gamma API
             if not markets:
