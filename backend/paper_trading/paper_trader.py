@@ -458,6 +458,10 @@ class PaperTrader:
                 else:
                     self.strategy_stats[strategy]['gross_loss'] += abs(pnl)
             
+            # Update strategy equity for equity curve
+            if strategy in self.strategy_equity:
+                self.strategy_equity[strategy] += pnl
+            
             # Update asset class stats with full metrics
             if asset_class not in self.asset_class_stats:
                 self.asset_class_stats[asset_class] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
@@ -468,10 +472,15 @@ class PaperTrader:
             else:
                 self.asset_class_stats[asset_class]['gross_loss'] += abs(pnl)
             
+            # Update asset class equity for equity curve
+            if asset_class not in self.asset_class_equity:
+                self.asset_class_equity[asset_class] = 0.0
+            self.asset_class_equity[asset_class] += pnl
+            
             # Calculate reward for RL
             reward = self._calculate_rl_reward(pnl_pct, is_win, exit_reason)
             
-            # Feed reward to RL engine
+            # Feed reward to RL engine - IMMEDIATELY updates Q-table for next trade
             await self.rl_engine.update_from_reward(market_id, reward)
             
             # Store closed trade
