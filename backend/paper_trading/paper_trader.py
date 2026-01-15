@@ -702,9 +702,19 @@ class PaperTrader:
                         else:
                             unrealized = (entry_price - current_price) * size / entry_price
                         
+                        # Update position with current unrealized P&L
+                        position['current_price'] = current_price
+                        position['unrealized_pnl'] = unrealized
+                        position['unrealized_pnl_pct'] = (unrealized / size) * 100 if size > 0 else 0
+                        
                         total_unrealized += unrealized
                     
+                    # Update total unrealized P&L for status display
+                    self.unrealized_pnl = total_unrealized
+                    
                     logger.debug(f"Paper Positions: {len(self.paper_positions)} | Unrealized: ${total_unrealized:.2f}")
+                else:
+                    self.unrealized_pnl = 0.0
                 
                 await asyncio.sleep(10)
                 
