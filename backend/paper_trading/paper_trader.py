@@ -513,10 +513,12 @@ class PaperTrader:
                 "session_id": self.session_id,
                 "type": "entry",
                 "market_id": market_id,
+                "market_question": position.get('market_question', ''),
                 "side": side,
                 "size": size,
                 "price": current_price,
                 "strategy": strategy,
+                "asset_class": asset_class,
                 "rl_action": rl_action,
                 "rl_confidence": rl_confidence,
                 "timestamp": datetime.now(timezone.utc).isoformat()
