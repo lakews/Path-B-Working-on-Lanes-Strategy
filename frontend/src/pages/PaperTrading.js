@@ -161,6 +161,15 @@ const PaperTrading = () => {
     }
   };
 
+  const fetchCumulativeStats = async () => {
+    try {
+      const response = await axios.get(`${API}/paper/cumulative-stats`);
+      setCumulativeStats(response.data);
+    } catch (e) {
+      console.error('Error fetching cumulative stats:', e);
+    }
+  };
+
   const fetchSessions = async () => {
     try {
       const response = await axios.get(`${API}/paper/sessions?limit=20`);
