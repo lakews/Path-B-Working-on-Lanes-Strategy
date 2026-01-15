@@ -144,7 +144,7 @@ class PaperTrader:
         logger.info(f"  NOTE: Config will be loaded from DB when start() is called")
     
     async def _load_user_config(self):
-        """Load ALL user trading configuration from database"""
+        """Load ALL user trading configuration from database - DB IS THE SOURCE OF TRUTH"""
         try:
             user_config = await self.db.user_config.find_one({"type": "trading_preferences"})
             if user_config:
@@ -154,7 +154,7 @@ class PaperTrader:
                 if "enabled_asset_classes" in user_config:
                     self.enabled_asset_classes = user_config["enabled_asset_classes"]
                 
-                # Load trading parameters including initial capital
+                # Load trading parameters - DB IS THE SOURCE OF TRUTH
                 if "initial_capital" in user_config:
                     self.initial_capital = float(user_config["initial_capital"])
                     self.current_capital = self.initial_capital
@@ -165,6 +165,8 @@ class PaperTrader:
                     self.max_position_size_pct = float(user_config["max_position_size_pct"])
                 if "kelly_fraction" in user_config:
                     self.kelly_fraction = float(user_config["kelly_fraction"])
+                if "kelly_enabled" in user_config:
+                    self.kelly_enabled = bool(user_config["kelly_enabled"])
                 if "max_drawdown_pct" in user_config:
                     self.max_drawdown_pct = float(user_config["max_drawdown_pct"])
                 if "trades_per_10min" in user_config:
@@ -173,6 +175,8 @@ class PaperTrader:
                 # Market selection thresholds
                 if "min_liquidity" in user_config:
                     self.min_liquidity = float(user_config["min_liquidity"])
+                if "max_liquidity" in user_config:
+                    self.max_liquidity = float(user_config["max_liquidity"])
                 if "min_volume_24h" in user_config:
                     self.min_volume_24h = float(user_config["min_volume_24h"])
                 if "max_spread" in user_config:
@@ -185,12 +189,21 @@ class PaperTrader:
                 self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
                 self.trade_interval = max(0.1, 600 / self.trades_per_10min)  # Allow faster trading
                 
-                logger.info("Loaded user config from DB:")
+                logger.info("=" * 60)
+                logger.info("LOADED USER CONFIG FROM DATABASE:")
+                logger.info(f"  Initial Capital: ${self.initial_capital:,.2f}")
+                logger.info(f"  Capital Deployment: {self.capital_deployment_pct}% = ${self.deployed_capital:,.2f}")
+                logger.info(f"  Max Position: {self.max_position_size_pct}% of deployed = ${self.max_position_size:,.2f}")
+                logger.info(f"  Kelly: {self.kelly_fraction} | Kelly Enabled: {self.kelly_enabled}")
+                logger.info(f"  Max Drawdown: {self.max_drawdown_pct}%")
+                logger.info(f"  Trades/10min: {self.trades_per_10min} | Interval: {self.trade_interval:.2f}s")
+                logger.info(f"  Market Filters: Liq ${self.min_liquidity:,.0f}-${self.max_liquidity:,.0f}, Vol >= ${self.min_volume_24h:,.0f}, Spread <= {self.max_spread*100:.1f}%")
+                logger.info(f"  Max Open Positions: {self.max_open_positions}")
                 logger.info(f"  Strategies: {len(self.enabled_strategies)} | Asset Classes: {len(self.enabled_asset_classes)}")
-                logger.info(f"  Capital Deployment: {self.capital_deployment_pct}% | Max Position: {self.max_position_size_pct}%")
-                logger.info(f"  Deployed Capital: ${self.deployed_capital} | Max Position Size: ${self.max_position_size}")
-                logger.info(f"  Kelly: {self.kelly_fraction} | Max Drawdown: {self.max_drawdown_pct}%")
-                logger.info(f"  Market Filters: Liq >= ${self.min_liquidity}, Vol >= ${self.min_volume_24h}, Spread <= {self.max_spread*100}%")
+                logger.info("=" * 60)
+            else:
+                logger.warning("No user config found in DB - using defaults")
+                logger.info(f"  Using defaults: Capital=${self.initial_capital}, Kelly={self.kelly_fraction}")
         except Exception as e:
             logger.warning(f"Could not load user config: {e}")
     
