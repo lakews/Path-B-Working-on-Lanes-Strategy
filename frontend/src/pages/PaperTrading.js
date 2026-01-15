@@ -131,22 +131,38 @@ const PaperTrading = () => {
   const [showStopOptions, setShowStopOptions] = useState(false);
   const [cumulativeStats, setCumulativeStats] = useState(null);
 
-  // Fetch all data
+  // Fetch all data - using Promise.allSettled to handle individual failures gracefully
   const fetchData = useCallback(async () => {
     try {
-      const [statusRes, positionsRes, tradesRes, analyticsRes] = await Promise.all([
+      const results = await Promise.allSettled([
         axios.get(`${API}/paper/status`),
         axios.get(`${API}/paper/positions`),
         axios.get(`${API}/paper/trades?limit=50`),
         axios.get(`${API}/paper/analytics`)
       ]);
       
-      setStatus(statusRes.data);
-      setRunning(statusRes.data?.running || false);
-      setContinuousMode(statusRes.data?.continuous_mode || false);
-      setPositions(positionsRes.data?.positions || []);
-      setTrades(tradesRes.data?.trades || []);
-      setAnalytics(analyticsRes.data);
+      // Handle status response (index 0)
+      if (results[0].status === 'fulfilled') {
+        const statusData = results[0].value.data;
+        setStatus(statusData);
+        setRunning(statusData?.running || false);
+        setContinuousMode(statusData?.continuous_mode || false);
+      }
+      
+      // Handle positions response (index 1)
+      if (results[1].status === 'fulfilled') {
+        setPositions(results[1].value.data?.positions || []);
+      }
+      
+      // Handle trades response (index 2)
+      if (results[2].status === 'fulfilled') {
+        setTrades(results[2].value.data?.trades || []);
+      }
+      
+      // Handle analytics response (index 3)
+      if (results[3].status === 'fulfilled') {
+        setAnalytics(results[3].value.data);
+      }
     } catch (e) {
       console.error('Error fetching data:', e);
     }
