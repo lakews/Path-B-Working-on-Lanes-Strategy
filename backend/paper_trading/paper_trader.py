@@ -1018,6 +1018,7 @@ class PaperTrader:
             "graceful_stop": self.graceful_stop,
             # Configuration parameters being used
             "config": {
+                "initial_capital": self.initial_capital,
                 "capital_deployment_pct": self.capital_deployment_pct,
                 "max_position_size_pct": self.max_position_size_pct,
                 "max_position_size": self.max_position_size,
@@ -1026,6 +1027,8 @@ class PaperTrader:
                 "trades_per_10min": self.trades_per_10min,
                 "trade_interval_seconds": self.trade_interval
             },
+            # Position sizer learning stats
+            "position_sizer_learning": self.position_sizer.get_learning_stats() if hasattr(self, 'position_sizer') else {},
             "ai_learning": {
                 "rl_updates_this_session": len(self.closed_trades),
                 "learning_active": self.running,
