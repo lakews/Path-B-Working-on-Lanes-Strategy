@@ -329,6 +329,134 @@ async def stop_trading():
     
     return {"message": "Trading stopped", "mode": "stopped"}
 
+# =============================================
+# JWT AUTHENTICATION ENDPOINTS
+# =============================================
+
+@api_router.post("/auth/login", response_model=Token)
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """
+    Login with username and password to get a JWT token
+    
+    Returns a Bearer token that can be used for subsequent API calls
+    """
+    user = await authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Update last login
+    db = get_db()
+    await db.users.update_one(
+        {"username": user["username"]},
+        {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    access_token = create_access_token(
+        data={"sub": user["username"]},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user={
+            "username": user["username"],
+            "email": user.get("email"),
+            "is_admin": user.get("is_admin", False)
+        }
+    )
+
+@api_router.post("/auth/login/json")
+async def login_json(credentials: UserLogin):
+    """
+    Login with username and password (JSON body) to get a JWT token
+    Alternative to form-based login
+    """
+    user = await authenticate_user(credentials.username, credentials.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Update last login
+    db = get_db()
+    await db.users.update_one(
+        {"username": user["username"]},
+        {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    access_token = create_access_token(
+        data={"sub": user["username"]},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": {
+            "username": user["username"],
+            "email": user.get("email"),
+            "is_admin": user.get("is_admin", False)
+        }
+    }
+
+@api_router.post("/auth/register")
+async def register_user(user_data: UserCreate, current_user = Depends(get_current_user)):
+    """
+    Register a new user (admin only)
+    """
+    if not current_user.get("is_admin", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can create new users"
+        )
+    
+    new_user = await create_user(user_data)
+    return {"message": "User created successfully", "user": new_user}
+
+@api_router.get("/auth/me")
+async def get_current_user_info(current_user = Depends(get_current_user)):
+    """Get current authenticated user's information"""
+    return UserResponse(
+        username=current_user["username"],
+        email=current_user.get("email"),
+        created_at=current_user.get("created_at", ""),
+        is_admin=current_user.get("is_admin", False)
+    )
+
+@api_router.post("/auth/change-password")
+async def change_password(
+    old_password: str,
+    new_password: str,
+    current_user = Depends(get_current_user)
+):
+    """Change current user's password"""
+    from auth import verify_password, get_password_hash
+    
+    db = get_db()
+    user = await db.users.find_one({"username": current_user["username"]})
+    
+    if not verify_password(old_password, user.get("hashed_password", "")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+    
+    await db.users.update_one(
+        {"username": current_user["username"]},
+        {"$set": {"hashed_password": get_password_hash(new_password)}}
+    )
+    
+    return {"message": "Password changed successfully"}
+
 @api_router.post("/bot/start")
 async def start_bot(background_tasks: BackgroundTasks):
     """Start the LIVE trading bot"""
