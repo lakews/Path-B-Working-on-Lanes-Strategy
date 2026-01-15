@@ -983,32 +983,55 @@ class PaperTrader:
             ).limit(100)
             markets = await cursor.to_list(length=100)
             
+            logger.debug(f"Found {len(markets)} markets in DB with liquidity >= 1000")
+            
             # If no markets in DB, fetch live from Gamma API
             if not markets:
-                logger.info("No markets in DB, fetching live from Gamma API...")
+                logger.info("No markets in DB with sufficient liquidity, fetching live from Gamma API...")
                 try:
                     from data.polymarket_api import PolymarketAPI
                     async with PolymarketAPI() as api:
                         live_markets = await api.get_markets(limit=100)
+                        logger.info(f"Gamma API returned {len(live_markets) if live_markets else 0} markets")
                         if live_markets:
                             # Filter for good liquidity
                             markets = [m for m in live_markets if float(m.get('liquidity', 0) or 0) >= 1000]
-                            logger.info(f"Fetched {len(markets)} live markets with liquidity >= 1000")
+                            logger.info(f"After liquidity filter: {len(markets)} markets with liquidity >= 1000")
                             
-                            # Optionally store in DB for caching
+                            # Store in DB for caching
                             if markets:
+                                stored_count = 0
                                 for m in markets[:50]:  # Store top 50
+                                    market_doc = {
+                                        "condition_id": m.get('condition_id') or m.get('id'),
+                                        "id": m.get('id'),
+                                        "question": m.get('question', ''),
+                                        "category": m.get('category', 'unknown'),
+                                        "yes_price": float(m.get('yes_price', 0.5) or 0.5),
+                                        "no_price": float(m.get('no_price', 0.5) or 0.5),
+                                        "liquidity": float(m.get('liquidity', 0) or 0),
+                                        "volume": float(m.get('volume', 0) or 0),
+                                        "volume_24h": float(m.get('volume_24h', 0) or 0),
+                                        "end_date": m.get('end_date'),
+                                        "active": m.get('active', True)
+                                    }
                                     await self.db.markets.update_one(
-                                        {"condition_id": m.get('condition_id') or m.get('id')},
-                                        {"$set": m},
+                                        {"condition_id": market_doc['condition_id']},
+                                        {"$set": market_doc},
                                         upsert=True
                                     )
+                                    stored_count += 1
+                                logger.info(f"Stored {stored_count} markets in DB for caching")
                 except Exception as api_err:
                     logger.error(f"Failed to fetch live markets: {api_err}")
+                    import traceback
+                    traceback.print_exc()
             
             return markets
         except Exception as e:
             logger.error(f"Error getting markets: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     def get_status(self) -> Dict:
