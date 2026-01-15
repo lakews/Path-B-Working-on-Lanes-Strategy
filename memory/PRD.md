@@ -18,6 +18,32 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 15, 2026 - Session 16 (Paper Trading UI Data Sync Bug Fix)
+
+- ✅ **BUG FIX: Paper Trading Page Data Sync Issue**
+  - **Issue**: UI showed "0" Open Positions and "Stopped" status even when backend confirmed active session with trades
+  - **Root Cause 1**: Frontend used `Promise.all` which fails entirely if any single API request fails
+  - **Root Cause 2**: Backend `/api/paper/status` returned incomplete structure when no session exists
+  - **Root Cause 3**: MongoDB `insert_one()` mutated trade_log dict, adding `_id` to in-memory trade_history
+  
+- ✅ **Frontend Fix** (`/app/frontend/src/pages/PaperTrading.js`)
+  - Changed `Promise.all` to `Promise.allSettled` in `fetchData()` function
+  - Each API call now handled independently - if one fails, others still update their state
+  - Added fallback in Open Positions MetricCard: `status.open_positions ?? positions.length ?? 0`
+  
+- ✅ **Backend Fix** (`/app/backend/server.py`)
+  - `/api/paper/status` now returns complete structure even when no session:
+    - `running`, `open_positions`, `total_trades`, `total_pnl`, `win_rate`, `max_drawdown`, `current_capital`, `initial_capital`
+  
+- ✅ **MongoDB ObjectId Fix** (`/app/backend/paper_trading/paper_trader.py`)
+  - Used `trade_log.copy()` before `insert_one()` to prevent `_id` mutation in `trade_history` list
+  - Fixed ObjectId serialization error in `/api/paper/trades` endpoint
+
+- ✅ **Test Suite** (`/app/tests/test_paper_trading_data_sync_fix.py`)
+  - 11 tests covering all paper trading endpoints
+  - Verifies complete status structure, no ObjectId in trades, independent endpoint handling
+  - 100% pass rate
+
 ### January 14, 2026 - Session 15 (Paper Trading Engine, RL Integration, Strategy Optimizer)
 
 - ✅ **Full Paper Trading Engine** (`/app/backend/paper_trading/`)
