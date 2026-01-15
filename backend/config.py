@@ -24,17 +24,18 @@ class Config:
     # LLM
     EMERGENT_LLM_KEY = os.environ['EMERGENT_LLM_KEY']
     
-    # Trading Configuration (Configurable)
+    # Trading Configuration - NOTE: Settings page (MongoDB) is the SOURCE OF TRUTH
+    # These are fallback defaults only used if MongoDB has no saved config
     INITIAL_CAPITAL = float(os.environ.get('INITIAL_CAPITAL', 10000))  # Default $10,000
     CAPITAL_DEPLOYMENT_PCT = float(os.environ.get('CAPITAL_DEPLOYMENT_PCT', 80))
     MAX_POSITION_SIZE_PCT = float(os.environ.get('MAX_POSITION_SIZE_PCT', 3))
     TRADES_PER_10MIN = int(os.environ.get('TRADES_PER_10MIN', 500))
-    MAX_DRAWDOWN_PCT = float(os.environ.get('MAX_DRAWDOWN_PCT', 3))
+    MAX_DRAWDOWN_PCT = float(os.environ.get('MAX_DRAWDOWN_PCT', 5))  # 5% default - Settings overrides
     KELLY_FRACTION = float(os.environ.get('KELLY_FRACTION', 0.25))
     MIN_KELLY_FRACTION = float(os.environ.get('MIN_KELLY_FRACTION', 0.10))
     MAX_KELLY_FRACTION = float(os.environ.get('MAX_KELLY_FRACTION', 0.50))
     
-    # Market Selection Configuration
+    # Market Selection Configuration - Settings page overrides these
     MIN_LIQUIDITY = float(os.environ.get('MIN_LIQUIDITY', 100))  # Minimum liquidity in USD
     MIN_VOLUME_24H = float(os.environ.get('MIN_VOLUME_24H', 1000))  # Minimum 24h volume in USD
     MAX_SPREAD = float(os.environ.get('MAX_SPREAD', 0.05))  # Maximum bid-ask spread (5%)
