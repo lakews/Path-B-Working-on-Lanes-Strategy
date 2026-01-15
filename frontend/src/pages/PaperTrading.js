@@ -496,7 +496,7 @@ const PaperTrading = () => {
               />
               <MetricCard
                 title="Open Positions"
-                value={status.open_positions || 0}
+                value={status.open_positions ?? positions.length ?? 0}
                 icon={Layers}
                 color="orange"
               />
