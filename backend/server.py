@@ -2345,10 +2345,52 @@ async def get_cumulative_stats():
         for asset_class, data in cumulative_asset_class.items():
             data['win_rate'] = data['total_wins'] / data['total_trades'] if data['total_trades'] > 0 else 0
         
+        # Build cumulative returns distribution from all trades
+        trades_cursor = db.paper_trades.find(
+            {"type": "exit"},
+            {"_id": 0, "pnl": 1, "size": 1}
+        )
+        all_trades = await trades_cursor.to_list(length=10000)
+        
+        # Add current session trades if running
+        if paper_trader and paper_trader.running:
+            all_trades.extend([{"pnl": t.get("pnl", 0), "size": t.get("size", 1)} for t in paper_trader.closed_trades])
+        
+        # Calculate returns distribution
+        returns_distribution = {"bins": [], "stats": None}
+        if all_trades:
+            returns = [t.get("pnl", 0) / max(t.get("size", 1), 0.01) * 100 for t in all_trades]
+            
+            # Create bins
+            import numpy as np
+            if len(returns) > 0:
+                bin_edges = [-50, -30, -20, -10, -5, -2, 0, 2, 5, 10, 20, 30, 50, 100]
+                bins = []
+                for i in range(len(bin_edges) - 1):
+                    count = sum(1 for r in returns if bin_edges[i] <= r < bin_edges[i+1])
+                    bins.append({
+                        "min": bin_edges[i],
+                        "max": bin_edges[i+1],
+                        "label": f"{bin_edges[i]}% to {bin_edges[i+1]}%",
+                        "count": count
+                    })
+                
+                returns_distribution["bins"] = bins
+                returns_distribution["stats"] = {
+                    "mean": float(np.mean(returns)) if returns else 0,
+                    "median": float(np.median(returns)) if returns else 0,
+                    "std": float(np.std(returns)) if returns else 0,
+                    "positive_returns": sum(1 for r in returns if r > 0),
+                    "negative_returns": sum(1 for r in returns if r < 0),
+                    "skewness": 0,
+                    "kurtosis": 0
+                }
+        
         return {
             "overall": overall,
             "by_strategy": cumulative_strategy,
             "by_asset_class": cumulative_asset_class,
+            "returns_distribution": returns_distribution,
             "current_session_included": paper_trader.running if paper_trader else False
         }
         
