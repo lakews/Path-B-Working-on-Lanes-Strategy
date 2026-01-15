@@ -799,6 +799,198 @@ const PaperTrading = () => {
         </div>
       )}
 
+      {/* Cumulative Stats Tab */}
+      {activeTab === 'cumulative' && (
+        <div className="space-y-6">
+          {/* Overall Stats */}
+          {cumulativeStats?.overall && (
+            <div className="rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <TrendingUp className="w-6 h-6 text-cyan-400" />
+                  Cumulative Trading Statistics
+                  <span className="text-xs text-white/40 ml-2">
+                    (All-time across {cumulativeStats.overall.total_sessions} sessions)
+                  </span>
+                </h3>
+                {cumulativeStats.current_session_included && (
+                  <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                    Live session included
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <MetricCard
+                  title="Total Sessions"
+                  value={cumulativeStats.overall.total_sessions}
+                  subtitle={`${cumulativeStats.overall.continuous_sessions} continuous`}
+                  icon={History}
+                  color="blue"
+                />
+                <MetricCard
+                  title="Total Trades"
+                  value={cumulativeStats.overall.total_trades.toLocaleString()}
+                  subtitle={`Avg ${cumulativeStats.overall.avg_session_trades?.toFixed(0)}/session`}
+                  icon={Activity}
+                  color="purple"
+                />
+                <MetricCard
+                  title="Total Wins"
+                  value={cumulativeStats.overall.total_wins.toLocaleString()}
+                  icon={Award}
+                  color="green"
+                />
+                <MetricCard
+                  title="Win Rate"
+                  value={`${(cumulativeStats.overall.win_rate * 100).toFixed(1)}%`}
+                  icon={Target}
+                  color={cumulativeStats.overall.win_rate >= 0.5 ? "green" : "red"}
+                />
+                <MetricCard
+                  title="Total P&L"
+                  value={`${cumulativeStats.overall.total_pnl >= 0 ? '+' : ''}$${cumulativeStats.overall.total_pnl.toFixed(2)}`}
+                  icon={DollarSign}
+                  color={cumulativeStats.overall.total_pnl >= 0 ? "green" : "red"}
+                />
+                <MetricCard
+                  title="Total Capital Traded"
+                  value={`$${cumulativeStats.overall.total_initial_capital.toLocaleString()}`}
+                  icon={Wallet}
+                  color="cyan"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Strategy Cumulative Table */}
+          {cumulativeStats?.by_strategy && (
+            <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+              <div className="p-4 border-b border-white/10">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-400" />
+                  Cumulative Strategy Performance
+                  <span className="text-xs text-white/40 ml-2">(All-time totals)</span>
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-white/5 text-left">
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase">Strategy</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Total Trades</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Total Wins</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Win Rate</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Total P&L</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Sessions Used</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Avg P&L/Session</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(cumulativeStats.by_strategy)
+                      .sort((a, b) => b[1].total_trades - a[1].total_trades)
+                      .map(([strategy, data]) => {
+                        const info = STRATEGY_INFO[strategy];
+                        const avgPnlPerSession = data.sessions > 0 ? data.total_pnl / data.sessions : 0;
+                        return (
+                          <tr key={strategy} className="border-b border-white/5 hover:bg-white/5">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: info?.color }} />
+                                <span className="text-white font-medium">{info?.name || strategy}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right text-xl font-bold text-white">
+                              {data.total_trades.toLocaleString()}
+                            </td>
+                            <td className="py-3 px-4 text-right text-white/80">
+                              {data.total_wins.toLocaleString()}
+                            </td>
+                            <td className={`py-3 px-4 text-right font-medium ${data.win_rate >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
+                              {(data.win_rate * 100).toFixed(1)}%
+                            </td>
+                            <td className={`py-3 px-4 text-right font-bold ${data.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {data.total_pnl >= 0 ? '+' : ''}${data.total_pnl.toFixed(2)}
+                            </td>
+                            <td className="py-3 px-4 text-right text-white/60">
+                              {data.sessions}
+                            </td>
+                            <td className={`py-3 px-4 text-right ${avgPnlPerSession >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {avgPnlPerSession >= 0 ? '+' : ''}${avgPnlPerSession.toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Asset Class Cumulative Table */}
+          {cumulativeStats?.by_asset_class && Object.keys(cumulativeStats.by_asset_class).length > 0 && (
+            <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+              <div className="p-4 border-b border-white/10">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-orange-400" />
+                  Cumulative Asset Class Performance
+                  <span className="text-xs text-white/40 ml-2">(All-time totals)</span>
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-white/5 text-left">
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase">Asset Class</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Total Trades</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Total Wins</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Win Rate</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Total P&L</th>
+                      <th className="py-3 px-4 text-xs text-white/60 uppercase text-right">Sessions Used</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(cumulativeStats.by_asset_class)
+                      .sort((a, b) => b[1].total_trades - a[1].total_trades)
+                      .map(([assetClass, data]) => (
+                        <tr key={assetClass} className="border-b border-white/5 hover:bg-white/5">
+                          <td className="py-3 px-4">
+                            <span className="text-white font-medium capitalize">{assetClass}</span>
+                          </td>
+                          <td className="py-3 px-4 text-right text-xl font-bold text-white">
+                            {data.total_trades.toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-right text-white/80">
+                            {data.total_wins.toLocaleString()}
+                          </td>
+                          <td className={`py-3 px-4 text-right font-medium ${data.win_rate >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
+                            {(data.win_rate * 100).toFixed(1)}%
+                          </td>
+                          <td className={`py-3 px-4 text-right font-bold ${data.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {data.total_pnl >= 0 ? '+' : ''}${data.total_pnl.toFixed(2)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-white/60">
+                            {data.sessions}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Info Box */}
+          <div className="rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-4">
+            <p className="text-blue-400 text-sm">
+              <strong>📊 Cumulative Stats:</strong> These statistics aggregate ALL your paper trading sessions to show long-term performance trends. 
+              Use this to identify which strategies and asset classes perform best over time. 
+              {running && <span className="text-green-400 ml-2">● Live session data is included in real-time.</span>}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* History Tab */}
       {activeTab === 'history' && (
         <div className="space-y-6">
