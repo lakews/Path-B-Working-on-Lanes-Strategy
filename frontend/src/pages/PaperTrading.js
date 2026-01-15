@@ -130,6 +130,65 @@ const PaperTrading = () => {
   const [aiStats, setAiStats] = useState(null);
   const [showStopOptions, setShowStopOptions] = useState(false);
   const [cumulativeStats, setCumulativeStats] = useState(null);
+  const [wsConnected, setWsConnected] = useState(false);
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    let ws = null;
+    let reconnectTimeout = null;
+    
+    const connectWs = () => {
+      try {
+        const wsUrl = BACKEND_URL.replace('https', 'wss').replace('http', 'ws') + '/ws';
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('Paper Trading WebSocket connected');
+          setWsConnected(true);
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            // Handle paper trading specific messages
+            if (data.type === 'paper_trade') {
+              setTrades(prev => [data.trade, ...prev].slice(0, 50));
+              // Refresh status after trade
+              fetchData();
+            } else if (data.type === 'paper_position_update') {
+              setPositions(data.positions || []);
+            } else if (data.type === 'paper_status_update') {
+              setStatus(data.status);
+              setRunning(data.status?.running || false);
+            }
+          } catch (e) {
+            console.error('Error parsing WebSocket message:', e);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('Paper Trading WebSocket disconnected');
+          setWsConnected(false);
+          reconnectTimeout = setTimeout(connectWs, 5000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('Paper Trading WebSocket error:', error);
+          setWsConnected(false);
+        };
+      } catch (e) {
+        console.error('WS connection error:', e);
+        setWsConnected(false);
+      }
+    };
+    
+    connectWs();
+    
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, []);
 
   // Fetch all data - using Promise.allSettled to handle individual failures gracefully
   const fetchData = useCallback(async () => {
