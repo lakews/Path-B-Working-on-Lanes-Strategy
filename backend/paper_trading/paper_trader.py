@@ -867,13 +867,11 @@ class PaperTrader:
             return {'volatility': 0.02, 'sentiment': 0.5, 'sharp_alignment': 0.5}
     
     async def _position_monitoring_loop(self):
-        """Monitor open positions and update unrealized P&L with simulated price movements"""
-        import random
-        
+        """Monitor open positions and update unrealized P&L with REAL prices"""
         while self.running:
             try:
                 if self.paper_positions:
-                    # Fetch latest market prices
+                    # Fetch latest market prices from Gamma API
                     markets = await self._get_active_markets()
                     market_prices = {m['id']: float(m.get('yes_price', 0.5) or 0.5) for m in markets}
                     
@@ -883,36 +881,24 @@ class PaperTrader:
                         side = position['side']
                         size = position['size']  # USD invested
                         
-                        # Get current price from API or use entry price
-                        api_price = market_prices.get(market_id, entry_price)
-                        
-                        # For paper trading: simulate small price movements if API price unchanged
-                        # This helps test P&L calculations even when real prices are static
-                        if api_price == entry_price:
-                            # Simulate ±0.5% to ±2% price movement based on time held
-                            drift = random.uniform(-0.02, 0.02)
-                            simulated_price = max(0.001, min(0.999, entry_price * (1 + drift)))
-                            current_price = simulated_price
-                        else:
-                            current_price = api_price
+                        # Get REAL current price from API (no simulation)
+                        current_price = market_prices.get(market_id, entry_price)
                         
                         # Calculate shares owned
                         shares = size / entry_price if entry_price > 0 else 0
                         
                         # Calculate current value and unrealized P&L
                         if side == 'YES':
-                            # YES: profit when price goes up
                             current_value = shares * current_price
                             unrealized = current_value - size
                         else:
-                            # NO: profit when YES price goes down
                             no_entry = 1 - entry_price
                             no_current = 1 - current_price
                             no_shares = size / no_entry if no_entry > 0 else 0
                             current_value = no_shares * no_current
                             unrealized = current_value - size
                         
-                        # Update position with current unrealized P&L
+                        # Update position
                         position['current_price'] = round(current_price, 4)
                         position['shares'] = round(shares, 2)
                         position['current_value'] = round(current_value, 2)
@@ -921,15 +907,11 @@ class PaperTrader:
                         
                         total_unrealized += unrealized
                     
-                    # Update total unrealized P&L for status display
                     self.unrealized_pnl = round(total_unrealized, 2)
-                    
-                    if len(self.paper_positions) > 0:
-                        logger.debug(f"Positions: {len(self.paper_positions)} | Unrealized: ${total_unrealized:.2f}")
                 else:
                     self.unrealized_pnl = 0.0
                 
-                await asyncio.sleep(5)  # Update every 5 seconds for HFT
+                await asyncio.sleep(5)
                 
             except Exception as e:
                 logger.error(f"Error in position monitoring: {e}")
