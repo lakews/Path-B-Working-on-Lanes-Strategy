@@ -18,58 +18,38 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
-### January 15, 2026 - Session 16 (Paper Trading Config Integration, JWT Auth, WebSocket Updates)
+### January 15, 2026 - Session 17 (Adaptive Position Sizing, Config Integration, JWT Auth)
 
-- ✅ **BUG FIX: Paper Trading Page Data Sync Issue**
-  - **Issue**: UI showed "0" Open Positions and "Stopped" status even when backend confirmed active session
-  - **Root Cause 1**: Frontend used `Promise.all` which fails entirely if any single API request fails
-  - **Root Cause 2**: Backend `/api/paper/status` returned incomplete structure when no session exists
-  - **Root Cause 3**: MongoDB `insert_one()` mutated trade_log dict, adding `_id` to in-memory trade_history
-  - **Frontend Fix**: Changed to `Promise.allSettled` in `fetchData()` function
-  - **Backend Fix**: Status endpoint now returns complete structure with all fields
+- ✅ **Adaptive Position Sizing Engine** (`/app/backend/ml/adaptive_position_sizer.py`)
+  - **Liquidity-aware sizing**: Reduces position in illiquid markets (volume < $10K = reduced size)
+  - **Volume-weighted**: Won't trade below $500 daily volume
+  - **Kelly-optimized**: Uses learned win rates and avg returns per strategy/asset class
+  - **RL confidence scaling**: Higher confidence = larger positions
+  - **Asset class risk profiles**: Crypto (0.7x), Politics (0.9x), Finance (1.0x), etc.
+  - **Strategy risk profiles**: Delta-Neutral (1.2x), Volatility (0.5x), Alpha (0.8x), Arbitrage (1.1x)
+  - **Continuous learning**: Updates win rates and avg P&L from every trade outcome
+  - **Persisted params**: Learned parameters saved to DB every 10 trades
 
-- ✅ **Paper Trading Now Uses ALL Config Tab Parameters**
-  - `capital_deployment_pct` - % of capital to deploy (e.g., 80% of $10K = $8K deployed)
-  - `max_position_size_pct` - % of DEPLOYED capital per position (e.g., 3% of $8K = $240)
-  - `kelly_fraction` - Kelly criterion multiplier
-  - `max_drawdown_pct` - Maximum allowed drawdown
-  - `trades_per_10min` - Trading frequency
-  - Config loaded from DB on session start via `_load_user_config()`
-  - Position sizing correctly uses deployed capital, not total capital
+- ✅ **Paper Trading Uses ALL Config Tab Parameters**
+  - Removed initial_capital input from Paper Trading page
+  - Uses `initial_capital` from Config tab (persisted in DB)
+  - Uses `capital_deployment_pct`, `max_position_size_pct`, `kelly_fraction`, etc.
+  - Shows config summary in header when stopped: Capital, Deployed, Max Pos, Kelly
 
-- ✅ **Unrealized P&L Tracking**
-  - Status now includes `unrealized_pnl` for open positions
-  - Status includes `combined_pnl` (realized + unrealized)
-  - Frontend displays both: "Realized: $X | Unrealized: $Y"
-  - Position monitoring loop updates unrealized P&L every 10 seconds
+- ✅ **Config Tab Slider/Value Mismatch FIXED**
+  - Bug: Max Position was calculated from initial_capital instead of deployed_capital
+  - Fix: `maxPositionValue = deployedCapital * (max_position_size_pct / 100)`
+  - Now shows correct values: $100 initial → $80 deployed → $2.40 max position (3% of deployed)
 
-- ✅ **JWT Authentication Implemented** (`/app/backend/auth.py`)
-  - Secure JWT-based authentication replacing weak API key
-  - Dual-auth mode: JWT Bearer token OR HTTP Basic Auth (legacy fallback)
-  - `/api/auth/login/json` - Get JWT token (24hr expiry)
-  - `/api/auth/me` - Get current user info
-  - `/api/auth/register` - Create new user (admin only)
-  - `/api/auth/change-password` - Change password
-  - Default admin user auto-created on startup
+- ✅ **JWT Authentication** (from Session 16)
+  - Secure token-based auth replacing weak API key
+  - Dual-auth mode (JWT + Basic Auth fallback)
+  
+- ✅ **WebSocket Real-time Updates** (from Session 16)
+  - Paper trades broadcast instantly
+  - Polling reduced when WebSocket connected
 
-- ✅ **WebSocket Real-time Updates for Paper Trading**
-  - Paper trades broadcast via WebSocket when executed
-  - Status updates broadcast on entry/exit
-  - Frontend reduces polling interval when WebSocket connected (10s vs 5s)
-  - Visual indicator shows "Live" (WebSocket) or "Polling" mode
-
-- ✅ **Config Update Persistence**
-  - `/api/config/update` now saves ALL parameters to DB
-  - Trading params persist across server restarts
-  - Paper trader loads saved config on session start
-
-- ✅ **Test Suite** (`/app/tests/test_jwt_auth_paper_trading.py`)
-  - 14 tests all passing (100% success rate)
-  - JWT login, protected endpoints, dual-auth
-  - Paper trading status fields verification
-  - Config persistence verification
-
-### January 14, 2026 - Session 15 (Paper Trading Engine, RL Integration, Strategy Optimizer)
+### January 15, 2026 - Session 16 (Paper Trading UI Bug Fix)
 
 - ✅ **Full Paper Trading Engine** (`/app/backend/paper_trading/`)
   - `paper_trader.py`: Complete paper trading simulation with virtual positions
