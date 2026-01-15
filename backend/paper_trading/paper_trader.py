@@ -317,9 +317,10 @@ class PaperTrader:
                 await asyncio.sleep(5)
     
     async def _evaluate_entry(self, market_data: Dict):
-        """Evaluate market for potential paper trade entry"""
+        """Evaluate market for potential paper trade entry using ADAPTIVE sizing"""
         try:
             market_id = market_data.get('id')
+            asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
             # Get ML signals
             signals = await self._get_signals(market_data)
@@ -331,19 +332,33 @@ class PaperTrader:
             if rl_action == 'WAIT' or rl_confidence < 0.4:
                 return
             
-            # Determine position size based on Kelly and RL confidence
-            position_size = self._calculate_position_size(rl_confidence, signals)
+            # Determine strategy based on signals
+            strategy = self._determine_strategy(signals, rl_action)
+            
+            # ADAPTIVE POSITION SIZING - considers liquidity, volume, Kelly, RL confidence
+            sizing_result = self._calculate_position_size(
+                rl_confidence=rl_confidence,
+                signals=signals,
+                market_data=market_data,
+                strategy=strategy,
+                asset_class=asset_class,
+                rl_action=rl_action
+            )
+            
+            # Check if we should trade (liquidity/size requirements met)
+            if not sizing_result.get('should_trade', False):
+                logger.debug(f"Skipping {market_id}: Sizing check failed - {sizing_result.get('sizing_breakdown', {})}")
+                return
+            
+            position_size = sizing_result.get('position_size', 0)
             
             if position_size < 10:  # Minimum position size
                 return
             
-            # Determine strategy based on signals
-            strategy = self._determine_strategy(signals, rl_action)
-            
             # Determine side (YES/NO)
             side = 'YES' if 'BUY' in rl_action else 'NO'
             
-            # Execute paper trade
+            # Execute paper trade with sizing breakdown for learning
             await self._execute_paper_entry(
                 market_id=market_id,
                 market_data=market_data,
@@ -352,7 +367,8 @@ class PaperTrader:
                 strategy=strategy,
                 signals=signals,
                 rl_action=rl_action,
-                rl_confidence=rl_confidence
+                rl_confidence=rl_confidence,
+                sizing_breakdown=sizing_result.get('sizing_breakdown', {})
             )
             
         except Exception as e:
