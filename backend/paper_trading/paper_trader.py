@@ -92,6 +92,7 @@ class PaperTrader:
         self.min_volume_24h = 1000.0
         self.max_spread = 0.05
         self.max_open_positions = 50
+        self.stuck_price_multiplier = 2.0  # Volume multiplier for stuck prices (0.0, 0.5, 1.0)
         
         # Current capital starts at initial (will be set properly after config load)
         self.current_capital = self.initial_capital
