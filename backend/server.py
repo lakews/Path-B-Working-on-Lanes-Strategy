@@ -1047,6 +1047,30 @@ async def update_config(config_update: TradingConfig):
             content={"message": f"Failed to update config: {str(e)}"}
         )
 
+@api_router.post("/config/reload-live")
+async def reload_config_live(username: str = Depends(verify_credentials_dual)):
+    """Reload configuration for running paper trading session - hot reload"""
+    global paper_trader
+    
+    if not paper_trader or not paper_trader.running:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "No paper trading session is running"}
+        )
+    
+    try:
+        result = await paper_trader.reload_config_live()
+        return {
+            "message": "Configuration reloaded for live session",
+            **result
+        }
+    except Exception as e:
+        logger.error(f"Error reloading config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to reload config: {str(e)}"}
+        )
+
 # Historical Data Collection Endpoints
 @api_router.get("/historical/stats")
 async def get_historical_stats():
