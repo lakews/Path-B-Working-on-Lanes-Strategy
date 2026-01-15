@@ -512,7 +512,7 @@ class PaperTrader:
                 "reward_signal": reward,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
-            self.trade_history.append(trade_log)
+            self.trade_history.append(trade_log.copy())  # Use copy to prevent MongoDB _id mutation
             await self.db.paper_trades.insert_one(trade_log)
             
             # Remove from open positions
