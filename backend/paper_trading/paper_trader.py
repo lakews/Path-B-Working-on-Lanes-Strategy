@@ -421,12 +421,13 @@ class PaperTrader:
             
             # Check if we should trade (liquidity/size requirements met)
             if not sizing_result.get('should_trade', False):
-                logger.debug(f"Skipping {market_id}: Sizing check failed - {sizing_result.get('sizing_breakdown', {})}")
+                logger.info(f"Skipping {market_id[:16]}: should_trade=False, breakdown={sizing_result.get('sizing_breakdown', {})}")
                 return
             
             position_size = sizing_result.get('position_size', 0)
             
             if position_size < 10:  # Minimum position size
+                logger.info(f"Skipping {market_id[:16]}: position_size={position_size} < 10")
                 return
             
             # Determine side (YES/NO)
