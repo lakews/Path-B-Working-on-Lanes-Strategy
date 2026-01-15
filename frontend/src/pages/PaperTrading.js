@@ -490,23 +490,27 @@ const PaperTrading = () => {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              {/* Config Summary from Config Tab */}
+              {/* Config Summary from Config Tab - uses savedConfig for immediate updates */}
               <div className="flex items-center gap-4 px-4 py-2 rounded-lg bg-white/5 border border-white/10">
                 <div className="text-xs">
                   <span className="text-white/50">Capital:</span>
-                  <span className="text-white ml-1 font-medium">${status?.config?.initial_capital || status?.initial_capital || '—'}</span>
+                  <span className="text-white ml-1 font-medium">${savedConfig?.initial_capital?.toLocaleString() || '—'}</span>
                 </div>
                 <div className="text-xs">
                   <span className="text-white/50">Deployed:</span>
-                  <span className="text-cyan-400 ml-1 font-medium">${(status?.deployed_capital || 0).toFixed(0)} ({status?.config?.capital_deployment_pct || 80}%)</span>
+                  <span className="text-cyan-400 ml-1 font-medium">
+                    ${((savedConfig?.initial_capital || 0) * (savedConfig?.capital_deployment_pct || 80) / 100).toLocaleString()} ({savedConfig?.capital_deployment_pct || 80}%)
+                  </span>
                 </div>
                 <div className="text-xs">
                   <span className="text-white/50">Max Pos:</span>
-                  <span className="text-orange-400 ml-1 font-medium">${(status?.config?.max_position_size || 0).toFixed(0)} ({status?.config?.max_position_size_pct || 3}%)</span>
+                  <span className="text-orange-400 ml-1 font-medium">
+                    ${(((savedConfig?.initial_capital || 0) * (savedConfig?.capital_deployment_pct || 80) / 100) * (savedConfig?.max_position_size_pct || 3) / 100).toFixed(0)} ({savedConfig?.max_position_size_pct || 3}%)
+                  </span>
                 </div>
                 <div className="text-xs">
                   <span className="text-white/50">Kelly:</span>
-                  <span className="text-purple-400 ml-1 font-medium">{((status?.config?.kelly_fraction || 0.25) * 100).toFixed(0)}%</span>
+                  <span className="text-purple-400 ml-1 font-medium">{((savedConfig?.kelly_fraction || 0.25) * 100).toFixed(0)}%</span>
                 </div>
               </div>
               {/* Continuous Mode Toggle */}
