@@ -28,26 +28,88 @@ class PolymarketAPI:
             await self.session.close()
     
     async def get_markets(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
-        """Fetch active markets"""
+        """Fetch active markets from Gamma API (live data)"""
         try:
-            url = f"{self.base_url}/markets"
-            params = {"limit": limit, "offset": offset, "active": "true"}
+            # Use Gamma API for live market data
+            url = f"{self.gamma_url}/markets"
+            params = {
+                "limit": limit, 
+                "closed": "false",
+                "order": "volume24hr",
+                "ascending": "false"
+            }
             
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:
                     data = await response.json()
-                    # Handle both list and dict response formats
-                    if isinstance(data, list):
-                        return data
-                    elif isinstance(data, dict):
-                        return data.get('data', data.get('markets', []))
-                    return []
+                    markets = data if isinstance(data, list) else []
+                    
+                    # Normalize market data for consistency
+                    normalized = []
+                    for m in markets:
+                        # Parse clobTokenIds
+                        token_ids = m.get('clobTokenIds', [])
+                        if isinstance(token_ids, str):
+                            try:
+                                token_ids = json.loads(token_ids)
+                            except:
+                                token_ids = []
+                        
+                        # Calculate yes_price from outcomePrices
+                        outcome_prices = m.get('outcomePrices', '[]')
+                        if isinstance(outcome_prices, str):
+                            try:
+                                outcome_prices = json.loads(outcome_prices)
+                            except:
+                                outcome_prices = []
+                        
+                        yes_price = float(outcome_prices[0]) if outcome_prices else 0.5
+                        
+                        normalized.append({
+                            'id': m.get('conditionId') or m.get('id'),
+                            'condition_id': m.get('conditionId'),
+                            'question': m.get('question', ''),
+                            'description': m.get('description', ''),
+                            'yes_price': yes_price,
+                            'no_price': 1 - yes_price,
+                            'volume': float(m.get('volume', 0) or 0),
+                            'volume_24h': float(m.get('volume24hr', 0) or 0),
+                            'liquidity': float(m.get('liquidityNum', 0) or 0),
+                            'end_date': m.get('endDate'),
+                            'active': not m.get('closed', False),
+                            'category': self._categorize_market(m.get('question', '')),
+                            'asset_class': self._categorize_market(m.get('question', '')),
+                            'tokens': token_ids,
+                            'clobTokenIds': token_ids,
+                            'outcomes': m.get('outcomes', ['Yes', 'No']),
+                            'spread': m.get('spread', 0.02),
+                            'outstanding_contracts': float(m.get('liquidityNum', 0) or 0),
+                        })
+                    
+                    logger.info(f"Fetched {len(normalized)} live markets from Gamma API")
+                    return normalized
                 else:
-                    logger.error(f"Failed to fetch markets: {response.status}")
+                    logger.error(f"Failed to fetch markets from Gamma: {response.status}")
                     return []
         except Exception as e:
             logger.error(f"Error fetching markets: {e}")
             return []
+    
+    def _categorize_market(self, question: str) -> str:
+        """Categorize market by question content"""
+        question_lower = question.lower()
+        if any(w in question_lower for w in ['bitcoin', 'crypto', 'ethereum', 'btc', 'eth', 'solana']):
+            return 'crypto'
+        elif any(w in question_lower for w in ['trump', 'biden', 'election', 'congress', 'senate', 'vote', 'president']):
+            return 'politics'
+        elif any(w in question_lower for w in ['fed', 'rate', 'inflation', 'gdp', 'stock', 'market', 's&p']):
+            return 'finance'
+        elif any(w in question_lower for w in ['nba', 'nfl', 'mlb', 'ncaa', 'game', 'match', 'win']):
+            return 'sports'
+        elif any(w in question_lower for w in ['spacex', 'nasa', 'ai', 'openai', 'science', 'research']):
+            return 'science'
+        else:
+            return 'entertainment'
     
     async def get_market(self, condition_id: str) -> Optional[Dict[str, Any]]:
         """Fetch specific market details"""
