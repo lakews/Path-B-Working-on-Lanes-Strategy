@@ -804,7 +804,12 @@ const PaperTrading = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                       <XAxis dataKey="timestamp" stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 9 }} tickFormatter={(val) => new Date(val).toLocaleTimeString()} />
                       <YAxis stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} labelStyle={{ color: '#94a3b8' }} formatter={(value, name) => [`$${value?.toFixed(2)}`, name]} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: 'rgba(30,41,59,0.98)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '10px 14px' }} 
+                        labelStyle={{ color: '#e2e8f0', fontWeight: 'bold', marginBottom: '4px' }} 
+                        itemStyle={{ color: '#94a3b8' }}
+                        formatter={(value, name) => [<span style={{color: value >= 0 ? '#22d3ee' : '#f87171', fontWeight: 'bold'}}>${value?.toFixed(2)}</span>, name]} 
+                      />
                       <Legend wrapperStyle={{ fontSize: '10px' }} />
                       <Line type="monotone" dataKey="total_equity" name="Total Equity" stroke="#ffffff" strokeWidth={3} dot={false} />
                       <Line type="monotone" dataKey="delta_neutral_pnl" name="Delta-Neutral" stroke="#06b6d4" strokeWidth={1.5} dot={false} />
