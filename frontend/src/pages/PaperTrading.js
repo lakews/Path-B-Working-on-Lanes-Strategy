@@ -125,7 +125,6 @@ const PaperTrading = () => {
   const [rlStats, setRlStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('live'); // 'live', 'history', 'optimizer', 'rl'
-  const [initialCapital, setInitialCapital] = useState(10000);
   const [selectedSession, setSelectedSession] = useState(null);
   const [continuousMode, setContinuousMode] = useState(false);
   const [aiStats, setAiStats] = useState(null);
