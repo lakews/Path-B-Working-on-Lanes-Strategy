@@ -25,7 +25,7 @@ class Config:
     EMERGENT_LLM_KEY = os.environ['EMERGENT_LLM_KEY']
     
     # Trading Configuration (Configurable)
-    INITIAL_CAPITAL = float(os.environ.get('INITIAL_CAPITAL', 100))
+    INITIAL_CAPITAL = float(os.environ.get('INITIAL_CAPITAL', 10000))  # Default $10,000
     CAPITAL_DEPLOYMENT_PCT = float(os.environ.get('CAPITAL_DEPLOYMENT_PCT', 80))
     MAX_POSITION_SIZE_PCT = float(os.environ.get('MAX_POSITION_SIZE_PCT', 3))
     TRADES_PER_10MIN = int(os.environ.get('TRADES_PER_10MIN', 500))
