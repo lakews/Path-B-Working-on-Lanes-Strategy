@@ -1063,6 +1063,10 @@ async def update_config(config_update: TradingConfig):
             os.environ['MAX_OPEN_POSITIONS'] = str(config_update.max_open_positions)
             db_update["max_open_positions"] = config_update.max_open_positions
         
+        # Stuck price multiplier
+        if config_update.stuck_price_multiplier is not None:
+            db_update["stuck_price_multiplier"] = config_update.stuck_price_multiplier
+        
         # Update asset classes and strategies
         if config_update.enabled_asset_classes is not None:
             user_config["enabled_asset_classes"] = config_update.enabled_asset_classes
