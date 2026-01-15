@@ -14,71 +14,66 @@ The user wants to build APEX TRADER, a complete, production-ready, end-to-end AI
 **User's preferred language**: English
 
 **what currently exists?**
-A mature full-stack application with a FastAPI backend, React frontend, and MongoDB, which has been deployed to an AWS EC2 instance. The application features a comprehensive Paper Trading engine with a dedicated UI, continuous RL learning, and real-time analytics. JWT authentication and WebSocket updates are implemented. However, the application is critically flawed as it uses a deprecated Polymarket API, resulting in it using old, stale market data instead of live data. The previous agent had just begun the process of fixing this.
+A full-stack application with a FastAPI backend and React frontend. The critical bug of using a deprecated Polymarket API has been fixed; the app now ingests live data from the correct Gamma API. The paper trading engine is functional, executing trades across multiple strategies with adaptive position sizing and live P&L updates. The UI for the Paper Trading and Configuration pages has been significantly redesigned for better usability and clarity. New configuration options for market selection (liquidity, volume) and high-frequency trading (max open positions) have been added. However, a new critical issue has emerged where paper trading fails to execute trades due to a configuration loading problem.
 
 **Last working item**:
--   **Last item agent was working:** The user reported that the application was not pulling live market data. The agent investigated and confirmed the application was using a deprecated Polymarket API (CLOB) that only provides stale mock data. The agent began refactoring the data pipeline to use the correct live Gamma API but did not complete the fix.
+-   **Last item agent was working:** The user reported that trades were not happening again. The agent diagnosed the issue as an incorrect  value being used by the paper trader, leading to calculated position sizes being too small to execute. The agent traced this to a complex configuration loading priority (environment variables, DB document, hardcoded defaults) and was attempting to fix it by forcing the  to load configuration from the database on initialization, but was unsuccessful before the session ended.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
 -   **Which testing method agent to use?** backend testing agent
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Live Data Ingestion Failure (P0)**
-    -   **Description:** The application is using a deprecated Polymarket API (CLOB) that only provides stale mock data (old sports events from 2023). This prevents any meaningful live or paper trading. The system needs to be switched to the correct Gamma API which provides real, liquid markets.
-    -   **Attempted fixes:** The agent identified the correct API and was in the process of overwriting  and updating the  endpoint in .
+-   **Issue 1: Paper Trading Execution Failure (P0)**
+    -   **Description:** Paper trading is not executing any trades. The logs indicate that the calculated position sizes are too small (e.g., < ), falling below the hardcoded minimum trade size of . The root cause is that the  instance is initializing with a low  (00 or 000) instead of the user-configured 0,000 from the database.
+    -   **Attempted fixes:** The agent identified that an environment variable in  was overriding the default. After fixing that, the agent tried setting the config in the DB. However, the  object still did not pick up the DB config upon creation. The agent's last action was attempting to modify the  to correctly load the DB configuration on startup.
     -   **Next debug checklist**:
-        1.  Finalize the edit on  to ensure the  endpoint exclusively uses the new Gamma API data fetcher from .
-        2.  Verify the  and  also use the new Gamma API methods to ensure the entire data pipeline is consistent.
-        3.  Restart the backend and test the  endpoint with  to confirm it returns live, active markets.
-        4.  Start a paper trading session to ensure the bot can identify and trade on these live markets.
-    -   **Why fix this issue and what will be achieved with the fix?** This is a critical, P0 blocker. Without live data, the core purpose of the trading application is defeated. Fixing this will enable realistic paper trading and prepare the system for live trading.
+        1.  Examine the   and the  endpoint logic in .
+        2.  Ensure that when a new paper trading session is created, it *always* loads the latest configuration from the  collection in MongoDB.
+        3.  Refactor the configuration logic to have a clear and single source of truth, prioritizing the DB config over  variables or file defaults for trading parameters.
+        4.  Start a paper trading session and verify via logs that the correct  (0,000) is loaded and that trades are successfully executed.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a critical P0 blocker. The core paper trading functionality is currently broken. Fixing this will restore the ability to run trading simulations.
     -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** both
-    -   **Blocked on other issue:** none
--   **Issue 2: 'gross_loss' KeyError in Paper Trading (P2)**
-    -   **Description:** The backend logs showed a  during a paper trading session, indicating a bug in the P&L calculation logic within .
-    -   **Attempted fixes:** None. The live data issue was prioritized.
-    -   **Next debug checklist**:
-        1.  After fixing the live data issue, run a paper trading session until trades close.
-        2.  Check logs for the .
-        3.  Inspect  to find where  is accessed without being properly initialized.
-    -   **Why fix this issue and what will be achieved with the fix?** Ensures accurate P&L reporting and prevents potential runtime errors.
-    -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** backend
-    -   **Blocked on other issue:** Issue 1
+    -   **Blocked on other issue:** None
 
 **In progress Task List**:
--   **Task 1: Complete Live Data Pipeline Refactor (P0)**
-    -   **Description:** Switch the entire application's data pipeline (data services, API endpoints, historical collector) from the stale Polymarket CLOB API to the live Gamma API.
-    -   **Where to resume**: Continue editing  at the  endpoint (around line 773) to integrate the new live data fetching logic from the updated .
-    -   **What will be achieved with this?** The application will ingest and trade on real-time market data.
+-   **Task 1: Add Configurable Exit Parameters (P1)**
+    -   **Description:** The user requested that exit parameters (Take Profit, Stop Loss, Time Limit) be configurable for each strategy and asset class, instead of being hardcoded.
+    -   **Where to resume**: The agent added the data structure for this to  and updated the  function in  to use it. However, the frontend UI for managing these settings is missing.
+    -   **What will be achieved with this?** Allows for fine-grained control over risk management and strategy performance.
     -   **Status:** IN PROGRESS
     -   **Should Test frontend/backend/both after fix?** both
-    -   **Blocked on something:** No
+    -   **Blocked on something:** Blocked by **Issue 1**, as testing requires a functional paper trader.
 
 **Upcoming and Future Tasks**
-**Future Tasks:**
--   **Task 1: Refine Strategy Tuning UI (P3):** Review the tuning tab layout with the user for potential improvements.
--   **Task 2: Create Comprehensive Documentation (P3):** Flesh out the documentation files in the  directory.
--   **Task 3: ESLint Configuration (Low Priority):** Fix non-blocking ESLint warnings in the frontend.
+-   **Upcoming Tasks:**
+    -   **Task 1 (P1):** Create Frontend UI for Exit Parameters: Build the UI on the Configuration page to allow users to set Take Profit, Stop Loss, and Time Limits for each strategy and asset class.
+    -   **Task 2 (P2):** Implement Real-Time Market Alerts: Add a feature to notify the user of high-volume markets with significant price changes.
+-   **Future Tasks:**
+    -   **Task 3 (P3):** Refine Strategy Tuning UI: Review and improve the layout of the strategy tuning tab.
+    -   **Task 4 (P3):** Create Comprehensive Documentation: Flesh out the documentation in the  directory.
+    -   **Task 5 (Low Priority):** ESLint Configuration: Fix non-blocking ESLint warnings in the frontend.
 
 **Completed work in this session**
--   **Fixed Paper Trading UI Data Sync Bug:** Resolved an issue where the frontend failed to display live Open Positions and the correct running status by making API calls more resilient.
--   **Fixed MongoDB ObjectId Serialization Bug:** Corrected a  in the  endpoint by making a copy of the trade log dictionary before DB insertion.
--   **Implemented Full Configuration Integration:** Fixed bugs to ensure paper trading correctly uses all parameters from the Configuration tab (e.g., , ).
--   **Implemented JWT Authentication:** Replaced the insecure static API key with a full JWT-based login system (, secured endpoints).
--   **Added WebSocket Real-Time Updates:** Integrated WebSockets into the Paper Trading page to replace the 5-second polling for status updates.
--   **Implemented Adaptive Position Sizing:** Created a new module () that calculates trade size based on liquidity, volume, Kelly Criterion, and RL-learned parameters.
--   **Fixed UI Bugs on Configuration Page:** Resolved bugs where sliders and their corresponding numeric values were mismatched and were not calculated correctly.
--   **Implemented Live Config Hot-Reload:** Added functionality to apply configuration changes to a running paper trading session without a restart.
--   **Deployed to Production (EC2):** Successfully deployed the full application stack to the user's AWS EC2 instance, including setting up  services and configuring Nginx.
+-   **Live Data Pipeline Fix:** Successfully switched the entire application from a deprecated, stale Polymarket API to the live Gamma API.
+-   ** KeyError Fix:** Resolved a runtime error in the paper trader's P&L calculations.
+-   **Paper Trading UI/UX Overhaul:** Significantly redesigned the Paper Trading page header, improving clarity of the continuous mode toggle, status indicators, and action buttons. Fixed z-index and layout issues.
+-   **Paper Trading Authentication Fix:** Implemented Basic Auth credentials in frontend API calls to fix failures when starting/stopping trading sessions from the UI.
+-   **High-Frequency Trading Implementation:**
+    -   Added configurable market selection criteria (Min Liquidity, Min Volume, Max Spread) to the backend and frontend.
+    -   Added a  setting to prevent over-leveraging.
+    -   Fixed the position sizer to enable high-frequency, smaller trades.
+-   **Multi-Strategy & Live P&L:**
+    -   Fixed strategy selection logic to use real market signals, enabling all 4 strategies (alpha, delta-neutral, volatility, arbitrage).
+    -   Corrected the P&L calculation formula for prediction markets.
+    -   Removed all mock/simulated prices to use only live data from the API.
+-   **Adaptive Signals:** Replaced hardcoded default signals (, ) with dynamic calculations based on real-time market data.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: ESLint Configuration:** Non-blocking warnings in the frontend code.
--   **Issue 2: Chart width warnings:** Non-blocking warnings in the browser console about chart dimensions. Cosmetic issue.
+-   **Issue 2: Chart width warnings:** Non-blocking warnings in the browser console about chart dimensions.
 
 **Known issue recurrence from previous fork**
 -   N/A
@@ -87,80 +82,82 @@ A mature full-stack application with a FastAPI backend, React frontend, and Mong
 
 
 **Key Technical Concepts**
--   **Live Data API (Gamma):** The system is being transitioned to use Polymarket's official Gamma API for live market data, which is essential for realistic trading.
--   **Adaptive Position Sizing:** A module that dynamically calculates trade size using market liquidity, volume, historical performance, and the Kelly Criterion.
--   **Configuration Hot-Reload:** The ability to update trading parameters and have them applied to a running paper trading session without a restart.
--   **JWT Authentication:** Standard token-based authentication flow, replacing the insecure static API key.
--   **EC2 Deployment:** Manual deployment process involving SSH, /, setting up a Python virtual environment, and configuring  and .
+-   **Live Data API (Gamma):** The system now exclusively uses Polymarket's official Gamma API for all market data.
+-   **Adaptive Signals:** The trading bot no longer uses hardcoded default signals. It now calculates volatility and other metrics from live market data to determine strategy.
+-   **Configurable Market Selection:** Users can define the universe of tradable markets by setting minimum liquidity, volume, and maximum spread thresholds via the UI.
+-   **Configurable Exit Parameters:** The backend logic has been added to support different take-profit, stop-loss, and time-based exits for each trading strategy and asset class. The UI is pending.
+-   **High-Frequency Trading Mode:** A combination of settings (lower liquidity thresholds, high , ) allows the bot to execute a high volume of small trades.
 
 **key DB schema**
--   ****: (New) Stores user credentials (, ).
--   ****: (New) A single document in the DB to persist the user's configuration from the UI.
--   ****: Stores summary results for each completed paper trading session.
--   ****: Stores individual closed trades from paper trading sessions.
+-   ****: A single document storing all user-configurable settings from the UI, including market selection and HFT parameters. This is the intended source of truth for the paper trader.
+-   ****: Stores summary results for each session.
+-   ****: Stores individual closed trades.
+-   ****: Stores user credentials (, , ).
 
 **changes in tech stack**
--    and  were added for JWT authentication.
--    was later used directly to solve a production environment compatibility issue.
+-   None.
 
 **All files of reference**
--   : **Critical file.** Needs to be updated to use the live Gamma API.
--   : **Critical file.** Needs updates to the  endpoint.
--   : Core paper trading logic.
--   : UI for all trading parameters.
--   : UI for paper trading.
+-   : **Critical file.** Contains the core trading loop, signal generation, strategy selection, and configuration loading logic that is currently bugged.
+-   : **Critical file.** Defines the data structures for configuration, including the new exit parameters. Its defaults are a factor in the current bug.
+-   : Defines the API endpoints, including , which instantiates the .
+-   : Contains the UI for the new market selection and HFT settings. Needs to be updated for exit parameters.
+-   : The redesigned paper trading dashboard.
+-   : Contains the logic for calculating trade sizes.
+-   : An environment variable  in this file was a source of confusion and part of the current bug.
 
 **Areas that need refactoring**:
--   The entire data pipeline (, , and API endpoints) needs to be audited and refactored to exclusively use the live Gamma API.
+-   **Configuration Management:** The current system of loading configuration is fragile and confusing, with values being pulled from  defaults,  files, and the MongoDB  document. This needs to be centralized into a single, reliable flow where the DB is the source of truth for a running session.
 
 **key api endpoints**
--   : (Being fixed) Endpoint to get market data. Must be updated to provide live data from the Gamma API.
--   : (New) POST endpoint for JWT token generation.
--   : (New) GET endpoint to fetch the saved application configuration.
--   : (Updated) POST endpoint to save configuration and trigger a live reload.
+-   : Starts a paper trading session. This is where the faulty configuration loading is happening.
+-   : Gets the current status of the paper trading session.
+-   : Gets the list of open positions with live P&L.
+-   : GET/POST endpoints to manage the user configuration document in the database.
 
 **Critical Info for New Agent**
--   **Your immediate and highest priority (P0) is to fix the live data pipeline.** The application is currently using a deprecated API that returns stale, useless data. You must complete the transition to the Polymarket **Gamma API**. The previous agent has already identified the correct methods and was in the middle of updating . Without this fix, the application is non-functional for its core purpose.
--   After fixing the data pipeline, you must address the  bug in the paper trader's P&L calculation.
--   The EC2 production deployment is complete but is non-functional due to the stale data source. After fixing the live data issue locally, you will need to re-deploy the updated files to the EC2 instance.
+-   **Your immediate P0 priority is to fix the trade execution failure.** The paper trading engine is not placing trades because it's initializing with an incorrect, low  value. You must refactor the startup logic in  and/or  to ensure it reliably loads the configuration from the MongoDB  document every time a session starts. This is the only way to make the bot functional again.
+-   Do not use mock or simulated prices. The user has explicitly stated to only use real data from the API.
+-   After fixing the trade execution, the next priority is to build the UI for the configurable exit parameters that have already been partially implemented on the backend.
 
 **documents and test reports created in this job**
 -   
--   
--   
--   
+-    (updated)
+-    (new)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Requests to fix the live data issue. - **Status: In Progress.** Agent identified the root cause (stale API) and started the fix.
-2.  **User:** Asked why config changes weren't immediate, noted a slider bug, and asked about mid-session config changes. - **Status: Completed.** Agent implemented immediate UI updates, fixed the bug, and added config hot-reload.
-3.  **User:** Requested execution of P0 and P1 tasks. - **Status: Completed.** Agent updated config and deployed to production.
-4.  **User:** Pointed out that position sizing should be adaptive and that the  input was redundant. - **Status: Completed.** Agent implemented an adaptive position sizer and removed the redundant UI input.
-5.  **User:** Requested that position sizing respect all config, noted P&L was always /bin/bash, and asked for WebSockets. - **Status: Completed.** Agent implemented full config integration, unrealized P&L, and WebSockets.
+1.  **User:** Reports P&L is always zero, asks why only arbitrage is trading, questions Kelly Criterion causing zero-size trades. - **Status: In Progress**. Agent identified root causes (no price movement, default signals, Kelly issues).
+2.  **User:** States not to use mock prices and asks about exit parameters across strategies. - **Status: In Progress**. Agent began implementing fixes based on this.
+3.  **User:** Points out continuous trading is on but no trades are visible, dropdown is covered, and buttons overlap text. - **Status: Completed**. Agent fixed the no-trades bug (at the time) and all UI layout issues.
+4.  **User:** Notes that real-time trading failed to start. - **Status: Completed**. Agent identified and fixed the missing authentication on frontend API calls.
+5.  **User:** Asks agent to improve the design and layout of the paper trading tab and make buttons clearer. - **Status: Completed**. Agent used the design agent and completely redesigned the Paper Trading header and controls.
+6.  **User:** Reports the recent trades table is still showing mock data. - **Status: Completed**. Agent fixed trade logging to include the real market question.
+7.  **User:** Reports continuous trade started but no trades are happening and asks for an explanation of the liquidity filter. - **Status: In Progress**. This led to the discovery of the HFT and market selection issues.
+8.  **User:** Asks to lower the liquidity filter, add it to the config table, questions why so few markets are being captured, and states the HFT goal (500-1000 trades/10min). - **Status: Completed**. Agent implemented all requested configuration options and fixed the market capture issue.
 
 **Project Health Check:**
 -   **Broken:**
-    -   **Live Data Ingestion:** The entire application is pulling stale, mock data from the wrong API. This is a critical P0 failure.
-    -   Production deployment is non-functional due to the lack of live data.
+    -   **Paper Trading Execution:** The core functionality is not working due to a configuration loading bug that prevents trades from being executed.
 -   **Mocked:**
     -   Finnhub and SendGrid integrations require user-provided API keys.
 -   **Insecure:**
-    -   N/A. Insecure API key was replaced with JWT authentication.
+    -   N/A.
 
 **3rd Party Integrations**
--   **Polymarket:** Primary data source. Critical issue: currently pointing to a deprecated endpoint.
+-   **Polymarket:** Successfully integrated with the live Gamma API.
 -   **Finnhub:** For sentiment analysis (requires user API key).
 -   **SendGrid:** For email alerts (requires user API key).
--   **AWS / Terraform:** Used for the EC2 production deployment.
 
 **Testing status**
--   **Testing agent used after significant changes:** Yes, for UI bug fixes and JWT implementation.
+-   **Testing agent used after significant changes:** Yes, used to validate the initial live data pipeline fix.
 -   **Troubleshoot agent used after agent stuck in loop:** No.
--   **Test files created:** Yes, in previous runs.
--   **Known regressions:** Live data ingestion is fundamentally broken.
+-   **Test files created:** No new test files in this session.
+-   **Known regressions:** Paper trading execution, which was working, is now broken due to the configuration issue.
 
 **Credentials to test flow:**
--   **Local Dev:** Use  /  to get a JWT token from .
--   **Production SSH:** Use  to SSH into the EC2 instance.
+-   **Username:** 
+-   **Password:** 
 
 **What agent forgot to execute**
--   The agent did not fully complete the refactoring of the live data pipeline. The root cause was correctly identified, but the fix is still in progress.</analysis>
+-   The agent did not create the frontend UI for the configurable exit parameters task.
+-   The agent got stuck trying to solve the configuration loading issue and was unable to resolve it before the session ended, leading to a regression in core functionality.</analysis>
