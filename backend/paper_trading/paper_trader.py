@@ -85,6 +85,11 @@ class PaperTrader:
         self.max_drawdown_pct = config.MAX_DRAWDOWN_PCT
         self.trades_per_10min = config.TRADES_PER_10MIN
         
+        # Market selection thresholds (configurable)
+        self.min_liquidity = config.MIN_LIQUIDITY  # Default $100
+        self.min_volume_24h = config.MIN_VOLUME_24H  # Default $1000
+        self.max_spread = config.MAX_SPREAD  # Default 5%
+        
         # Current capital starts at initial
         self.current_capital = self.initial_capital
         
