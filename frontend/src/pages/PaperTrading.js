@@ -757,11 +757,41 @@ const PaperTrading = () => {
             </div>
             
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
-              running ? status?.graceful_stop ? 'bg-amber-500/20 border border-amber-500/40' : 'bg-emerald-500/20 border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800/50 border border-white/10'
+              status?.circuit_breaker_triggered 
+                ? 'bg-red-500/30 border-2 border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.3)]' 
+                : running 
+                  ? status?.graceful_stop 
+                    ? 'bg-amber-500/20 border border-amber-500/40' 
+                    : 'bg-emerald-500/20 border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
+                  : 'bg-slate-800/50 border border-white/10'
             }`}>
-              <div className={`w-2 h-2 rounded-full ${running ? status?.graceful_stop ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></div>
-              <span className={`text-xs font-mono uppercase tracking-wider ${running ? status?.graceful_stop ? 'text-amber-400' : 'text-emerald-400' : 'text-slate-400'}`}>
-                {running ? status?.graceful_stop ? 'CLOSING' : status?.continuous_mode ? 'CONTINUOUS' : 'TRADING' : 'STOPPED'}
+              <div className={`w-2 h-2 rounded-full ${
+                status?.circuit_breaker_triggered 
+                  ? 'bg-red-500 animate-pulse' 
+                  : running 
+                    ? status?.graceful_stop 
+                      ? 'bg-amber-400 animate-pulse' 
+                      : 'bg-emerald-400 animate-pulse' 
+                    : 'bg-slate-500'
+              }`}></div>
+              <span className={`text-xs font-mono uppercase tracking-wider ${
+                status?.circuit_breaker_triggered 
+                  ? 'text-red-400 font-bold' 
+                  : running 
+                    ? status?.graceful_stop 
+                      ? 'text-amber-400' 
+                      : 'text-emerald-400' 
+                    : 'text-slate-400'
+              }`}>
+                {status?.circuit_breaker_triggered 
+                  ? '🚨 CIRCUIT BREAKER' 
+                  : running 
+                    ? status?.graceful_stop 
+                      ? 'CLOSING' 
+                      : status?.continuous_mode 
+                        ? 'CONTINUOUS' 
+                        : 'TRADING' 
+                    : 'STOPPED'}
               </span>
             </div>
             
