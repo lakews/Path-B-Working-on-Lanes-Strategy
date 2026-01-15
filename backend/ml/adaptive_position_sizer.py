@@ -177,7 +177,7 @@ class AdaptivePositionSizer:
             return 0.0
         
         # Volume-based multiplier (linear scale up to full size threshold)
-        volume_mult = min(1.0, volume / self.MIN_LIQUIDITY_FOR_FULL_SIZE)
+        volume_mult = min(1.0, effective_volume / self.MIN_LIQUIDITY_FOR_FULL_SIZE)
         
         # Outstanding contracts multiplier
         # Don't take more than 5% of outstanding
