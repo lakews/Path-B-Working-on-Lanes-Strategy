@@ -1690,7 +1690,17 @@ async def get_paper_trading_status():
     global paper_trader
     
     if not paper_trader:
-        return {"running": False, "message": "No paper trading session"}
+        return {
+            "running": False, 
+            "message": "No paper trading session",
+            "open_positions": 0,
+            "total_trades": 0,
+            "total_pnl": 0.0,
+            "win_rate": 0.0,
+            "max_drawdown": 0.0,
+            "current_capital": 0.0,
+            "initial_capital": 0.0
+        }
     
     return paper_trader.get_status()
 
