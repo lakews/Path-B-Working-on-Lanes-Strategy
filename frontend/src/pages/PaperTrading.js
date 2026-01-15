@@ -481,39 +481,43 @@ const PaperTrading = () => {
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
             {running ? (
-              <div className="relative">
+              <div className="relative z-50">
                 <button
                   onClick={() => setShowStopOptions(!showStopOptions)}
                   disabled={loading || status?.graceful_stop}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/50 text-rose-500 hover:bg-rose-500/20 font-medium transition-all"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-rose-500 text-white font-bold hover:bg-rose-600 transition-all shadow-lg"
                   data-testid="stop-paper-trading-btn"
                 >
                   <Square className="w-4 h-4" />
                   {status?.graceful_stop ? 'Closing...' : 'Stop Session'}
                 </button>
                 {showStopOptions && (
-                  <div className="absolute top-full right-0 mt-2 w-64 rounded-lg bg-slate-800 border border-white/10 shadow-xl z-50 overflow-hidden">
-                    <div className="p-2 border-b border-white/10 bg-slate-900/50">
-                      <p className="text-xs text-white/60 px-2">Choose stop method:</p>
+                  <div className="absolute top-full right-0 mt-2 w-72 rounded-xl bg-slate-800 border-2 border-white/20 shadow-2xl z-[100] overflow-hidden">
+                    <div className="p-3 border-b border-white/10 bg-slate-900">
+                      <p className="text-sm text-white font-medium">Choose stop method:</p>
                     </div>
                     <button
                       onClick={() => stopPaperTrading(false)}
-                      className="w-full px-4 py-3 text-left hover:bg-rose-500/10 flex items-center gap-3 text-sm transition-colors"
+                      className="w-full px-4 py-4 text-left hover:bg-rose-500/20 flex items-center gap-3 transition-colors border-b border-white/5"
                     >
-                      <Square className="w-4 h-4 text-rose-400" />
+                      <div className="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center">
+                        <Square className="w-5 h-5 text-rose-400" />
+                      </div>
                       <div>
-                        <p className="text-white font-medium">Immediate Stop</p>
-                        <p className="text-xs text-white/40">Close all positions now</p>
+                        <p className="text-white font-bold">Immediate Stop</p>
+                        <p className="text-xs text-white/50">Close all positions now</p>
                       </div>
                     </button>
                     <button
                       onClick={() => stopPaperTrading(true)}
-                      className="w-full px-4 py-3 text-left hover:bg-amber-500/10 flex items-center gap-3 text-sm transition-colors"
+                      className="w-full px-4 py-4 text-left hover:bg-amber-500/20 flex items-center gap-3 transition-colors"
                     >
-                      <Clock className="w-4 h-4 text-amber-400" />
+                      <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-amber-400" />
+                      </div>
                       <div>
-                        <p className="text-white font-medium">Graceful Stop</p>
-                        <p className="text-xs text-white/40">Wait for TP/SL triggers</p>
+                        <p className="text-white font-bold">Graceful Stop</p>
+                        <p className="text-xs text-white/50">Wait for TP/SL triggers</p>
                       </div>
                     </button>
                   </div>
