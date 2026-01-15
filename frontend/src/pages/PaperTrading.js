@@ -470,16 +470,17 @@ const PaperTrading = () => {
               <MetricCard
                 title="Capital"
                 value={`$${(status.current_capital || 0).toFixed(0)}`}
-                subtitle={status.initial_capital ? `Initial: $${status.initial_capital}` : 'Not started'}
+                subtitle={status.deployed_capital ? `Deployed: $${status.deployed_capital?.toFixed(0)} (${status.config?.capital_deployment_pct || 80}%)` : `Initial: $${status.initial_capital}`}
                 icon={Wallet}
                 color="blue"
               />
               <MetricCard
                 title="Total P&L"
-                value={`${status.total_pnl >= 0 ? '+' : ''}$${(status.total_pnl || 0).toFixed(2)}`}
-                trend={status.total_pnl_pct}
+                value={`${(status.combined_pnl || status.total_pnl || 0) >= 0 ? '+' : ''}$${(status.combined_pnl || status.total_pnl || 0).toFixed(2)}`}
+                subtitle={`Realized: $${(status.total_pnl || 0).toFixed(2)} | Unrealized: $${(status.unrealized_pnl || 0).toFixed(2)}`}
+                trend={status.combined_pnl_pct || status.total_pnl_pct}
                 icon={DollarSign}
-                color={status.total_pnl >= 0 ? "green" : "red"}
+                color={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "green" : "red"}
               />
               <MetricCard
                 title="Win Rate"
@@ -491,18 +492,21 @@ const PaperTrading = () => {
               <MetricCard
                 title="Total Trades"
                 value={status.total_trades || 0}
+                subtitle={status.config ? `Kelly: ${(status.config.kelly_fraction * 100).toFixed(0)}%` : ''}
                 icon={Activity}
                 color="purple"
               />
               <MetricCard
                 title="Open Positions"
                 value={status.open_positions ?? positions.length ?? 0}
+                subtitle={status.config ? `Max: $${status.config.max_position_size?.toFixed(0)} (${status.config.max_position_size_pct}%)` : ''}
                 icon={Layers}
                 color="orange"
               />
               <MetricCard
                 title="Max Drawdown"
                 value={`${((status.max_drawdown || 0) * 100).toFixed(1)}%`}
+                subtitle={status.config ? `Limit: ${status.config.max_drawdown_pct}%` : ''}
                 icon={Shield}
                 color="red"
               />
