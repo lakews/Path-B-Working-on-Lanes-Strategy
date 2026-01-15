@@ -280,6 +280,9 @@ const PaperTrading = () => {
     fetchAiStats();
     fetchCumulativeStats();
     
+    // Reduce polling interval if WebSocket is connected
+    const pollingInterval = wsConnected ? 10000 : 5000;
+    
     const interval = setInterval(() => {
       fetchData();
       fetchCumulativeStats();
@@ -287,7 +290,7 @@ const PaperTrading = () => {
         fetchRlStats();
         fetchAiStats();
       }
-    }, 5000);
+    }, pollingInterval);
     
     return () => clearInterval(interval);
   }, [fetchData, running]);
