@@ -294,7 +294,7 @@ const PaperTrading = () => {
     }, pollingInterval);
     
     return () => clearInterval(interval);
-  }, [fetchData, running]);
+  }, [fetchData, running, wsConnected]);
 
   const startPaperTrading = async () => {
     setLoading(true);
