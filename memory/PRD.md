@@ -18,6 +18,28 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 15, 2026 - Session 18 (Live Data Pipeline Fix, gross_loss KeyError Fix)
+
+- ✅ **CRITICAL FIX: Live Market Data Pipeline** (`/app/backend/data/polymarket_api.py`, `/app/backend/server.py`)
+  - **Problem**: Application was using deprecated Polymarket CLOB API that returned stale/mock data from 2023
+  - **Solution**: Switched to Polymarket Gamma API for real, live market data
+  - `/api/markets` endpoint now returns `source='gamma_api_live'` with real market prices
+  - Markets show real liquidity ($100K to $9.5M), actual prices (0.0005, 0.026, etc.), and 2026 end dates
+  - Fixed bug where `token.get('price')` was called on string token IDs
+
+- ✅ **CRITICAL FIX: gross_loss KeyError in Paper Trading** (`/app/backend/paper_trading/paper_trader.py`)
+  - **Problem**: `KeyError: 'gross_loss'` during P&L calculation when positions closed
+  - **Solution**: Initialize `asset_class_stats` with `gross_profit` and `gross_loss` fields at entry (line 507)
+  - Added defensive check at exit to ensure fields exist for positions opened before fix (lines 592-596)
+  - Both `strategy_results` and `asset_class_results` now include complete metrics
+
+- ✅ **Added Missing API Method** (`/app/backend/data/polymarket_api.py`)
+  - `get_market_price_history_batch()`: Batch fetch price history for multiple markets
+
+- ✅ **Test Suite Created** (`/app/tests/test_gamma_api_paper_trading_fix.py`)
+  - 13 tests verifying live data pipeline and paper trading fixes
+  - All tests passing (100% success rate)
+
 ### January 15, 2026 - Session 17 (Adaptive Position Sizing, Config Integration, JWT Auth)
 
 - ✅ **Adaptive Position Sizing Engine** (`/app/backend/ml/adaptive_position_sizer.py`)
