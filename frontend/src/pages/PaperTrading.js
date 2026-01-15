@@ -598,21 +598,33 @@ const PaperTrading = () => {
           { id: 'history', label: `Sessions (${sessions.length})`, icon: History, color: 'blue' },
           { id: 'optimizer', label: 'Strategy Optimizer', icon: Settings, color: 'amber' },
           { id: 'rl', label: 'RL Learning', icon: Brain, color: 'purple' }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            data-testid={`tab-${tab.id}`}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === tab.id
-                ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-400 border border-blue-500/30'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <tab.icon className="w-4 h-4" />
-            <span className="text-sm">{tab.label}</span>
-          </button>
-        ))}
+        ].map(tab => {
+          const isActive = activeTab === tab.id;
+          const colorClasses = {
+            cyan: isActive ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : '',
+            emerald: isActive ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : '',
+            blue: isActive ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.15)]' : '',
+            amber: isActive ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]' : '',
+            purple: isActive ? 'bg-purple-500/20 text-purple-400 border-purple-500/40 shadow-[0_0_15px_rgba(139,92,246,0.15)]' : ''
+          };
+          
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              data-testid={`tab-${tab.id}`}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all border ${
+                isActive
+                  ? `${colorClasses[tab.color]} border`
+                  : 'text-white/50 hover:text-white hover:bg-white/5 border-transparent'
+              }`}
+            >
+              <tab.icon className={`w-4 h-4 ${isActive ? '' : 'opacity-60'}`} />
+              <span className="text-sm">{tab.label}</span>
+              {isActive && <div className={`w-1.5 h-1.5 rounded-full bg-${tab.color}-400`}></div>}
+            </button>
+          );
+        })}
       </div>
 
       {/* Live Session Tab */}
