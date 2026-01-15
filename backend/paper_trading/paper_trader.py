@@ -502,9 +502,9 @@ class PaperTrader:
             if strategy in self.strategy_stats:
                 self.strategy_stats[strategy]['trades'] += 1
             
-            # Track asset class stats
+            # Track asset class stats (initialize with full metrics)
             if asset_class not in self.asset_class_stats:
-                self.asset_class_stats[asset_class] = {'trades': 0, 'wins': 0, 'pnl': 0.0}
+                self.asset_class_stats[asset_class] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
             self.asset_class_stats[asset_class]['trades'] += 1
             
             # Log trade
