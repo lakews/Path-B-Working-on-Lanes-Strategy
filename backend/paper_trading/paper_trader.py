@@ -885,17 +885,25 @@ class PaperTrader:
         strategy = strategy or self.enabled_strategies[0] if self.enabled_strategies else 'arbitrage'
         asset_class = asset_class or 'finance'
         
+        # Inject user config thresholds into market_data for position sizer to use
+        market_data_with_config = {
+            **market_data,
+            '_min_volume_threshold': self.min_volume_24h,  # User-configured threshold
+            '_min_liquidity_threshold': self.min_liquidity,
+            '_max_liquidity_threshold': self.max_liquidity,
+        }
+        
         sizing_result = self.position_sizer.calculate_optimal_position_size(
             deployed_capital=self.deployed_capital,
             max_position_pct=self.max_position_size_pct,
             strategy=strategy,
             asset_class=asset_class,
-            market_data=market_data,
+            market_data=market_data_with_config,
             signals=signals,
             rl_action=rl_action,
             rl_confidence=rl_confidence,
             kelly_fraction=self.kelly_fraction,
-            kelly_enabled=self.kelly_enabled  # Pass kelly_enabled toggle
+            kelly_enabled=self.kelly_enabled  # Pass kelly_enabled toggle from user config
         )
         
         # Log sizing decision for analysis
