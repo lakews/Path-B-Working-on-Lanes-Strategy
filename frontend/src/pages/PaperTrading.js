@@ -403,140 +403,190 @@ const PaperTrading = () => {
 
   return (
     <div className="space-y-6" data-testid="paper-trading-page">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <FileText className="w-7 h-7 text-blue-400" />
-            Paper Trading
-          </h1>
-          <p className="text-white/60 text-sm mt-1">
-            Simulate live trading with RL learning - No real money at risk
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* WebSocket Status */}
-          <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${wsConnected ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-            {wsConnected ? (
-              <Wifi className="w-3.5 h-3.5 text-green-400" />
-            ) : (
-              <WifiOff className="w-3.5 h-3.5 text-red-400" />
-            )}
-            <span className={`text-xs ${wsConnected ? 'text-green-400' : 'text-red-400'}`}>
-              {wsConnected ? 'Live' : 'Polling'}
-            </span>
-          </div>
-          
-          {/* Status Badge */}
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-lg backdrop-blur-sm border ${
-            running 
-              ? status?.graceful_stop 
-                ? 'bg-yellow-500/20 border-yellow-500/30' 
-                : 'bg-blue-500/20 border-blue-500/30' 
-              : 'bg-white/5 border-white/10'
-          }`}>
-            <div className={`w-2 h-2 rounded-full ${running ? status?.graceful_stop ? 'bg-yellow-400 animate-pulse' : 'bg-blue-400 animate-pulse' : 'bg-gray-400'}`}></div>
-            <span className={`text-sm ${running ? status?.graceful_stop ? 'text-yellow-400' : 'text-blue-400' : 'text-white/60'}`}>
-              {running 
-                ? status?.graceful_stop 
-                  ? '⏳ CLOSING POSITIONS' 
-                  : status?.continuous_mode 
-                    ? '🔄 CONTINUOUS MODE' 
-                    : '📝 PAPER TRADING' 
-                : 'Stopped'}
-            </span>
-          </div>
-          
-          {/* Start/Stop Button */}
-          {running ? (
-            <div className="relative">
-              <button
-                onClick={() => setShowStopOptions(!showStopOptions)}
-                disabled={loading || status?.graceful_stop}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
-                data-testid="stop-paper-trading-btn"
-              >
-                <Square className="w-4 h-4" />
-                {status?.graceful_stop ? 'Closing...' : 'Stop Session'}
-              </button>
-              {/* Stop Options Dropdown */}
-              {showStopOptions && (
-                <div className="absolute top-full right-0 mt-2 w-64 rounded-lg bg-slate-800 border border-white/10 shadow-xl z-50">
-                  <div className="p-2 border-b border-white/10">
-                    <p className="text-xs text-white/60 px-2">How do you want to stop?</p>
-                  </div>
-                  <button
-                    onClick={() => stopPaperTrading(false)}
-                    className="w-full px-4 py-3 text-left hover:bg-white/10 flex items-center gap-3 text-sm"
-                  >
-                    <Square className="w-4 h-4 text-red-400" />
-                    <div>
-                      <p className="text-white">Immediate Stop</p>
-                      <p className="text-xs text-white/40">Close all positions now at current prices</p>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => stopPaperTrading(true)}
-                    className="w-full px-4 py-3 text-left hover:bg-white/10 flex items-center gap-3 text-sm"
-                  >
-                    <Clock className="w-4 h-4 text-yellow-400" />
-                    <div>
-                      <p className="text-white">Graceful Stop</p>
-                      <p className="text-xs text-white/40">Let positions close by TP/SL strategy</p>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
+      {/* Redesigned Header - Control Room Style */}
+      <div className="rounded-xl bg-slate-900/50 border border-white/10 overflow-hidden">
+        {/* Top Bar */}
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              {/* Config Summary from Config Tab - uses savedConfig for immediate updates */}
-              <div className="flex items-center gap-4 px-4 py-2 rounded-lg bg-white/5 border border-white/10">
-                <div className="text-xs">
-                  <span className="text-white/50">Capital:</span>
-                  <span className="text-white ml-1 font-medium">${savedConfig?.initial_capital?.toLocaleString() || '—'}</span>
-                </div>
-                <div className="text-xs">
-                  <span className="text-white/50">Deployed:</span>
-                  <span className="text-cyan-400 ml-1 font-medium">
-                    ${((savedConfig?.initial_capital || 0) * (savedConfig?.capital_deployment_pct || 80) / 100).toLocaleString()} ({savedConfig?.capital_deployment_pct || 80}%)
-                  </span>
-                </div>
-                <div className="text-xs">
-                  <span className="text-white/50">Max Pos:</span>
-                  <span className="text-orange-400 ml-1 font-medium">
-                    ${(((savedConfig?.initial_capital || 0) * (savedConfig?.capital_deployment_pct || 80) / 100) * (savedConfig?.max_position_size_pct || 3) / 100).toFixed(0)} ({savedConfig?.max_position_size_pct || 3}%)
-                  </span>
-                </div>
-                <div className="text-xs">
-                  <span className="text-white/50">Kelly:</span>
-                  <span className="text-purple-400 ml-1 font-medium">{((savedConfig?.kelly_fraction || 0.25) * 100).toFixed(0)}%</span>
-                </div>
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <FileText className="w-5 h-5 text-white" />
               </div>
-              {/* Continuous Mode Toggle */}
-              <button
-                onClick={() => setContinuousMode(!continuousMode)}
-                className={`px-3 py-2 rounded-lg border text-sm flex items-center gap-2 ${
-                  continuousMode 
-                    ? 'bg-purple-500/20 border-purple-500/30 text-purple-400' 
-                    : 'bg-white/5 border-white/20 text-white/60 hover:text-white'
-                }`}
-                title="Continuous mode runs indefinitely until manually stopped. Learning is applied immediately to subsequent trades."
-              >
-                <RefreshCw className={`w-4 h-4 ${continuousMode ? 'animate-spin' : ''}`} />
-                {continuousMode ? 'Continuous' : 'Single'}
-              </button>
+              <div>
+                <h1 className="text-xl font-bold text-white">Paper Trading</h1>
+                <p className="text-xs text-white/50">Simulate live trading with RL learning</p>
+              </div>
+            </div>
+            
+            {/* Live Status Badge */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
+              running 
+                ? status?.graceful_stop 
+                  ? 'bg-amber-500/20 border border-amber-500/40' 
+                  : 'bg-emerald-500/20 border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
+                : 'bg-slate-800/50 border border-white/10'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                running 
+                  ? status?.graceful_stop 
+                    ? 'bg-amber-400 animate-pulse' 
+                    : 'bg-emerald-400 animate-pulse' 
+                  : 'bg-slate-500'
+              }`}></div>
+              <span className={`text-xs font-mono uppercase tracking-wider ${
+                running 
+                  ? status?.graceful_stop 
+                    ? 'text-amber-400' 
+                    : 'text-emerald-400' 
+                  : 'text-slate-400'
+              }`}>
+                {running 
+                  ? status?.graceful_stop 
+                    ? 'CLOSING' 
+                    : status?.continuous_mode 
+                      ? 'CONTINUOUS' 
+                      : 'TRADING' 
+                  : 'STOPPED'}
+              </span>
+            </div>
+            
+            {/* WebSocket Indicator */}
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded ${wsConnected ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
+              {wsConnected ? (
+                <Wifi className="w-3 h-3 text-emerald-400" />
+              ) : (
+                <WifiOff className="w-3 h-3 text-rose-400" />
+              )}
+              <span className={`text-[10px] font-mono ${wsConnected ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {wsConnected ? 'LIVE' : 'POLL'}
+              </span>
+            </div>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3">
+            {running ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowStopOptions(!showStopOptions)}
+                  disabled={loading || status?.graceful_stop}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-rose-500/10 border border-rose-500/50 text-rose-500 hover:bg-rose-500/20 font-medium transition-all"
+                  data-testid="stop-paper-trading-btn"
+                >
+                  <Square className="w-4 h-4" />
+                  {status?.graceful_stop ? 'Closing...' : 'Stop Session'}
+                </button>
+                {showStopOptions && (
+                  <div className="absolute top-full right-0 mt-2 w-64 rounded-lg bg-slate-800 border border-white/10 shadow-xl z-50 overflow-hidden">
+                    <div className="p-2 border-b border-white/10 bg-slate-900/50">
+                      <p className="text-xs text-white/60 px-2">Choose stop method:</p>
+                    </div>
+                    <button
+                      onClick={() => stopPaperTrading(false)}
+                      className="w-full px-4 py-3 text-left hover:bg-rose-500/10 flex items-center gap-3 text-sm transition-colors"
+                    >
+                      <Square className="w-4 h-4 text-rose-400" />
+                      <div>
+                        <p className="text-white font-medium">Immediate Stop</p>
+                        <p className="text-xs text-white/40">Close all positions now</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => stopPaperTrading(true)}
+                      className="w-full px-4 py-3 text-left hover:bg-amber-500/10 flex items-center gap-3 text-sm transition-colors"
+                    >
+                      <Clock className="w-4 h-4 text-amber-400" />
+                      <div>
+                        <p className="text-white font-medium">Graceful Stop</p>
+                        <p className="text-xs text-white/40">Wait for TP/SL triggers</p>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
               <button
                 onClick={startPaperTrading}
                 disabled={loading}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/25"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)]"
                 data-testid="start-paper-trading-btn"
               >
                 <Play className="w-4 h-4" />
-                Start Paper Trading
+                Start Trading
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {/* Config HUD Strip + Mode Toggle */}
+        <div className="flex items-center justify-between px-4 py-3 bg-slate-950/50">
+          {/* Mode Toggle - Very Prominent */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-white/40 uppercase tracking-wider">Mode:</span>
+            <div className="flex rounded-lg overflow-hidden border border-white/10">
+              <button
+                onClick={() => setContinuousMode(false)}
+                disabled={running}
+                data-testid="mode-single-btn"
+                className={`px-4 py-2 text-sm font-medium transition-all flex items-center gap-2 ${
+                  !continuousMode 
+                    ? 'bg-cyan-500/20 text-cyan-400 border-r border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]' 
+                    : 'bg-slate-800/50 text-slate-400 border-r border-white/10 hover:bg-slate-700/50'
+                } ${running ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className={`w-2 h-2 rounded-full ${!continuousMode ? 'bg-cyan-400' : 'bg-slate-500'}`}></div>
+                SINGLE
+              </button>
+              <button
+                onClick={() => setContinuousMode(true)}
+                disabled={running}
+                data-testid="mode-continuous-btn"
+                className={`px-4 py-2 text-sm font-medium transition-all flex items-center gap-2 ${
+                  continuousMode 
+                    ? 'bg-purple-500/20 text-purple-400 shadow-[inset_0_0_20px_rgba(139,92,246,0.1),0_0_15px_rgba(139,92,246,0.2)]' 
+                    : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                } ${running ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${continuousMode ? 'animate-spin' : ''}`} />
+                CONTINUOUS
               </button>
             </div>
-          )}
+            {continuousMode && !running && (
+              <span className="text-xs text-purple-400/80 bg-purple-500/10 px-2 py-1 rounded">
+                RL learning applied in real-time
+              </span>
+            )}
+          </div>
+          
+          {/* Config Stats HUD */}
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Capital</span>
+              <span className="text-sm font-mono text-white">${savedConfig?.initial_capital?.toLocaleString() || '—'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Deployed</span>
+              <span className="text-sm font-mono text-cyan-400">
+                ${((savedConfig?.initial_capital || 0) * (savedConfig?.capital_deployment_pct || 80) / 100).toLocaleString()}
+                <span className="text-white/40 ml-1">({savedConfig?.capital_deployment_pct || 80}%)</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Pos</span>
+              <span className="text-sm font-mono text-amber-400">
+                ${(((savedConfig?.initial_capital || 0) * (savedConfig?.capital_deployment_pct || 80) / 100) * (savedConfig?.max_position_size_pct || 3) / 100).toFixed(0)}
+                <span className="text-white/40 ml-1">({savedConfig?.max_position_size_pct || 3}%)</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Kelly</span>
+              <span className="text-sm font-mono text-purple-400">{((savedConfig?.kelly_fraction || 0.25) * 100).toFixed(0)}%</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Max DD</span>
+              <span className="text-sm font-mono text-rose-400">{savedConfig?.max_drawdown_pct || 5}%</span>
+            </div>
+          </div>
         </div>
       </div>
 
