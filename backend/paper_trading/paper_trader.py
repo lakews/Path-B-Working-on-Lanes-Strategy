@@ -49,9 +49,20 @@ class PaperTrader:
         self.graceful_stop = False  # When True, stop accepting new trades but close existing
         self.stop_requested = False
         
-        # User configuration (loaded from DB)
+        # User configuration (loaded from DB) - FULL CONFIG PARAMETERS
         self.enabled_strategies = ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
         self.enabled_asset_classes = ['finance', 'politics', 'crypto', 'entertainment', 'science', 'sports']
+        
+        # Trading configuration parameters (loaded from DB/config)
+        self.capital_deployment_pct = config.CAPITAL_DEPLOYMENT_PCT  # % of capital to deploy
+        self.max_position_size_pct = config.MAX_POSITION_SIZE_PCT  # % of DEPLOYED capital per position
+        self.kelly_fraction = config.KELLY_FRACTION  # Kelly criterion multiplier
+        self.max_drawdown_pct = config.MAX_DRAWDOWN_PCT  # Maximum allowed drawdown %
+        self.trades_per_10min = config.TRADES_PER_10MIN  # Target trades per 10 minutes
+        
+        # Calculated values based on config
+        self.deployed_capital = initial_capital * (self.capital_deployment_pct / 100)
+        self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
         
         # Paper positions tracking
         self.paper_positions: Dict[str, Dict] = {}
@@ -61,7 +72,8 @@ class PaperTrader:
         # Performance metrics
         self.total_trades = 0
         self.winning_trades = 0
-        self.total_pnl = 0.0
+        self.total_pnl = 0.0  # Realized P&L
+        self.unrealized_pnl = 0.0  # Unrealized P&L from open positions
         self.max_drawdown = 0.0
         self.peak_capital = initial_capital
         
@@ -89,12 +101,13 @@ class PaperTrader:
         }
         self.asset_class_equity: Dict[str, float] = {}
         
-        # Learning parameters
-        self.kelly_fraction = 0.25
-        self.max_position_pct = 0.1  # Max 10% of capital per position
-        self.trade_interval = 5  # Seconds between trade evaluations
+        # Calculate trade interval from trades_per_10min
+        self.trade_interval = max(1, 600 / self.trades_per_10min)  # Seconds between trade evaluations
         
-        logger.info(f"Paper Trader initialized - Session: {self.session_id}, Capital: ${initial_capital}")
+        logger.info(f"Paper Trader initialized - Session: {self.session_id}")
+        logger.info(f"  Capital: ${initial_capital} | Deployed: ${self.deployed_capital} ({self.capital_deployment_pct}%)")
+        logger.info(f"  Max Position: ${self.max_position_size} ({self.max_position_size_pct}% of deployed)")
+        logger.info(f"  Kelly: {self.kelly_fraction} | Max Drawdown: {self.max_drawdown_pct}% | Trade Interval: {self.trade_interval:.1f}s")
     
     async def _load_user_config(self):
         """Load user trading configuration from database"""
