@@ -299,7 +299,7 @@ const PaperTrading = () => {
   const startPaperTrading = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API}/paper/start?initial_capital=${initialCapital}&continuous_mode=${continuousMode}`);
+      const response = await axios.post(`${API}/paper/start?continuous_mode=${continuousMode}`);
       toast.success(`Paper trading started! Session: ${response.data.session_id}${continuousMode ? ' (Continuous Mode)' : ''}`);
       setRunning(true);
       fetchData();
