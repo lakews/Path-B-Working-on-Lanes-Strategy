@@ -148,7 +148,11 @@ class PaperTrader:
                 if "enabled_asset_classes" in user_config:
                     self.enabled_asset_classes = user_config["enabled_asset_classes"]
                 
-                # Load trading parameters
+                # Load trading parameters including initial capital
+                if "initial_capital" in user_config:
+                    self.initial_capital = float(user_config["initial_capital"])
+                    self.current_capital = self.initial_capital
+                    self.peak_capital = self.initial_capital
                 if "capital_deployment_pct" in user_config:
                     self.capital_deployment_pct = float(user_config["capital_deployment_pct"])
                 if "max_position_size_pct" in user_config:
