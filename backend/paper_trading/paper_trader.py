@@ -551,6 +551,16 @@ class PaperTrader:
             # Feed reward to RL engine - IMMEDIATELY updates Q-table for next trade
             await self.rl_engine.update_from_reward(market_id, reward)
             
+            # ADAPTIVE LEARNING: Update position sizer with trade outcome
+            await self.position_sizer.learn_from_trade(
+                strategy=strategy,
+                asset_class=asset_class,
+                pnl=pnl,
+                pnl_pct=pnl_pct,
+                is_win=is_win,
+                sizing_used=position.get('sizing_breakdown', {})
+            )
+            
             # Store closed trade
             closed_trade = {
                 **position,
