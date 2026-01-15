@@ -89,6 +89,7 @@ class PaperTrader:
         self.min_liquidity = config.MIN_LIQUIDITY  # Default $100
         self.min_volume_24h = config.MIN_VOLUME_24H  # Default $1000
         self.max_spread = config.MAX_SPREAD  # Default 5%
+        self.max_open_positions = config.MAX_OPEN_POSITIONS  # Default 50
         
         # Current capital starts at initial
         self.current_capital = self.initial_capital
