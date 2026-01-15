@@ -291,7 +291,7 @@ async def get_system_status():
     )
 
 @api_router.post("/mode/paper")
-async def enable_paper_trading(username: str = Depends(verify_credentials)):
+async def enable_paper_trading(username: str = Depends(verify_credentials_dual)):
     """Enable paper trading mode - simulates live trading without real money"""
     global trading_mode, paper_trading_enabled
     paper_trading_enabled = True
@@ -304,7 +304,7 @@ async def enable_paper_trading(username: str = Depends(verify_credentials)):
     }
 
 @api_router.post("/mode/live")
-async def enable_live_trading(username: str = Depends(verify_credentials)):
+async def enable_live_trading(username: str = Depends(verify_credentials_dual)):
     """Enable live trading mode - CAUTION: Real money will be used"""
     global trading_mode, paper_trading_enabled
     paper_trading_enabled = False
@@ -1829,7 +1829,7 @@ async def start_paper_trading(
 @api_router.post("/paper/stop")
 async def stop_paper_trading(
     graceful: bool = False,
-    username: str = Depends(verify_credentials)
+    username: str = Depends(verify_credentials_dual)
 ):
     """Stop paper trading and save results
     
@@ -2167,7 +2167,7 @@ async def get_cumulative_stats():
 # =============================================
 
 @api_router.post("/optimizer/run/{session_id}")
-async def run_strategy_optimization(session_id: str, username: str = Depends(verify_credentials)):
+async def run_strategy_optimization(session_id: str, username: str = Depends(verify_credentials_dual)):
     """Run strategy optimization based on a paper trading session"""
     global strategy_optimizer
     
@@ -2226,7 +2226,7 @@ async def get_optimization_stats():
         )
 
 @api_router.post("/optimizer/apply")
-async def apply_optimized_params(username: str = Depends(verify_credentials)):
+async def apply_optimized_params(username: str = Depends(verify_credentials_dual)):
     """Apply optimized parameters to trading strategies"""
     global strategy_optimizer
     
