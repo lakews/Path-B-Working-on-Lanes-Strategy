@@ -347,41 +347,77 @@ const Configuration = () => {
 
       {/* Market Selection Tab */}
       {activeTab === 'markets' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Liquidity Range - Combined Min and Max */}
+          <div className="lg:col-span-2 rounded-xl bg-white/5 border border-white/10 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-emerald-400" />
               </div>
               <div>
-                <h3 className="text-white font-semibold">Min Liquidity</h3>
-                <p className="text-xs text-white/50">Minimum market liquidity ($)</p>
+                <h3 className="text-white font-semibold">Liquidity Range</h3>
+                <p className="text-xs text-white/50">Filter markets by liquidity ($)</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <input 
-                type="range" 
-                value={config.min_liquidity || 100} 
-                onChange={(e) => setConfig({...config, min_liquidity: parseFloat(e.target.value)})} 
-                className="flex-1 h-2 bg-white/10 rounded-lg" 
-                min="0" 
-                max="10000" 
-                step="100" 
-              />
-              <span className="text-white font-bold text-xl w-24 text-right">${(config.min_liquidity || 100).toLocaleString()}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Min Liquidity */}
+              <div>
+                <label className="text-sm text-white/60 mb-2 block">Minimum Liquidity</label>
+                <div className="flex items-center gap-4">
+                  <input 
+                    type="range" 
+                    value={config.min_liquidity || 0} 
+                    onChange={(e) => setConfig({...config, min_liquidity: parseFloat(e.target.value)})} 
+                    className="flex-1 h-2 bg-white/10 rounded-lg accent-emerald-500" 
+                    min="0" 
+                    max="100000" 
+                    step="100" 
+                  />
+                  <span className="text-white font-bold text-lg w-24 text-right">${(config.min_liquidity || 0).toLocaleString()}</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mt-3">
+                  {[0, 100, 1000, 10000].map((val) => (
+                    <button 
+                      key={val} 
+                      onClick={() => setConfig({...config, min_liquidity: val})} 
+                      className={`px-2 py-1.5 rounded-lg text-xs font-medium transition ${config.min_liquidity === val ? 'bg-emerald-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                    >
+                      ${val === 0 ? '0' : val >= 1000 ? `${val/1000}K` : val}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Max Liquidity */}
+              <div>
+                <label className="text-sm text-white/60 mb-2 block">Maximum Liquidity</label>
+                <div className="flex items-center gap-4">
+                  <input 
+                    type="range" 
+                    value={config.max_liquidity || 1000000} 
+                    onChange={(e) => setConfig({...config, max_liquidity: parseFloat(e.target.value)})} 
+                    className="flex-1 h-2 bg-white/10 rounded-lg accent-emerald-500" 
+                    min="10000" 
+                    max="10000000" 
+                    step="10000" 
+                  />
+                  <span className="text-white font-bold text-lg w-24 text-right">${(config.max_liquidity || 1000000) >= 1000000 ? `${(config.max_liquidity / 1000000).toFixed(1)}M` : `${(config.max_liquidity / 1000).toFixed(0)}K`}</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mt-3">
+                  {[100000, 500000, 1000000, 10000000].map((val) => (
+                    <button 
+                      key={val} 
+                      onClick={() => setConfig({...config, max_liquidity: val})} 
+                      className={`px-2 py-1.5 rounded-lg text-xs font-medium transition ${config.max_liquidity === val ? 'bg-emerald-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                    >
+                      ${val >= 1000000 ? `${val/1000000}M` : `${val/1000}K`}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-4 gap-2 mt-4">
-              {[0, 100, 1000, 10000].map((val) => (
-                <button 
-                  key={val} 
-                  onClick={() => setConfig({...config, min_liquidity: val})} 
-                  className={`px-2 py-2 rounded-lg text-xs font-medium transition ${config.min_liquidity === val ? 'bg-emerald-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
-                >
-                  ${val === 0 ? '0' : val >= 1000 ? `${val/1000}K` : val}
-                </button>
-              ))}
+            <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+              <p className="text-sm text-emerald-400">Trading markets with liquidity between <span className="font-bold">${(config.min_liquidity || 0).toLocaleString()}</span> and <span className="font-bold">${(config.max_liquidity || 1000000).toLocaleString()}</span></p>
             </div>
-            <p className="text-xs text-white/40 mt-3">Lower = more markets, higher slippage risk</p>
           </div>
           
           <div className="rounded-xl bg-white/5 border border-white/10 p-6">
