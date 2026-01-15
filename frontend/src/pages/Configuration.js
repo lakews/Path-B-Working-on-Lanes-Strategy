@@ -531,6 +531,49 @@ const Configuration = () => {
             <p className="text-xs text-white/40 mt-3">Higher = more diversification but needs more capital</p>
           </div>
 
+          {/* Stuck Price Multiplier */}
+          <div className="lg:col-span-3 rounded-xl bg-gradient-to-br from-rose-500/10 to-orange-500/10 border border-rose-500/20 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Stuck Price Filter</h3>
+                <p className="text-xs text-white/50">Volume multiplier for markets at default prices (0.0, 0.5, 1.0)</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <input 
+                type="range" 
+                value={config.stuck_price_multiplier || 2.0} 
+                onChange={(e) => setConfig({...config, stuck_price_multiplier: parseFloat(e.target.value)})} 
+                className="flex-1 h-2 bg-white/10 rounded-lg accent-rose-500" 
+                min="1" 
+                max="5" 
+                step="0.5" 
+              />
+              <span className="text-white font-bold text-xl w-16 text-right">{config.stuck_price_multiplier || 2.0}x</span>
+            </div>
+            <div className="grid grid-cols-5 gap-2 mt-4">
+              {[1, 1.5, 2, 3, 5].map((val) => (
+                <button 
+                  key={val} 
+                  onClick={() => setConfig({...config, stuck_price_multiplier: val})} 
+                  className={`px-2 py-2 rounded-lg text-xs font-medium transition ${config.stuck_price_multiplier === val ? 'bg-rose-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                >
+                  {val}x
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20">
+              <p className="text-sm text-rose-300">
+                <strong>Required volume for stuck prices:</strong> {((config.min_volume_24h || 1000) * (config.stuck_price_multiplier || 2.0)).toLocaleString()} 
+                <span className="text-white/50 ml-1">({config.stuck_price_multiplier || 2}x × ${(config.min_volume_24h || 1000).toLocaleString()} min volume)</span>
+              </p>
+              <p className="text-xs text-white/50 mt-2">Markets at exactly $0.00, $0.50, or $1.00 may be stale or newly created. Higher multiplier = stricter filtering.</p>
+            </div>
+          </div>
+
           <div className="lg:col-span-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-6">
             <div className="flex items-center gap-3 mb-4">
               <Info className="w-5 h-5 text-cyan-400" />
