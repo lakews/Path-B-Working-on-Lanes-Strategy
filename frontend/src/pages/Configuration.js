@@ -309,6 +309,143 @@ const Configuration = () => {
         </div>
       )}
 
+      {/* Market Selection Tab */}
+      {activeTab === 'markets' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Min Liquidity</h3>
+                <p className="text-xs text-white/50">Minimum market liquidity ($)</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <input 
+                type="range" 
+                value={config.min_liquidity || 100} 
+                onChange={(e) => setConfig({...config, min_liquidity: parseFloat(e.target.value)})} 
+                className="flex-1 h-2 bg-white/10 rounded-lg" 
+                min="0" 
+                max="10000" 
+                step="100" 
+              />
+              <span className="text-white font-bold text-xl w-24 text-right">${(config.min_liquidity || 100).toLocaleString()}</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 mt-4">
+              {[0, 100, 1000, 10000].map((val) => (
+                <button 
+                  key={val} 
+                  onClick={() => setConfig({...config, min_liquidity: val})} 
+                  className={`px-2 py-2 rounded-lg text-xs font-medium transition ${config.min_liquidity === val ? 'bg-emerald-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                >
+                  ${val === 0 ? '0' : val >= 1000 ? `${val/1000}K` : val}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-white/40 mt-3">Lower = more markets, higher slippage risk</p>
+          </div>
+          
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <Activity className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Min Volume 24h</h3>
+                <p className="text-xs text-white/50">Minimum 24h trading volume ($)</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <input 
+                type="range" 
+                value={config.min_volume_24h || 1000} 
+                onChange={(e) => setConfig({...config, min_volume_24h: parseFloat(e.target.value)})} 
+                className="flex-1 h-2 bg-white/10 rounded-lg" 
+                min="0" 
+                max="100000" 
+                step="1000" 
+              />
+              <span className="text-white font-bold text-xl w-24 text-right">${(config.min_volume_24h || 1000).toLocaleString()}</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 mt-4">
+              {[0, 1000, 10000, 100000].map((val) => (
+                <button 
+                  key={val} 
+                  onClick={() => setConfig({...config, min_volume_24h: val})} 
+                  className={`px-2 py-2 rounded-lg text-xs font-medium transition ${config.min_volume_24h === val ? 'bg-blue-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                >
+                  ${val === 0 ? '0' : val >= 1000 ? `${val/1000}K` : val}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-white/40 mt-3">Higher volume = more active markets</p>
+          </div>
+          
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                <Crosshair className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Max Spread</h3>
+                <p className="text-xs text-white/50">Maximum bid-ask spread</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <input 
+                type="range" 
+                value={(config.max_spread || 0.05) * 100} 
+                onChange={(e) => setConfig({...config, max_spread: parseFloat(e.target.value) / 100})} 
+                className="flex-1 h-2 bg-white/10 rounded-lg" 
+                min="1" 
+                max="20" 
+                step="0.5" 
+              />
+              <span className="text-white font-bold text-xl w-16 text-right">{((config.max_spread || 0.05) * 100).toFixed(1)}%</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 mt-4">
+              {[0.01, 0.02, 0.05, 0.10].map((val) => (
+                <button 
+                  key={val} 
+                  onClick={() => setConfig({...config, max_spread: val})} 
+                  className={`px-2 py-2 rounded-lg text-xs font-medium transition ${config.max_spread === val ? 'bg-amber-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                >
+                  {val * 100}%
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-white/40 mt-3">Lower spread = tighter markets, less slippage</p>
+          </div>
+
+          <div className="lg:col-span-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Info className="w-5 h-5 text-cyan-400" />
+              <h3 className="text-white font-semibold">Market Selection Guide</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg bg-white/5">
+                <h4 className="text-white font-medium mb-2">🎯 High Frequency (Aggressive)</h4>
+                <p className="text-xs text-white/60">Liquidity: $0, Volume: $0, Spread: 10%</p>
+                <p className="text-xs text-white/40 mt-1">Maximum market coverage, higher risk</p>
+              </div>
+              <div className="p-4 rounded-lg bg-white/5">
+                <h4 className="text-white font-medium mb-2">⚖️ Balanced</h4>
+                <p className="text-xs text-white/60">Liquidity: $100, Volume: $1K, Spread: 5%</p>
+                <p className="text-xs text-white/40 mt-1">Good balance of opportunities and safety</p>
+              </div>
+              <div className="p-4 rounded-lg bg-white/5">
+                <h4 className="text-white font-medium mb-2">🛡️ Conservative</h4>
+                <p className="text-xs text-white/60">Liquidity: $10K, Volume: $100K, Spread: 2%</p>
+                <p className="text-xs text-white/40 mt-1">Only highest quality markets</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Asset Classes Tab */}
       {activeTab === 'assets' && (
         <div className="space-y-6">
