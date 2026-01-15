@@ -5,7 +5,7 @@ Simulates live trading, tracks positions, and feeds rewards to RL for continuous
 import asyncio
 import logging
 import uuid
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable
 from datetime import datetime, timezone
 from database import get_db
 from ml.rl_engine import RLAdaptiveEngine
@@ -17,6 +17,26 @@ from config import config
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# Callback for WebSocket broadcasting (set by server.py)
+_broadcast_callback: Optional[Callable] = None
+
+def set_broadcast_callback(callback: Callable):
+    """Set the callback function for WebSocket broadcasting"""
+    global _broadcast_callback
+    _broadcast_callback = callback
+
+async def broadcast_paper_event(event_type: str, data: dict):
+    """Broadcast paper trading event to WebSocket clients"""
+    global _broadcast_callback
+    if _broadcast_callback:
+        try:
+            await _broadcast_callback({
+                "type": event_type,
+                **data
+            })
+        except Exception as e:
+            logger.debug(f"Could not broadcast paper event: {e}")
 
 class PaperTrader:
     """
