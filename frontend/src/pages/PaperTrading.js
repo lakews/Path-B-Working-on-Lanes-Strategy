@@ -490,47 +490,96 @@ const PaperTrading = () => {
             </div>
           )}
 
-          {/* Equity Curve */}
-          {(status?.equity_curve?.length > 0 || equityCurveData.length > 0) && (
+          {/* Equity Curves - Two Charts Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Equity Curve by Strategy */}
             <div className="rounded-xl bg-white/5 border border-white/10 p-6">
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <LineChartIcon className="w-5 h-5 text-cyan-400" />
-                Equity Curve (Live)
+                Equity by Strategy
+                <span className="text-xs text-white/40 ml-2">(Total + per strategy)</span>
               </h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={status?.equity_curve || equityCurveData}>
-                    <defs>
-                      <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
+                  <LineChart data={status?.equity_curve || []}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                     <XAxis 
                       dataKey="timestamp" 
                       stroke="rgba(255,255,255,0.4)"
-                      tick={{ fontSize: 10 }}
+                      tick={{ fontSize: 9 }}
                       tickFormatter={(val) => new Date(val).toLocaleTimeString()}
                     />
                     <YAxis stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 10 }} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)' }}
+                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
                       labelStyle={{ color: '#94a3b8' }}
-                      formatter={(value) => [`$${value?.toFixed(2)}`, 'P&L']}
+                      formatter={(value, name) => [`$${value?.toFixed(2)}`, name]}
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="pnl" 
-                      stroke="#06b6d4" 
-                      fill="url(#pnlGradient)" 
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                    <Line type="monotone" dataKey="pnl" name="Total" stroke="#ffffff" strokeWidth={3} dot={false} />
+                    <Line type="monotone" dataKey="delta_neutral_pnl" name="Delta-Neutral" stroke="#06b6d4" strokeWidth={1.5} dot={false} />
+                    <Line type="monotone" dataKey="volatility_pnl" name="Volatility" stroke="#8b5cf6" strokeWidth={1.5} dot={false} />
+                    <Line type="monotone" dataKey="alpha_pnl" name="Alpha" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
+                    <Line type="monotone" dataKey="arbitrage_pnl" name="Arbitrage" stroke="#10b981" strokeWidth={1.5} dot={false} />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
-          )}
+
+            {/* Equity Curve by Asset Class */}
+            <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <LineChartIcon className="w-5 h-5 text-orange-400" />
+                Equity by Asset Class
+                <span className="text-xs text-white/40 ml-2">(Total + per asset class)</span>
+              </h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={status?.equity_curve?.map(point => {
+                    // Flatten asset_class_equity into individual keys
+                    const flatPoint = { ...point };
+                    if (point.asset_class_equity) {
+                      Object.entries(point.asset_class_equity).forEach(([ac, val]) => {
+                        flatPoint[`ac_${ac}`] = val;
+                      });
+                    }
+                    return flatPoint;
+                  }) || []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis 
+                      dataKey="timestamp" 
+                      stroke="rgba(255,255,255,0.4)"
+                      tick={{ fontSize: 9 }}
+                      tickFormatter={(val) => new Date(val).toLocaleTimeString()}
+                    />
+                    <YAxis stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 10 }} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                      labelStyle={{ color: '#94a3b8' }}
+                      formatter={(value, name) => [`$${value?.toFixed(2)}`, name.replace('ac_', '')]}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} formatter={(value) => value.replace('ac_', '')} />
+                    <Line type="monotone" dataKey="pnl" name="Total" stroke="#ffffff" strokeWidth={3} dot={false} />
+                    {/* Dynamic asset class lines based on what data exists */}
+                    {status?.asset_class_equity && Object.keys(status.asset_class_equity).map((ac, idx) => {
+                      const colors = ['#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#8b5cf6', '#ec4899'];
+                      return (
+                        <Line 
+                          key={ac}
+                          type="monotone" 
+                          dataKey={`ac_${ac}`} 
+                          name={ac}
+                          stroke={colors[idx % colors.length]} 
+                          strokeWidth={1.5} 
+                          dot={false} 
+                        />
+                      );
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
 
           {/* Strategy & Asset Class Performance Tables */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
