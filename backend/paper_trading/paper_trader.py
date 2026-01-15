@@ -231,12 +231,19 @@ class PaperTrader:
                     self.running = False
                     break
                 
-                # Record equity curve point
+                # Record equity curve point with strategy and asset class breakdowns
                 self.equity_curve.append({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "capital": self.current_capital,
                     "pnl": self.total_pnl,
-                    "open_positions": len(self.paper_positions)
+                    "open_positions": len(self.paper_positions),
+                    # Strategy P&L breakdown
+                    "delta_neutral_pnl": self.strategy_equity.get('delta_neutral', 0),
+                    "volatility_pnl": self.strategy_equity.get('volatility_exploitation', 0),
+                    "alpha_pnl": self.strategy_equity.get('alpha_directional', 0),
+                    "arbitrage_pnl": self.strategy_equity.get('arbitrage', 0),
+                    # Asset class P&L breakdown
+                    "asset_class_equity": dict(self.asset_class_equity)
                 })
                 
                 await asyncio.sleep(self.trade_interval)
