@@ -590,14 +590,14 @@ const PaperTrading = () => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex gap-2 p-1 rounded-xl bg-white/5 border border-white/10">
+      {/* Tab Navigation - Improved with better active states */}
+      <div className="flex gap-1 p-1.5 rounded-xl bg-slate-900/50 border border-white/10">
         {[
-          { id: 'live', label: 'Live Session', icon: Activity },
-          { id: 'cumulative', label: 'Cumulative Stats', icon: TrendingUp },
-          { id: 'history', label: `Sessions (${sessions.length})`, icon: History },
-          { id: 'optimizer', label: 'Strategy Optimizer', icon: Settings },
-          { id: 'rl', label: 'RL Learning', icon: Brain }
+          { id: 'live', label: 'Live Session', icon: Activity, color: 'cyan' },
+          { id: 'cumulative', label: 'Cumulative Stats', icon: TrendingUp, color: 'emerald' },
+          { id: 'history', label: `Sessions (${sessions.length})`, icon: History, color: 'blue' },
+          { id: 'optimizer', label: 'Strategy Optimizer', icon: Settings, color: 'amber' },
+          { id: 'rl', label: 'RL Learning', icon: Brain, color: 'purple' }
         ].map(tab => (
           <button
             key={tab.id}
