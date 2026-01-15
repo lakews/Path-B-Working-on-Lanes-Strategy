@@ -6,7 +6,8 @@ import {
   BarChart3, Clock, Zap, Shield, Award, Percent, ChevronRight, Database,
   RefreshCw, AlertTriangle, CheckCircle, XCircle, History, Brain, Download,
   Layers, Settings, Sparkles, Crosshair, Scale, Timer, Wallet, ArrowUpRight,
-  ArrowDownRight, Eye, FileText, PieChart, LineChart as LineChartIcon
+  ArrowDownRight, Eye, FileText, PieChart, LineChart as LineChartIcon,
+  Wifi, WifiOff
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart as RePieChart, Pie, Legend } from 'recharts';
 
