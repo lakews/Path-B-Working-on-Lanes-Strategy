@@ -1780,7 +1780,7 @@ async def start_paper_trading(
     background_tasks: BackgroundTasks,
     initial_capital: float = 10000.0,
     continuous_mode: bool = False,
-    username: str = Depends(verify_credentials)
+    username: str = Depends(verify_credentials_dual)
 ):
     """Start paper trading session with RL learning
     
