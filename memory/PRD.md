@@ -24,7 +24,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
-### January 15, 2026 - Session 21 (P0 Fix: Position Sizing Too Aggressive)
+### January 15, 2026 - Session 21 (P0 Fix: Position Sizing Too Aggressive + P&L Calculation Bug)
 
 - ✅ **P0 CRITICAL FIX: Paper Trading Not Executing Trades** (`/app/backend/ml/adaptive_position_sizer.py`)
   - **Problem**: Paper trading was processing markets but no trades were being executed after implementing stricter liquidity filters
@@ -39,6 +39,20 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
     3. Higher base position when Kelly is conservative: Increased from 30% to 60% of max
     4. Added minimum viable position floor: Use $5 when liquidity is good but multipliers are unfavorable
   - **Result**: Paper trading now executing hundreds of trades per session
+
+- ✅ **CRITICAL FIX: P&L Calculation Bug for NO Positions** (`/app/backend/paper_trading/paper_trader.py`)
+  - **Problem**: Session fb785a80 showed -$15,141 loss, but TWO trades accounted for -$15,164 (2 × -$7,582)
+  - **Root Cause**: Incorrect P&L formula for NO positions:
+    - Old formula: `pnl = (entry_price - exit_price) * size / entry_price`
+    - This explodes when entry_price is very small (e.g., 0.0005)
+    - Example: Entry 0.0005, Exit 0.5, Size $7.59 → Old: -$7,582 (WRONG!)
+  - **Correct Formula** (share-based):
+    - NO shares cost = `1 - yes_entry_price`
+    - Shares = `size / no_cost`
+    - Exit value = `shares × (1 - yes_exit_price)`
+    - P&L = `exit_value - size`
+    - Example: Entry 0.0005, Exit 0.5, Size $7.59 → NEW: -$3.79 (CORRECT - 50% loss)
+  - **Impact**: Historical -$15,141 loss would have been ~-$8 with correct calculation
 
 ### January 15, 2026 - Session 20 (Paper Trading UI Overhaul)
 
