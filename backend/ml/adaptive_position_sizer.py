@@ -175,7 +175,6 @@ class AdaptivePositionSizer:
         if effective_volume < 100:  # Very low threshold for HFT
             logger.debug(f"Volume too low: {effective_volume} < 100")
             return 0.0
-            return 0.0
         
         # Volume-based multiplier (linear scale up to full size threshold)
         volume_mult = min(1.0, volume / self.MIN_LIQUIDITY_FOR_FULL_SIZE)
