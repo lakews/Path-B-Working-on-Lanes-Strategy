@@ -425,6 +425,42 @@ const Configuration = () => {
             <p className="text-xs text-white/40 mt-3">Lower spread = tighter markets, less slippage</p>
           </div>
 
+          <div className="lg:col-span-3 rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <Layers className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Max Open Positions</h3>
+                <p className="text-xs text-white/50">Maximum concurrent positions (prevents over-leveraging)</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <input 
+                type="range" 
+                value={config.max_open_positions || 50} 
+                onChange={(e) => setConfig({...config, max_open_positions: parseInt(e.target.value)})} 
+                className="flex-1 h-2 bg-white/10 rounded-lg" 
+                min="10" 
+                max="200" 
+                step="10" 
+              />
+              <span className="text-white font-bold text-xl w-16 text-right">{config.max_open_positions || 50}</span>
+            </div>
+            <div className="grid grid-cols-5 gap-2 mt-4">
+              {[20, 50, 100, 150, 200].map((val) => (
+                <button 
+                  key={val} 
+                  onClick={() => setConfig({...config, max_open_positions: val})} 
+                  className={`px-2 py-2 rounded-lg text-xs font-medium transition ${config.max_open_positions === val ? 'bg-purple-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                >
+                  {val}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-white/40 mt-3">Higher = more diversification but needs more capital</p>
+          </div>
+
           <div className="lg:col-span-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-6">
             <div className="flex items-center gap-3 mb-4">
               <Info className="w-5 h-5 text-cyan-400" />
