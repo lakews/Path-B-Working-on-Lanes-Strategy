@@ -1778,14 +1778,14 @@ strategy_optimizer: Optional[StrategyOptimizer] = None
 @api_router.post("/paper/start")
 async def start_paper_trading(
     background_tasks: BackgroundTasks,
-    initial_capital: float = 10000.0,
     continuous_mode: bool = False,
     username: str = Depends(verify_credentials_dual)
 ):
     """Start paper trading session with RL learning
     
+    Uses capital settings from Configuration tab (initial_capital, capital_deployment_pct, etc.)
+    
     Args:
-        initial_capital: Starting capital for paper trading
         continuous_mode: If True, runs indefinitely until manually stopped
     """
     global paper_trader, trading_mode
@@ -1803,7 +1803,12 @@ async def start_paper_trading(
         )
     
     try:
-        paper_trader = PaperTrader(initial_capital=initial_capital, continuous_mode=continuous_mode)
+        # Initialize adaptive position sizer
+        from ml.adaptive_position_sizer import init_position_sizer
+        await init_position_sizer()
+        
+        # PaperTrader now uses Config tab values for capital
+        paper_trader = PaperTrader(continuous_mode=continuous_mode)
         
         # Set up WebSocket broadcast callback for real-time updates
         from paper_trading.paper_trader import set_broadcast_callback
@@ -1815,9 +1820,16 @@ async def start_paper_trading(
         return {
             "message": "Paper trading started",
             "session_id": paper_trader.session_id,
-            "initial_capital": initial_capital,
+            "initial_capital": paper_trader.initial_capital,
+            "deployed_capital": paper_trader.deployed_capital,
             "continuous_mode": continuous_mode,
-            "mode": "paper"
+            "mode": "paper",
+            "config": {
+                "capital_deployment_pct": paper_trader.capital_deployment_pct,
+                "max_position_size_pct": paper_trader.max_position_size_pct,
+                "kelly_fraction": paper_trader.kelly_fraction,
+                "max_drawdown_pct": paper_trader.max_drawdown_pct,
+            }
         }
     except Exception as e:
         logger.error(f"Error starting paper trading: {e}")
