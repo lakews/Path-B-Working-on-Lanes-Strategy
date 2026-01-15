@@ -419,6 +419,11 @@ class PaperTrader:
             market_id = market_data.get('id')
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
+            # Log first market for debugging
+            if self.total_trades == 0 and not hasattr(self, '_debug_logged'):
+                self._debug_logged = True
+                logger.info(f"DEBUG: Evaluating first market: {market_id[:20]}... | Asset: {asset_class}")
+            
             # LIQUIDITY CHECK: Use user-configured thresholds from Configuration page
             volume_24h = float(market_data.get('volume_24h', 0) or 0)
             volume = float(market_data.get('volume', 0) or 0)
@@ -476,7 +481,12 @@ class PaperTrader:
             
             # Check if we should trade (liquidity/size requirements met)
             if not sizing_result.get('should_trade', False):
-                logger.debug(f"Skipping {market_id[:16]}: should_trade=False")
+                # Log more detail for debugging
+                breakdown = sizing_result.get('sizing_breakdown', {})
+                if self.total_trades == 0:
+                    logger.info(f"DEBUG: Position sizing rejected trade: size=${sizing_result.get('position_size', 0):.2f}, "
+                               f"liq_mult={breakdown.get('liquidity_multiplier', 0):.2f}, "
+                               f"combined={breakdown.get('combined_multiplier', 0):.2f}")
                 return
             
             position_size = sizing_result.get('position_size', 0)
@@ -486,6 +496,9 @@ class PaperTrader:
             if position_size < min_position_size:
                 logger.debug(f"Skipping {market_id[:16]}: position_size={position_size:.2f} < {min_position_size}")
                 return
+            
+            # Log successful entry attempt
+            logger.info(f"DEBUG: Trade approved! Market: {market_id[:16]}, Size: ${position_size:.2f}, Strategy: {strategy}")
             
             # Determine side (YES/NO)
             side = 'YES' if 'BUY' in rl_action else 'NO'
