@@ -177,6 +177,40 @@ class PaperTrader:
         except Exception as e:
             logger.warning(f"Could not load user config: {e}")
     
+    async def reload_config_live(self):
+        """Reload configuration during a live session - hot reload"""
+        old_kelly = self.kelly_fraction
+        old_max_pos = self.max_position_size_pct
+        
+        await self._load_user_config()
+        
+        # Recalculate derived values
+        self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
+        self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
+        self.trade_interval = max(1, 600 / self.trades_per_10min)
+        
+        # Log what changed
+        changes = []
+        if old_kelly != self.kelly_fraction:
+            changes.append(f"Kelly: {old_kelly} → {self.kelly_fraction}")
+        if old_max_pos != self.max_position_size_pct:
+            changes.append(f"Max Position: {old_max_pos}% → {self.max_position_size_pct}%")
+        
+        if changes:
+            logger.info(f"Config hot-reloaded: {', '.join(changes)}")
+        
+        return {
+            "reloaded": True,
+            "changes": changes,
+            "current_config": {
+                "initial_capital": self.initial_capital,
+                "deployed_capital": self.deployed_capital,
+                "max_position_size": self.max_position_size,
+                "kelly_fraction": self.kelly_fraction,
+                "max_drawdown_pct": self.max_drawdown_pct,
+            }
+        }
+    
     async def start(self):
         """Start paper trading session"""
         self.running = True
