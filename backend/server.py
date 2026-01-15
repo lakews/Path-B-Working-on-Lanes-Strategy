@@ -988,6 +988,8 @@ async def get_config():
             "min_volume_24h": saved_config.get("min_volume_24h", config.MIN_VOLUME_24H) if saved_config else config.MIN_VOLUME_24H,
             "max_spread": saved_config.get("max_spread", config.MAX_SPREAD) if saved_config else config.MAX_SPREAD,
             "max_open_positions": saved_config.get("max_open_positions", config.MAX_OPEN_POSITIONS) if saved_config else config.MAX_OPEN_POSITIONS,
+            # Stuck price filter
+            "stuck_price_multiplier": saved_config.get("stuck_price_multiplier", 2.0) if saved_config else 2.0,  # Default 2x
             # Strategies and asset classes
             "enabled_strategies": saved_config.get("enabled_strategies", user_config["enabled_strategies"]) if saved_config else user_config["enabled_strategies"],
             "enabled_asset_classes": saved_config.get("enabled_asset_classes", user_config["enabled_asset_classes"]) if saved_config else user_config["enabled_asset_classes"],
