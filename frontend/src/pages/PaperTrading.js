@@ -969,22 +969,27 @@ const PaperTrading = () => {
 
           {/* Trade History */}
           <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-            <div className="p-4 border-b border-white/10"><h3 className="text-lg font-semibold text-white flex items-center gap-2"><History className="w-5 h-5 text-cyan-400" />Completed Trades</h3></div>
+            <div className="p-4 border-b border-white/10">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <History className="w-5 h-5 text-cyan-400" />Trade History
+                <span className="text-xs text-white/40 ml-2">({trades.length} trades)</span>
+              </h3>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead><tr className="bg-white/5 text-left">
-                  <th className="py-3 px-4 text-xs text-white/60 uppercase">Status</th>
-                  <th className="py-3 px-4 text-xs text-white/60 uppercase">Market</th>
-                  <th className="py-3 px-4 text-xs text-white/60 uppercase">Strategy</th>
-                  <th className="py-3 px-4 text-xs text-white/60 uppercase">Side</th>
-                  <th className="py-3 px-4 text-xs text-white/60 uppercase">Size</th>
-                  <th className="py-3 px-4 text-xs text-white/60 uppercase">Entry → Exit</th>
-                  <th className="py-3 px-4 text-xs text-white/60 uppercase">P&L ($)</th>
-                  <th className="py-3 px-4 text-xs text-white/60 uppercase">Return (%)</th>
-                  <th className="py-3 px-4 text-xs text-white/60 uppercase">Time</th>
+                  <SortableHeader label="Status" sortKey="type" currentSort={tradeSort} onSort={handleTradeSort} />
+                  <SortableHeader label="Market" sortKey="market" currentSort={tradeSort} onSort={handleTradeSort} />
+                  <SortableHeader label="Strategy" sortKey="strategy" currentSort={tradeSort} onSort={handleTradeSort} />
+                  <SortableHeader label="Side" sortKey="side" currentSort={tradeSort} onSort={handleTradeSort} />
+                  <SortableHeader label="Size" sortKey="size" currentSort={tradeSort} onSort={handleTradeSort} />
+                  <SortableHeader label="Entry → Exit" sortKey="entry" currentSort={tradeSort} onSort={handleTradeSort} />
+                  <SortableHeader label="P&L ($)" sortKey="pnl" currentSort={tradeSort} onSort={handleTradeSort} />
+                  <SortableHeader label="Return (%)" sortKey="return" currentSort={tradeSort} onSort={handleTradeSort} />
+                  <SortableHeader label="Time" sortKey="timestamp" currentSort={tradeSort} onSort={handleTradeSort} />
                 </tr></thead>
                 <tbody>
-                  {trades.slice(0, 30).map((trade, idx) => <TradeRow key={idx} trade={trade} />)}
+                  {sortedTrades.slice(0, 50).map((trade, idx) => <TradeRow key={idx} trade={trade} />)}
                   {trades.filter(t => t.type === 'exit').length === 0 && <tr><td colSpan={9} className="py-8 text-center text-white/40">No completed trades yet. Start paper trading to see activity.</td></tr>}
                 </tbody>
               </table>
