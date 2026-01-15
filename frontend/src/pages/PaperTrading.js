@@ -481,7 +481,7 @@ const PaperTrading = () => {
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
             {running ? (
-              <div className="relative z-50">
+              <div className="relative">
                 <button
                   onClick={() => setShowStopOptions(!showStopOptions)}
                   disabled={loading || status?.graceful_stop}
@@ -492,35 +492,39 @@ const PaperTrading = () => {
                   {status?.graceful_stop ? 'Closing...' : 'Stop Session'}
                 </button>
                 {showStopOptions && (
-                  <div className="absolute top-full right-0 mt-2 w-72 rounded-xl bg-slate-800 border-2 border-white/20 shadow-2xl z-[100] overflow-hidden">
-                    <div className="p-3 border-b border-white/10 bg-slate-900">
-                      <p className="text-sm text-white font-medium">Choose stop method:</p>
+                  <>
+                    {/* Backdrop to close on click outside */}
+                    <div className="fixed inset-0 z-[90]" onClick={() => setShowStopOptions(false)}></div>
+                    <div className="fixed top-20 right-8 w-72 rounded-xl bg-slate-800 border-2 border-white/20 shadow-2xl z-[100] overflow-hidden">
+                      <div className="p-3 border-b border-white/10 bg-slate-900">
+                        <p className="text-sm text-white font-medium">Choose stop method:</p>
+                      </div>
+                      <button
+                        onClick={() => stopPaperTrading(false)}
+                        className="w-full px-4 py-4 text-left hover:bg-rose-500/20 flex items-center gap-3 transition-colors border-b border-white/5"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center">
+                          <Square className="w-5 h-5 text-rose-400" />
+                        </div>
+                        <div>
+                          <p className="text-white font-bold">Immediate Stop</p>
+                          <p className="text-xs text-white/50">Close all positions now</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => stopPaperTrading(true)}
+                        className="w-full px-4 py-4 text-left hover:bg-amber-500/20 flex items-center gap-3 transition-colors"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                          <Clock className="w-5 h-5 text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="text-white font-bold">Graceful Stop</p>
+                          <p className="text-xs text-white/50">Wait for TP/SL triggers</p>
+                        </div>
+                      </button>
                     </div>
-                    <button
-                      onClick={() => stopPaperTrading(false)}
-                      className="w-full px-4 py-4 text-left hover:bg-rose-500/20 flex items-center gap-3 transition-colors border-b border-white/5"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center">
-                        <Square className="w-5 h-5 text-rose-400" />
-                      </div>
-                      <div>
-                        <p className="text-white font-bold">Immediate Stop</p>
-                        <p className="text-xs text-white/50">Close all positions now</p>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => stopPaperTrading(true)}
-                      className="w-full px-4 py-4 text-left hover:bg-amber-500/20 flex items-center gap-3 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-amber-400" />
-                      </div>
-                      <div>
-                        <p className="text-white font-bold">Graceful Stop</p>
-                        <p className="text-xs text-white/50">Wait for TP/SL triggers</p>
-                      </div>
-                    </button>
-                  </div>
+                  </>
                 )}
               </div>
             ) : (
