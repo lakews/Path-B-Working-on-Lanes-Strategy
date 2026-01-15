@@ -722,15 +722,31 @@ class PaperTrader:
             current_price = market_data.get('yes_price', 0.5)
             entry_price = position['entry_price']
             side = position['side']
-            size = position['size']
+            size = position['size']  # USD invested
             strategy = position['strategy']
             asset_class = position.get('asset_class', 'unknown')
             
-            # Calculate P&L
+            # CORRECT P&L Calculation based on shares
+            # For YES: we buy YES shares at yes_price, sell at exit yes_price
+            # For NO: we buy NO shares at (1 - yes_price), sell at exit (1 - yes_price)
             if side == 'YES':
-                pnl = (current_price - entry_price) * size / entry_price
+                # YES position: buy at entry_price, sell at current_price
+                if entry_price > 0:
+                    shares = size / entry_price
+                    exit_value = shares * current_price
+                    pnl = exit_value - size
+                else:
+                    pnl = 0
             else:
-                pnl = (entry_price - current_price) * size / entry_price
+                # NO position: buy at (1 - entry_price), sell at (1 - current_price)
+                no_entry_price = 1 - entry_price
+                no_exit_price = 1 - current_price
+                if no_entry_price > 0:
+                    shares = size / no_entry_price
+                    exit_value = shares * no_exit_price
+                    pnl = exit_value - size
+                else:
+                    pnl = 0
             
             pnl_pct = pnl / size if size > 0 else 0
             
