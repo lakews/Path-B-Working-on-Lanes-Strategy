@@ -34,6 +34,11 @@ class Config:
     MIN_KELLY_FRACTION = float(os.environ.get('MIN_KELLY_FRACTION', 0.10))
     MAX_KELLY_FRACTION = float(os.environ.get('MAX_KELLY_FRACTION', 0.50))
     
+    # Market Selection Configuration
+    MIN_LIQUIDITY = float(os.environ.get('MIN_LIQUIDITY', 100))  # Minimum liquidity in USD
+    MIN_VOLUME_24H = float(os.environ.get('MIN_VOLUME_24H', 1000))  # Minimum 24h volume in USD
+    MAX_SPREAD = float(os.environ.get('MAX_SPREAD', 0.05))  # Maximum bid-ask spread (5%)
+    
     # System Performance
     EXECUTION_LATENCY_MS = int(os.environ.get('EXECUTION_LATENCY_MS', 100))
     ML_INFERENCE_LATENCY_MS = int(os.environ.get('ML_INFERENCE_LATENCY_MS', 50))
