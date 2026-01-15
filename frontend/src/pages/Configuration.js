@@ -40,15 +40,38 @@ const Configuration = () => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('trading');
 
-  useEffect(() => { fetchConfig(); }, []);
+  useEffect(() => { fetchConfig(); fetchStatus(); }, []);
 
-  const fetchConfig = async () => {
+  const fetchStatus = async () => {
     try {
       const response = await axios.get(`${API}/status`);
       setStatus(response.data);
-      setConfig(response.data.configuration || config);
+    } catch (e) { console.error('Error fetching status:', e); }
+  };
+
+  const fetchConfig = async () => {
+    try {
+      // Fetch saved config from server
+      const response = await axios.get(`${API}/config`);
+      const savedConfig = response.data;
+      
+      // Merge saved config with current state
+      setConfig(prev => ({
+        ...prev,
+        trades_per_10min: savedConfig.trades_per_10min ?? prev.trades_per_10min,
+        initial_capital: savedConfig.initial_capital ?? prev.initial_capital,
+        capital_deployment_pct: savedConfig.capital_deployment_pct ?? prev.capital_deployment_pct,
+        max_position_size_pct: savedConfig.max_position_size_pct ?? prev.max_position_size_pct,
+        kelly_fraction: savedConfig.kelly_fraction ?? prev.kelly_fraction,
+        max_drawdown_pct: savedConfig.max_drawdown_pct ?? prev.max_drawdown_pct,
+        enabled_asset_classes: savedConfig.enabled_asset_classes ?? prev.enabled_asset_classes,
+        enabled_strategies: savedConfig.enabled_strategies ?? prev.enabled_strategies,
+      }));
       setLoading(false);
-    } catch (e) { setLoading(false); }
+    } catch (e) { 
+      console.error('Error fetching config:', e);
+      setLoading(false); 
+    }
   };
 
   const handleSave = async () => {
@@ -56,7 +79,7 @@ const Configuration = () => {
     try {
       await axios.post(`${API}/config/update`, config);
       toast.success('Configuration updated!');
-      fetchConfig();
+      fetchConfig();  // Refresh config after save
     } catch (e) { toast.error('Failed to update'); }
     finally { setSaving(false); }
   };
@@ -64,11 +87,11 @@ const Configuration = () => {
   const resetToDefaults = () => {
     setConfig({ 
       trades_per_10min: 500, 
-      initial_capital: 100, 
+      initial_capital: 10000,  // Updated default
       capital_deployment_pct: 80, 
       max_position_size_pct: 3, 
       kelly_fraction: 0.25, 
-      max_drawdown_pct: 3, 
+      max_drawdown_pct: 5,  // Updated default
       enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'],
       enabled_strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
     });
