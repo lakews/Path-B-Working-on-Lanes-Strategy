@@ -2012,13 +2012,25 @@ async def get_paper_positions():
 
 @api_router.get("/paper/trades")
 async def get_paper_trades(limit: int = 50):
-    """Get paper trading trade history"""
+    """Get paper trading trade history - from live session or database"""
     global paper_trader
     
-    if not paper_trader:
-        return {"trades": []}
+    # If paper trader is running, get trades from current session
+    if paper_trader and paper_trader.running:
+        return {"trades": paper_trader.get_trade_history(limit)}
     
-    return {"trades": paper_trader.get_trade_history(limit)}
+    # Otherwise, get recent trades from database
+    try:
+        db = get_db()
+        cursor = db.paper_trades.find(
+            {},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(limit)
+        trades = await cursor.to_list(length=limit)
+        return {"trades": trades}
+    except Exception as e:
+        logger.error(f"Error getting trades from DB: {e}")
+        return {"trades": []}
 
 @api_router.get("/paper/sessions")
 async def get_paper_sessions(limit: int = 10):
