@@ -210,10 +210,25 @@ Ensure these are set in `/home/ubuntu/apex-trader/backend/.env`:
 ```env
 MONGO_URL=mongodb://localhost:27017/
 DB_NAME=apex_trader
+
+# Authentication
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your_secure_password
+JWT_SECRET_KEY=your_super_secret_jwt_key_change_in_production
+JWT_EXPIRY_MINUTES=1440
+
+# Trading (optional - has defaults)
+INITIAL_CAPITAL=10000
+CAPITAL_DEPLOYMENT_PCT=80
+MAX_POSITION_SIZE_PCT=3
+KELLY_FRACTION=0.25
+MAX_DRAWDOWN_PCT=3
+TRADES_PER_10MIN=500
+
+# API Keys
 POLYMARKET_API_KEY=your_key_here
 POLYMARKET_PRIVATE_KEY=your_key_here
+SENDGRID_API_KEY=your_sendgrid_key  # Optional, for email alerts
 ```
 
 ---
