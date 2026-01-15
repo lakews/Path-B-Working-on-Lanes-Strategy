@@ -107,13 +107,13 @@ function App() {
                 
                 <nav className="flex gap-6">
                   <Link to="/" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="dashboard-nav-link">Dashboard</Link>
-                  <Link to="/config" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="config-nav-link">Config</Link>
+                  <Link to="/config" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="config-nav-link">Settings</Link>
                   <Link to="/markets" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="markets-nav-link">Markets</Link>
+                  <Link to="/paper" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="paper-nav-link">Paper Trading</Link>
                   <Link to="/positions" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="positions-nav-link">Positions</Link>
                   <Link to="/analytics" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="analytics-nav-link">Analytics</Link>
                   <Link to="/backtest" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="backtest-nav-link">Backtest</Link>
-                  <Link to="/paper" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="paper-nav-link">Paper Trade</Link>
-                  <Link to="/tuning" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="tuning-nav-link">Tuning</Link>
+                  <Link to="/tuning" className="text-white/80 hover:text-white transition text-sm font-medium" data-testid="tuning-nav-link">Strategy Tuning</Link>
                 </nav>
               </div>
               
