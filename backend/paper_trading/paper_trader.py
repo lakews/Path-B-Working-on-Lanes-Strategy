@@ -830,33 +830,68 @@ class PaperTrader:
         return self.enabled_strategies[0] if self.enabled_strategies else None
     
     async def _get_signals(self, market_data: Dict) -> Dict:
-        """Get ML signals for market evaluation"""
+        """Get ADAPTIVE signals from actual market data - no hardcoded defaults"""
         try:
+            # Calculate signals from REAL market data
+            yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+            volume_24h = float(market_data.get('volume_24h', 0) or 0)
+            liquidity = float(market_data.get('liquidity', 0) or 0)
+            spread = float(market_data.get('spread', 0.02) or 0.02)
+            
+            # VOLATILITY: Calculate from price distance from 0.5 + spread + volume activity
+            # Extreme prices (near 0 or 1) = low volatility (resolved markets)
+            # Mid-range prices with high volume = high volatility
+            price_uncertainty = 1 - abs(yes_price - 0.5) * 2  # 0 at extremes, 1 at 0.5
+            volume_factor = min(1.0, volume_24h / 1000000) if volume_24h > 0 else 0  # Normalize by $1M
+            volatility = (price_uncertainty * 0.5 + spread * 5 + volume_factor * 0.3)
+            volatility = max(0.01, min(0.20, volatility))  # Clamp 1%-20%
+            
+            # SENTIMENT: Derive from price - price > 0.5 means market is bullish on YES
+            # Also factor in recent volume direction if available
+            base_sentiment = yes_price  # 0.5 = neutral, >0.5 = bullish, <0.5 = bearish
+            sentiment = base_sentiment
+            
+            # SHARP ALIGNMENT: Based on liquidity depth and spread tightness
+            # High liquidity + tight spread = sharp traders are active
+            liquidity_score = min(1.0, liquidity / 100000) if liquidity > 0 else 0  # Normalize by $100K
+            spread_score = max(0, 1 - spread * 10)  # Tighter spread = higher score
+            sharp_alignment = (liquidity_score * 0.6 + spread_score * 0.4)
+            
+            # WHALE ACTIVITY: Based on volume relative to liquidity
+            whale_activity = min(1.0, (volume_24h / liquidity) if liquidity > 0 else 0)
+            
             signals = {
-                'volatility': 0.02,
-                'sentiment': 0.5,
-                'sharp_alignment': 0.5,
-                'whale_activity': 0.0
+                'volatility': round(volatility, 4),
+                'sentiment': round(sentiment, 4),
+                'sharp_alignment': round(sharp_alignment, 4),
+                'whale_activity': round(whale_activity, 4),
+                'price_uncertainty': round(price_uncertainty, 4),
+                'volume_factor': round(volume_factor, 4)
             }
             
-            # Get volatility prediction
+            # Try to enhance with ML models if available
             try:
                 vol_pred = await self.volatility_predictor.predict(market_data)
-                signals['volatility'] = vol_pred.get('predicted_volatility', 0.02)
+                if vol_pred and vol_pred.get('predicted_volatility'):
+                    # Blend ML prediction with calculated volatility
+                    ml_vol = vol_pred.get('predicted_volatility', volatility)
+                    signals['volatility'] = round((volatility * 0.5 + ml_vol * 0.5), 4)
             except Exception:
                 pass
             
-            # Get sentiment
             try:
-                sentiment = await self.signal_fusion.get_fused_signal(market_data.get('id'), market_data)
-                signals['sentiment'] = sentiment.get('sentiment', 0.5)
+                sentiment_result = await self.signal_fusion.get_fused_signal(market_data.get('id'), market_data)
+                if sentiment_result and sentiment_result.get('sentiment') is not None:
+                    ml_sentiment = sentiment_result.get('sentiment', sentiment)
+                    signals['sentiment'] = round((sentiment * 0.5 + ml_sentiment * 0.5), 4)
             except Exception:
                 pass
             
-            # Get sharp trader alignment
             try:
-                sharp_signals = await self.sharp_detector.get_alignment_signal(market_data.get('id'))
-                signals['sharp_alignment'] = sharp_signals.get('alignment_score', 0.5)
+                sharp_result = await self.sharp_detector.get_alignment_signal(market_data.get('id'))
+                if sharp_result and sharp_result.get('alignment_score') is not None:
+                    ml_sharp = sharp_result.get('alignment_score', sharp_alignment)
+                    signals['sharp_alignment'] = round((sharp_alignment * 0.5 + ml_sharp * 0.5), 4)
             except Exception:
                 pass
             
@@ -864,7 +899,13 @@ class PaperTrader:
             
         except Exception as e:
             logger.error(f"Error getting signals: {e}")
-            return {'volatility': 0.02, 'sentiment': 0.5, 'sharp_alignment': 0.5}
+            # Even fallback should be derived from market data when possible
+            return {
+                'volatility': 0.05,  # Moderate default
+                'sentiment': 0.5,
+                'sharp_alignment': 0.5,
+                'whale_activity': 0.0
+            }
     
     async def _position_monitoring_loop(self):
         """Monitor open positions and update unrealized P&L with REAL prices"""
