@@ -76,24 +76,27 @@ class PaperTrader:
         self.enabled_strategies = ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
         self.enabled_asset_classes = ['finance', 'politics', 'crypto', 'entertainment', 'science', 'sports']
         
-        # Trading configuration parameters - Use sensible defaults for paper trading
-        self.initial_capital = max(config.INITIAL_CAPITAL, 10000.0)  # Minimum $10K
-        self.capital_deployment_pct = config.CAPITAL_DEPLOYMENT_PCT
-        self.max_position_size_pct = config.MAX_POSITION_SIZE_PCT
-        self.kelly_fraction = config.KELLY_FRACTION
-        self.max_drawdown_pct = config.MAX_DRAWDOWN_PCT
-        self.trades_per_10min = config.TRADES_PER_10MIN
+        # Trading configuration - DEFAULTS only, will be overwritten by DB config in start()
+        # These are fallbacks if DB has no config
+        self.initial_capital = 10000.0  # Default $10K, DB overrides this
+        self.capital_deployment_pct = 80.0
+        self.max_position_size_pct = 3.0
+        self.kelly_fraction = 0.25
+        self.kelly_enabled = True  # NEW: Toggle Kelly Criterion
+        self.max_drawdown_pct = 5.0
+        self.trades_per_10min = 500
         
         # Market selection thresholds (configurable)
-        self.min_liquidity = config.MIN_LIQUIDITY  # Default $100
-        self.min_volume_24h = config.MIN_VOLUME_24H  # Default $1000
-        self.max_spread = config.MAX_SPREAD  # Default 5%
-        self.max_open_positions = config.MAX_OPEN_POSITIONS  # Default 50
+        self.min_liquidity = 100.0
+        self.max_liquidity = 1000000.0  # NEW: Max liquidity filter
+        self.min_volume_24h = 1000.0
+        self.max_spread = 0.05
+        self.max_open_positions = 50
         
-        # Current capital starts at initial
+        # Current capital starts at initial (will be set properly after config load)
         self.current_capital = self.initial_capital
         
-        # Calculated values based on config
+        # Calculated values based on config (will be recalculated after config load)
         self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
         self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
         
@@ -138,9 +141,7 @@ class PaperTrader:
         self.trade_interval = max(1, 600 / self.trades_per_10min)  # Seconds between trade evaluations
         
         logger.info(f"Paper Trader initialized - Session: {self.session_id}")
-        logger.info(f"  Capital: ${self.initial_capital} | Deployed: ${self.deployed_capital} ({self.capital_deployment_pct}%)")
-        logger.info(f"  Max Position: ${self.max_position_size} ({self.max_position_size_pct}% of deployed)")
-        logger.info(f"  Kelly: {self.kelly_fraction} | Max Drawdown: {self.max_drawdown_pct}% | Trade Interval: {self.trade_interval:.1f}s")
+        logger.info(f"  NOTE: Config will be loaded from DB when start() is called")
     
     async def _load_user_config(self):
         """Load ALL user trading configuration from database"""
