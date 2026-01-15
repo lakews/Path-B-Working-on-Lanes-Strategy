@@ -409,6 +409,26 @@ class PaperTrader:
             market_id = market_data.get('id')
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
+            # LIQUIDITY CHECK: Skip markets with very low volume (likely stale/illiquid)
+            volume_24h = float(market_data.get('volume_24h', 0) or 0)
+            volume = float(market_data.get('volume', 0) or 0)
+            liquidity = float(market_data.get('liquidity', 0) or 0)
+            
+            effective_volume = max(volume_24h, volume)
+            
+            # Stricter liquidity filter - need at least $500 volume to avoid stale markets
+            if effective_volume < 500 and liquidity < 1000:
+                logger.debug(f"Skipping {market_id[:16]}: low liquidity (vol={effective_volume}, liq={liquidity})")
+                return
+            
+            # Check for price staleness - skip if price seems stuck
+            yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+            if yes_price in [0.0, 0.5, 1.0]:  # Default/stuck prices
+                # Additional check - need some volume to confirm price is real
+                if effective_volume < 1000:
+                    logger.debug(f"Skipping {market_id[:16]}: possibly stale price ({yes_price}) with low volume")
+                    return
+            
             # Get ML signals
             signals = await self._get_signals(market_data)
             
