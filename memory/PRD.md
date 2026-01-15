@@ -13,7 +13,8 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 ## Current Status (January 15, 2026)
 - **Live Data**: ✅ Working - Uses Polymarket Gamma API for real market data
 - **Paper Trading**: ✅ Working - Config loads correctly from MongoDB, trades execute successfully
-- **Production Deployment**: ⚠️ Needs update with live data pipeline fix
+- **UI/UX**: ✅ Improved - Paper Trading redesigned with totals, reset buttons, P&L distribution charts
+- **Production Deployment**: ⚠️ Blocked - ML dependencies (TensorFlow, PyTorch, Transformers) not deployable on Emergent
 
 ## Tech Stack
 - **Backend**: FastAPI (Python)
@@ -22,6 +23,28 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Deployment**: AWS EC2 with Terraform IaC
 
 ## What's Been Implemented
+
+### January 15, 2026 - Session 20 (Paper Trading UI Overhaul)
+
+- ✅ **Paper Trading Page Redesign** (`/app/frontend/src/pages/PaperTrading.js`)
+  - **Performance Tables**: Strategy and Asset Class tables now have TOTAL rows with sums for all columns
+  - **Reset Buttons**: Added "Reset Live Stats" and "Reset All Stats" buttons with confirmation modals
+  - **Equity Curves**: Total line now starts at initial capital ($10,000), strategy/asset class lines start at 0
+  - **P&L Distribution Charts**: Added histogram charts showing distribution of trade returns on both Live Session and Cumulative Stats tabs
+  - **Session Trades Modal**: "View Trades" button on each session shows entry/exit prices, P&L ($), P&L (%), duration
+  
+- ✅ **Navigation Improvements** (`/app/frontend/src/App.js`)
+  - Moved "Paper Trading" tab before "Positions" in navigation
+  - Renamed "Config" to "Settings", "Tuning" to "Strategy Tuning"
+
+- ✅ **New Backend Endpoints** (`/app/backend/server.py`)
+  - `GET /api/paper/session/{id}/trades` - Returns all trades with entry/exit/duration data
+  - `POST /api/paper/reset-live-stats` - Resets live session stats without stopping
+  - `POST /api/paper/reset-cumulative-stats` - Deletes all historical session data
+
+- ✅ **Test Suite** (`/app/test_reports/iteration_16.json`)
+  - 11 features tested - 100% pass rate
+  - Verified: tables with totals, reset confirmations, equity curves, P&L distribution, session trades modal
 
 ### January 15, 2026 - Session 19 (P0 Config Loading Fix, Kelly Toggle, Liquidity Range)
 
