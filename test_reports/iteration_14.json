@@ -1,0 +1,84 @@
+{
+  "summary": "Verified Gamma API live data pipeline fix and Paper Trading gross_loss KeyError fix - All 13 backend tests passed. /api/markets returns live data with source='gamma_api_live', markets have real prices (not 0.5), high liquidity ($100K+), and 2026 end dates. Paper trading start/status/stop flow works without KeyError.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_gamma_api_paper_trading_fix.py",
+    "/app/test_reports/pytest/pytest_results_iteration14.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Gamma API integration in /app/backend/data/polymarket_api.py correctly normalizes market data with yes_price, no_price from outcomePrices",
+    "/api/markets endpoint (server.py line ~773) correctly uses normalized data from Gamma API - fixed bug where token.get('price') was called on string token IDs",
+    "Paper trader (paper_trader.py line 507) now initializes asset_class_stats with gross_profit and gross_loss fields",
+    "Paper trader (paper_trader.py lines 592-596) adds defensive check to ensure gross_profit/gross_loss exist for positions opened before fix",
+    "Strategy stats and asset class stats both include gross_profit, gross_loss, profit_factor in status response",
+    "Live market data shows real prices (0.0005, 0.0285, 0.205) not stale 0.5 defaults",
+    "Markets have high liquidity ($100K to $9.5M) and recent 2026 end dates"
+  ],
+  "updated_files": [
+    "/app/tests/test_gamma_api_paper_trading_fix.py"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 tests passed)",
+    "frontend": "N/A - Backend only testing requested"
+  },
+  "test_credentials": {
+    "admin_username": "admin",
+    "admin_password": "apex2026!",
+    "auth_endpoint": "/api/auth/login/json"
+  },
+  "seed_data_creation": "Started and stopped paper trading sessions during testing",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Gamma API live data pipeline and Paper Trading gross_loss fix verified. Key findings: 1) /api/markets returns source='gamma_api_live' with real market data. 2) Markets have real prices (not 0.5), high liquidity ($100K+), and 2026 end dates. 3) Paper trading start/status/stop flow works without errors. 4) strategy_results and asset_class_results both include gross_profit and gross_loss fields (KeyError fix). 5) Defensive check added for positions opened before fix.",
+  "features_verified": {
+    "gamma_api_live_data": {
+      "status": "WORKING",
+      "endpoint": "GET /api/markets",
+      "notes": "Returns source='gamma_api_live' with normalized market data from Polymarket Gamma API"
+    },
+    "real_market_prices": {
+      "status": "WORKING",
+      "notes": "Markets have real prices (0.0005, 0.0285, 0.205, etc.) not stale 0.5 defaults"
+    },
+    "high_liquidity_markets": {
+      "status": "WORKING",
+      "notes": "Markets have $100K+ liquidity (up to $9.5M)"
+    },
+    "recent_end_dates": {
+      "status": "WORKING",
+      "notes": "Markets have 2026 end dates (e.g., 2026-01-28, 2026-01-31, 2026-12-31)"
+    },
+    "paper_trading_start": {
+      "status": "WORKING",
+      "endpoint": "POST /api/paper/start",
+      "notes": "Creates trading session with session_id, returns config details"
+    },
+    "paper_trading_status": {
+      "status": "WORKING",
+      "endpoint": "GET /api/paper/status",
+      "notes": "Shows running=true, includes strategy_results and asset_class_results with gross_profit/gross_loss"
+    },
+    "paper_trading_stop": {
+      "status": "WORKING",
+      "endpoint": "POST /api/paper/stop",
+      "notes": "Stops session and closes all positions"
+    },
+    "gross_loss_keyerror_fix": {
+      "status": "FIXED",
+      "notes": "Both strategy_results and asset_class_results now include gross_profit and gross_loss fields. Defensive check added for positions opened before fix."
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "notes": "All APIs are real implementations - using real Polymarket Gamma API for live market data"
+  }
+}
