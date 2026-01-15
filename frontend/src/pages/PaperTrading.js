@@ -177,33 +177,50 @@ const PositionCard = ({ position }) => {
   );
 };
 
-// Trade Row Component
+// Trade Row Component - Shows completed trades with entry/exit together
 const TradeRow = ({ trade }) => {
-  const isEntry = trade.type === 'entry';
-  const isProfit = trade.pnl > 0;
+  // Only show complete trades (exits) which have both entry and exit data
+  const isComplete = trade.type === 'exit';
   
-  // For entry trades: price is the entry price
-  // For exit trades: entry_price and exit_price are available
-  const entryPrice = isEntry ? trade.price : trade.entry_price;
-  const exitPrice = isEntry ? null : (trade.exit_price || trade.price);
+  if (!isComplete) return null; // Skip entry-only trades
+  
+  const entryPrice = trade.entry_price || 0;
+  const exitPrice = trade.exit_price || trade.price || 0;
+  const pnl = trade.pnl || 0;
+  const isProfit = pnl > 0;
+  
+  // Calculate return percentage
+  const returnPct = entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice * 100) : 0;
   
   return (
     <tr className="border-b border-white/5 hover:bg-white/5">
       <td className="py-3 px-4">
-        <span className={`text-xs px-2 py-1 rounded ${isEntry ? 'bg-blue-500/20 text-blue-400' : isProfit ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-          {trade.type?.toUpperCase()}
+        <span className={`text-xs px-2 py-1 rounded font-medium ${isProfit ? 'bg-green-500/20 text-green-400' : pnl < 0 ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'}`}>
+          COMPLETE
         </span>
       </td>
       <td className="py-3 px-4 text-sm text-white/80 max-w-xs truncate" title={trade.market_question || trade.market_id}>
         {trade.market_question || trade.market_id?.substring(0, 30) + '...'}
       </td>
       <td className="py-3 px-4 text-sm text-white/60">{STRATEGY_INFO[trade.strategy]?.name || trade.strategy}</td>
-      <td className="py-3 px-4 text-sm text-white/80">{trade.side}</td>
+      <td className="py-3 px-4">
+        <span className={`text-xs px-2 py-0.5 rounded ${trade.side === 'YES' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+          {trade.side}
+        </span>
+      </td>
       <td className="py-3 px-4 text-sm text-white/80">${trade.size?.toFixed(2)}</td>
-      <td className="py-3 px-4 text-sm text-cyan-400">${entryPrice?.toFixed(4) || '-'}</td>
-      <td className="py-3 px-4 text-sm text-amber-400">{exitPrice ? `$${exitPrice.toFixed(4)}` : '-'}</td>
-      <td className={`py-3 px-4 text-sm font-medium ${isEntry ? 'text-white/40' : isProfit ? 'text-green-400' : 'text-red-400'}`}>
-        {isEntry ? '-' : `${isProfit ? '+' : ''}$${trade.pnl?.toFixed(2)}`}
+      <td className="py-3 px-4 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-cyan-400">${entryPrice.toFixed(4)}</span>
+          <span className="text-white/30">→</span>
+          <span className="text-amber-400">${exitPrice.toFixed(4)}</span>
+        </div>
+      </td>
+      <td className={`py-3 px-4 text-sm font-bold ${isProfit ? 'text-green-400' : pnl < 0 ? 'text-red-400' : 'text-white/40'}`}>
+        {isProfit ? '+' : ''}{pnl.toFixed(2)}
+      </td>
+      <td className={`py-3 px-4 text-sm font-medium ${returnPct > 0 ? 'text-green-400' : returnPct < 0 ? 'text-red-400' : 'text-white/40'}`}>
+        {returnPct > 0 ? '+' : ''}{returnPct.toFixed(2)}%
       </td>
       <td className="py-3 px-4 text-xs text-white/40">{new Date(trade.timestamp).toLocaleTimeString()}</td>
     </tr>
