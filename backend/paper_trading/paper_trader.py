@@ -177,6 +177,8 @@ class PaperTrader:
                     self.min_volume_24h = float(user_config["min_volume_24h"])
                 if "max_spread" in user_config:
                     self.max_spread = float(user_config["max_spread"])
+                if "max_open_positions" in user_config:
+                    self.max_open_positions = int(user_config["max_open_positions"])
                 
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
