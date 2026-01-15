@@ -107,7 +107,9 @@ const TradeRow = ({ trade }) => {
           {trade.type?.toUpperCase()}
         </span>
       </td>
-      <td className="py-3 px-4 text-sm text-white/80 max-w-xs truncate">{trade.market_id?.substring(0, 20)}...</td>
+      <td className="py-3 px-4 text-sm text-white/80 max-w-xs truncate" title={trade.market_question || trade.market_id}>
+        {trade.market_question || trade.market_id?.substring(0, 30) + '...'}
+      </td>
       <td className="py-3 px-4 text-sm text-white/60">{trade.strategy}</td>
       <td className="py-3 px-4 text-sm text-white/80">{trade.side}</td>
       <td className="py-3 px-4 text-sm text-white/80">${trade.size?.toFixed(2)}</td>
