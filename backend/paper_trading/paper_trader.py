@@ -449,6 +449,78 @@ class PaperTrader:
         except Exception as e:
             logger.error(f"Error evaluating entry: {e}")
     
+    # Exit parameters by STRATEGY - different strategies have different risk profiles
+    EXIT_PARAMS_BY_STRATEGY = {
+        'delta_neutral': {
+            'take_profit': 0.05,    # 5% - conservative, quick profits
+            'stop_loss': -0.03,     # 3% - tight stop
+            'max_hours': 12         # Close faster
+        },
+        'volatility_exploitation': {
+            'take_profit': 0.25,    # 25% - ride volatility
+            'stop_loss': -0.10,     # 10% - wider stop for swings
+            'max_hours': 48         # Hold longer
+        },
+        'alpha_directional': {
+            'take_profit': 0.40,    # 40% - conviction trades
+            'stop_loss': -0.15,     # 15% - give room to be right
+            'max_hours': 72         # Hold for directional moves
+        },
+        'arbitrage': {
+            'take_profit': 0.10,    # 10% - capture spread
+            'stop_loss': -0.05,     # 5% - tight risk
+            'max_hours': 24         # Standard hold
+        }
+    }
+    
+    # Exit parameter adjustments by ASSET CLASS - some markets are more volatile
+    EXIT_ADJUSTMENTS_BY_ASSET = {
+        'crypto': {
+            'tp_mult': 1.5,   # Crypto is volatile, wider TP
+            'sl_mult': 1.3,   # Wider SL too
+            'time_mult': 0.5  # But close faster
+        },
+        'politics': {
+            'tp_mult': 1.2,
+            'sl_mult': 1.0,
+            'time_mult': 1.5  # Political events take longer
+        },
+        'sports': {
+            'tp_mult': 1.0,
+            'sl_mult': 0.8,   # Tighter SL for sports
+            'time_mult': 0.25 # Events end quickly
+        },
+        'finance': {
+            'tp_mult': 0.8,   # More predictable
+            'sl_mult': 0.8,
+            'time_mult': 1.0
+        },
+        'entertainment': {
+            'tp_mult': 1.0,
+            'sl_mult': 1.0,
+            'time_mult': 1.0
+        },
+        'science': {
+            'tp_mult': 1.0,
+            'sl_mult': 1.0,
+            'time_mult': 2.0  # Science takes time
+        }
+    }
+    
+    def _get_exit_params(self, strategy: str, asset_class: str) -> Dict:
+        """Get exit parameters adjusted for strategy and asset class"""
+        # Base params from strategy
+        base = self.EXIT_PARAMS_BY_STRATEGY.get(strategy, self.EXIT_PARAMS_BY_STRATEGY['arbitrage'])
+        
+        # Adjustments from asset class
+        adj = self.EXIT_ADJUSTMENTS_BY_ASSET.get(asset_class.lower(), {'tp_mult': 1.0, 'sl_mult': 1.0, 'time_mult': 1.0})
+        
+        return {
+            'take_profit': base['take_profit'] * adj['tp_mult'],
+            'stop_loss': base['stop_loss'] * adj['sl_mult'],
+            'max_hours': base['max_hours'] * adj['time_mult']
+        }
+    
     async def _evaluate_exit(self, market_id: str, market_data: Dict):
         """Evaluate existing paper position for exit"""
         try:
