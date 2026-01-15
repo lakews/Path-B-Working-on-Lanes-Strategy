@@ -409,24 +409,35 @@ class PaperTrader:
             market_id = market_data.get('id')
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
-            # LIQUIDITY CHECK: Skip markets with very low volume (likely stale/illiquid)
+            # LIQUIDITY CHECK: Use user-configured thresholds from Configuration page
             volume_24h = float(market_data.get('volume_24h', 0) or 0)
             volume = float(market_data.get('volume', 0) or 0)
             liquidity = float(market_data.get('liquidity', 0) or 0)
             
             effective_volume = max(volume_24h, volume)
             
-            # Stricter liquidity filter - need at least $500 volume to avoid stale markets
-            if effective_volume < 500 and liquidity < 1000:
-                logger.debug(f"Skipping {market_id[:16]}: low liquidity (vol={effective_volume}, liq={liquidity})")
+            # Use user-defined thresholds from config (Configuration page is source of truth)
+            min_vol_threshold = self.min_volume_24h  # From user config
+            min_liq_threshold = self.min_liquidity   # From user config
+            max_liq_threshold = self.max_liquidity   # From user config
+            
+            # Check minimum liquidity requirements
+            if effective_volume < min_vol_threshold and liquidity < min_liq_threshold:
+                logger.debug(f"Skipping {market_id[:16]}: below min thresholds (vol={effective_volume} < {min_vol_threshold}, liq={liquidity} < {min_liq_threshold})")
                 return
             
-            # Check for price staleness - skip if price seems stuck
+            # Check maximum liquidity (if user wants to avoid very liquid markets)
+            if liquidity > max_liq_threshold:
+                logger.debug(f"Skipping {market_id[:16]}: above max liquidity ({liquidity} > {max_liq_threshold})")
+                return
+            
+            # Check for stuck/stale prices - skip markets with default prices unless high volume confirms they're real
             yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
             if yes_price in [0.0, 0.5, 1.0]:  # Default/stuck prices
-                # Additional check - need some volume to confirm price is real
-                if effective_volume < 1000:
-                    logger.debug(f"Skipping {market_id[:16]}: possibly stale price ({yes_price}) with low volume")
+                # Need significantly higher volume to trust these prices
+                stale_price_min_volume = min_vol_threshold * 2  # Double the normal threshold
+                if effective_volume < stale_price_min_volume:
+                    logger.debug(f"Skipping {market_id[:16]}: possibly stale price ({yes_price}) with low volume ({effective_volume} < {stale_price_min_volume})")
                     return
             
             # Get ML signals
@@ -443,6 +454,7 @@ class PaperTrader:
             strategy = self._determine_strategy(signals, rl_action, market_data)
             
             # ADAPTIVE POSITION SIZING - considers liquidity, volume, Kelly, RL confidence
+            # Uses self.kelly_fraction and self.kelly_enabled from user config
             sizing_result = self._calculate_position_size(
                 rl_confidence=rl_confidence,
                 signals=signals,
