@@ -131,6 +131,17 @@ const PaperTrading = () => {
   const [showStopOptions, setShowStopOptions] = useState(false);
   const [cumulativeStats, setCumulativeStats] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const [savedConfig, setSavedConfig] = useState(null);  // Config from Config tab
+
+  // Fetch saved config from server (for display when not running)
+  const fetchSavedConfig = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/config`);
+      setSavedConfig(response.data);
+    } catch (e) {
+      console.error('Error fetching saved config:', e);
+    }
+  }, []);
 
   // WebSocket connection for real-time updates
   useEffect(() => {
