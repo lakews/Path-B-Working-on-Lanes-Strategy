@@ -650,6 +650,24 @@ The RL model learns from completed backtests. To train it:
 3. As more backtests complete, Training Iterations increase and Q-Table populates
 4. Current status: 29 iterations trained, model is "Active"
 
+## Prioritized Backlog
+
+### P0 (Critical) - COMPLETED
+- [x] Paper Trading Config Loading Fix (Session 19)
+- [x] Live Data Pipeline Fix (Session 18)
+
+### P1 (High Priority)
+- [ ] Frontend UI for Exit Parameters (Take Profit, Stop Loss, Time Limit per strategy/asset class)
+- [ ] Real-Time Market Alerts
+
+### P2 (Medium Priority)
+- [ ] Strategy Tuning UI improvements
+- [ ] Comprehensive documentation
+
+### P3 (Low Priority)
+- [ ] ESLint configuration fixes
+- [ ] Chart width warning fixes
+
 ## Key API Endpoints
 - `GET /api/status` - System status and trading mode
 - `GET /api/health` - Health check
