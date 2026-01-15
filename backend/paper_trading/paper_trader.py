@@ -355,6 +355,9 @@ class PaperTrader:
                 # High-frequency: process ALL markets, not just top 20
                 markets_to_process = markets[:100]  # Process up to 100 markets per cycle
                 
+                markets_evaluated = 0
+                markets_filtered_by_asset = 0
+                
                 for market_data in markets_to_process:
                     if not self.running:
                         break
@@ -362,7 +365,10 @@ class PaperTrader:
                     # Filter by asset class
                     asset_class = market_data.get('asset_class', market_data.get('category', 'unknown')).lower()
                     if asset_class not in [ac.lower() for ac in self.enabled_asset_classes]:
+                        markets_filtered_by_asset += 1
                         continue
+                    
+                    markets_evaluated += 1
                     
                     # Check existing paper position
                     market_id = market_data.get('id')
@@ -375,6 +381,10 @@ class PaperTrader:
                     
                     # High-frequency: minimal pause between markets
                     await asyncio.sleep(trade_interval / len(markets_to_process))
+                
+                # Log cycle stats occasionally
+                if self.total_trades == 0:
+                    logger.info(f"CYCLE: Evaluated {markets_evaluated} markets, {markets_filtered_by_asset} filtered by asset class, {len(self.paper_positions)} open positions")
                 
                 # Check if graceful stop is complete (all positions closed)
                 if self.graceful_stop and not self.paper_positions:
