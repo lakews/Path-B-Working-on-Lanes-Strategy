@@ -181,6 +181,12 @@ const PositionCard = ({ position }) => {
 const TradeRow = ({ trade }) => {
   const isEntry = trade.type === 'entry';
   const isProfit = trade.pnl > 0;
+  
+  // For entry trades: price is the entry price
+  // For exit trades: entry_price and exit_price are available
+  const entryPrice = isEntry ? trade.price : trade.entry_price;
+  const exitPrice = isEntry ? null : (trade.exit_price || trade.price);
+  
   return (
     <tr className="border-b border-white/5 hover:bg-white/5">
       <td className="py-3 px-4">
@@ -191,10 +197,11 @@ const TradeRow = ({ trade }) => {
       <td className="py-3 px-4 text-sm text-white/80 max-w-xs truncate" title={trade.market_question || trade.market_id}>
         {trade.market_question || trade.market_id?.substring(0, 30) + '...'}
       </td>
-      <td className="py-3 px-4 text-sm text-white/60">{trade.strategy}</td>
+      <td className="py-3 px-4 text-sm text-white/60">{STRATEGY_INFO[trade.strategy]?.name || trade.strategy}</td>
       <td className="py-3 px-4 text-sm text-white/80">{trade.side}</td>
       <td className="py-3 px-4 text-sm text-white/80">${trade.size?.toFixed(2)}</td>
-      <td className="py-3 px-4 text-sm text-white/80">${trade.price?.toFixed(4)}</td>
+      <td className="py-3 px-4 text-sm text-cyan-400">${entryPrice?.toFixed(4) || '-'}</td>
+      <td className="py-3 px-4 text-sm text-amber-400">{exitPrice ? `$${exitPrice.toFixed(4)}` : '-'}</td>
       <td className={`py-3 px-4 text-sm font-medium ${isEntry ? 'text-white/40' : isProfit ? 'text-green-400' : 'text-red-400'}`}>
         {isEntry ? '-' : `${isProfit ? '+' : ''}$${trade.pnl?.toFixed(2)}`}
       </td>
