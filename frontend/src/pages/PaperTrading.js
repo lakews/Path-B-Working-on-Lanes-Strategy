@@ -527,11 +527,11 @@ const PaperTrading = () => {
               <button
                 onClick={startPaperTrading}
                 disabled={loading}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)]"
+                className="flex items-center gap-2 px-8 py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-black text-base transition-all shadow-[0_0_30px_rgba(6,182,212,0.4)] hover:shadow-[0_0_40px_rgba(6,182,212,0.6)] hover:scale-105"
                 data-testid="start-paper-trading-btn"
               >
-                <Play className="w-4 h-4" />
-                Start Trading
+                <Play className="w-5 h-5" />
+                START TRADING
               </button>
             )}
           </div>
