@@ -584,7 +584,13 @@ class PaperTrader:
         return np.clip(reward, -2.0, 2.0)  # Clip to reasonable range
     
     def _calculate_position_size(self, rl_confidence: float, signals: Dict) -> float:
-        """Calculate position size using Kelly Criterion and RL confidence"""
+        """Calculate position size using Kelly Criterion and RL confidence
+        
+        Position size is calculated as a % of DEPLOYED capital (not total capital)
+        - deployed_capital = initial_capital * capital_deployment_pct
+        - max_position = deployed_capital * max_position_size_pct
+        - position_size = deployed_capital * kelly * confidence_multiplier (capped at max_position)
+        """
         # Base position from Kelly
         win_rate = self.winning_trades / max(self.total_trades, 1)
         if win_rate == 0:
@@ -594,15 +600,23 @@ class PaperTrader:
         avg_loss = 0.10  # Assume 10% avg loss
         
         kelly = (win_rate * avg_win - (1 - win_rate) * avg_loss) / avg_win if avg_win > 0 else 0
-        kelly = max(0, min(kelly, self.kelly_fraction))  # Fractional Kelly
+        kelly = max(0, min(kelly, self.kelly_fraction))  # Fractional Kelly capped by user config
         
         # Scale by RL confidence
         confidence_multiplier = 0.5 + (rl_confidence * 0.5)  # 0.5 to 1.0
         
-        # Calculate position size
-        max_position = self.current_capital * self.max_position_pct
-        position_size = self.current_capital * kelly * confidence_multiplier
-        position_size = min(position_size, max_position)
+        # Calculate available capital for trading (respecting capital deployment %)
+        # deployed_capital is already calculated from initial_capital * capital_deployment_pct
+        available_capital = min(self.current_capital, self.deployed_capital)
+        
+        # Calculate position size based on deployed capital
+        position_size = available_capital * kelly * confidence_multiplier
+        
+        # Cap at max_position_size (which is max_position_size_pct of deployed_capital)
+        position_size = min(position_size, self.max_position_size)
+        
+        # Ensure we don't exceed current available capital
+        position_size = min(position_size, self.current_capital * 0.9)  # Leave 10% buffer
         
         return round(position_size, 2)
     
