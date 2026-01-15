@@ -18,31 +18,56 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
-### January 15, 2026 - Session 16 (Paper Trading UI Data Sync Bug Fix)
+### January 15, 2026 - Session 16 (Paper Trading Config Integration, JWT Auth, WebSocket Updates)
 
 - ✅ **BUG FIX: Paper Trading Page Data Sync Issue**
-  - **Issue**: UI showed "0" Open Positions and "Stopped" status even when backend confirmed active session with trades
+  - **Issue**: UI showed "0" Open Positions and "Stopped" status even when backend confirmed active session
   - **Root Cause 1**: Frontend used `Promise.all` which fails entirely if any single API request fails
   - **Root Cause 2**: Backend `/api/paper/status` returned incomplete structure when no session exists
   - **Root Cause 3**: MongoDB `insert_one()` mutated trade_log dict, adding `_id` to in-memory trade_history
-  
-- ✅ **Frontend Fix** (`/app/frontend/src/pages/PaperTrading.js`)
-  - Changed `Promise.all` to `Promise.allSettled` in `fetchData()` function
-  - Each API call now handled independently - if one fails, others still update their state
-  - Added fallback in Open Positions MetricCard: `status.open_positions ?? positions.length ?? 0`
-  
-- ✅ **Backend Fix** (`/app/backend/server.py`)
-  - `/api/paper/status` now returns complete structure even when no session:
-    - `running`, `open_positions`, `total_trades`, `total_pnl`, `win_rate`, `max_drawdown`, `current_capital`, `initial_capital`
-  
-- ✅ **MongoDB ObjectId Fix** (`/app/backend/paper_trading/paper_trader.py`)
-  - Used `trade_log.copy()` before `insert_one()` to prevent `_id` mutation in `trade_history` list
-  - Fixed ObjectId serialization error in `/api/paper/trades` endpoint
+  - **Frontend Fix**: Changed to `Promise.allSettled` in `fetchData()` function
+  - **Backend Fix**: Status endpoint now returns complete structure with all fields
 
-- ✅ **Test Suite** (`/app/tests/test_paper_trading_data_sync_fix.py`)
-  - 11 tests covering all paper trading endpoints
-  - Verifies complete status structure, no ObjectId in trades, independent endpoint handling
-  - 100% pass rate
+- ✅ **Paper Trading Now Uses ALL Config Tab Parameters**
+  - `capital_deployment_pct` - % of capital to deploy (e.g., 80% of $10K = $8K deployed)
+  - `max_position_size_pct` - % of DEPLOYED capital per position (e.g., 3% of $8K = $240)
+  - `kelly_fraction` - Kelly criterion multiplier
+  - `max_drawdown_pct` - Maximum allowed drawdown
+  - `trades_per_10min` - Trading frequency
+  - Config loaded from DB on session start via `_load_user_config()`
+  - Position sizing correctly uses deployed capital, not total capital
+
+- ✅ **Unrealized P&L Tracking**
+  - Status now includes `unrealized_pnl` for open positions
+  - Status includes `combined_pnl` (realized + unrealized)
+  - Frontend displays both: "Realized: $X | Unrealized: $Y"
+  - Position monitoring loop updates unrealized P&L every 10 seconds
+
+- ✅ **JWT Authentication Implemented** (`/app/backend/auth.py`)
+  - Secure JWT-based authentication replacing weak API key
+  - Dual-auth mode: JWT Bearer token OR HTTP Basic Auth (legacy fallback)
+  - `/api/auth/login/json` - Get JWT token (24hr expiry)
+  - `/api/auth/me` - Get current user info
+  - `/api/auth/register` - Create new user (admin only)
+  - `/api/auth/change-password` - Change password
+  - Default admin user auto-created on startup
+
+- ✅ **WebSocket Real-time Updates for Paper Trading**
+  - Paper trades broadcast via WebSocket when executed
+  - Status updates broadcast on entry/exit
+  - Frontend reduces polling interval when WebSocket connected (10s vs 5s)
+  - Visual indicator shows "Live" (WebSocket) or "Polling" mode
+
+- ✅ **Config Update Persistence**
+  - `/api/config/update` now saves ALL parameters to DB
+  - Trading params persist across server restarts
+  - Paper trader loads saved config on session start
+
+- ✅ **Test Suite** (`/app/tests/test_jwt_auth_paper_trading.py`)
+  - 14 tests all passing (100% success rate)
+  - JWT login, protected endpoints, dual-auth
+  - Paper trading status fields verification
+  - Config persistence verification
 
 ### January 14, 2026 - Session 15 (Paper Trading Engine, RL Integration, Strategy Optimizer)
 
