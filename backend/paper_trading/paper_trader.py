@@ -460,6 +460,10 @@ class PaperTrader:
             self.trade_history.append(trade_log.copy())  # Use copy to prevent MongoDB _id mutation
             await self.db.paper_trades.insert_one(trade_log)
             
+            # Broadcast trade event via WebSocket
+            await broadcast_paper_event("paper_trade", {"trade": trade_log.copy()})
+            await broadcast_paper_event("paper_status_update", {"status": self.get_status()})
+            
             logger.info(f"📝 PAPER ENTRY: {side} ${size:.2f} @ {current_price:.4f} | Strategy: {strategy} | RL: {rl_action} ({rl_confidence:.2f})")
             
         except Exception as e:
