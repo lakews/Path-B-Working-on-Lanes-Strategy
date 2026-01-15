@@ -854,7 +854,8 @@ class PaperTrader:
             signals=signals,
             rl_action=rl_action,
             rl_confidence=rl_confidence,
-            kelly_fraction=self.kelly_fraction
+            kelly_fraction=self.kelly_fraction,
+            kelly_enabled=self.kelly_enabled  # Pass kelly_enabled toggle
         )
         
         # Log sizing decision for analysis
