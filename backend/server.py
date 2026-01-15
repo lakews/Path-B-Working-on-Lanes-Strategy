@@ -2323,6 +2323,12 @@ async def startup_event():
     global user_config, ws_manager
     await connect_db()
     
+    # Initialize default admin user if no users exist
+    try:
+        await init_default_admin()
+    except Exception as e:
+        logger.warning(f"Could not initialize default admin: {e}")
+    
     # Load saved user config from database
     try:
         db = get_db()
