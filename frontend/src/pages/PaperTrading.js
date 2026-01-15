@@ -507,8 +507,9 @@ const PaperTrading = () => {
       case 'pnl':
         return dir * ((a.pnl || 0) - (b.pnl || 0));
       case 'return':
-        const aReturn = a.type === 'exit' && a.entry_price > 0 ? ((a.exit_price - a.entry_price) / a.entry_price * 100) : 0;
-        const bReturn = b.type === 'exit' && b.entry_price > 0 ? ((b.exit_price - b.entry_price) / b.entry_price * 100) : 0;
+        // Calculate return % based on P&L / size (not price difference)
+        const aReturn = a.type === 'exit' && a.size > 0 ? ((a.pnl || 0) / a.size * 100) : 0;
+        const bReturn = b.type === 'exit' && b.size > 0 ? ((b.pnl || 0) / b.size * 100) : 0;
         return dir * (aReturn - bReturn);
       case 'timestamp':
       default:
