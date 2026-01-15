@@ -62,7 +62,7 @@ const Configuration = () => {
       const response = await axios.get(`${API}/config`);
       const savedConfig = response.data;
       
-      // Merge saved config with current state
+      // Merge saved config with current state - DB is source of truth
       setConfig(prev => ({
         ...prev,
         trades_per_10min: savedConfig.trades_per_10min ?? prev.trades_per_10min,
@@ -70,7 +70,13 @@ const Configuration = () => {
         capital_deployment_pct: savedConfig.capital_deployment_pct ?? prev.capital_deployment_pct,
         max_position_size_pct: savedConfig.max_position_size_pct ?? prev.max_position_size_pct,
         kelly_fraction: savedConfig.kelly_fraction ?? prev.kelly_fraction,
+        kelly_enabled: savedConfig.kelly_enabled ?? prev.kelly_enabled,
         max_drawdown_pct: savedConfig.max_drawdown_pct ?? prev.max_drawdown_pct,
+        min_liquidity: savedConfig.min_liquidity ?? prev.min_liquidity,
+        max_liquidity: savedConfig.max_liquidity ?? prev.max_liquidity,
+        min_volume_24h: savedConfig.min_volume_24h ?? prev.min_volume_24h,
+        max_spread: savedConfig.max_spread ?? prev.max_spread,
+        max_open_positions: savedConfig.max_open_positions ?? prev.max_open_positions,
         enabled_asset_classes: savedConfig.enabled_asset_classes ?? prev.enabled_asset_classes,
         enabled_strategies: savedConfig.enabled_strategies ?? prev.enabled_strategies,
       }));
@@ -98,8 +104,10 @@ const Configuration = () => {
       capital_deployment_pct: 80,
       max_position_size_pct: 3,
       kelly_fraction: 0.25,
+      kelly_enabled: true,
       max_drawdown_pct: 5,
       min_liquidity: 100,
+      max_liquidity: 1000000,
       min_volume_24h: 1000,
       max_spread: 0.05,
       max_open_positions: 50,
