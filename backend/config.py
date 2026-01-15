@@ -45,7 +45,8 @@ class Config:
     
     @property
     def MAX_POSITION_SIZE(self):
-        return self.INITIAL_CAPITAL * (self.MAX_POSITION_SIZE_PCT / 100)
+        # Max position is % of DEPLOYED capital, not initial capital
+        return self.DEPLOYED_CAPITAL * (self.MAX_POSITION_SIZE_PCT / 100)
     
     @property
     def TRADE_INTERVAL_SECONDS(self):
