@@ -687,21 +687,21 @@ class PaperTrader:
             try:
                 vol_pred = await self.volatility_predictor.predict(market_data)
                 signals['volatility'] = vol_pred.get('predicted_volatility', 0.02)
-            except:
+            except Exception:
                 pass
             
             # Get sentiment
             try:
                 sentiment = await self.signal_fusion.get_fused_signal(market_data.get('id'), market_data)
                 signals['sentiment'] = sentiment.get('sentiment', 0.5)
-            except:
+            except Exception:
                 pass
             
             # Get sharp trader alignment
             try:
                 sharp_signals = await self.sharp_detector.get_alignment_signal(market_data.get('id'))
                 signals['sharp_alignment'] = sharp_signals.get('alignment_score', 0.5)
-            except:
+            except Exception:
                 pass
             
             return signals
