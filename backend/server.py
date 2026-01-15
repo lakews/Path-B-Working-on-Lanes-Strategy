@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter, BackgroundTasks, Query, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security import HTTPBasic, HTTPBasicCredentials, OAuth2PasswordRequestForm
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
@@ -22,6 +22,11 @@ from ml.rl_engine import RLAdaptiveEngine
 from ml.social_sentiment import social_sentiment_analyzer
 from ml.whale_tracker import whale_tracker
 from ml.strategy_tuner import strategy_tuner
+from auth import (
+    create_access_token, authenticate_user, get_current_user, get_current_user_optional,
+    create_user, init_default_admin, Token, UserCreate, UserLogin, UserResponse,
+    ACCESS_TOKEN_EXPIRE_MINUTES
+)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -37,16 +42,43 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="APEX TRADER API", version="1.0.0")
 
 # =============================================
-# AUTHENTICATION
+# AUTHENTICATION (Dual-mode: Basic Auth + JWT)
 # =============================================
-security = HTTPBasic()
+security = HTTPBasic(auto_error=False)
 
 # Get credentials from environment or use defaults
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'apex2026!')
 
+async def verify_credentials_dual(
+    credentials: Optional[HTTPBasicCredentials] = Depends(security),
+    current_user = Depends(get_current_user_optional)
+):
+    """
+    Verify authentication via either:
+    1. JWT Bearer token (preferred)
+    2. HTTP Basic Auth (legacy fallback)
+    """
+    # First try JWT authentication
+    if current_user:
+        return current_user.get("username", "jwt_user")
+    
+    # Fall back to HTTP Basic Auth
+    if credentials:
+        correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
+        correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
+        if correct_username and correct_password:
+            return credentials.username
+    
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid credentials",
+        headers={"WWW-Authenticate": "Bearer, Basic"},
+    )
+
+# Keep old function for backward compatibility
 def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)):
-    """Verify HTTP Basic Auth credentials for sensitive endpoints"""
+    """Verify HTTP Basic Auth credentials for sensitive endpoints (legacy)"""
     correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
     correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
     if not (correct_username and correct_password):
