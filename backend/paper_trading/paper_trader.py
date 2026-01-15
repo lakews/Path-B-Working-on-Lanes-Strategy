@@ -387,6 +387,10 @@ class PaperTrader:
     async def _evaluate_entry(self, market_data: Dict):
         """Evaluate market for potential paper trade entry using ADAPTIVE sizing"""
         try:
+            # Check if we're at max positions limit
+            if len(self.paper_positions) >= self.max_open_positions:
+                return  # Skip new entries when at capacity
+            
             market_id = market_data.get('id')
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
