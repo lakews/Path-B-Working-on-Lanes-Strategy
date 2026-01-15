@@ -26,12 +26,12 @@ const STRATEGIES = [
 
 const Configuration = () => {
   const [config, setConfig] = useState({
-    trades_per_10min: 500,
-    initial_capital: 100,
+    trades_per_10min: 100,
+    initial_capital: 10000,
     capital_deployment_pct: 80,
     max_position_size_pct: 3,
     kelly_fraction: 0.25,
-    max_drawdown_pct: 3,
+    max_drawdown_pct: 5,
     enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'],
     enabled_strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
   });
@@ -39,6 +39,7 @@ const Configuration = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('trading');
+
 
   useEffect(() => { fetchConfig(); fetchStatus(); }, []);
 
