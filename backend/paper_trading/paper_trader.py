@@ -157,7 +157,7 @@ class PaperTrader:
                 self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
                 self.trade_interval = max(1, 600 / self.trades_per_10min)
                 
-                logger.info(f"Loaded user config from DB:")
+                logger.info("Loaded user config from DB:")
                 logger.info(f"  Strategies: {len(self.enabled_strategies)} | Asset Classes: {len(self.enabled_asset_classes)}")
                 logger.info(f"  Capital Deployment: {self.capital_deployment_pct}% | Max Position: {self.max_position_size_pct}%")
                 logger.info(f"  Deployed Capital: ${self.deployed_capital} | Max Position Size: ${self.max_position_size}")
