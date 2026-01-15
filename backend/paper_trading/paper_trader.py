@@ -133,7 +133,7 @@ class PaperTrader:
         self.trade_interval = max(1, 600 / self.trades_per_10min)  # Seconds between trade evaluations
         
         logger.info(f"Paper Trader initialized - Session: {self.session_id}")
-        logger.info(f"  Capital: ${initial_capital} | Deployed: ${self.deployed_capital} ({self.capital_deployment_pct}%)")
+        logger.info(f"  Capital: ${self.initial_capital} | Deployed: ${self.deployed_capital} ({self.capital_deployment_pct}%)")
         logger.info(f"  Max Position: ${self.max_position_size} ({self.max_position_size_pct}% of deployed)")
         logger.info(f"  Kelly: {self.kelly_fraction} | Max Drawdown: {self.max_drawdown_pct}% | Trade Interval: {self.trade_interval:.1f}s")
     
