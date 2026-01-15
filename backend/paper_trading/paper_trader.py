@@ -974,13 +974,39 @@ class PaperTrader:
             logger.error(f"Error in session learning: {e}")
     
     async def _get_active_markets(self) -> List[Dict]:
-        """Get active markets from database"""
+        """Get active markets from database, or fetch live if empty"""
         try:
+            # First try database
             cursor = self.db.markets.find(
                 {"liquidity": {"$gte": 1000}},
                 {"_id": 0}
             ).limit(100)
-            return await cursor.to_list(length=100)
+            markets = await cursor.to_list(length=100)
+            
+            # If no markets in DB, fetch live from Gamma API
+            if not markets:
+                logger.info("No markets in DB, fetching live from Gamma API...")
+                try:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        live_markets = await api.get_markets(limit=100)
+                        if live_markets:
+                            # Filter for good liquidity
+                            markets = [m for m in live_markets if float(m.get('liquidity', 0) or 0) >= 1000]
+                            logger.info(f"Fetched {len(markets)} live markets with liquidity >= 1000")
+                            
+                            # Optionally store in DB for caching
+                            if markets:
+                                for m in markets[:50]:  # Store top 50
+                                    await self.db.markets.update_one(
+                                        {"condition_id": m.get('condition_id') or m.get('id')},
+                                        {"$set": m},
+                                        upsert=True
+                                    )
+                except Exception as api_err:
+                    logger.error(f"Failed to fetch live markets: {api_err}")
+            
+            return markets
         except Exception as e:
             logger.error(f"Error getting markets: {e}")
             return []
