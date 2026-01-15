@@ -38,6 +38,7 @@ class Config:
     MIN_LIQUIDITY = float(os.environ.get('MIN_LIQUIDITY', 100))  # Minimum liquidity in USD
     MIN_VOLUME_24H = float(os.environ.get('MIN_VOLUME_24H', 1000))  # Minimum 24h volume in USD
     MAX_SPREAD = float(os.environ.get('MAX_SPREAD', 0.05))  # Maximum bid-ask spread (5%)
+    MAX_OPEN_POSITIONS = int(os.environ.get('MAX_OPEN_POSITIONS', 50))  # Max concurrent positions
     
     # System Performance
     EXECUTION_LATENCY_MS = int(os.environ.get('EXECUTION_LATENCY_MS', 100))
