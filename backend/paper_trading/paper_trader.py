@@ -522,15 +522,23 @@ class PaperTrader:
         }
     
     async def _evaluate_exit(self, market_id: str, market_data: Dict):
-        """Evaluate existing paper position for exit"""
+        """Evaluate existing paper position for exit using strategy/asset-specific params"""
         try:
             position = self.paper_positions.get(market_id)
             if not position:
                 return
             
-            current_price = market_data.get('yes_price', 0.5)
+            current_price = float(market_data.get('yes_price', 0.5) or 0.5)
             entry_price = position['entry_price']
             side = position['side']
+            strategy = position.get('strategy', 'arbitrage')
+            asset_class = position.get('asset_class', 'unknown')
+            
+            # Get exit parameters for this strategy + asset class combination
+            exit_params = self._get_exit_params(strategy, asset_class)
+            take_profit_threshold = exit_params['take_profit']
+            stop_loss_threshold = exit_params['stop_loss']
+            max_hours = exit_params['max_hours']
             
             # Calculate unrealized P&L
             if side == 'YES':
@@ -546,13 +554,13 @@ class PaperTrader:
             should_exit = False
             exit_reason = None
             
-            # Take profit
-            if pnl_pct > 0.3:  # 30% profit
+            # Take profit - configurable by strategy/asset
+            if pnl_pct >= take_profit_threshold:
                 should_exit = True
                 exit_reason = "take_profit"
             
-            # Stop loss
-            elif pnl_pct < -0.15:  # 15% loss
+            # Stop loss - configurable by strategy/asset
+            elif pnl_pct <= stop_loss_threshold:
                 should_exit = True
                 exit_reason = "stop_loss"
             
@@ -565,14 +573,17 @@ class PaperTrader:
                     should_exit = True
                     exit_reason = "rl_signal_reversal"
             
-            # Time-based exit (positions open too long)
+            # Time-based exit - configurable by strategy/asset
             entry_time = datetime.fromisoformat(position['entry_time'].replace('Z', '+00:00'))
             hours_open = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
-            if hours_open > 24:  # Close after 24 hours
+            if hours_open > max_hours:
                 should_exit = True
                 exit_reason = "time_limit"
             
             if should_exit:
+                # Log exit parameters used
+                logger.debug(f"Exit triggered for {market_id[:16]}: {exit_reason} | Strategy: {strategy}, Asset: {asset_class}")
+                logger.debug(f"  Params: TP={take_profit_threshold:.0%}, SL={stop_loss_threshold:.0%}, MaxHrs={max_hours:.1f}")
                 await self._execute_paper_exit(market_id, market_data, exit_reason)
                 
         except Exception as e:
