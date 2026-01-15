@@ -433,11 +433,12 @@ class PaperTrader:
     
     async def _execute_paper_entry(self, market_id: str, market_data: Dict, side: str,
                                     size: float, strategy: str, signals: Dict,
-                                    rl_action: str, rl_confidence: float):
-        """Execute a paper trade entry"""
+                                    rl_action: str, rl_confidence: float,
+                                    sizing_breakdown: Dict = None):
+        """Execute a paper trade entry with adaptive sizing info"""
         try:
             current_price = market_data.get('yes_price', 0.5)
-            asset_class = market_data.get('asset_class', 'unknown')
+            asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
             position = {
                 "position_id": str(uuid.uuid4()),
@@ -451,7 +452,8 @@ class PaperTrader:
                 "strategy": strategy,
                 "rl_action": rl_action,
                 "rl_confidence": rl_confidence,
-                "signals": signals
+                "signals": signals,
+                "sizing_breakdown": sizing_breakdown or {}  # Store for learning
             }
             
             self.paper_positions[market_id] = position
