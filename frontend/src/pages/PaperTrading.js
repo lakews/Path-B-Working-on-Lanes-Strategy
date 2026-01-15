@@ -177,27 +177,29 @@ const PositionCard = ({ position }) => {
   );
 };
 
-// Trade Row Component - Shows completed trades with entry/exit together
+// Trade Row Component - Shows both open (ENTRY) and completed trades
 const TradeRow = ({ trade }) => {
-  // Only show complete trades (exits) which have both entry and exit data
+  const isEntry = trade.type === 'entry';
   const isComplete = trade.type === 'exit';
   
-  if (!isComplete) return null; // Skip entry-only trades
-  
-  const entryPrice = trade.entry_price || 0;
-  const exitPrice = trade.exit_price || trade.price || 0;
+  const entryPrice = isEntry ? (trade.price || 0) : (trade.entry_price || 0);
+  const exitPrice = isComplete ? (trade.exit_price || trade.price || 0) : null;
   const pnl = trade.pnl || 0;
   const isProfit = pnl > 0;
   
-  // Calculate return percentage
-  const returnPct = entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice * 100) : 0;
+  // Calculate return percentage for completed trades
+  const returnPct = isComplete && entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice * 100) : 0;
   
   return (
     <tr className="border-b border-white/5 hover:bg-white/5">
       <td className="py-3 px-4">
-        <span className={`text-xs px-2 py-1 rounded font-medium ${isProfit ? 'bg-green-500/20 text-green-400' : pnl < 0 ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'}`}>
-          COMPLETE
-        </span>
+        {isEntry ? (
+          <span className="text-xs px-2 py-1 rounded font-medium bg-blue-500/20 text-blue-400">OPEN</span>
+        ) : (
+          <span className={`text-xs px-2 py-1 rounded font-medium ${isProfit ? 'bg-green-500/20 text-green-400' : pnl < 0 ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'}`}>
+            COMPLETE
+          </span>
+        )}
       </td>
       <td className="py-3 px-4 text-sm text-white/80 max-w-xs truncate" title={trade.market_question || trade.market_id}>
         {trade.market_question || trade.market_id?.substring(0, 30) + '...'}
@@ -210,14 +212,46 @@ const TradeRow = ({ trade }) => {
       </td>
       <td className="py-3 px-4 text-sm text-white/80">${trade.size?.toFixed(2)}</td>
       <td className="py-3 px-4 text-sm">
-        <div className="flex items-center gap-2">
+        {isEntry ? (
           <span className="text-cyan-400">${entryPrice.toFixed(4)}</span>
-          <span className="text-white/30">→</span>
-          <span className="text-amber-400">${exitPrice.toFixed(4)}</span>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-cyan-400">${entryPrice.toFixed(4)}</span>
+            <span className="text-white/30">→</span>
+            <span className="text-amber-400">${exitPrice?.toFixed(4)}</span>
+          </div>
+        )}
       </td>
-      <td className={`py-3 px-4 text-sm font-bold ${isProfit ? 'text-green-400' : pnl < 0 ? 'text-red-400' : 'text-white/40'}`}>
-        {isProfit ? '+' : ''}{pnl.toFixed(2)}
+      <td className={`py-3 px-4 text-sm font-bold ${isEntry ? 'text-white/40' : isProfit ? 'text-green-400' : pnl < 0 ? 'text-red-400' : 'text-white/40'}`}>
+        {isEntry ? '-' : (isProfit ? '+' : '') + pnl.toFixed(2)}
+      </td>
+      <td className={`py-3 px-4 text-sm font-medium ${isEntry ? 'text-white/40' : returnPct > 0 ? 'text-green-400' : returnPct < 0 ? 'text-red-400' : 'text-white/40'}`}>
+        {isEntry ? '-' : (returnPct > 0 ? '+' : '') + returnPct.toFixed(2) + '%'}
+      </td>
+      <td className="py-3 px-4 text-xs text-white/40">{new Date(trade.timestamp).toLocaleTimeString()}</td>
+    </tr>
+  );
+};
+
+// Sortable Table Header Component
+const SortableHeader = ({ label, sortKey, currentSort, onSort }) => {
+  const isActive = currentSort.key === sortKey;
+  const isAsc = currentSort.direction === 'asc';
+  
+  return (
+    <th 
+      className="py-3 px-4 text-xs text-white/60 uppercase cursor-pointer hover:text-white hover:bg-white/5 transition select-none"
+      onClick={() => onSort(sortKey)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        <span className={`text-[10px] ${isActive ? 'text-cyan-400' : 'text-white/30'}`}>
+          {isActive ? (isAsc ? '▲' : '▼') : '⇅'}
+        </span>
+      </div>
+    </th>
+  );
+};
       </td>
       <td className={`py-3 px-4 text-sm font-medium ${returnPct > 0 ? 'text-green-400' : returnPct < 0 ? 'text-red-400' : 'text-white/40'}`}>
         {returnPct > 0 ? '+' : ''}{returnPct.toFixed(2)}%
