@@ -291,15 +291,23 @@ class AdaptivePositionSizer:
         # Combine all factors
         combined_mult = liquidity_mult * vol_mult * rl_mult * asset_mult * strat_mult
         
-        # Final position size
-        raw_position = kelly_position * combined_mult
+        # For high-frequency trading: use base position size with multipliers
+        # Don't rely solely on Kelly which can return 0 for new strategies
+        base_position = max_position_usd * 0.5  # Start with 50% of max position
+        
+        # If Kelly is positive, blend it in; if zero, use base position
+        if kelly_position > 0:
+            raw_position = (kelly_position * 0.5 + base_position * 0.5) * combined_mult
+        else:
+            # No Kelly data yet - use base position with multipliers (more conservative)
+            raw_position = base_position * combined_mult * 0.5
         
         # Apply hard caps
         final_position = min(raw_position, max_position_usd)
-        final_position = min(final_position, deployed_capital * 0.15)  # Never more than 15% in one trade
+        final_position = min(final_position, deployed_capital * 0.10)  # Never more than 10% in one trade
         
         # Minimum trade size check
-        min_trade_size = 10  # $10 minimum
+        min_trade_size = 5  # $5 minimum for HFT
         should_trade = final_position >= min_trade_size and liquidity_mult > 0
         
         return {
