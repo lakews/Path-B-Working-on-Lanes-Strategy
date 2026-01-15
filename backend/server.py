@@ -1861,6 +1861,120 @@ async def get_paper_analytics():
             content={"message": f"Failed to get analytics: {str(e)}"}
         )
 
+@api_router.get("/paper/cumulative-stats")
+async def get_cumulative_stats():
+    """Get cumulative trading stats across ALL paper trading sessions"""
+    try:
+        db = get_db()
+        
+        # Get all completed sessions for cumulative calculation
+        cursor = db.paper_trading_sessions.find(
+            {"type": "paper_trading"},
+            {"_id": 0}
+        )
+        all_sessions = await cursor.to_list(length=1000)
+        
+        # Calculate cumulative strategy stats
+        cumulative_strategy = {
+            'delta_neutral': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0},
+            'volatility_exploitation': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0},
+            'alpha_directional': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0},
+            'arbitrage': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0}
+        }
+        
+        # Calculate cumulative asset class stats
+        cumulative_asset_class = {}
+        
+        # Overall cumulative
+        overall = {
+            'total_sessions': len(all_sessions),
+            'total_trades': 0,
+            'total_wins': 0,
+            'total_pnl': 0.0,
+            'total_initial_capital': 0.0,
+            'continuous_sessions': 0,
+            'avg_session_trades': 0
+        }
+        
+        for session in all_sessions:
+            overall['total_trades'] += session.get('total_trades', 0)
+            overall['total_wins'] += session.get('winning_trades', 0)
+            overall['total_pnl'] += session.get('total_pnl', 0)
+            overall['total_initial_capital'] += session.get('initial_capital', 0)
+            if session.get('continuous_mode'):
+                overall['continuous_sessions'] += 1
+            
+            # Strategy stats
+            strategy_stats = session.get('strategy_stats', {})
+            for strategy, data in strategy_stats.items():
+                if strategy in cumulative_strategy:
+                    if data.get('trades', 0) > 0:
+                        cumulative_strategy[strategy]['total_trades'] += data.get('trades', 0)
+                        cumulative_strategy[strategy]['total_wins'] += data.get('wins', 0)
+                        cumulative_strategy[strategy]['total_pnl'] += data.get('pnl', 0)
+                        cumulative_strategy[strategy]['sessions'] += 1
+            
+            # Asset class stats
+            asset_stats = session.get('asset_class_stats', {})
+            for asset_class, data in asset_stats.items():
+                if asset_class not in cumulative_asset_class:
+                    cumulative_asset_class[asset_class] = {
+                        'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0
+                    }
+                if data.get('trades', 0) > 0:
+                    cumulative_asset_class[asset_class]['total_trades'] += data.get('trades', 0)
+                    cumulative_asset_class[asset_class]['total_wins'] += data.get('wins', 0)
+                    cumulative_asset_class[asset_class]['total_pnl'] += data.get('pnl', 0)
+                    cumulative_asset_class[asset_class]['sessions'] += 1
+        
+        # Add current session if running
+        if paper_trader and paper_trader.running:
+            overall['total_trades'] += paper_trader.total_trades
+            overall['total_wins'] += paper_trader.winning_trades
+            overall['total_pnl'] += paper_trader.total_pnl
+            
+            for strategy, data in paper_trader.strategy_stats.items():
+                if strategy in cumulative_strategy and data.get('trades', 0) > 0:
+                    cumulative_strategy[strategy]['total_trades'] += data.get('trades', 0)
+                    cumulative_strategy[strategy]['total_wins'] += data.get('wins', 0)
+                    cumulative_strategy[strategy]['total_pnl'] += data.get('pnl', 0)
+            
+            for asset_class, data in paper_trader.asset_class_stats.items():
+                if asset_class not in cumulative_asset_class:
+                    cumulative_asset_class[asset_class] = {
+                        'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0
+                    }
+                if data.get('trades', 0) > 0:
+                    cumulative_asset_class[asset_class]['total_trades'] += data.get('trades', 0)
+                    cumulative_asset_class[asset_class]['total_wins'] += data.get('wins', 0)
+                    cumulative_asset_class[asset_class]['total_pnl'] += data.get('pnl', 0)
+        
+        # Calculate win rates and avg trades
+        overall['win_rate'] = overall['total_wins'] / overall['total_trades'] if overall['total_trades'] > 0 else 0
+        overall['avg_session_trades'] = overall['total_trades'] / overall['total_sessions'] if overall['total_sessions'] > 0 else 0
+        
+        # Add win rates to strategy stats
+        for strategy, data in cumulative_strategy.items():
+            data['win_rate'] = data['total_wins'] / data['total_trades'] if data['total_trades'] > 0 else 0
+        
+        # Add win rates to asset class stats
+        for asset_class, data in cumulative_asset_class.items():
+            data['win_rate'] = data['total_wins'] / data['total_trades'] if data['total_trades'] > 0 else 0
+        
+        return {
+            "overall": overall,
+            "by_strategy": cumulative_strategy,
+            "by_asset_class": cumulative_asset_class,
+            "current_session_included": paper_trader.running if paper_trader else False
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting cumulative stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get cumulative stats: {str(e)}"}
+        )
+
 # =============================================
 # STRATEGY OPTIMIZER ENDPOINTS
 # =============================================
