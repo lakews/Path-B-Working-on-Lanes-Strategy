@@ -169,16 +169,25 @@ class PaperTrader:
                 if "trades_per_10min" in user_config:
                     self.trades_per_10min = int(user_config["trades_per_10min"])
                 
+                # Market selection thresholds
+                if "min_liquidity" in user_config:
+                    self.min_liquidity = float(user_config["min_liquidity"])
+                if "min_volume_24h" in user_config:
+                    self.min_volume_24h = float(user_config["min_volume_24h"])
+                if "max_spread" in user_config:
+                    self.max_spread = float(user_config["max_spread"])
+                
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
                 self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
-                self.trade_interval = max(1, 600 / self.trades_per_10min)
+                self.trade_interval = max(0.1, 600 / self.trades_per_10min)  # Allow faster trading
                 
                 logger.info("Loaded user config from DB:")
                 logger.info(f"  Strategies: {len(self.enabled_strategies)} | Asset Classes: {len(self.enabled_asset_classes)}")
                 logger.info(f"  Capital Deployment: {self.capital_deployment_pct}% | Max Position: {self.max_position_size_pct}%")
                 logger.info(f"  Deployed Capital: ${self.deployed_capital} | Max Position Size: ${self.max_position_size}")
                 logger.info(f"  Kelly: {self.kelly_fraction} | Max Drawdown: {self.max_drawdown_pct}%")
+                logger.info(f"  Market Filters: Liq >= ${self.min_liquidity}, Vol >= ${self.min_volume_24h}, Spread <= {self.max_spread*100}%")
         except Exception as e:
             logger.warning(f"Could not load user config: {e}")
     
