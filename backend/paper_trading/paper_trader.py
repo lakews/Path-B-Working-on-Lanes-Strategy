@@ -849,32 +849,45 @@ class PaperTrader:
                         current_price = market_prices.get(market_id, position['entry_price'])
                         entry_price = position['entry_price']
                         side = position['side']
-                        size = position['size']
+                        size = position['size']  # USD invested
                         
+                        # Calculate shares owned
+                        shares = size / entry_price if entry_price > 0 else 0
+                        
+                        # Calculate current value and unrealized P&L
                         if side == 'YES':
-                            unrealized = (current_price - entry_price) * size / entry_price
+                            # YES: profit when price goes up
+                            current_value = shares * current_price
+                            unrealized = current_value - size
                         else:
-                            unrealized = (entry_price - current_price) * size / entry_price
+                            # NO: profit when YES price goes down
+                            no_entry = 1 - entry_price
+                            no_current = 1 - current_price
+                            no_shares = size / no_entry if no_entry > 0 else 0
+                            current_value = no_shares * no_current
+                            unrealized = current_value - size
                         
                         # Update position with current unrealized P&L
-                        position['current_price'] = current_price
-                        position['unrealized_pnl'] = unrealized
-                        position['unrealized_pnl_pct'] = (unrealized / size) * 100 if size > 0 else 0
+                        position['current_price'] = round(current_price, 4)
+                        position['shares'] = round(shares, 2)
+                        position['current_value'] = round(current_value, 2)
+                        position['unrealized_pnl'] = round(unrealized, 2)
+                        position['unrealized_pnl_pct'] = round((unrealized / size) * 100, 2) if size > 0 else 0
                         
                         total_unrealized += unrealized
                     
                     # Update total unrealized P&L for status display
-                    self.unrealized_pnl = total_unrealized
+                    self.unrealized_pnl = round(total_unrealized, 2)
                     
                     logger.debug(f"Paper Positions: {len(self.paper_positions)} | Unrealized: ${total_unrealized:.2f}")
                 else:
                     self.unrealized_pnl = 0.0
                 
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)  # Update every 5 seconds for HFT
                 
             except Exception as e:
                 logger.error(f"Error in position monitoring: {e}")
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
     
     async def _learning_loop(self):
         """Periodic RL learning from replay buffer - more aggressive in continuous mode"""
