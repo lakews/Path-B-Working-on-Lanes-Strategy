@@ -241,6 +241,8 @@ class TradingConfig(BaseModel):
     min_volume_24h: Optional[float] = None
     max_spread: Optional[float] = None
     max_open_positions: Optional[int] = None
+    # Stuck price filter
+    stuck_price_multiplier: Optional[float] = None  # Volume multiplier for stuck prices (0.0, 0.5, 1.0)
     enabled_asset_classes: Optional[List[str]] = None
     enabled_strategies: Optional[List[str]] = None
 
