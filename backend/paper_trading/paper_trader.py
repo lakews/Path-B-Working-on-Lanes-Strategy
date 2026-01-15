@@ -49,9 +49,10 @@ class PaperTrader:
     - Records all decisions for analysis
     - Continuous mode with auto-restart
     - Graceful stop (lets positions close naturally)
+    - ADAPTIVE POSITION SIZING: Uses liquidity, volume, Kelly, RL confidence
     """
     
-    def __init__(self, initial_capital: float = 10000.0, continuous_mode: bool = False):
+    def __init__(self, continuous_mode: bool = False, use_config_capital: bool = True):
         self.db = get_db()
         self.rl_engine = RLAdaptiveEngine()
         self.market_data_service = MarketDataService()
@@ -59,10 +60,12 @@ class PaperTrader:
         self.volatility_predictor = VolatilityPredictor()
         self.signal_fusion = SignalFusionEngine()
         
+        # Import adaptive position sizer
+        from ml.adaptive_position_sizer import get_position_sizer
+        self.position_sizer = get_position_sizer()
+        
         self.running = False
         self.session_id = str(uuid.uuid4())[:8]
-        self.initial_capital = initial_capital
-        self.current_capital = initial_capital
         
         # Continuous mode settings
         self.continuous_mode = continuous_mode
@@ -74,14 +77,19 @@ class PaperTrader:
         self.enabled_asset_classes = ['finance', 'politics', 'crypto', 'entertainment', 'science', 'sports']
         
         # Trading configuration parameters (loaded from DB/config)
+        # These are the PRIMARY source - always use Config tab values
+        self.initial_capital = config.INITIAL_CAPITAL  # From Config tab
         self.capital_deployment_pct = config.CAPITAL_DEPLOYMENT_PCT  # % of capital to deploy
         self.max_position_size_pct = config.MAX_POSITION_SIZE_PCT  # % of DEPLOYED capital per position
         self.kelly_fraction = config.KELLY_FRACTION  # Kelly criterion multiplier
         self.max_drawdown_pct = config.MAX_DRAWDOWN_PCT  # Maximum allowed drawdown %
         self.trades_per_10min = config.TRADES_PER_10MIN  # Target trades per 10 minutes
         
+        # Current capital starts at initial
+        self.current_capital = self.initial_capital
+        
         # Calculated values based on config
-        self.deployed_capital = initial_capital * (self.capital_deployment_pct / 100)
+        self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
         self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
         
         # Paper positions tracking
