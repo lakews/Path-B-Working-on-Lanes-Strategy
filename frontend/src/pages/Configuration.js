@@ -78,6 +78,7 @@ const Configuration = () => {
         min_volume_24h: savedConfig.min_volume_24h ?? prev.min_volume_24h,
         max_spread: savedConfig.max_spread ?? prev.max_spread,
         max_open_positions: savedConfig.max_open_positions ?? prev.max_open_positions,
+        stuck_price_multiplier: savedConfig.stuck_price_multiplier ?? prev.stuck_price_multiplier,
         enabled_asset_classes: savedConfig.enabled_asset_classes ?? prev.enabled_asset_classes,
         enabled_strategies: savedConfig.enabled_strategies ?? prev.enabled_strategies,
       }));
