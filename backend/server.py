@@ -799,46 +799,58 @@ async def update_config(config_update: TradingConfig):
     global user_config
     
     try:
+        # Build update document for database persistence
+        db_update = {
+            "type": "trading_preferences",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
         if config_update.trades_per_10min:
             os.environ['TRADES_PER_10MIN'] = str(config_update.trades_per_10min)
+            db_update["trades_per_10min"] = config_update.trades_per_10min
         
         if config_update.initial_capital:
             os.environ['INITIAL_CAPITAL'] = str(config_update.initial_capital)
+            db_update["initial_capital"] = config_update.initial_capital
         
         if config_update.capital_deployment_pct:
             os.environ['CAPITAL_DEPLOYMENT_PCT'] = str(config_update.capital_deployment_pct)
+            db_update["capital_deployment_pct"] = config_update.capital_deployment_pct
         
         if config_update.max_position_size_pct:
             os.environ['MAX_POSITION_SIZE_PCT'] = str(config_update.max_position_size_pct)
+            db_update["max_position_size_pct"] = config_update.max_position_size_pct
         
         if config_update.kelly_fraction is not None:
             # Validate Kelly fraction is within bounds
             kelly = max(config.MIN_KELLY_FRACTION, min(config.MAX_KELLY_FRACTION, config_update.kelly_fraction))
             os.environ['KELLY_FRACTION'] = str(kelly)
+            db_update["kelly_fraction"] = kelly
         
         if config_update.max_drawdown_pct:
             os.environ['MAX_DRAWDOWN_PCT'] = str(config_update.max_drawdown_pct)
+            db_update["max_drawdown_pct"] = config_update.max_drawdown_pct
         
         # Update asset classes and strategies
         if config_update.enabled_asset_classes is not None:
             user_config["enabled_asset_classes"] = config_update.enabled_asset_classes
+            db_update["enabled_asset_classes"] = config_update.enabled_asset_classes
         
         if config_update.enabled_strategies is not None:
             user_config["enabled_strategies"] = config_update.enabled_strategies
+            db_update["enabled_strategies"] = config_update.enabled_strategies
         
-        # Store in database for persistence
+        # Store ALL config in database for persistence (not just strategies/asset classes)
         db = get_db()
         await db.user_config.update_one(
             {"type": "trading_preferences"},
-            {"$set": {
-                "enabled_asset_classes": user_config["enabled_asset_classes"],
-                "enabled_strategies": user_config["enabled_strategies"],
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }},
+            {"$set": db_update},
             upsert=True
         )
         
-        return {"message": "Configuration updated. Restart bot for changes to take effect."}
+        logger.info(f"Config updated and saved to DB: {list(db_update.keys())}")
+        
+        return {"message": "Configuration updated and saved. New paper trading sessions will use these settings."}
     except Exception as e:
         logger.error(f"Error updating config: {e}")
         return JSONResponse(
