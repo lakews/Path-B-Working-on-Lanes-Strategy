@@ -297,6 +297,7 @@ const PaperTrading = () => {
     const interval = setInterval(() => {
       fetchData();
       fetchCumulativeStats();
+      fetchSavedConfig();  // Keep config in sync
       if (running) {
         fetchRlStats();
         fetchAiStats();
@@ -304,7 +305,12 @@ const PaperTrading = () => {
     }, pollingInterval);
     
     return () => clearInterval(interval);
-  }, [fetchData, running, wsConnected]);
+  }, [fetchData, running, wsConnected, fetchSavedConfig]);
+
+  // Initial fetch of saved config
+  useEffect(() => {
+    fetchSavedConfig();
+  }, [fetchSavedConfig]);
 
   const startPaperTrading = async () => {
     setLoading(true);
