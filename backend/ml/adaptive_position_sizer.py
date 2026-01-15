@@ -291,23 +291,28 @@ class AdaptivePositionSizer:
         # Combine all factors
         combined_mult = liquidity_mult * vol_mult * rl_mult * asset_mult * strat_mult
         
-        # For high-frequency trading: use base position size with multipliers
-        # Don't rely solely on Kelly which can return 0 for new strategies
-        base_position = max_position_usd * 0.5  # Start with 50% of max position
+        # Adaptive sizing: use Kelly when available, fall back to base position when Kelly is too conservative
+        min_base_position = max_position_usd * 0.1  # Minimum 10% of max for HFT
         
-        # If Kelly is positive, blend it in; if zero, use base position
-        if kelly_position > 0:
-            raw_position = (kelly_position * 0.5 + base_position * 0.5) * combined_mult
+        if kelly_position > min_base_position:
+            # Kelly has sufficient data - use it as primary with multipliers
+            raw_position = kelly_position * combined_mult
         else:
-            # No Kelly data yet - use base position with multipliers (more conservative)
-            raw_position = base_position * combined_mult * 0.5
+            # Kelly is too conservative (new strategy/no data) - use adaptive base
+            # Start with 30% of max, scaled by multipliers
+            base_position = max_position_usd * 0.3
+            raw_position = base_position * combined_mult
+            
+            # If Kelly is positive but small, blend it in for learning
+            if kelly_position > 0:
+                raw_position = raw_position * 0.7 + kelly_position * combined_mult * 0.3
         
         # Apply hard caps
         final_position = min(raw_position, max_position_usd)
         final_position = min(final_position, deployed_capital * 0.10)  # Never more than 10% in one trade
         
-        # Minimum trade size check
-        min_trade_size = 5  # $5 minimum for HFT
+        # Minimum trade size check for HFT
+        min_trade_size = 5  # $5 minimum
         should_trade = final_position >= min_trade_size and liquidity_mult > 0
         
         return {
