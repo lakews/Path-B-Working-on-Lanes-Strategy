@@ -255,7 +255,8 @@ class AdaptivePositionSizer:
         signals: Dict,
         rl_action: str,
         rl_confidence: float,
-        kelly_fraction: float = 0.25
+        kelly_fraction: float = 0.25,
+        kelly_enabled: bool = True
     ) -> Dict:
         """
         Calculate optimal position size using all factors.
@@ -268,9 +269,14 @@ class AdaptivePositionSizer:
         # Base max position from config
         max_position_usd = deployed_capital * (max_position_pct / 100)
         
-        # 1. Kelly-based sizing
-        kelly_size = self.calculate_kelly_criterion(strategy, asset_class, kelly_fraction)
-        kelly_position = deployed_capital * kelly_size
+        # 1. Kelly-based sizing (only if enabled)
+        if kelly_enabled:
+            kelly_size = self.calculate_kelly_criterion(strategy, asset_class, kelly_fraction)
+            kelly_position = deployed_capital * kelly_size
+        else:
+            # Kelly disabled - use fixed fraction
+            kelly_size = kelly_fraction
+            kelly_position = max_position_usd * 0.5  # Use 50% of max as base
         
         # 2. Liquidity multiplier
         liquidity_mult = self.calculate_liquidity_multiplier(market_data, max_position_usd)
@@ -294,17 +300,17 @@ class AdaptivePositionSizer:
         # Adaptive sizing: use Kelly when available, fall back to base position when Kelly is too conservative
         min_base_position = max_position_usd * 0.1  # Minimum 10% of max for HFT
         
-        if kelly_position > min_base_position:
+        if kelly_enabled and kelly_position > min_base_position:
             # Kelly has sufficient data - use it as primary with multipliers
             raw_position = kelly_position * combined_mult
         else:
-            # Kelly is too conservative (new strategy/no data) - use adaptive base
+            # Kelly is too conservative (new strategy/no data) or disabled - use adaptive base
             # Start with 30% of max, scaled by multipliers
             base_position = max_position_usd * 0.3
             raw_position = base_position * combined_mult
             
-            # If Kelly is positive but small, blend it in for learning
-            if kelly_position > 0:
+            # If Kelly is positive but small (and enabled), blend it in for learning
+            if kelly_enabled and kelly_position > 0:
                 raw_position = raw_position * 0.7 + kelly_position * combined_mult * 0.3
         
         # Apply hard caps
