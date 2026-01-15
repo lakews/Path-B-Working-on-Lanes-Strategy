@@ -187,8 +187,9 @@ const TradeRow = ({ trade }) => {
   const pnl = trade.pnl || 0;
   const isProfit = pnl > 0;
   
-  // Calculate return percentage for completed trades
-  const returnPct = isComplete && entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice * 100) : 0;
+  // Calculate return percentage based on actual P&L vs position size
+  // This correctly handles YES/NO sides since P&L already accounts for direction
+  const returnPct = isComplete && trade.size > 0 ? (pnl / trade.size * 100) : 0;
   
   return (
     <tr className="border-b border-white/5 hover:bg-white/5">
