@@ -12,7 +12,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 15, 2026)
 - **Live Data**: ✅ Working - Uses Polymarket Gamma API for real market data
-- **Paper Trading**: ✅ Working - No KeyErrors, complete P&L tracking
+- **Paper Trading**: ✅ Working - Config loads correctly from MongoDB, trades execute successfully
 - **Production Deployment**: ⚠️ Needs update with live data pipeline fix
 
 ## Tech Stack
@@ -22,6 +22,38 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Deployment**: AWS EC2 with Terraform IaC
 
 ## What's Been Implemented
+
+### January 15, 2026 - Session 19 (P0 Config Loading Fix, Kelly Toggle, Liquidity Range)
+
+- ✅ **P0 CRITICAL FIX: Paper Trading Config Loading** (`/app/backend/paper_trading/paper_trader.py`, `/app/backend/server.py`)
+  - **Problem**: Paper trading was initializing with wrong initial_capital ($100/$1000 instead of $10,000) due to config not being loaded from MongoDB
+  - **Root Cause**: TradingConfig model and /api/config endpoints were missing new fields (kelly_enabled, min_liquidity, max_liquidity, etc.)
+  - **Solution**: 
+    - Updated TradingConfig model to include all new fields
+    - Updated GET /api/config to return all fields from MongoDB
+    - Updated POST /api/config/update to save all fields to MongoDB
+    - Fixed paper_trader.py to load config from DB with clear logging
+  - **Result**: Paper trading now correctly loads $10,000 initial_capital and all config from MongoDB
+
+- ✅ **NEW: Kelly Criterion Toggle** (`/app/backend/ml/adaptive_position_sizer.py`, `/app/frontend/src/pages/Configuration.js`)
+  - Added `kelly_enabled` boolean field to config
+  - When disabled, uses fixed 30% of max position instead of Kelly-optimized sizing
+  - UI: Toggle switch in Risk tab with explanation text
+  - Shows warning when Kelly is disabled
+
+- ✅ **NEW: Liquidity Range Filter** (`/app/frontend/src/pages/Configuration.js`)
+  - Added `max_liquidity` field in addition to existing `min_liquidity`
+  - UI: Two sliders in Market Selection tab for min and max liquidity
+  - Summary shows "Trading markets with liquidity between $X and $Y"
+
+- ✅ **Backend Config Updates** (`/app/backend/server.py`)
+  - TradingConfig model now includes: kelly_enabled, min_liquidity, max_liquidity, min_volume_24h, max_spread, max_open_positions
+  - GET /api/config returns all 14 config fields
+  - POST /api/config/update saves all fields to MongoDB user_config collection
+
+- ✅ **Test Suite** (`/app/test_reports/iteration_15.json`)
+  - 12 tests verifying config loading and paper trading fixes - all passing
+  - Tests cover: initial_capital, kelly_enabled toggle, liquidity range, config persistence
 
 ### January 15, 2026 - Session 18 (Live Data Pipeline Fix, gross_loss KeyError Fix, UI Improvements)
 
