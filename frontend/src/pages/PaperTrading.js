@@ -399,6 +399,18 @@ const PaperTrading = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* WebSocket Status */}
+          <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${wsConnected ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+            {wsConnected ? (
+              <Wifi className="w-3.5 h-3.5 text-green-400" />
+            ) : (
+              <WifiOff className="w-3.5 h-3.5 text-red-400" />
+            )}
+            <span className={`text-xs ${wsConnected ? 'text-green-400' : 'text-red-400'}`}>
+              {wsConnected ? 'Live' : 'Polling'}
+            </span>
+          </div>
+          
           {/* Status Badge */}
           <div className={`flex items-center gap-2 px-4 py-2 rounded-lg backdrop-blur-sm border ${
             running 
