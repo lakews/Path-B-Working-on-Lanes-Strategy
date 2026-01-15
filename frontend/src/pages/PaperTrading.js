@@ -252,14 +252,6 @@ const SortableHeader = ({ label, sortKey, currentSort, onSort }) => {
     </th>
   );
 };
-      </td>
-      <td className={`py-3 px-4 text-sm font-medium ${returnPct > 0 ? 'text-green-400' : returnPct < 0 ? 'text-red-400' : 'text-white/40'}`}>
-        {returnPct > 0 ? '+' : ''}{returnPct.toFixed(2)}%
-      </td>
-      <td className="py-3 px-4 text-xs text-white/40">{new Date(trade.timestamp).toLocaleTimeString()}</td>
-    </tr>
-  );
-};
 
 // Performance Table with Totals Component
 const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLiveBadge, initialCapital = 10000 }) => {
