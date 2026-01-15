@@ -953,6 +953,35 @@ async def get_trade_stats():
             status_code=500,
             content={"message": f"Failed to get trade stats: {str(e)}"}
         )
+
+@api_router.get("/config")
+async def get_config():
+    """Get current trading configuration from database"""
+    try:
+        db = get_db()
+        saved_config = await db.user_config.find_one(
+            {"type": "trading_preferences"},
+            {"_id": 0}
+        )
+        
+        # Return saved config or defaults
+        return {
+            "initial_capital": saved_config.get("initial_capital", config.INITIAL_CAPITAL) if saved_config else config.INITIAL_CAPITAL,
+            "capital_deployment_pct": saved_config.get("capital_deployment_pct", config.CAPITAL_DEPLOYMENT_PCT) if saved_config else config.CAPITAL_DEPLOYMENT_PCT,
+            "max_position_size_pct": saved_config.get("max_position_size_pct", config.MAX_POSITION_SIZE_PCT) if saved_config else config.MAX_POSITION_SIZE_PCT,
+            "kelly_fraction": saved_config.get("kelly_fraction", config.KELLY_FRACTION) if saved_config else config.KELLY_FRACTION,
+            "max_drawdown_pct": saved_config.get("max_drawdown_pct", config.MAX_DRAWDOWN_PCT) if saved_config else config.MAX_DRAWDOWN_PCT,
+            "trades_per_10min": saved_config.get("trades_per_10min", config.TRADES_PER_10MIN) if saved_config else config.TRADES_PER_10MIN,
+            "enabled_strategies": saved_config.get("enabled_strategies", user_config["enabled_strategies"]) if saved_config else user_config["enabled_strategies"],
+            "enabled_asset_classes": saved_config.get("enabled_asset_classes", user_config["enabled_asset_classes"]) if saved_config else user_config["enabled_asset_classes"],
+        }
+    except Exception as e:
+        logger.error(f"Error getting config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get config: {str(e)}"}
+        )
+
 @api_router.post("/config/update")
 async def update_config(config_update: TradingConfig):
     """Update trading configuration"""
