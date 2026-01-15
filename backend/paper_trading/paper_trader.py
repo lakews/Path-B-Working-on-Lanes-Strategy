@@ -103,7 +103,7 @@ class PaperTrader:
         self.total_pnl = 0.0  # Realized P&L
         self.unrealized_pnl = 0.0  # Unrealized P&L from open positions
         self.max_drawdown = 0.0
-        self.peak_capital = initial_capital
+        self.peak_capital = self.initial_capital
         
         # Strategy performance tracking (with full metrics like backtest)
         self.strategy_stats = {
