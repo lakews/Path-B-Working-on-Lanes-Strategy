@@ -407,7 +407,7 @@ class PaperTrader:
                 return
             
             # Determine strategy based on signals
-            strategy = self._determine_strategy(signals, rl_action)
+            strategy = self._determine_strategy(signals, rl_action, market_data)
             
             # ADAPTIVE POSITION SIZING - considers liquidity, volume, Kelly, RL confidence
             sizing_result = self._calculate_position_size(
