@@ -76,9 +76,8 @@ class PaperTrader:
         self.enabled_strategies = ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
         self.enabled_asset_classes = ['finance', 'politics', 'crypto', 'entertainment', 'science', 'sports']
         
-        # Trading configuration parameters - Use better defaults
-        # Default to $10,000 if not configured (reasonable for paper trading)
-        self.initial_capital = config.INITIAL_CAPITAL if config.INITIAL_CAPITAL > 100 else 10000.0
+        # Trading configuration parameters - Use sensible defaults for paper trading
+        self.initial_capital = max(config.INITIAL_CAPITAL, 10000.0)  # Minimum $10K
         self.capital_deployment_pct = config.CAPITAL_DEPLOYMENT_PCT
         self.max_position_size_pct = config.MAX_POSITION_SIZE_PCT
         self.kelly_fraction = config.KELLY_FRACTION
