@@ -307,19 +307,25 @@ class PaperTrader:
         logger.info(f"Paper Trading loop started with {len(self.enabled_strategies)} strategies, {len(self.enabled_asset_classes)} asset classes")
         logger.info(f"Continuous mode: {self.continuous_mode}")
         
+        # Calculate trade interval for high-frequency trading
+        # 500-1000 trades per 10 min = 0.6-1.2 seconds per trade
+        trade_interval = 600.0 / self.trades_per_10min
+        logger.info(f"High-frequency mode: {self.trades_per_10min} trades/10min, interval: {trade_interval:.2f}s")
+        
         while self.running:
             try:
                 # Fetch active markets filtered by enabled asset classes
                 markets = await self._get_active_markets()
                 
                 if not markets:
-                    logger.warning("No markets available for trading - waiting 10 seconds before retry")
-                    await asyncio.sleep(10)
+                    logger.warning("No markets available for trading - waiting 5 seconds before retry")
+                    await asyncio.sleep(5)
                     continue
                 
-                logger.info(f"Processing {len(markets)} markets for trading opportunities")
+                # High-frequency: process ALL markets, not just top 20
+                markets_to_process = markets[:100]  # Process up to 100 markets per cycle
                 
-                for market_data in markets[:20]:  # Limit to top 20 markets
+                for market_data in markets_to_process:
                     if not self.running:
                         break
                     
@@ -337,7 +343,8 @@ class PaperTrader:
                         # Only evaluate new entries if not in graceful stop mode
                         await self._evaluate_entry(market_data)
                     
-                    await asyncio.sleep(0.5)  # Brief pause between markets
+                    # High-frequency: minimal pause between markets
+                    await asyncio.sleep(trade_interval / len(markets_to_process))
                 
                 # Check if graceful stop is complete (all positions closed)
                 if self.graceful_stop and not self.paper_positions:
@@ -360,11 +367,12 @@ class PaperTrader:
                     "asset_class_equity": dict(self.asset_class_equity)
                 })
                 
-                await asyncio.sleep(self.trade_interval)
+                # Minimal pause between cycles for high-frequency
+                await asyncio.sleep(max(0.1, trade_interval))
                 
             except Exception as e:
                 logger.error(f"Error in paper trading loop: {e}")
-                await asyncio.sleep(5)
+                await asyncio.sleep(2)
     
     async def _evaluate_entry(self, market_data: Dict):
         """Evaluate market for potential paper trade entry using ADAPTIVE sizing"""
