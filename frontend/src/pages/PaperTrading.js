@@ -323,12 +323,16 @@ const PaperTrading = () => {
   const startPaperTrading = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API}/paper/start?continuous_mode=${continuousMode}`);
+      const response = await axios.post(
+        `${API}/paper/start?continuous_mode=${continuousMode}`,
+        {},
+        AUTH_CONFIG
+      );
       toast.success(`Paper trading started! Session: ${response.data.session_id}${continuousMode ? ' (Continuous Mode)' : ''}`);
       setRunning(true);
       fetchData();
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Failed to start paper trading');
+      toast.error(e.response?.data?.detail || e.response?.data?.message || 'Failed to start paper trading');
     } finally {
       setLoading(false);
     }
@@ -338,7 +342,11 @@ const PaperTrading = () => {
     setLoading(true);
     setShowStopOptions(false);
     try {
-      const response = await axios.post(`${API}/paper/stop?graceful=${graceful}`);
+      const response = await axios.post(
+        `${API}/paper/stop?graceful=${graceful}`,
+        {},
+        AUTH_CONFIG
+      );
       toast.success(graceful ? 'Graceful stop initiated - waiting for positions to close' : 'Paper trading stopped');
       if (!graceful) {
         setRunning(false);
