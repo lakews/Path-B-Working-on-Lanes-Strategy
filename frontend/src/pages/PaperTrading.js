@@ -129,6 +129,7 @@ const PaperTrading = () => {
   const [continuousMode, setContinuousMode] = useState(false);
   const [aiStats, setAiStats] = useState(null);
   const [showStopOptions, setShowStopOptions] = useState(false);
+  const [cumulativeStats, setCumulativeStats] = useState(null);
 
   // Fetch all data
   const fetchData = useCallback(async () => {
