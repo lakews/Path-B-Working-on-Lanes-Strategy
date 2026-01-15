@@ -872,7 +872,9 @@ class PaperTrader:
             "strategy_results": strategy_results,
             "asset_class_results": asset_class_results,
             "returns_distribution": returns_distribution,
-            "equity_curve": self.equity_curve[-100:],  # Last 100 points
+            "equity_curve": self.equity_curve[-200:],  # Last 200 points for better charts
+            "strategy_equity": self.strategy_equity,  # Running P&L by strategy
+            "asset_class_equity": self.asset_class_equity,  # Running P&L by asset class
             "enabled_strategies": self.enabled_strategies,
             "enabled_asset_classes": self.enabled_asset_classes,
             "continuous_mode": self.continuous_mode,
@@ -880,6 +882,7 @@ class PaperTrader:
             "ai_learning": {
                 "rl_updates_this_session": len(self.closed_trades),
                 "learning_active": self.running,
+                "learning_immediately_applied": True,  # Q-table updates are immediate
                 "signals_used": ["volatility", "sentiment", "sharp_alignment"],
                 "strategies_learning": self.enabled_strategies
             }
