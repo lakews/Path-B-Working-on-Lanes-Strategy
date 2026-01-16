@@ -60,6 +60,12 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Position cards show ⏱️ badge with days/hours to expiry
   - Color coded: 🟢 Green (>7d), 🟡 Yellow (1-7d), 🔴 Red (<24h)
   - Trade history table shows expiry on OPEN trades
+  - Exit reason badges: TP (green), SL (red), ⏱️ (time limit), RL (signal reversal), ⚠️EXP (auto-exit)
+
+- ✅ **Auto-Exit Safety Net**
+  - Positions automatically exit 1 hour before market expiry
+  - Warning logged for positions expiring within 6 hours
+  - Exit reason: `expiry_safety_exit` shown as ⚠️EXP badge
 
 - ✅ **Bug Fix: Expired Market Trading**
   - No longer trades on markets past their event deadline
