@@ -261,6 +261,18 @@ class PaperTrader:
                 if "min_liquidity_for_full_size" in user_config:
                     self.min_liquidity_for_full_size = float(user_config["min_liquidity_for_full_size"])
                 
+                # Load strategy selection thresholds (configurable via UI)
+                if "volatility_threshold" in user_config:
+                    self.volatility_threshold = float(user_config["volatility_threshold"])
+                if "sentiment_strength_threshold" in user_config:
+                    self.sentiment_strength_threshold = float(user_config["sentiment_strength_threshold"])
+                if "sharp_alignment_threshold" in user_config:
+                    self.sharp_alignment_threshold = float(user_config["sharp_alignment_threshold"])
+                if "delta_neutral_price_min" in user_config:
+                    self.delta_neutral_price_min = float(user_config["delta_neutral_price_min"])
+                if "delta_neutral_price_max" in user_config:
+                    self.delta_neutral_price_max = float(user_config["delta_neutral_price_max"])
+                
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
                 self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
@@ -279,6 +291,8 @@ class PaperTrader:
                 logger.info(f"  Stuck Price Multiplier: {self.stuck_price_multiplier}x")
                 logger.info(f"  Max Open Positions: {self.max_open_positions}")
                 logger.info(f"  Strategies: {len(self.enabled_strategies)} | Asset Classes: {len(self.enabled_asset_classes)}")
+                logger.info(f"  Strategy Thresholds: Vol={self.volatility_threshold}, Sentiment={self.sentiment_strength_threshold}, Sharp={self.sharp_alignment_threshold}")
+                logger.info(f"  Delta-Neutral Price Range: {self.delta_neutral_price_min}-{self.delta_neutral_price_max}")
                 logger.info(f"  Exit Params: TP={self.exit_params_by_strategy.get('delta_neutral', {}).get('take_profit', 0):.0%} (Delta-Neutral)")
                 logger.info("=" * 60)
             else:
