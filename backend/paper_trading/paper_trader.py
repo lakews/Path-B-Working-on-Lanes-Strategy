@@ -676,6 +676,189 @@ class PaperTrader:
         }
     }
     
+    # Time-to-expiry thresholds for strategy adjustments
+    EXPIRY_THRESHOLDS = {
+        'no_entry_hours': 6,        # No new entries within 6 hours of expiry
+        'high_urgency_hours': 24,   # Reduce max hold time, tighten exits
+        'medium_urgency_days': 7,   # Boost volatility, reduce delta-neutral
+        'normal_days': 30           # Normal trading
+    }
+    
+    # Strategy adjustments based on time-to-expiry
+    EXPIRY_STRATEGY_ADJUSTMENTS = {
+        'delta_neutral': {
+            'disable_within_hours': 48,  # No market making close to expiry
+            'size_mult_near_expiry': 0.5
+        },
+        'volatility_exploitation': {
+            'boost_within_days': 7,      # Boost 1.5x in final week
+            'boost_multiplier': 1.5,
+            'disable_within_hours': 6
+        },
+        'alpha_directional': {
+            'min_confidence_near_expiry': 0.7,  # Only high conviction near expiry
+            'disable_within_hours': 6
+        },
+        'arbitrage': {
+            'disable_within_hours': 6    # Keep active longer, guaranteed resolution
+        }
+    }
+    
+    def _parse_end_date(self, market_data: Dict) -> Optional[datetime]:
+        """Parse end date from market data, handling various formats"""
+        end_date_str = market_data.get('end_date') or market_data.get('endDate') or market_data.get('close_time')
+        if not end_date_str:
+            return None
+            
+        try:
+            if isinstance(end_date_str, str):
+                if 'T' in end_date_str:
+                    return datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                else:
+                    for fmt in ['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%m/%d/%Y']:
+                        try:
+                            dt = datetime.strptime(end_date_str, fmt)
+                            return dt.replace(tzinfo=timezone.utc)
+                        except ValueError:
+                            continue
+            elif isinstance(end_date_str, (int, float)):
+                return datetime.fromtimestamp(end_date_str, tz=timezone.utc)
+        except Exception:
+            pass
+        return None
+    
+    def _calculate_time_to_expiry(self, market_data: Dict) -> Dict:
+        """
+        Calculate time to expiry and return adjustment factors.
+        
+        Returns:
+            dict with:
+                - hours_to_expiry: float or None
+                - days_to_expiry: float or None
+                - urgency: 'expired' | 'critical' | 'high' | 'medium' | 'normal'
+                - position_size_mult: multiplier for position sizing
+                - should_enter: whether new entries are allowed
+                - expiry_label: human-readable label for UI
+        """
+        end_date = self._parse_end_date(market_data)
+        
+        if not end_date:
+            # No end date - assume normal trading
+            return {
+                'hours_to_expiry': None,
+                'days_to_expiry': None,
+                'urgency': 'normal',
+                'position_size_mult': 1.0,
+                'should_enter': True,
+                'expiry_label': 'No expiry'
+            }
+        
+        now = datetime.now(timezone.utc)
+        time_diff = end_date - now
+        hours_to_expiry = time_diff.total_seconds() / 3600
+        days_to_expiry = hours_to_expiry / 24
+        
+        # Determine urgency level and adjustments
+        if hours_to_expiry <= 0:
+            return {
+                'hours_to_expiry': hours_to_expiry,
+                'days_to_expiry': days_to_expiry,
+                'urgency': 'expired',
+                'position_size_mult': 0.0,
+                'should_enter': False,
+                'expiry_label': 'Expired'
+            }
+        elif hours_to_expiry <= self.EXPIRY_THRESHOLDS['no_entry_hours']:
+            return {
+                'hours_to_expiry': hours_to_expiry,
+                'days_to_expiry': days_to_expiry,
+                'urgency': 'critical',
+                'position_size_mult': 0.0,
+                'should_enter': False,
+                'expiry_label': f'{hours_to_expiry:.1f}h ⚠️'
+            }
+        elif hours_to_expiry <= self.EXPIRY_THRESHOLDS['high_urgency_hours']:
+            # Scale down position as expiry approaches
+            scale = hours_to_expiry / self.EXPIRY_THRESHOLDS['high_urgency_hours']
+            return {
+                'hours_to_expiry': hours_to_expiry,
+                'days_to_expiry': days_to_expiry,
+                'urgency': 'high',
+                'position_size_mult': max(0.3, scale),
+                'should_enter': True,
+                'expiry_label': f'{hours_to_expiry:.0f}h 🔴'
+            }
+        elif days_to_expiry <= self.EXPIRY_THRESHOLDS['medium_urgency_days']:
+            scale = days_to_expiry / self.EXPIRY_THRESHOLDS['medium_urgency_days']
+            return {
+                'hours_to_expiry': hours_to_expiry,
+                'days_to_expiry': days_to_expiry,
+                'urgency': 'medium',
+                'position_size_mult': max(0.5, scale),
+                'should_enter': True,
+                'expiry_label': f'{days_to_expiry:.0f}d 🟡'
+            }
+        else:
+            return {
+                'hours_to_expiry': hours_to_expiry,
+                'days_to_expiry': days_to_expiry,
+                'urgency': 'normal',
+                'position_size_mult': 1.0,
+                'should_enter': True,
+                'expiry_label': f'{days_to_expiry:.0f}d 🟢'
+            }
+    
+    def _should_strategy_trade_near_expiry(self, strategy: str, expiry_info: Dict, rl_confidence: float = 0.5) -> Dict:
+        """
+        Determine if a strategy should trade given time-to-expiry.
+        
+        Returns:
+            dict with:
+                - should_trade: bool
+                - size_multiplier: float (additional multiplier)
+                - reason: str
+        """
+        hours = expiry_info.get('hours_to_expiry')
+        days = expiry_info.get('days_to_expiry')
+        urgency = expiry_info.get('urgency', 'normal')
+        
+        # No end date info - allow trading
+        if hours is None:
+            return {'should_trade': True, 'size_multiplier': 1.0, 'reason': 'no_expiry_info'}
+        
+        # Expired or critical - no trading
+        if urgency in ['expired', 'critical']:
+            return {'should_trade': False, 'size_multiplier': 0.0, 'reason': f'too_close_to_expiry_{hours:.1f}h'}
+        
+        adjustments = self.EXPIRY_STRATEGY_ADJUSTMENTS.get(strategy, {})
+        
+        # Check strategy-specific disable threshold
+        disable_hours = adjustments.get('disable_within_hours', 6)
+        if hours <= disable_hours:
+            return {'should_trade': False, 'size_multiplier': 0.0, 'reason': f'{strategy}_disabled_within_{disable_hours}h'}
+        
+        # Delta-neutral specific: disable within 48h
+        if strategy == 'delta_neutral' and hours <= adjustments.get('disable_within_hours', 48):
+            return {'should_trade': False, 'size_multiplier': 0.0, 'reason': 'delta_neutral_too_close'}
+        
+        # Alpha-directional: require high confidence near expiry
+        if strategy == 'alpha_directional' and urgency in ['high', 'medium']:
+            min_conf = adjustments.get('min_confidence_near_expiry', 0.7)
+            if rl_confidence < min_conf:
+                return {'should_trade': False, 'size_multiplier': 0.0, 'reason': f'alpha_low_confidence_{rl_confidence:.2f}<{min_conf}'}
+        
+        # Volatility exploitation: boost in final week
+        if strategy == 'volatility_exploitation' and days and days <= adjustments.get('boost_within_days', 7):
+            boost = adjustments.get('boost_multiplier', 1.5)
+            return {'should_trade': True, 'size_multiplier': boost, 'reason': f'volatility_boosted_{boost}x'}
+        
+        # Default: use expiry position size multiplier
+        return {
+            'should_trade': True, 
+            'size_multiplier': expiry_info.get('position_size_mult', 1.0),
+            'reason': f'normal_{urgency}'
+        }
+    
     def _get_exit_params(self, strategy: str, asset_class: str) -> Dict:
         """Get exit parameters adjusted for strategy and asset class
         
