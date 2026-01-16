@@ -131,6 +131,10 @@ class PaperTrader:
         self.delta_neutral_price_min = 0.35        # Min price for delta neutral
         self.delta_neutral_price_max = 0.65        # Max price for delta neutral
         
+        # Sentiment-based side selection thresholds (configurable via UI)
+        self.bullish_sentiment_threshold = 0.55    # Above this → YES
+        self.bearish_sentiment_threshold = 0.45    # Below this → NO
+        
         # Current capital starts at initial (will be set properly after config load)
         self.current_capital = self.initial_capital
         
