@@ -383,20 +383,6 @@ class AdaptivePositionSizer:
             combined_mult = final_position / kelly_atr_base
         else:
             combined_mult = 1.0
-            base_position = kelly_position * kelly_signal_adj
-        else:
-            # Kelly is too conservative - use signal-adjusted base
-            # Higher signals = closer to max position, lower signals = closer to min
-            signal_pct = 0.3 + (signal_strength * 0.5)  # 30-80% of max based on signals
-            base_position = max_position_usd * signal_pct
-        
-        # Apply combined multiplier
-        raw_position = base_position * combined_mult
-        
-        # ========== APPLY CONSTRAINTS ==========
-        # Hard ceiling: never exceed max position or 10% of capital
-        final_position = min(raw_position, max_position_usd)
-        final_position = min(final_position, deployed_capital * 0.10)
         
         # Adaptive floor based on conviction
         # High liquidity + high RL confidence + strong signals = allow trade even if small
@@ -404,14 +390,9 @@ class AdaptivePositionSizer:
         
         # If position is below minimum but conviction is high, scale up to minimum
         if final_position < min_trade_size and conviction_score >= 0.7 and liquidity_mult >= 0.3:
-            # Scale position to minimum, but only if we have conviction
             final_position = min_trade_size
         
         # ========== TRADING DECISION ==========
-        # Should trade if:
-        # 1. Position meets minimum size
-        # 2. Liquidity is acceptable
-        # 3. Not a WAIT/HOLD action with very low confidence
         should_trade = (
             final_position >= min_trade_size and 
             liquidity_mult > 0.1 and
@@ -426,14 +407,18 @@ class AdaptivePositionSizer:
                 'min_trade_size': round(min_trade_size, 2),
                 'kelly_fraction': round(kelly_size, 4),
                 'kelly_position': round(kelly_position, 2),
+                'kelly_atr_base': round(kelly_atr_base, 2),
                 'base_position': round(base_position, 2),
+                'raw_position': round(raw_position, 2),
                 'liquidity_multiplier': round(liquidity_mult, 3),
                 'volatility_multiplier': round(vol_mult, 3),
+                'spread_multiplier': round(spread_mult, 3),
                 'rl_confidence_multiplier': round(rl_mult, 3),
                 'asset_class_multiplier': round(asset_mult, 3),
                 'strategy_multiplier': round(strat_mult, 3),
                 'signal_multiplier': round(signal_mult, 3),
-                'directional_dampening': round(directional_dampening, 3),
+                'signal_variance': round(signal_variance, 3),
+                'risk_combined': round(risk_combined, 4),
                 'combined_multiplier': round(combined_mult, 4),
                 'conviction_score': round(conviction_score, 3),
                 'final_position': round(final_position, 2),
