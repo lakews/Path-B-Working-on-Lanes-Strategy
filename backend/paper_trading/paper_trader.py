@@ -1387,8 +1387,9 @@ class PaperTrader:
         3. Consistency bonus (small wins > volatile big wins)
         4. Hold time efficiency (quick profits better than slow ones)
         """
-        # 1. BASE REWARD: Scaled P&L (reduced scaling for more signal variation)
-        base_reward = pnl_pct * 5  # Reduced from 10 to 5 for better range
+        # 1. BASE REWARD: Scaled P&L (moderate scaling for signal variation)
+        # Map typical P&L range (-10% to +10%) to roughly -1 to +1
+        base_reward = pnl_pct * 0.1  # 10% P&L = 1.0 reward
         
         # 2. DRAWDOWN PENALTY: If position went significantly negative before recovering
         if position:
