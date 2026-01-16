@@ -231,6 +231,29 @@ class PaperTrader:
                             }
                     logger.info(f"  Exit params loaded from DB for {len(db_exit_params)} strategies")
                 
+                # Load asset class exit multipliers from DB
+                if "asset_class_exit_multipliers" in user_config:
+                    db_asset_mult = user_config["asset_class_exit_multipliers"]
+                    for asset_class in self.EXIT_ADJUSTMENTS_BY_ASSET.keys():
+                        if asset_class in db_asset_mult:
+                            am = db_asset_mult[asset_class]
+                            self.asset_class_exit_multipliers[asset_class] = {
+                                'tp_mult': float(am.get('tp_mult', self.EXIT_ADJUSTMENTS_BY_ASSET[asset_class]['tp_mult'])),
+                                'sl_mult': float(am.get('sl_mult', self.EXIT_ADJUSTMENTS_BY_ASSET[asset_class]['sl_mult'])),
+                                'time_mult': float(am.get('time_mult', self.EXIT_ADJUSTMENTS_BY_ASSET[asset_class]['time_mult']))
+                            }
+                    logger.info(f"  Asset class exit multipliers loaded for {len(db_asset_mult)} classes")
+                
+                # Load advanced position sizing parameters
+                if "min_kelly_fraction" in user_config:
+                    self.min_kelly_fraction = float(user_config["min_kelly_fraction"])
+                if "max_kelly_fraction" in user_config:
+                    self.max_kelly_fraction = float(user_config["max_kelly_fraction"])
+                if "min_position_size" in user_config:
+                    self.min_position_size = float(user_config["min_position_size"])
+                if "min_liquidity_for_full_size" in user_config:
+                    self.min_liquidity_for_full_size = float(user_config["min_liquidity_for_full_size"])
+                
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
                 self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
@@ -241,7 +264,8 @@ class PaperTrader:
                 logger.info(f"  Initial Capital: ${self.initial_capital:,.2f}")
                 logger.info(f"  Capital Deployment: {self.capital_deployment_pct}% = ${self.deployed_capital:,.2f}")
                 logger.info(f"  Max Position: {self.max_position_size_pct}% of deployed = ${self.max_position_size:,.2f}")
-                logger.info(f"  Kelly: {self.kelly_fraction} | Kelly Enabled: {self.kelly_enabled}")
+                logger.info(f"  Kelly: {self.kelly_fraction} (bounds: {self.min_kelly_fraction}-{self.max_kelly_fraction}) | Enabled: {self.kelly_enabled}")
+                logger.info(f"  Position Sizing: Min ${self.min_position_size:.0f}, Full Size @ ${self.min_liquidity_for_full_size:,.0f} vol")
                 logger.info(f"  Max Drawdown: {self.max_drawdown_pct}%")
                 logger.info(f"  Trades/10min: {self.trades_per_10min} | Interval: {self.trade_interval:.2f}s")
                 logger.info(f"  Market Filters: Liq ${self.min_liquidity:,.0f}-${self.max_liquidity:,.0f}, Vol >= ${self.min_volume_24h:,.0f}, Spread <= {self.max_spread*100:.1f}%")
