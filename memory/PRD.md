@@ -16,8 +16,9 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **UI/UX**: ✅ Fully Configurable - All trading parameters now managed via UI
 - **Exit Parameters**: ✅ Configurable per strategy + asset class multipliers
 - **Position Sizing**: ✅ Advanced config (Kelly bounds, min position, liquidity threshold)
-- **Time-to-Expiry**: ✅ NEW - Strategy adjustments and UI indicators based on expiry
+- **Time-to-Expiry**: ✅ Strategy adjustments and UI indicators based on expiry
 - **Market Alerts**: ✅ Real-time alerts with configurable volume threshold
+- **Strategy Selection**: ✅ Fixed volatility strategy (threshold lowered 0.08→0.05, priority reordered)
 - **Documentation**: ✅ Comprehensive guides in `/app/docs/`
 - **Production Deployment**: ⚠️ Blocked - ML dependencies (TensorFlow, PyTorch) not deployable on Emergent
 
@@ -36,6 +37,23 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - `/app/docs/OPERATIONS.md` - Operations guide
 
 ## What's Been Implemented
+
+### January 16, 2026 - Session 26 (UI Bug Fix + Volatility Strategy Fix)
+
+- ✅ **Bug Fix: Trade History "sess" Truncation** (`/app/frontend/src/pages/PaperTrading.js`)
+  - **Problem**: Status column showed "sess" instead of full exit reason
+  - **Root Cause**: `session_end` exit reason was not in `reasonMap`, so it was sliced to first 4 chars
+  - **Solution**: Added `session_end` to reasonMap with text "END" and slate color styling
+  - Also improved fallback to use `.toUpperCase()` for any unknown exit reasons
+
+- ✅ **Bug Fix: Volatility Exploitation Strategy Never Used** (`/app/backend/paper_trading/paper_trader.py`)
+  - **Problem**: Volatility strategy was never triggered because Alpha-Directional had priority
+  - **Root Cause**: Strategy order was: Delta-Neutral → Alpha-Directional → Volatility
+  - **Solution**: 
+    1. Reordered strategies: Volatility now checked BEFORE Alpha-Directional
+    2. Lowered volatility threshold from `0.08` to `0.05` (per user preference)
+    3. Updated Delta-Neutral threshold to match (`< 0.05`)
+  - New strategy order: Arbitrage → Delta-Neutral → **Volatility** → Alpha-Directional → Default
 
 ### January 16, 2026 - Session 25 (Time-to-Expiry Awareness)
 
