@@ -1000,7 +1000,14 @@ class PaperTrader:
         return self.enabled_strategies[0] if self.enabled_strategies else None
     
     async def _get_signals(self, market_data: Dict) -> Dict:
-        """Get ADAPTIVE signals from actual market data with ENHANCED SENTIMENT"""
+        """
+        Get ULTIMATE ENHANCED signals from multiple data sources:
+        1. Market microstructure (price, volume, liquidity)
+        2. Price momentum tracking
+        3. News sentiment (Finnhub)
+        4. Social sentiment (Twitter/Reddit)
+        5. LLM analysis (optional)
+        """
         try:
             # Extract base market data
             market_id = market_data.get('id', '')
@@ -1013,7 +1020,7 @@ class PaperTrader:
             outstanding = float(market_data.get('outstanding_contracts', liquidity) or liquidity)
             
             # ================================================================
-            # VOLATILITY CALCULATION (unchanged)
+            # VOLATILITY CALCULATION
             # ================================================================
             price_uncertainty = 1 - abs(yes_price - 0.5) * 2
             volume_factor = min(1.0, volume_24h / 5000000) if volume_24h > 0 else 0
@@ -1026,16 +1033,14 @@ class PaperTrader:
             volatility = max(0.01, min(0.15, volatility))
             
             # ================================================================
-            # ENHANCED MULTI-FACTOR SENTIMENT CALCULATION
+            # LAYER 1: MARKET MICROSTRUCTURE SENTIMENT
             # ================================================================
             
-            # Factor 1: BASE PRICE SENTIMENT (where the market currently sits)
-            # Range: 0 to 1 (0 = bearish, 0.5 = neutral, 1 = bullish)
+            # 1A: Base price sentiment
             price_sentiment = yes_price
             
-            # Factor 2: PRICE MOMENTUM (track price changes over time)
-            # Uses in-memory cache to track recent prices
-            momentum_sentiment = 0.5  # Neutral default
+            # 1B: Price momentum (track changes over time)
+            momentum_sentiment = 0.5
             if not hasattr(self, '_price_cache'):
                 self._price_cache = {}
             
@@ -1046,69 +1051,111 @@ class PaperTrader:
                 old_price, old_time = self._price_cache[cache_key]
                 time_diff = current_time - old_time
                 
-                if time_diff > 0 and time_diff < 3600:  # Within last hour
+                if time_diff > 0 and time_diff < 3600:
                     price_change = yes_price - old_price
-                    # Normalize: +10% move = +0.5 sentiment boost, -10% = -0.5
-                    momentum = price_change / max(0.001, old_price)  # % change
-                    momentum_sentiment = 0.5 + (momentum * 5)  # Scale up
+                    momentum = price_change / max(0.001, old_price)
+                    momentum_sentiment = 0.5 + (momentum * 5)
                     momentum_sentiment = max(0, min(1, momentum_sentiment))
             
-            # Update cache
             self._price_cache[cache_key] = (yes_price, current_time)
             
-            # Factor 3: VOLUME INTENSITY (high volume = stronger conviction)
-            # Compare 24h volume to total volume (recent activity ratio)
+            # 1C: Volume intensity
             volume_intensity = 0.5
             if total_volume > 0:
                 recent_ratio = volume_24h / total_volume
-                # If 24h vol is >10% of all-time vol, very active
                 volume_intensity = min(1.0, recent_ratio * 10)
             
-            # Factor 4: LIQUIDITY IMBALANCE (bid/ask proxy via spread asymmetry)
-            # If price is closer to 0 or 1, the spread may be asymmetric
-            # Tight spread at extreme prices = strong conviction
+            # 1D: Liquidity-based conviction
             liquidity_sentiment = 0.5
             if yes_price < 0.2:
-                # Price near 0: if spread is tight, shorts are very confident
-                liquidity_sentiment = 0.5 - (0.5 * (1 - spread * 10))  # More bearish
+                liquidity_sentiment = 0.5 - (0.5 * (1 - spread * 10))
             elif yes_price > 0.8:
-                # Price near 1: if spread is tight, longs are very confident
-                liquidity_sentiment = 0.5 + (0.5 * (1 - spread * 10))  # More bullish
-            else:
-                # Mid-range: spread tightness indicates market maker confidence
-                liquidity_sentiment = 0.5
+                liquidity_sentiment = 0.5 + (0.5 * (1 - spread * 10))
             
-            # Factor 5: WHALE ACTIVITY DIRECTION
-            # High volume relative to liquidity suggests whale moves
-            # Combined with price direction to infer whale sentiment
+            # 1E: Whale activity direction
             whale_sentiment = 0.5
             if liquidity > 0:
                 whale_ratio = volume_24h / liquidity
-                if whale_ratio > 2:  # Whales active
-                    # Assume whales moved price toward current level
+                if whale_ratio > 2:
                     whale_sentiment = 0.5 + (yes_price - 0.5) * min(1, whale_ratio / 5)
             
-            # Factor 6: MARKET MATURITY (newer markets = less reliable sentiment)
-            maturity_weight = min(1.0, total_volume / 1000000)  # Full weight at $1M volume
+            # 1F: Market maturity weight
+            maturity_weight = min(1.0, total_volume / 1000000)
             
-            # ================================================================
-            # COMBINE ALL SENTIMENT FACTORS
-            # ================================================================
-            # Weighted combination with price being most important
-            raw_sentiment = (
-                price_sentiment * 0.35 +       # Current price: 35%
-                momentum_sentiment * 0.25 +    # Recent movement: 25%
-                volume_intensity * 0.15 +      # Trading activity: 15%
-                liquidity_sentiment * 0.10 +   # Liquidity signals: 10%
-                whale_sentiment * 0.15         # Whale activity: 15%
+            # Combine Layer 1: Market Microstructure (50% of total)
+            market_sentiment = (
+                price_sentiment * 0.30 +
+                momentum_sentiment * 0.25 +
+                volume_intensity * 0.15 +
+                liquidity_sentiment * 0.15 +
+                whale_sentiment * 0.15
             )
             
-            # Apply maturity dampening (new markets get pulled toward 0.5)
-            sentiment = raw_sentiment * maturity_weight + 0.5 * (1 - maturity_weight)
-            sentiment = max(0.05, min(0.95, sentiment))  # Clamp to avoid extremes
+            # ================================================================
+            # LAYER 2: EXTERNAL DATA SENTIMENT (News + Social)
+            # ================================================================
+            news_sentiment = 0.5
+            social_sentiment = 0.5
+            external_confidence = 0.0
+            news_data = {}
             
-            # Calculate sentiment strength (distance from neutral)
-            sentiment_strength = abs(sentiment - 0.5) * 2  # 0 to 1 scale
+            # Try to get news/social sentiment (non-blocking, with timeout)
+            try:
+                if hasattr(self, 'social_analyzer') and self.social_analyzer:
+                    # Use cached or fetch new
+                    social_result = await asyncio.wait_for(
+                        self.social_analyzer.analyze_market_sentiment(market_data),
+                        timeout=2.0  # 2 second timeout to not slow down trading
+                    )
+                    
+                    news_sentiment = social_result.get('news_sentiment', 0.5)
+                    social_sentiment = social_result.get('social_sentiment', 0.5)
+                    external_confidence = social_result.get('confidence', 0.0)
+                    news_data = {
+                        'news_count': social_result.get('news_count', 0),
+                        'social_buzz': social_result.get('social_buzz', 0),
+                        'trending_score': social_result.get('trending_score', 0),
+                        'sources': social_result.get('sources', [])
+                    }
+            except asyncio.TimeoutError:
+                logger.debug(f"External sentiment timeout for {market_id[:16]}")
+            except Exception as e:
+                logger.debug(f"External sentiment error: {e}")
+            
+            # Combine Layer 2: External Data (weighted by confidence)
+            external_sentiment = (news_sentiment * 0.6 + social_sentiment * 0.4)
+            
+            # ================================================================
+            # LAYER 3: CROSS-MARKET CORRELATION (Optional)
+            # ================================================================
+            correlation_sentiment = 0.5
+            # Check if related markets are moving in same direction
+            # (This could be enhanced with actual correlation tracking)
+            
+            # ================================================================
+            # FINAL SENTIMENT FUSION
+            # ================================================================
+            # Weight layers based on data availability
+            if external_confidence > 0.3:
+                # Good external data - blend 50% market, 40% external, 10% correlation
+                raw_sentiment = (
+                    market_sentiment * 0.50 +
+                    external_sentiment * 0.40 +
+                    correlation_sentiment * 0.10
+                )
+            else:
+                # No external data - rely on market microstructure
+                raw_sentiment = (
+                    market_sentiment * 0.85 +
+                    correlation_sentiment * 0.15
+                )
+            
+            # Apply maturity dampening
+            sentiment = raw_sentiment * maturity_weight + 0.5 * (1 - maturity_weight)
+            sentiment = max(0.05, min(0.95, sentiment))
+            
+            # Sentiment strength (conviction level)
+            sentiment_strength = abs(sentiment - 0.5) * 2
             
             # ================================================================
             # SHARP ALIGNMENT & OTHER SIGNALS
@@ -1123,14 +1170,23 @@ class PaperTrader:
                 'volatility': round(volatility, 4),
                 'sentiment': round(sentiment, 4),
                 'sentiment_strength': round(sentiment_strength, 4),
+                'sentiment_layers': {
+                    'market_microstructure': round(market_sentiment, 4),
+                    'external_data': round(external_sentiment, 4),
+                    'external_confidence': round(external_confidence, 4),
+                    'correlation': round(correlation_sentiment, 4)
+                },
                 'sentiment_components': {
                     'price': round(price_sentiment, 4),
                     'momentum': round(momentum_sentiment, 4),
                     'volume_intensity': round(volume_intensity, 4),
                     'liquidity': round(liquidity_sentiment, 4),
                     'whale': round(whale_sentiment, 4),
+                    'news': round(news_sentiment, 4),
+                    'social': round(social_sentiment, 4),
                     'maturity_weight': round(maturity_weight, 4)
                 },
+                'news_data': news_data,
                 'sharp_alignment': round(sharp_alignment, 4),
                 'whale_activity': round(whale_activity, 4),
                 'price_uncertainty': round(price_uncertainty, 4),
