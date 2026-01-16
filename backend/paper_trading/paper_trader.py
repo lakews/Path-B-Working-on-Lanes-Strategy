@@ -1440,14 +1440,14 @@ class PaperTrader:
             and 'delta_neutral' in self.enabled_strategies):
             return 'delta_neutral'
         
-        # 4. VOLATILITY EXPLOITATION: Higher volatility or uncertain markets (check BEFORE alpha directional)
+        # 4. ALPHA DIRECTIONAL: Strong sentiment divergence from 50% (BEFORE volatility)
+        if sentiment_strength > self.sentiment_strength_threshold and 'alpha_directional' in self.enabled_strategies:
+            return 'alpha_directional'
+        
+        # 5. VOLATILITY EXPLOITATION: Higher volatility or uncertain markets
         if ((volatility > self.volatility_threshold or price_uncertainty > 0.7) 
             and 'volatility_exploitation' in self.enabled_strategies):
             return 'volatility_exploitation'
-        
-        # 5. ALPHA DIRECTIONAL: Strong sentiment divergence from 50%
-        if sentiment_strength > self.sentiment_strength_threshold and 'alpha_directional' in self.enabled_strategies:
-            return 'alpha_directional'
         
         # 6. Default: Distribute remaining based on price bucket for variety
         price_bucket = int(yes_price * 10) % 4
