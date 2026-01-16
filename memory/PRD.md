@@ -15,10 +15,11 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Paper Trading**: ✅ Working - Position sizing fixed, trades executing correctly
 - **UI/UX**: ✅ Fully Configurable - All trading parameters now managed via UI
 - **Exit Parameters**: ✅ Configurable per strategy + asset class multipliers
-- **Position Sizing**: ✅ Advanced config (Kelly bounds, min position, liquidity threshold)
+- **Position Sizing**: ✅ Advanced config (Kelly bounds, min position, liquidity threshold, **geometric mean for risk_combined**)
 - **Time-to-Expiry**: ✅ Strategy adjustments and UI indicators based on expiry
 - **Market Alerts**: ✅ Real-time alerts with configurable volume threshold
-- **Strategy Selection**: ✅ Fixed volatility strategy (threshold lowered 0.08→0.05, priority reordered)
+- **Strategy Selection**: ✅ Fixed volatility strategy (threshold raised to 0.06 for Delta Neutral capture)
+- **Asset Class Equity**: ✅ Per-asset-class P&L breakdown starting at $0
 - **Documentation**: ✅ Comprehensive guides in `/app/docs/`
 - **Production Deployment**: ⚠️ Blocked - ML dependencies (TensorFlow, PyTorch) not deployable on Emergent
 
