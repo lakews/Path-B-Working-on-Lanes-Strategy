@@ -2068,6 +2068,8 @@ class PaperTrader:
             "running": self.running,
             "initial_capital": self.initial_capital,
             "current_capital": self.current_capital,
+            "peak_capital": self.peak_capital,  # Highest capital reached
+            "current_drawdown_pct": ((self.peak_capital - self.current_capital) / self.peak_capital * 100) if self.peak_capital > 0 else 0,
             "deployed_capital": self.deployed_capital,  # Capital available for trading
             "total_pnl": self.total_pnl,  # Realized P&L (closed trades)
             "unrealized_pnl": self.unrealized_pnl,  # Unrealized P&L (open positions)
