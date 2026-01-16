@@ -227,6 +227,11 @@ class PerformanceResponse(BaseModel):
     num_trades: int
     num_positions: int
 
+class StrategyExitParams(BaseModel):
+    take_profit: Optional[float] = None  # e.g., 0.02 = 2%
+    stop_loss: Optional[float] = None    # e.g., -0.02 = -2%
+    max_hours: Optional[float] = None    # e.g., 4 = 4 hours
+
 class TradingConfig(BaseModel):
     trades_per_10min: Optional[int] = None
     initial_capital: Optional[float] = None
@@ -245,6 +250,8 @@ class TradingConfig(BaseModel):
     stuck_price_multiplier: Optional[float] = None  # Volume multiplier for stuck prices (0.0, 0.5, 1.0)
     enabled_asset_classes: Optional[List[str]] = None
     enabled_strategies: Optional[List[str]] = None
+    # Exit parameters per strategy
+    exit_params: Optional[Dict[str, StrategyExitParams]] = None
 
 # Store user config preferences
 user_config = {
