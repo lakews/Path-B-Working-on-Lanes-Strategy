@@ -208,8 +208,8 @@ const Configuration = () => {
         </div>
       )}
 
-      <div className="flex gap-2 bg-white/5 p-1 rounded-xl w-fit">
-        {[{ id: 'trading', label: 'Trading', icon: Activity }, { id: 'capital', label: 'Capital', icon: DollarSign }, { id: 'risk', label: 'Risk', icon: Shield }, { id: 'markets', label: 'Market Selection', icon: Target }, { id: 'assets', label: 'Asset Class - Strategy', icon: Layers }].map((tab) => (
+      <div className="flex gap-2 bg-white/5 p-1 rounded-xl w-fit flex-wrap">
+        {[{ id: 'trading', label: 'Trading', icon: Activity }, { id: 'capital', label: 'Capital', icon: DollarSign }, { id: 'risk', label: 'Risk', icon: Shield }, { id: 'markets', label: 'Market Selection', icon: Target }, { id: 'exits', label: 'Exit Parameters', icon: Target }, { id: 'assets', label: 'Asset Class - Strategy', icon: Layers }].map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-cyan-500 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'}`}>
             <tab.icon className="w-4 h-4" />{tab.label}
           </button>
