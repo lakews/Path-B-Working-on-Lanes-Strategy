@@ -269,7 +269,21 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
     );
   }
 
-  const entries = Object.entries(data).sort((a, b) => b[1].total_pnl - a[1].total_pnl);
+  // Normalize data to handle both cumulative (total_pnl) and live (pnl) formats
+  const normalizedData = Object.fromEntries(
+    Object.entries(data).map(([key, d]) => [
+      key,
+      {
+        total_pnl: d.total_pnl ?? d.pnl ?? 0,
+        total_trades: d.total_trades ?? d.trades ?? 0,
+        total_wins: d.total_wins ?? d.wins ?? 0,
+        win_rate: d.win_rate ?? 0,
+        sessions: d.sessions ?? 0
+      }
+    ])
+  );
+
+  const entries = Object.entries(normalizedData).sort((a, b) => b[1].total_pnl - a[1].total_pnl);
   
   // Calculate totals
   const totals = entries.reduce((acc, [_, d]) => ({
