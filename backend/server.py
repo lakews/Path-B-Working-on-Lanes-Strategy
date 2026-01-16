@@ -2148,6 +2148,13 @@ async def reset_live_stats(current_user: str = Depends(get_current_user)):
         paper_trader.trade_history = []
         paper_trader.trade_returns = []
         paper_trader.equity_curve = []
+        
+        # Clear all open positions
+        paper_trader.paper_positions = {}
+        
+        # Reset circuit breaker
+        paper_trader.circuit_breaker_triggered = False
+        
         paper_trader.strategy_equity = {s: 0.0 for s in paper_trader.strategy_equity}
         paper_trader.asset_class_equity = {}
         paper_trader.strategy_stats = {
@@ -2158,8 +2165,8 @@ async def reset_live_stats(current_user: str = Depends(get_current_user)):
         }
         paper_trader.asset_class_stats = {}
         
-        logger.info("Live session stats reset")
-        return {"message": "Live stats reset successfully"}
+        logger.info("Live session stats reset (including open positions)")
+        return {"message": "Live stats reset successfully", "positions_cleared": True}
     except Exception as e:
         logger.error(f"Error resetting live stats: {e}")
         return JSONResponse(status_code=500, content={"message": str(e)})
