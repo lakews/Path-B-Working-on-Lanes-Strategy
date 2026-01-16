@@ -1085,6 +1085,9 @@ async def get_config():
             "sharp_alignment_threshold": saved_config.get("sharp_alignment_threshold", 0.8) if saved_config else 0.8,
             "delta_neutral_price_min": saved_config.get("delta_neutral_price_min", 0.35) if saved_config else 0.35,
             "delta_neutral_price_max": saved_config.get("delta_neutral_price_max", 0.65) if saved_config else 0.65,
+            # Sentiment-based side selection thresholds
+            "bullish_sentiment_threshold": saved_config.get("bullish_sentiment_threshold", 0.55) if saved_config else 0.55,
+            "bearish_sentiment_threshold": saved_config.get("bearish_sentiment_threshold", 0.45) if saved_config else 0.45,
         }
     except Exception as e:
         logger.error(f"Error getting config: {e}")
