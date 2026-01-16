@@ -1217,10 +1217,17 @@ const PaperTrading = () => {
                   <SortableHeader label="P&L ($)" sortKey="pnl" currentSort={tradeSort} onSort={handleTradeSort} />
                   <SortableHeader label="Return (%)" sortKey="return" currentSort={tradeSort} onSort={handleTradeSort} />
                   <SortableHeader label="Time" sortKey="timestamp" currentSort={tradeSort} onSort={handleTradeSort} />
+                  <th className="py-3 px-4 text-xs text-white/60 uppercase">AI</th>
                 </tr></thead>
                 <tbody>
-                  {sortedTrades.slice(0, 50).map((trade, idx) => <TradeRow key={idx} trade={trade} />)}
-                  {sortedTrades.length === 0 && <tr><td colSpan={9} className="py-8 text-center text-white/40">No trades yet. Start paper trading to see activity.</td></tr>}
+                  {sortedTrades.slice(0, 50).map((trade, idx) => (
+                    <TradeRow 
+                      key={idx} 
+                      trade={trade} 
+                      onViewSentiment={(t) => setSentimentModal({ isOpen: true, trade: t })}
+                    />
+                  ))}
+                  {sortedTrades.length === 0 && <tr><td colSpan={10} className="py-8 text-center text-white/40">No trades yet. Start paper trading to see activity.</td></tr>}
                 </tbody>
               </table>
             </div>
