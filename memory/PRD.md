@@ -8,7 +8,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **AI/ML Models**: Volatility Prediction, Sentiment Fusion, Bayesian Outlier Detection, Sharp Trader Detection, Kelly-Sharpe Optimizer
 - **Trading Strategies**: Delta-Neutral Market Making, Volatility Exploitation, Alpha-Directional, Multi-Market Arbitrage
 - **Performance**: <100ms execution latency, <50ms ML inference, 500+ trades per 10 minutes (configurable)
-- **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters and position sizing**
+- **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters, time-to-expiry awareness**
 
 ## Current Status (January 16, 2026)
 - **Live Data**: ✅ Working - Uses Polymarket Gamma API for real market data
@@ -16,6 +16,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **UI/UX**: ✅ Fully Configurable - All trading parameters now managed via UI
 - **Exit Parameters**: ✅ Configurable per strategy + asset class multipliers
 - **Position Sizing**: ✅ Advanced config (Kelly bounds, min position, liquidity threshold)
+- **Time-to-Expiry**: ✅ NEW - Strategy adjustments and UI indicators based on expiry
 - **Market Alerts**: ✅ Real-time alerts with configurable volume threshold
 - **Documentation**: ✅ Comprehensive guides in `/app/docs/`
 - **Production Deployment**: ⚠️ Blocked - ML dependencies (TensorFlow, PyTorch) not deployable on Emergent
@@ -36,6 +37,34 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 16, 2026 - Session 25 (Time-to-Expiry Awareness)
+
+- ✅ **Time-to-Expiry Calculation** (`/app/backend/paper_trading/paper_trader.py`)
+  - `_parse_end_date()` - Parses end_date from market data (ISO, Unix, etc.)
+  - `_calculate_time_to_expiry()` - Returns urgency level, position multiplier, labels
+  - Urgency levels: expired, critical (<6h), high (<24h), medium (<7d), normal
+
+- ✅ **Expiry-Based Position Sizing**
+  - Scale down positions as expiry approaches
+  - Critical (<6h): No new entries
+  - High (<24h): 30-100% size scaling
+  - Medium (<7d): 50-100% size scaling
+
+- ✅ **Strategy Adjustments Near Expiry**
+  - Delta-Neutral: Disabled within 48h (no time for spreads)
+  - Volatility Exploitation: Boosted 1.5x in final 7 days
+  - Alpha-Directional: Requires 70%+ confidence near expiry
+  - Arbitrage: Active until 6h before resolution
+
+- ✅ **UI Expiry Indicators** (`/app/frontend/src/pages/PaperTrading.js`)
+  - Position cards show ⏱️ badge with days/hours to expiry
+  - Color coded: 🟢 Green (>7d), 🟡 Yellow (1-7d), 🔴 Red (<24h)
+  - Trade history table shows expiry on OPEN trades
+
+- ✅ **Bug Fix: Expired Market Trading**
+  - No longer trades on markets past their event deadline
+  - Checks `end_date`, `closed`, `resolved`, `active` fields
+
 ### January 16, 2026 - Session 24 (Strategy Tuning Refinement + Documentation)
 
 - ✅ **Refined Strategy Tuning UI** (`/app/frontend/src/pages/Configuration.js`)
@@ -47,6 +76,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - ✅ **Comprehensive Documentation** (`/app/docs/`)
   - `CONFIGURATION.md` (199 lines) - All 9 configuration tabs explained
   - `STRATEGIES.md` (268 lines) - Trading strategies deep dive
+
 
 - ✅ **Clarified Kelly vs Adaptive Position Sizing**
   - Kelly Criterion = theoretical foundation (optimal bet size math)
