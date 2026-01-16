@@ -2172,7 +2172,7 @@ async def reset_live_stats(current_user: str = Depends(get_current_user_flexible
         return JSONResponse(status_code=500, content={"message": str(e)})
 
 @api_router.post("/paper/reset-cumulative-stats")
-async def reset_cumulative_stats(current_user: str = Depends(get_current_user)):
+async def reset_cumulative_stats(current_user: str = Depends(get_current_user_flexible)):
     """Reset ALL cumulative trading statistics across all sessions"""
     try:
         db = get_db()
