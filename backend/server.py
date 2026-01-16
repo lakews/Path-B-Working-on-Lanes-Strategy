@@ -1238,6 +1238,68 @@ async def reload_config_live(username: str = Depends(verify_credentials_dual)):
             content={"message": f"Failed to reload config: {str(e)}"}
         )
 
+# =============================================
+# MARKET ALERTS ENDPOINTS
+# =============================================
+@api_router.get("/alerts")
+async def get_market_alerts(limit: int = Query(default=20, le=50)):
+    """Get recent market alerts"""
+    try:
+        alerts_service = get_market_alerts_service(ws_manager)
+        alerts = alerts_service.get_recent_alerts(limit)
+        return {
+            "alerts": alerts,
+            "count": len(alerts),
+            "enabled": alerts_service.alerts_enabled,
+            "volume_threshold": alerts_service.volume_threshold
+        }
+    except Exception as e:
+        logger.error(f"Error getting alerts: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get alerts: {str(e)}"}
+        )
+
+@api_router.post("/alerts/clear")
+async def clear_market_alerts(username: str = Depends(verify_credentials_dual)):
+    """Clear all market alerts"""
+    try:
+        alerts_service = get_market_alerts_service(ws_manager)
+        alerts_service.clear_alerts()
+        return {"message": "Alerts cleared successfully"}
+    except Exception as e:
+        logger.error(f"Error clearing alerts: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to clear alerts: {str(e)}"}
+        )
+
+@api_router.post("/alerts/toggle")
+async def toggle_market_alerts(enabled: bool, username: str = Depends(verify_credentials_dual)):
+    """Toggle market alerts on/off"""
+    try:
+        alerts_service = get_market_alerts_service(ws_manager)
+        alerts_service.alerts_enabled = enabled
+        
+        # Save to database
+        db = get_db()
+        await db.user_config.update_one(
+            {"type": "trading_preferences"},
+            {"$set": {"alerts_enabled": enabled}},
+            upsert=True
+        )
+        
+        return {
+            "message": f"Alerts {'enabled' if enabled else 'disabled'}",
+            "enabled": enabled
+        }
+    except Exception as e:
+        logger.error(f"Error toggling alerts: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to toggle alerts: {str(e)}"}
+        )
+
 # Historical Data Collection Endpoints
 @api_router.get("/historical/stats")
 async def get_historical_stats():
