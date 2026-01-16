@@ -1601,8 +1601,34 @@ class PaperTrader:
                 'gross_loss': gross_loss
             }
         
-        # Calculate returns distribution
+        # Calculate returns distribution (realized trades)
         returns_distribution = self._calculate_returns_distribution()
+        
+        # Calculate unrealized P&L distribution (open positions)
+        unrealized_returns = []
+        for pos in self.paper_positions.values():
+            if pos.get('size', 0) > 0:
+                entry = pos.get('entry_price', 0)
+                current = pos.get('current_price', entry)
+                side = pos.get('side', 'YES')
+                
+                # Calculate unrealized return %
+                if side == 'YES':
+                    if entry > 0:
+                        pnl_pct = ((current - entry) / entry) * 100
+                    else:
+                        pnl_pct = 0
+                else:  # NO position
+                    no_entry = 1 - entry
+                    no_current = 1 - current
+                    if no_entry > 0:
+                        pnl_pct = ((no_current - no_entry) / no_entry) * 100
+                    else:
+                        pnl_pct = 0
+                
+                unrealized_returns.append(pnl_pct)
+        
+        unrealized_distribution = self._calculate_distribution_from_returns(unrealized_returns) if unrealized_returns else {}
         
         # Calculate total P&L including unrealized
         combined_pnl = self.total_pnl + self.unrealized_pnl
