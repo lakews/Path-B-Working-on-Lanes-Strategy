@@ -201,30 +201,49 @@ class AdaptivePositionSizer:
         """
         Adjust position size based on volatility regime.
         
-        Higher volatility = smaller positions (risk management)
-        But also higher potential returns, so not linear reduction.
-        
-        NOTE: Reduced dampening to ensure trades can execute with small capital.
+        INVERTED: Higher volatility = SMALLER positions (risk management)
+        Uses ATR-style inverse scaling.
         """
-        # Volatility ratio vs historical
-        vol_ratio = predicted_volatility / max(historical_volatility, 0.01)
+        # Clamp volatility to reasonable range
+        vol = max(0.01, min(predicted_volatility, 0.30))
         
-        # Regime classification - less aggressive dampening
-        if vol_ratio < 0.5:
-            # Very low vol - can size up slightly
-            return 1.1
-        elif vol_ratio < 1.0:
-            # Normal vol
-            return 1.0
-        elif vol_ratio < 2.0:
-            # Elevated vol - mild reduction
-            return 0.9
-        elif vol_ratio < 3.0:
-            # High vol - moderate reduction
-            return 0.8
+        # ATR-style inverse scaling: position inversely proportional to volatility
+        # Base volatility of 0.05 (5%) gives multiplier of 1.0
+        # Higher vol = lower multiplier, lower vol = higher multiplier
+        base_vol = 0.05
+        vol_multiplier = base_vol / vol
+        
+        # Clamp to reasonable range (0.3x to 1.5x)
+        return max(0.3, min(1.5, vol_multiplier))
+    
+    def calculate_spread_adjustment(
+        self,
+        market_data: Dict
+    ) -> float:
+        """
+        Adjust position size based on bid-ask spread.
+        
+        Wider spread = higher transaction cost = SMALLER position
+        """
+        # Get spread from market data
+        best_bid = float(market_data.get('best_bid', 0) or 0)
+        best_ask = float(market_data.get('best_ask', 0) or 0)
+        yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+        
+        if best_bid > 0 and best_ask > 0:
+            spread = best_ask - best_bid
+            spread_pct = spread / max(yes_price, 0.01)
         else:
-            # Extreme vol - reduced sizing but still viable
-            return 0.7
+            # Estimate spread from price (tighter near 0.5)
+            spread_pct = 0.02 + abs(yes_price - 0.5) * 0.04  # 2-4% estimated
+        
+        # Inverse relationship: tight spread (1%) = 1.2x, wide spread (5%) = 0.5x
+        # Base: 2% spread = 1.0x
+        base_spread = 0.02
+        spread_mult = base_spread / max(spread_pct, 0.005)
+        
+        # Clamp to reasonable range (0.4x to 1.3x)
+        return max(0.4, min(1.3, spread_mult))
     
     def calculate_rl_confidence_multiplier(
         self,
