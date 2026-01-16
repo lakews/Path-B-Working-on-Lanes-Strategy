@@ -1000,46 +1000,137 @@ class PaperTrader:
         return self.enabled_strategies[0] if self.enabled_strategies else None
     
     async def _get_signals(self, market_data: Dict) -> Dict:
-        """Get ADAPTIVE signals from actual market data - no hardcoded defaults"""
+        """Get ADAPTIVE signals from actual market data with ENHANCED SENTIMENT"""
         try:
-            # Calculate signals from REAL market data
+            # Extract base market data
+            market_id = market_data.get('id', '')
             yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+            no_price = float(market_data.get('no_price', 0.5) or 0.5)
             volume_24h = float(market_data.get('volume_24h', 0) or 0)
+            total_volume = float(market_data.get('volume', 0) or 0)
             liquidity = float(market_data.get('liquidity', 0) or 0)
             spread = float(market_data.get('spread', 0.02) or 0.02)
+            outstanding = float(market_data.get('outstanding_contracts', liquidity) or liquidity)
             
-            # VOLATILITY: Calculate from price distance from 0.5 + spread + volume activity
-            # Extreme prices (near 0 or 1) = low volatility (resolved markets)
-            # Mid-range prices with high volume = high volatility
-            price_uncertainty = 1 - abs(yes_price - 0.5) * 2  # 0 at extremes, 1 at 0.5
-            volume_factor = min(1.0, volume_24h / 5000000) if volume_24h > 0 else 0  # Normalize by $5M (higher threshold)
-            spread_volatility = min(0.05, spread * 2)  # Cap spread contribution at 5%
-            
-            # Weighted volatility calculation - more balanced
+            # ================================================================
+            # VOLATILITY CALCULATION (unchanged)
+            # ================================================================
+            price_uncertainty = 1 - abs(yes_price - 0.5) * 2
+            volume_factor = min(1.0, volume_24h / 5000000) if volume_24h > 0 else 0
+            spread_volatility = min(0.05, spread * 2)
             volatility = (
-                price_uncertainty * 0.04 +  # 0-4% contribution from price uncertainty
-                spread_volatility +          # 0-5% from spread
-                volume_factor * 0.03         # 0-3% from volume
+                price_uncertainty * 0.04 +
+                spread_volatility +
+                volume_factor * 0.03
             )
-            volatility = max(0.01, min(0.15, volatility))  # Clamp 1%-15%
+            volatility = max(0.01, min(0.15, volatility))
             
-            # SENTIMENT: Derive from price - price > 0.5 means market is bullish on YES
-            # Also factor in recent volume direction if available
-            base_sentiment = yes_price  # 0.5 = neutral, >0.5 = bullish, <0.5 = bearish
-            sentiment = base_sentiment
+            # ================================================================
+            # ENHANCED MULTI-FACTOR SENTIMENT CALCULATION
+            # ================================================================
             
-            # SHARP ALIGNMENT: Based on liquidity depth and spread tightness
-            # High liquidity + tight spread = sharp traders are active
-            liquidity_score = min(1.0, liquidity / 100000) if liquidity > 0 else 0  # Normalize by $100K
-            spread_score = max(0, 1 - spread * 10)  # Tighter spread = higher score
+            # Factor 1: BASE PRICE SENTIMENT (where the market currently sits)
+            # Range: 0 to 1 (0 = bearish, 0.5 = neutral, 1 = bullish)
+            price_sentiment = yes_price
+            
+            # Factor 2: PRICE MOMENTUM (track price changes over time)
+            # Uses in-memory cache to track recent prices
+            momentum_sentiment = 0.5  # Neutral default
+            if not hasattr(self, '_price_cache'):
+                self._price_cache = {}
+            
+            cache_key = market_id
+            current_time = asyncio.get_event_loop().time()
+            
+            if cache_key in self._price_cache:
+                old_price, old_time = self._price_cache[cache_key]
+                time_diff = current_time - old_time
+                
+                if time_diff > 0 and time_diff < 3600:  # Within last hour
+                    price_change = yes_price - old_price
+                    # Normalize: +10% move = +0.5 sentiment boost, -10% = -0.5
+                    momentum = price_change / max(0.001, old_price)  # % change
+                    momentum_sentiment = 0.5 + (momentum * 5)  # Scale up
+                    momentum_sentiment = max(0, min(1, momentum_sentiment))
+            
+            # Update cache
+            self._price_cache[cache_key] = (yes_price, current_time)
+            
+            # Factor 3: VOLUME INTENSITY (high volume = stronger conviction)
+            # Compare 24h volume to total volume (recent activity ratio)
+            volume_intensity = 0.5
+            if total_volume > 0:
+                recent_ratio = volume_24h / total_volume
+                # If 24h vol is >10% of all-time vol, very active
+                volume_intensity = min(1.0, recent_ratio * 10)
+            
+            # Factor 4: LIQUIDITY IMBALANCE (bid/ask proxy via spread asymmetry)
+            # If price is closer to 0 or 1, the spread may be asymmetric
+            # Tight spread at extreme prices = strong conviction
+            liquidity_sentiment = 0.5
+            if yes_price < 0.2:
+                # Price near 0: if spread is tight, shorts are very confident
+                liquidity_sentiment = 0.5 - (0.5 * (1 - spread * 10))  # More bearish
+            elif yes_price > 0.8:
+                # Price near 1: if spread is tight, longs are very confident
+                liquidity_sentiment = 0.5 + (0.5 * (1 - spread * 10))  # More bullish
+            else:
+                # Mid-range: spread tightness indicates market maker confidence
+                liquidity_sentiment = 0.5
+            
+            # Factor 5: WHALE ACTIVITY DIRECTION
+            # High volume relative to liquidity suggests whale moves
+            # Combined with price direction to infer whale sentiment
+            whale_sentiment = 0.5
+            if liquidity > 0:
+                whale_ratio = volume_24h / liquidity
+                if whale_ratio > 2:  # Whales active
+                    # Assume whales moved price toward current level
+                    whale_sentiment = 0.5 + (yes_price - 0.5) * min(1, whale_ratio / 5)
+            
+            # Factor 6: MARKET MATURITY (newer markets = less reliable sentiment)
+            maturity_weight = min(1.0, total_volume / 1000000)  # Full weight at $1M volume
+            
+            # ================================================================
+            # COMBINE ALL SENTIMENT FACTORS
+            # ================================================================
+            # Weighted combination with price being most important
+            raw_sentiment = (
+                price_sentiment * 0.35 +       # Current price: 35%
+                momentum_sentiment * 0.25 +    # Recent movement: 25%
+                volume_intensity * 0.15 +      # Trading activity: 15%
+                liquidity_sentiment * 0.10 +   # Liquidity signals: 10%
+                whale_sentiment * 0.15         # Whale activity: 15%
+            )
+            
+            # Apply maturity dampening (new markets get pulled toward 0.5)
+            sentiment = raw_sentiment * maturity_weight + 0.5 * (1 - maturity_weight)
+            sentiment = max(0.05, min(0.95, sentiment))  # Clamp to avoid extremes
+            
+            # Calculate sentiment strength (distance from neutral)
+            sentiment_strength = abs(sentiment - 0.5) * 2  # 0 to 1 scale
+            
+            # ================================================================
+            # SHARP ALIGNMENT & OTHER SIGNALS
+            # ================================================================
+            liquidity_score = min(1.0, liquidity / 100000) if liquidity > 0 else 0
+            spread_score = max(0, 1 - spread * 10)
             sharp_alignment = (liquidity_score * 0.6 + spread_score * 0.4)
             
-            # WHALE ACTIVITY: Based on volume relative to liquidity
             whale_activity = min(1.0, (volume_24h / liquidity) if liquidity > 0 else 0)
             
             signals = {
                 'volatility': round(volatility, 4),
                 'sentiment': round(sentiment, 4),
+                'sentiment_strength': round(sentiment_strength, 4),
+                'sentiment_components': {
+                    'price': round(price_sentiment, 4),
+                    'momentum': round(momentum_sentiment, 4),
+                    'volume_intensity': round(volume_intensity, 4),
+                    'liquidity': round(liquidity_sentiment, 4),
+                    'whale': round(whale_sentiment, 4),
+                    'maturity_weight': round(maturity_weight, 4)
+                },
                 'sharp_alignment': round(sharp_alignment, 4),
                 'whale_activity': round(whale_activity, 4),
                 'price_uncertainty': round(price_uncertainty, 4),
