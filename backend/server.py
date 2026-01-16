@@ -269,7 +269,7 @@ class TradingConfig(BaseModel):
     alerts_enabled: Optional[bool] = None           # Enable real-time alerts
     alert_volume_threshold: Optional[float] = None  # Volume spike threshold (e.g., 2.0 = 2x avg)
     # Strategy selection thresholds (configurable)
-    volatility_threshold: Optional[float] = None    # Threshold for volatility strategy (default 0.05)
+    volatility_threshold: Optional[float] = None    # Threshold for volatility strategy (default 0.06)
     sentiment_strength_threshold: Optional[float] = None  # Threshold for alpha directional (default 0.25)
     sharp_alignment_threshold: Optional[float] = None     # Threshold for arbitrage (default 0.8)
     delta_neutral_price_min: Optional[float] = None       # Min price for delta neutral (default 0.35)
