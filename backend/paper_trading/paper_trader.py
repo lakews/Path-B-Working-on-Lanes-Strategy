@@ -1136,6 +1136,8 @@ class PaperTrader:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 # Expiry info for UI
                 "expiry_info": position.get('expiry_info', {}),
+                # Sizing breakdown for analysis and learning
+                "sizing_breakdown": sizing_breakdown or {},
                 # Sentiment breakdown for UI
                 "sentiment": {
                     "final": signals.get('sentiment', 0.5),
