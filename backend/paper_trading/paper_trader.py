@@ -1406,16 +1406,17 @@ class PaperTrader:
             return 'arbitrage'
         
         # 3. DELTA NEUTRAL: Mid-range price with moderate volatility - market making
-        if 0.35 <= yes_price <= 0.65 and volatility < 0.08 and 'delta_neutral' in self.enabled_strategies:
+        if 0.35 <= yes_price <= 0.65 and volatility < 0.05 and 'delta_neutral' in self.enabled_strategies:
             return 'delta_neutral'
         
-        # 4. ALPHA DIRECTIONAL: Strong sentiment divergence from 50%
+        # 4. VOLATILITY EXPLOITATION: Higher volatility or uncertain markets (check BEFORE alpha directional)
+        # Lowered threshold from 0.08 to 0.05 to capture more volatility opportunities
+        if (volatility > 0.05 or price_uncertainty > 0.7) and 'volatility_exploitation' in self.enabled_strategies:
+            return 'volatility_exploitation'
+        
+        # 5. ALPHA DIRECTIONAL: Strong sentiment divergence from 50%
         if sentiment_strength > 0.25 and 'alpha_directional' in self.enabled_strategies:
             return 'alpha_directional'
-        
-        # 5. VOLATILITY EXPLOITATION: Higher volatility or uncertain markets
-        if (volatility > 0.08 or price_uncertainty > 0.7) and 'volatility_exploitation' in self.enabled_strategies:
-            return 'volatility_exploitation'
         
         # 6. Default: Distribute remaining based on price bucket for variety
         price_bucket = int(yes_price * 10) % 4

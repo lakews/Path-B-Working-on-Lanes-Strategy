@@ -412,11 +412,12 @@ const TradeRow = ({ trade, onViewSentiment }) => {
       'stop_loss': { text: 'SL', color: 'text-red-400', bg: 'bg-red-500/20', title: 'Stop Loss Hit' },
       'time_limit': { text: '⏱️', color: 'text-yellow-400', bg: 'bg-yellow-500/20', title: 'Max Hold Time' },
       'rl_signal_reversal': { text: 'RL', color: 'text-purple-400', bg: 'bg-purple-500/20', title: 'RL Signal Reversal' },
+      'session_end': { text: 'END', color: 'text-slate-400', bg: 'bg-slate-500/20', title: 'Session Ended' },
     };
     if (reason.startsWith('expiry_safety_exit')) {
       return { text: '⚠️EXP', color: 'text-orange-400', bg: 'bg-orange-500/20', title: 'Auto-Exit: Approaching Expiry' };
     }
-    return reasonMap[reason] || { text: reason.slice(0, 4), color: 'text-white/60', bg: 'bg-white/10', title: reason };
+    return reasonMap[reason] || { text: reason.slice(0, 4).toUpperCase(), color: 'text-white/60', bg: 'bg-white/10', title: reason };
   };
   
   const exitReasonBadge = isComplete ? getExitReasonBadge(trade.exit_reason) : null;
