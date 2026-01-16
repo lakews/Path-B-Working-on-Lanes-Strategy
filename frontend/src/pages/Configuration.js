@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Settings, Save, RefreshCw, DollarSign, Percent, Activity, Shield, Zap, AlertTriangle, Target, Clock, Info, Sliders, Layers, TrendingUp, Landmark, Trophy, Film, Bitcoin, Globe, Check, X, BarChart3, GitBranch, Crosshair, Scale } from 'lucide-react';
+import { Settings, Save, RefreshCw, DollarSign, Percent, Activity, Shield, Zap, AlertTriangle, Target, Clock, Info, Sliders, Layers, TrendingUp, Landmark, Trophy, Film, Bitcoin, Globe, Check, X, BarChart3, GitBranch, Crosshair, Scale, Bell, BellOff } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -38,7 +38,7 @@ const Configuration = () => {
     min_volume_24h: 1000,
     max_spread: 0.05,
     max_open_positions: 50,
-    stuck_price_multiplier: 2.0,  // Volume multiplier for stuck prices (0.0, 0.5, 1.0)
+    stuck_price_multiplier: 2.0,
     enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'],
     enabled_strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage'],
     // Exit parameters per strategy
@@ -47,7 +47,24 @@ const Configuration = () => {
       volatility_exploitation: { take_profit: 0.05, stop_loss: -0.05, max_hours: 8 },
       alpha_directional: { take_profit: 0.08, stop_loss: -0.05, max_hours: 12 },
       arbitrage: { take_profit: 0.03, stop_loss: -0.03, max_hours: 6 }
-    }
+    },
+    // Asset class exit multipliers
+    asset_class_exit_multipliers: {
+      crypto: { tp_mult: 1.5, sl_mult: 1.3, time_mult: 0.5 },
+      politics: { tp_mult: 1.2, sl_mult: 1.0, time_mult: 1.5 },
+      sports: { tp_mult: 1.0, sl_mult: 0.8, time_mult: 0.25 },
+      finance: { tp_mult: 0.8, sl_mult: 0.8, time_mult: 1.0 },
+      entertainment: { tp_mult: 1.0, sl_mult: 1.0, time_mult: 1.0 },
+      science: { tp_mult: 1.0, sl_mult: 1.0, time_mult: 2.0 }
+    },
+    // Advanced position sizing
+    min_kelly_fraction: 0.10,
+    max_kelly_fraction: 0.50,
+    min_position_size: 5,
+    min_liquidity_for_full_size: 10000,
+    // Market alerts
+    alerts_enabled: false,
+    alert_volume_threshold: 2.0
   });
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
