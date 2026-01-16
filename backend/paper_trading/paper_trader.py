@@ -1707,7 +1707,11 @@ class PaperTrader:
     
     def _calculate_returns_distribution(self) -> Dict:
         """Calculate returns distribution histogram like backtest"""
-        if not self.trade_returns:
+        return self._calculate_distribution_from_returns(self.trade_returns)
+    
+    def _calculate_distribution_from_returns(self, returns: List[float]) -> Dict:
+        """Calculate returns distribution histogram from any returns array"""
+        if not returns:
             return {"bins": [], "stats": {}}
         
         # Create histogram bins
@@ -1717,7 +1721,7 @@ class PaperTrader:
         for i in range(len(bin_edges) - 1):
             min_val = bin_edges[i]
             max_val = bin_edges[i + 1]
-            count = sum(1 for r in self.trade_returns if min_val <= r < max_val)
+            count = sum(1 for r in returns if min_val <= r < max_val)
             bins.append({
                 "min": min_val,
                 "max": max_val,
@@ -1726,13 +1730,13 @@ class PaperTrader:
             })
         
         # Calculate stats
-        returns_array = np.array(self.trade_returns)
+        returns_array = np.array(returns)
         stats = {
             "mean": float(np.mean(returns_array)),
             "median": float(np.median(returns_array)),
             "std": float(np.std(returns_array)),
-            "positive_returns": sum(1 for r in self.trade_returns if r > 0),
-            "negative_returns": sum(1 for r in self.trade_returns if r < 0),
+            "positive_returns": sum(1 for r in returns if r > 0),
+            "negative_returns": sum(1 for r in returns if r < 0),
             "skewness": float(self._calculate_skewness(returns_array)),
             "kurtosis": float(self._calculate_kurtosis(returns_array))
         }
