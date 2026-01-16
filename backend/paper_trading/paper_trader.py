@@ -277,6 +277,12 @@ class PaperTrader:
                 if "delta_neutral_price_max" in user_config:
                     self.delta_neutral_price_max = float(user_config["delta_neutral_price_max"])
                 
+                # Load sentiment-based side selection thresholds
+                if "bullish_sentiment_threshold" in user_config:
+                    self.bullish_sentiment_threshold = float(user_config["bullish_sentiment_threshold"])
+                if "bearish_sentiment_threshold" in user_config:
+                    self.bearish_sentiment_threshold = float(user_config["bearish_sentiment_threshold"])
+                
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
                 self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
@@ -297,6 +303,7 @@ class PaperTrader:
                 logger.info(f"  Strategies: {len(self.enabled_strategies)} | Asset Classes: {len(self.enabled_asset_classes)}")
                 logger.info(f"  Strategy Thresholds: Vol={self.volatility_threshold}, Sentiment={self.sentiment_strength_threshold}, Sharp={self.sharp_alignment_threshold}")
                 logger.info(f"  Delta-Neutral Price Range: {self.delta_neutral_price_min}-{self.delta_neutral_price_max}")
+                logger.info(f"  Sentiment Side Thresholds: Bullish>{self.bullish_sentiment_threshold}, Bearish<{self.bearish_sentiment_threshold}")
                 logger.info(f"  Exit Params: TP={self.exit_params_by_strategy.get('delta_neutral', {}).get('take_profit', 0):.0%} (Delta-Neutral)")
                 logger.info("=" * 60)
             else:
