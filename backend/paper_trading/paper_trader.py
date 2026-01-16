@@ -209,6 +209,19 @@ class PaperTrader:
                 if "stuck_price_multiplier" in user_config:
                     self.stuck_price_multiplier = float(user_config["stuck_price_multiplier"])
                 
+                # Load exit parameters per strategy (configurable TP/SL/Max Hours)
+                if "exit_params" in user_config:
+                    db_exit_params = user_config["exit_params"]
+                    for strategy in self.DEFAULT_EXIT_PARAMS.keys():
+                        if strategy in db_exit_params:
+                            ep = db_exit_params[strategy]
+                            self.exit_params_by_strategy[strategy] = {
+                                'take_profit': float(ep.get('take_profit', self.DEFAULT_EXIT_PARAMS[strategy]['take_profit'])),
+                                'stop_loss': float(ep.get('stop_loss', self.DEFAULT_EXIT_PARAMS[strategy]['stop_loss'])),
+                                'max_hours': float(ep.get('max_hours', self.DEFAULT_EXIT_PARAMS[strategy]['max_hours']))
+                            }
+                    logger.info(f"  Exit params loaded from DB for {len(db_exit_params)} strategies")
+                
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
                 self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
@@ -226,6 +239,7 @@ class PaperTrader:
                 logger.info(f"  Stuck Price Multiplier: {self.stuck_price_multiplier}x")
                 logger.info(f"  Max Open Positions: {self.max_open_positions}")
                 logger.info(f"  Strategies: {len(self.enabled_strategies)} | Asset Classes: {len(self.enabled_asset_classes)}")
+                logger.info(f"  Exit Params: TP={self.exit_params_by_strategy.get('delta_neutral', {}).get('take_profit', 0):.0%} (Delta-Neutral)")
                 logger.info("=" * 60)
             else:
                 logger.warning("No user config found in DB - using defaults")
