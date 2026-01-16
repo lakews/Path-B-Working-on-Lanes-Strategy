@@ -1141,7 +1141,7 @@ const PaperTrading = () => {
             <div className="flex items-center gap-2"><span className="text-[10px] text-white/40 uppercase tracking-wider">Capital</span><span className="text-sm font-mono text-white">${savedConfig?.initial_capital?.toLocaleString() || '10,000'}</span></div>
             <div className="flex items-center gap-2"><span className="text-[10px] text-white/40 uppercase tracking-wider">Deployed</span><span className="text-sm font-mono text-cyan-400">${((savedConfig?.initial_capital || 10000) * (savedConfig?.capital_deployment_pct || 80) / 100).toLocaleString()}<span className="text-white/40 ml-1">({savedConfig?.capital_deployment_pct || 80}%)</span></span></div>
             <div className="flex items-center gap-2"><span className="text-[10px] text-white/40 uppercase tracking-wider">Kelly</span><span className="text-sm font-mono text-purple-400">{((savedConfig?.kelly_fraction || 0.25) * 100).toFixed(0)}%</span></div>
-            <div className="flex items-center gap-2"><span className="text-[10px] text-white/40 uppercase tracking-wider">Max DD</span><span className="text-sm font-mono text-rose-400">{savedConfig?.max_drawdown_pct || 5}%</span></div>
+            <div className="flex items-center gap-2"><span className="text-[10px] text-white/40 uppercase tracking-wider">Max DD</span><span className="text-sm font-mono text-rose-400">{savedConfig?.max_drawdown_pct || 10}%</span></div>
           </div>
         </div>
       </div>
