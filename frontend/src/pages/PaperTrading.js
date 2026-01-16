@@ -118,6 +118,175 @@ const SessionTradesModal = ({ isOpen, session, trades, onClose }) => {
   );
 };
 
+// Sentiment Breakdown Modal - Shows detailed sentiment analysis for a trade
+const SentimentModal = ({ isOpen, trade, onClose }) => {
+  if (!isOpen || !trade) return null;
+  
+  const sentiment = trade.sentiment || {};
+  const layers = sentiment.layers || {};
+  const weights = sentiment.weights || {};
+  const components = sentiment.components || {};
+  const enhanced = sentiment.enhanced_data || {};
+  
+  const SentimentBar = ({ value, label, color = "cyan" }) => (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span className="text-white/60">{label}</span>
+        <span className={`text-${color}-400 font-mono`}>{(value * 100).toFixed(1)}%</span>
+      </div>
+      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+        <div 
+          className={`h-full bg-gradient-to-r from-${color}-500 to-${color}-400 transition-all`}
+          style={{ width: `${Math.min(100, value * 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+  
+  const getBiasColor = (val) => val > 0.55 ? 'green' : val < 0.45 ? 'red' : 'yellow';
+  const biasColor = getBiasColor(sentiment.final || 0.5);
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-slate-900 border border-white/20 rounded-xl max-w-2xl w-full mx-4 shadow-2xl max-h-[85vh] flex flex-col">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Brain className="w-5 h-5 text-purple-400" />
+            <h3 className="text-lg font-bold text-white">Sentiment Analysis</h3>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white">✕</button>
+        </div>
+        
+        <div className="flex-1 overflow-auto p-4 space-y-6">
+          {/* Market Info */}
+          <div className="bg-white/5 rounded-lg p-3">
+            <p className="text-white/80 text-sm">{trade.market_question}</p>
+            <div className="flex gap-4 mt-2 text-xs text-white/50">
+              <span>Strategy: <span className="text-white/80">{STRATEGY_INFO[trade.strategy]?.name}</span></span>
+              <span>Side: <span className={trade.side === 'YES' ? 'text-green-400' : 'text-red-400'}>{trade.side}</span></span>
+              <span>Price: <span className="text-white/80">${trade.price?.toFixed(4)}</span></span>
+            </div>
+          </div>
+          
+          {/* Final Sentiment */}
+          <div className={`bg-${biasColor}-500/10 border border-${biasColor}-500/30 rounded-xl p-4`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-white/50 uppercase tracking-wider">Final Sentiment</p>
+                <p className={`text-3xl font-bold text-${biasColor}-400`}>
+                  {((sentiment.final || 0.5) * 100).toFixed(1)}%
+                </p>
+                <p className="text-xs text-white/50 mt-1">
+                  {sentiment.final > 0.6 ? '🟢 Bullish' : sentiment.final < 0.4 ? '🔴 Bearish' : '🟡 Neutral'}
+                  {' • '}Strength: {((sentiment.strength || 0) * 100).toFixed(0)}%
+                </p>
+              </div>
+              <div className="w-20 h-20 rounded-full border-4 border-white/10 flex items-center justify-center relative">
+                <div 
+                  className={`absolute inset-1 rounded-full bg-gradient-to-t from-${biasColor}-500/40 to-transparent`}
+                  style={{ clipPath: `inset(${100 - (sentiment.final || 0.5) * 100}% 0 0 0)` }}
+                />
+                <span className="text-lg font-bold text-white">{((sentiment.final || 0.5) * 100).toFixed(0)}</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Sentiment Layers */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-cyan-400" />
+              Sentiment Layers
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white/5 rounded-lg p-3 space-y-3">
+                <p className="text-xs font-semibold text-cyan-400 uppercase">Market Microstructure</p>
+                <SentimentBar value={layers.market_microstructure || 0.5} label="Combined" color="cyan" />
+                <div className="text-xs text-white/40">Weight: {((weights.market_weight || 0.4) * 100).toFixed(0)}%</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 space-y-3">
+                <p className="text-xs font-semibold text-purple-400 uppercase">LLM Analysis (GPT-4o)</p>
+                <SentimentBar value={layers.llm_sentiment || 0.5} label="Probability" color="purple" />
+                <div className="text-xs text-white/40">
+                  Confidence: {((layers.llm_confidence || 0) * 100).toFixed(0)}% • 
+                  Weight: {((weights.llm_weight || 0) * 100).toFixed(0)}%
+                </div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 space-y-3">
+                <p className="text-xs font-semibold text-amber-400 uppercase">Cross-Market Correlation</p>
+                <SentimentBar value={layers.correlation_sentiment || 0.5} label="Related Markets" color="amber" />
+                <div className="text-xs text-white/40">
+                  Strength: {((layers.correlation_strength || 0) * 100).toFixed(0)}% • 
+                  Weight: {((weights.correlation_weight || 0) * 100).toFixed(0)}%
+                </div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 space-y-3">
+                <p className="text-xs font-semibold text-emerald-400 uppercase">External News/Social</p>
+                <SentimentBar value={layers.external_data || 0.5} label="News Sentiment" color="emerald" />
+                <div className="text-xs text-white/40">
+                  Confidence: {((layers.external_confidence || 0) * 100).toFixed(0)}% • 
+                  Weight: {((weights.external_weight || 0) * 100).toFixed(0)}%
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Market Components */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-cyan-400" />
+              Market Components
+            </h4>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { key: 'price', label: 'Price', color: 'blue' },
+                { key: 'momentum', label: 'Momentum', color: 'green' },
+                { key: 'volume_intensity', label: 'Volume', color: 'amber' },
+                { key: 'liquidity', label: 'Liquidity', color: 'cyan' },
+                { key: 'whale', label: 'Whale Activity', color: 'purple' },
+                { key: 'maturity_weight', label: 'Maturity', color: 'slate' }
+              ].map(({ key, label, color }) => (
+                <div key={key} className="bg-white/5 rounded-lg p-2 text-center">
+                  <p className="text-xs text-white/50">{label}</p>
+                  <p className={`text-lg font-bold text-${color}-400`}>
+                    {((components[key] || 0.5) * 100).toFixed(0)}%
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* LLM Reasoning */}
+          {enhanced.llm_reasoning && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+                <Brain className="w-4 h-4 text-purple-400" />
+                LLM Reasoning
+              </h4>
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
+                <p className="text-sm text-white/70 italic">"{enhanced.llm_reasoning}"</p>
+              </div>
+            </div>
+          )}
+          
+          {/* Related Market Groups */}
+          {enhanced.related_groups && enhanced.related_groups.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-white/80">Related Market Groups</h4>
+              <div className="flex flex-wrap gap-2">
+                {enhanced.related_groups.map((group, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-xs">
+                    {group}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Reset Button Component
 const ResetButton = ({ onClick, label = "Reset" }) => (
   <button
