@@ -702,7 +702,7 @@ class PaperTrader:
                 self.asset_class_stats[asset_class] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
             self.asset_class_stats[asset_class]['trades'] += 1
             
-            # Log trade
+            # Log trade with sentiment breakdown
             trade_log = {
                 "trade_id": position['position_id'],
                 "session_id": self.session_id,
@@ -716,7 +716,18 @@ class PaperTrader:
                 "asset_class": asset_class,
                 "rl_action": rl_action,
                 "rl_confidence": rl_confidence,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                # Sentiment breakdown for UI
+                "sentiment": {
+                    "final": signals.get('sentiment', 0.5),
+                    "strength": signals.get('sentiment_strength', 0),
+                    "layers": signals.get('sentiment_layers', {}),
+                    "weights": signals.get('sentiment_weights', {}),
+                    "components": signals.get('sentiment_components', {}),
+                    "enhanced_data": signals.get('enhanced_data', {})
+                },
+                "volatility": signals.get('volatility', 0),
+                "sharp_alignment": signals.get('sharp_alignment', 0)
             }
             self.trade_history.append(trade_log.copy())  # Use copy to prevent MongoDB _id mutation
             await self.db.paper_trades.insert_one(trade_log)
