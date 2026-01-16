@@ -347,7 +347,7 @@ const PositionCard = ({ position }) => {
 };
 
 // Trade Row Component - Shows both open (ENTRY) and completed trades
-const TradeRow = ({ trade }) => {
+const TradeRow = ({ trade, onViewSentiment }) => {
   const isEntry = trade.type === 'entry';
   const isComplete = trade.type === 'exit';
   
@@ -359,6 +359,9 @@ const TradeRow = ({ trade }) => {
   // Calculate return percentage based on actual P&L vs position size
   // This correctly handles YES/NO sides since P&L already accounts for direction
   const returnPct = isComplete && trade.size > 0 ? (pnl / trade.size * 100) : 0;
+  
+  // Check if trade has sentiment data
+  const hasSentiment = trade.sentiment && (trade.sentiment.final !== undefined || trade.sentiment.layers);
   
   return (
     <tr className="border-b border-white/5 hover:bg-white/5">
@@ -399,6 +402,17 @@ const TradeRow = ({ trade }) => {
         {isEntry ? '-' : (returnPct > 0 ? '+' : '') + returnPct.toFixed(2) + '%'}
       </td>
       <td className="py-3 px-4 text-xs text-white/40">{new Date(trade.timestamp).toLocaleTimeString()}</td>
+      <td className="py-3 px-4">
+        {hasSentiment && onViewSentiment && (
+          <button
+            onClick={() => onViewSentiment(trade)}
+            className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition"
+            title="View Sentiment Analysis"
+          >
+            <Brain className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </td>
     </tr>
   );
 };
