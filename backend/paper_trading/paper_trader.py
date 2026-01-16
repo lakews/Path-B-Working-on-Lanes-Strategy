@@ -1416,13 +1416,14 @@ class PaperTrader:
                 base_reward -= 0.1
         
         # 4. HOLD TIME EFFICIENCY: Quick profits are better
-        if is_win and hold_time_hours > 0:
-            if hold_time_hours < 1:  # Win in under 1 hour
-                base_reward += 0.15
-            elif hold_time_hours < 4:  # Win in under 4 hours
+        # BUT only for RL-controlled exits (signal_reversal), not automatic TP/SL
+        # Automatic exits depend on price movement speed, not RL skill
+        if exit_reason == "rl_signal_reversal" and is_win and hold_time_hours > 0:
+            if hold_time_hours < 1:  # RL exited profitably in under 1 hour
+                base_reward += 0.15  # Smart quick exit
+            elif hold_time_hours < 4:  # RL exited profitably in under 4 hours
                 base_reward += 0.08
-            elif hold_time_hours > 24:  # Took more than a day
-                base_reward -= 0.05  # Slight penalty for slow wins
+            # No penalty for slow RL exits - at least it exited profitably
         
         # 5. EXIT REASON BONUSES/PENALTIES
         if exit_reason == "take_profit":
