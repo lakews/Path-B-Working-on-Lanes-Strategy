@@ -337,14 +337,21 @@ If you see clear mispricing, diverge from market price."""
         try:
             from emergentintegrations.llm.chat import UserMessage
             
-            # Build context-aware prompt
-            prompt = f"""Prediction Market: {question}
+            # Build context-aware prompt with more detail
+            prompt = f"""PREDICTION MARKET ANALYSIS
+
+Question: {question}
 Category: {category}
-Current Price: {current_price:.2f} (market's current probability)
+Current Market Price: {current_price:.3f} (This is what traders currently believe)
 
-What is your independent assessment of the probability this outcome will occur? Consider recent events, logical reasoning, and any relevant context.
+Analyze this prediction market and estimate the TRUE probability of the outcome.
 
-Return ONLY a number between 0 and 1."""
+Consider:
+- Is the market price reasonable given current events?
+- What factors might traders be over/under-weighting?
+- Any recent news that could shift probability?
+
+Return ONLY a number between 0.00 and 1.00:"""
             
             self.last_llm_call = now
             self.llm_calls_count += 1
