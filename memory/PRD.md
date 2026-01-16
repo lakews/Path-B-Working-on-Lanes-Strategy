@@ -38,22 +38,32 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
-### January 16, 2026 - Session 26 (UI Bug Fix + Volatility Strategy Fix)
+### January 16, 2026 - Session 26 (UI Bug Fix + Volatility Strategy Fix + Configurable Thresholds)
 
 - ✅ **Bug Fix: Trade History "sess" Truncation** (`/app/frontend/src/pages/PaperTrading.js`)
   - **Problem**: Status column showed "sess" instead of full exit reason
   - **Root Cause**: `session_end` exit reason was not in `reasonMap`, so it was sliced to first 4 chars
-  - **Solution**: Added `session_end` to reasonMap with text "END" and slate color styling
-  - Also improved fallback to use `.toUpperCase()` for any unknown exit reasons
+  - **Solution**: Changed status badges to show P&L-based outcome:
+    - **TP** (green) - Take Profit (profitable exits)
+    - **SL** (red) - Stop Loss (losing exits)
+    - **FLAT** (gray) - Break Even (0 P&L)
+    - **OPEN** (blue) - Open positions
 
 - ✅ **Bug Fix: Volatility Exploitation Strategy Never Used** (`/app/backend/paper_trading/paper_trader.py`)
   - **Problem**: Volatility strategy was never triggered because Alpha-Directional had priority
-  - **Root Cause**: Strategy order was: Delta-Neutral → Alpha-Directional → Volatility
   - **Solution**: 
     1. Reordered strategies: Volatility now checked BEFORE Alpha-Directional
-    2. Lowered volatility threshold from `0.08` to `0.05` (per user preference)
-    3. Updated Delta-Neutral threshold to match (`< 0.05`)
-  - New strategy order: Arbitrage → Delta-Neutral → **Volatility** → Alpha-Directional → Default
+    2. Made all thresholds configurable via UI (see below)
+
+- ✅ **NEW: Configurable Strategy Thresholds** (`/app/frontend/src/pages/Configuration.js`, `/app/backend/server.py`, `/app/backend/paper_trading/paper_trader.py`)
+  - **New Tab**: "Strategy Thresholds" in Settings page
+  - **Configurable Parameters**:
+    - **Volatility Threshold**: Trigger for Volatility Exploitation (default: 5%, range: 1-20%)
+    - **Sentiment Strength Threshold**: Trigger for Alpha Directional (default: 25%, range: 5-50%)
+    - **Sharp Alignment Threshold**: Trigger for Arbitrage (default: 80%, range: 50-95%)
+    - **Delta-Neutral Price Range**: Min/Max price for Delta-Neutral (default: 35%-65%)
+  - **Strategy Selection Order** info box shows priority
+  - All thresholds stored in MongoDB and loaded at session start
 
 ### January 16, 2026 - Session 25 (Time-to-Expiry Awareness)
 
