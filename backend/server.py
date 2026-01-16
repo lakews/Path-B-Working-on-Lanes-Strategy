@@ -1166,6 +1166,35 @@ async def update_config(config_update: TradingConfig):
             db_update["exit_params"] = exit_params_dict
             logger.info(f"Exit params updated: {list(exit_params_dict.keys())}")
         
+        # Update asset class exit multipliers
+        if config_update.asset_class_exit_multipliers is not None:
+            asset_mult_dict = {}
+            for asset_class, multipliers in config_update.asset_class_exit_multipliers.items():
+                if multipliers:
+                    asset_mult_dict[asset_class] = {
+                        "tp_mult": multipliers.tp_mult,
+                        "sl_mult": multipliers.sl_mult,
+                        "time_mult": multipliers.time_mult
+                    }
+            db_update["asset_class_exit_multipliers"] = asset_mult_dict
+            logger.info(f"Asset class exit multipliers updated: {list(asset_mult_dict.keys())}")
+        
+        # Advanced position sizing parameters
+        if config_update.min_kelly_fraction is not None:
+            db_update["min_kelly_fraction"] = config_update.min_kelly_fraction
+        if config_update.max_kelly_fraction is not None:
+            db_update["max_kelly_fraction"] = config_update.max_kelly_fraction
+        if config_update.min_position_size is not None:
+            db_update["min_position_size"] = config_update.min_position_size
+        if config_update.min_liquidity_for_full_size is not None:
+            db_update["min_liquidity_for_full_size"] = config_update.min_liquidity_for_full_size
+        
+        # Market alerts configuration
+        if config_update.alerts_enabled is not None:
+            db_update["alerts_enabled"] = config_update.alerts_enabled
+        if config_update.alert_volume_threshold is not None:
+            db_update["alert_volume_threshold"] = config_update.alert_volume_threshold
+        
         # Store ALL config in database for persistence (not just strategies/asset classes)
         db = get_db()
         await db.user_config.update_one(
