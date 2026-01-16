@@ -702,8 +702,8 @@ class PaperTrader:
                 logger.debug(f"Skipping {market_id[:16]}: position_size={position_size:.2f} < {min_position_size}")
                 return
             
-            # Determine side (YES/NO)
-            side = 'YES' if 'BUY' in rl_action else 'NO'
+            # Side already determined above based on sentiment
+            # (removed duplicate side assignment)
             
             # Add expiry info to sizing breakdown for UI display
             sizing_breakdown = sizing_result.get('sizing_breakdown', {})
