@@ -325,10 +325,26 @@ class AdaptivePositionSizer:
         signal_strength = (sentiment_strength * 0.3 + sharp_alignment * 0.4 + (1 - price_uncertainty) * 0.3)
         signal_mult = 0.6 + (signal_strength * 0.8)  # Range: 0.6 to 1.4 (wider than before)
         
+        # ========== DIRECTIONAL DAMPENING ==========
+        # For Alpha Directional (high conviction trades), apply dampening to create variety
+        # High conviction shouldn't automatically mean max position - scale by uncertainty
+        directional_dampening = 1.0
+        if strategy == 'alpha_directional':
+            # The more certain we are (low price_uncertainty), the MORE we dampen
+            # This seems counterintuitive but prevents all alpha trades hitting max
+            # High uncertainty = normal sizing, Low uncertainty = reduced sizing (we're already confident)
+            certainty = 1 - price_uncertainty
+            directional_dampening = 0.5 + (price_uncertainty * 0.5)  # 0.5-1.0x
+            
+            # Also dampen based on how extreme the sentiment is
+            # Very extreme sentiment = already high edge, don't need max size
+            if sentiment_strength > 0.7:
+                directional_dampening *= 0.8
+        
         # ========== COMBINE FACTORS ==========
         # Use geometric mean for more balanced combination (prevents one factor from dominating)
         import math
-        factors = [liquidity_mult, vol_mult, rl_mult, asset_mult, strat_mult, signal_mult]
+        factors = [liquidity_mult, vol_mult, rl_mult, asset_mult, strat_mult, signal_mult, directional_dampening]
         # Filter out zeros to avoid killing the position entirely
         positive_factors = [f for f in factors if f > 0]
         if positive_factors:
