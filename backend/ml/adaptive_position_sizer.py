@@ -367,10 +367,14 @@ class AdaptivePositionSizer:
         
         # ========== APPLY RISK MULTIPLIERS ==========
         # These reduce position for riskier conditions
+        # USE GEOMETRIC MEAN instead of direct product to be less punitive
+        # Direct product: 0.8 * 0.8 * 0.8 * 0.8 = 0.41 (too aggressive)
+        # Geometric mean: (0.8 * 0.8 * 0.8 * 0.8)^(1/4) = 0.8 (fairer)
         risk_factors = [spread_mult, liquidity_mult, asset_mult, strat_mult]
-        risk_combined = 1.0
+        risk_product = 1.0
         for f in risk_factors:
-            risk_combined *= f
+            risk_product *= f
+        risk_combined = risk_product ** (1 / len(risk_factors))  # Geometric mean
         
         # Apply RL confidence as a separate boost/reduction
         raw_position = base_position * risk_combined * rl_mult
