@@ -106,6 +106,13 @@ const Configuration = () => {
         enabled_asset_classes: savedConfig.enabled_asset_classes ?? prev.enabled_asset_classes,
         enabled_strategies: savedConfig.enabled_strategies ?? prev.enabled_strategies,
         exit_params: savedConfig.exit_params ?? prev.exit_params,
+        asset_class_exit_multipliers: savedConfig.asset_class_exit_multipliers ?? prev.asset_class_exit_multipliers,
+        min_kelly_fraction: savedConfig.min_kelly_fraction ?? prev.min_kelly_fraction,
+        max_kelly_fraction: savedConfig.max_kelly_fraction ?? prev.max_kelly_fraction,
+        min_position_size: savedConfig.min_position_size ?? prev.min_position_size,
+        min_liquidity_for_full_size: savedConfig.min_liquidity_for_full_size ?? prev.min_liquidity_for_full_size,
+        alerts_enabled: savedConfig.alerts_enabled ?? prev.alerts_enabled,
+        alert_volume_threshold: savedConfig.alert_volume_threshold ?? prev.alert_volume_threshold,
       }));
       setLoading(false);
     } catch (e) { 
