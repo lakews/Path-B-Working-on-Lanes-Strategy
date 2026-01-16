@@ -124,6 +124,13 @@ class PaperTrader:
         self.min_position_size = 5.0  # Minimum position in USD
         self.min_liquidity_for_full_size = 10000.0  # Volume needed for full position
         
+        # Strategy selection thresholds (configurable via UI)
+        self.volatility_threshold = 0.05           # Threshold for volatility strategy
+        self.sentiment_strength_threshold = 0.25   # Threshold for alpha directional
+        self.sharp_alignment_threshold = 0.8       # Threshold for arbitrage
+        self.delta_neutral_price_min = 0.35        # Min price for delta neutral
+        self.delta_neutral_price_max = 0.65        # Max price for delta neutral
+        
         # Current capital starts at initial (will be set properly after config load)
         self.current_capital = self.initial_capital
         
