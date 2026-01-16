@@ -88,6 +88,7 @@ const Configuration = () => {
         stuck_price_multiplier: savedConfig.stuck_price_multiplier ?? prev.stuck_price_multiplier,
         enabled_asset_classes: savedConfig.enabled_asset_classes ?? prev.enabled_asset_classes,
         enabled_strategies: savedConfig.enabled_strategies ?? prev.enabled_strategies,
+        exit_params: savedConfig.exit_params ?? prev.exit_params,
       }));
       setLoading(false);
     } catch (e) { 
