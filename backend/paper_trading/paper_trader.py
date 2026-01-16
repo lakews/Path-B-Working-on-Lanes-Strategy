@@ -959,6 +959,7 @@ class PaperTrader:
             current_price = float(market_data.get('yes_price', 0.5) or 0.5)
             entry_price = position['entry_price']
             side = position['side']
+            size = position.get('size', 0)
             strategy = position.get('strategy', 'arbitrage')
             asset_class = position.get('asset_class', 'unknown')
             
@@ -968,11 +969,28 @@ class PaperTrader:
             stop_loss_threshold = exit_params['stop_loss']
             max_hours = exit_params['max_hours']
             
-            # Calculate unrealized P&L
+            # Calculate unrealized P&L using SAME LOGIC as _execute_paper_exit
+            # This ensures TP/SL triggers match actual P&L
             if side == 'YES':
-                pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+                # YES position: bought YES shares at entry_price, now worth current_price
+                if entry_price > 0:
+                    shares = size / entry_price
+                    current_value = shares * current_price
+                    unrealized_pnl = current_value - size
+                    pnl_pct = unrealized_pnl / size if size > 0 else 0
+                else:
+                    pnl_pct = 0
             else:
-                pnl_pct = (entry_price - current_price) / entry_price if entry_price > 0 else 0
+                # NO position: bought NO shares at (1 - entry_price), now worth (1 - current_price)
+                no_entry_price = 1 - entry_price
+                no_current_price = 1 - current_price
+                if no_entry_price > 0:
+                    shares = size / no_entry_price
+                    current_value = shares * no_current_price
+                    unrealized_pnl = current_value - size
+                    pnl_pct = unrealized_pnl / size if size > 0 else 0
+                else:
+                    pnl_pct = 0
             
             # Get RL recommendation for exit
             signals = await self._get_signals(market_data)
