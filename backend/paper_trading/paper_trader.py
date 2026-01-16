@@ -782,7 +782,9 @@ class PaperTrader:
             pnl_pct = pnl / size if size > 0 else 0
             
             # Track return for distribution
-            self.trade_returns.append(pnl_pct * 100)  # Store as percentage
+            return_pct = pnl_pct * 100  # Convert to percentage
+            self.trade_returns.append(return_pct)
+            logger.info(f"📊 Trade return recorded: {return_pct:.2f}% | Total returns tracked: {len(self.trade_returns)}")
             
             # Update metrics
             self.total_pnl += pnl
