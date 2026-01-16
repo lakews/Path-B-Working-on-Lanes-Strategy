@@ -61,6 +61,14 @@ class PaperTrader:
         self.volatility_predictor = VolatilityPredictor()
         self.signal_fusion = SignalFusionEngine()
         
+        # Initialize social sentiment analyzer for news/social data
+        try:
+            self.social_analyzer = SocialSentimentAnalyzer()
+            logger.info("Social sentiment analyzer initialized")
+        except Exception as e:
+            logger.warning(f"Could not initialize social analyzer: {e}")
+            self.social_analyzer = None
+        
         # Import adaptive position sizer
         from ml.adaptive_position_sizer import get_position_sizer
         self.position_sizer = get_position_sizer()
