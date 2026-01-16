@@ -902,13 +902,13 @@ const PaperTrading = () => {
                 <span className="text-sm text-white/60">Strategy Performance (Live)</span>
                 <ResetButton onClick={handleResetLiveSession} label="Reset Live Stats" />
               </div>
-              <PerformanceTable title="Strategy Performance" icon={BarChart3} iconColor="purple" data={cumulativeStats?.by_strategy} dataType="strategy" showLiveBadge={running} initialCapital={initialCapital} />
+              <PerformanceTable title="Strategy Performance" icon={BarChart3} iconColor="purple" data={status?.strategy_results} dataType="strategy" showLiveBadge={running} initialCapital={initialCapital} />
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-white/60">Asset Class Performance (Live)</span>
               </div>
-              <PerformanceTable title="Asset Class Performance" icon={Layers} iconColor="orange" data={cumulativeStats?.by_asset_class} dataType="asset_class" showLiveBadge={running} initialCapital={initialCapital} />
+              <PerformanceTable title="Asset Class Performance" icon={Layers} iconColor="orange" data={status?.asset_class_results} dataType="asset_class" showLiveBadge={running} initialCapital={initialCapital} />
             </div>
           </div>
 
