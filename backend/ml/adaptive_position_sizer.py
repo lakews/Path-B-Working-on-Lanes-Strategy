@@ -319,65 +319,70 @@ class AdaptivePositionSizer:
         # ========== FACTOR 2: Liquidity Score ==========
         liquidity_mult = self.calculate_liquidity_multiplier(market_data, max_position_usd)
         
-        # ========== FACTOR 3: Volatility Regime ==========
+        # ========== FACTOR 3: Volatility/ATR Adjustment (INVERSE) ==========
         volatility = signals.get('volatility', 0.05)
         vol_mult = self.calculate_volatility_adjustment(volatility)
         
-        # ========== FACTOR 4: RL Confidence ==========
+        # ========== FACTOR 4: Spread Adjustment (INVERSE) ==========
+        spread_mult = self.calculate_spread_adjustment(market_data)
+        
+        # ========== FACTOR 5: RL Confidence ==========
         rl_mult = self.calculate_rl_confidence_multiplier(rl_confidence, rl_action)
         
-        # ========== FACTOR 5: Asset Class Risk ==========
+        # ========== FACTOR 6: Asset Class Risk ==========
         asset_mult = self.ASSET_CLASS_RISK.get(asset_class.lower() if asset_class else 'finance', 1.0)
         
-        # ========== FACTOR 6: Strategy Risk ==========
+        # ========== FACTOR 7: Strategy Risk ==========
         strat_mult = self.STRATEGY_RISK.get(strategy, 1.0)
         
-        # ========== FACTOR 7: Signal Strength ==========
-        # Combine sentiment strength, sharp alignment, and price uncertainty
+        # ========== FACTOR 8: Signal Strength ==========
         sentiment = signals.get('sentiment', 0.5)
         sentiment_strength = abs(sentiment - 0.5) * 2  # 0-1 scale
         sharp_alignment = signals.get('sharp_alignment', 0.5)
         price_uncertainty = signals.get('price_uncertainty', 0.5)
         
-        # Strong signals = larger position, weak signals = smaller
-        # More variation: wider range to create position diversity
+        # Signal strength drives position size variation
         signal_strength = (sentiment_strength * 0.3 + sharp_alignment * 0.4 + (1 - price_uncertainty) * 0.3)
-        signal_mult = 0.6 + (signal_strength * 0.8)  # Range: 0.6 to 1.4 (wider than before)
+        signal_mult = 0.5 + (signal_strength * 0.7)  # Range: 0.5 to 1.2
         
-        # ========== DIRECTIONAL DAMPENING ==========
-        # For Alpha Directional (high conviction trades), apply dampening to create variety
-        # High conviction shouldn't automatically mean max position - scale by uncertainty
-        directional_dampening = 1.0
-        if strategy == 'alpha_directional':
-            # The more certain we are (low price_uncertainty), the MORE we dampen
-            # This seems counterintuitive but prevents all alpha trades hitting max
-            # High uncertainty = normal sizing, Low uncertainty = reduced sizing (we're already confident)
-            certainty = 1 - price_uncertainty
-            directional_dampening = 0.5 + (price_uncertainty * 0.5)  # 0.5-1.0x
-            
-            # Also dampen based on how extreme the sentiment is
-            # Very extreme sentiment = already high edge, don't need max size
-            if sentiment_strength > 0.7:
-                directional_dampening *= 0.8
+        # ========== KELLY + ATR COMBO BASE POSITION ==========
+        # Instead of using max_position as base, use Kelly scaled by ATR (volatility)
+        # This creates natural variance: low vol = larger Kelly position, high vol = smaller
         
-        # ========== COMBINE FACTORS ==========
-        # Use geometric mean for more balanced combination (prevents one factor from dominating)
         import math
-        factors = [liquidity_mult, vol_mult, rl_mult, asset_mult, strat_mult, signal_mult, directional_dampening]
-        # Filter out zeros to avoid killing the position entirely
-        positive_factors = [f for f in factors if f > 0]
-        if positive_factors:
-            # Geometric mean is more stable than product
-            combined_mult = math.exp(sum(math.log(f) for f in positive_factors) / len(positive_factors))
-        else:
-            combined_mult = 0.5
         
-        # ========== CALCULATE BASE POSITION ==========
-        # Adaptive base: blend Kelly, max position, and signal-adjusted base
-        if kelly_enabled and kelly_position > min_trade_size:
-            # Kelly has meaningful data - use it with signal adjustment
-            # Vary position based on signal strength even with Kelly
-            kelly_signal_adj = 0.7 + (signal_strength * 0.6)  # 0.7-1.3x Kelly based on signals
+        # Kelly gives us the edge-based fraction
+        # ATR (vol_mult) scales it for risk
+        # Combined: position = Kelly * vol_adjustment * signal_strength
+        
+        kelly_atr_base = kelly_position * vol_mult  # ATR already inverse (high vol = lower mult)
+        
+        # Apply signal strength to create variance within Kelly-ATR base
+        # Don't just multiply - use a blend to ensure variance
+        signal_variance = 0.6 + (signal_strength * 0.8)  # 0.6x to 1.4x
+        
+        base_position = kelly_atr_base * signal_variance
+        
+        # ========== APPLY RISK MULTIPLIERS ==========
+        # These reduce position for riskier conditions
+        risk_factors = [spread_mult, liquidity_mult, asset_mult, strat_mult]
+        risk_combined = 1.0
+        for f in risk_factors:
+            risk_combined *= f
+        
+        # Apply RL confidence as a separate boost/reduction
+        raw_position = base_position * risk_combined * rl_mult
+        
+        # ========== APPLY CONSTRAINTS ==========
+        # Hard ceiling: never exceed max position or 10% of capital
+        final_position = min(raw_position, max_position_usd)
+        final_position = min(final_position, deployed_capital * 0.10)
+        
+        # Combined multiplier for logging (what we actually applied)
+        if kelly_atr_base > 0:
+            combined_mult = final_position / kelly_atr_base
+        else:
+            combined_mult = 1.0
             base_position = kelly_position * kelly_signal_adj
         else:
             # Kelly is too conservative - use signal-adjusted base
