@@ -2129,7 +2129,7 @@ async def get_session_trades(session_id: str):
         return JSONResponse(status_code=500, content={"message": str(e)})
 
 @api_router.post("/paper/reset-live-stats")
-async def reset_live_stats(current_user: str = Depends(get_current_user)):
+async def reset_live_stats(current_user: str = Depends(get_current_user_flexible)):
     """Reset live session statistics without stopping the trading session"""
     global paper_trader
     try:
