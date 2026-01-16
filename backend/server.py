@@ -2129,7 +2129,7 @@ async def get_session_trades(session_id: str):
         return JSONResponse(status_code=500, content={"message": str(e)})
 
 @api_router.post("/paper/reset-live-stats")
-async def reset_live_stats(current_user: str = Depends(get_current_user_flexible)):
+async def reset_live_stats(current_user: str = Depends(verify_credentials_dual)):
     """Reset live session statistics without stopping the trading session"""
     global paper_trader
     try:
@@ -2172,7 +2172,7 @@ async def reset_live_stats(current_user: str = Depends(get_current_user_flexible
         return JSONResponse(status_code=500, content={"message": str(e)})
 
 @api_router.post("/paper/reset-cumulative-stats")
-async def reset_cumulative_stats(current_user: str = Depends(get_current_user_flexible)):
+async def reset_cumulative_stats(current_user: str = Depends(verify_credentials_dual)):
     """Reset ALL cumulative trading statistics across all sessions"""
     try:
         db = get_db()
