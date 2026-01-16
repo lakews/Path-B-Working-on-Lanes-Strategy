@@ -1652,7 +1652,10 @@ class PaperTrader:
             "open_positions": len(self.paper_positions),
             "strategy_results": strategy_results,
             "asset_class_results": asset_class_results,
-            "returns_distribution": returns_distribution,
+            "returns_distribution": returns_distribution,  # Realized trades distribution
+            "unrealized_distribution": unrealized_distribution,  # Open positions distribution
+            "pnl_distribution": returns_distribution if returns_distribution.get('bins') else unrealized_distribution,  # For backward compat
+            "trade_returns": self.trade_returns[-100:],  # Last 100 returns for charts
             "equity_curve": self.equity_curve[-200:],  # Last 200 points for better charts
             "strategy_equity": self.strategy_equity,  # Running P&L by strategy
             "asset_class_equity": self.asset_class_equity,  # Running P&L by asset class
