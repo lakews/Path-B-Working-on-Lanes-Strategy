@@ -1130,6 +1130,11 @@ class PaperTrader:
                 "rl_confidence": rl_confidence,
                 "signals": signals,
                 "sizing_breakdown": sizing_breakdown or {},  # Store for learning
+                # Risk tracking for reward shaping
+                "entry_volatility": signals.get('volatility', 0.05),
+                "max_drawdown_pct": 0.0,  # Will be updated during position monitoring
+                "min_price_seen": current_price,  # Track worst price for drawdown
+                "max_price_seen": current_price,  # Track best price
                 # Store expiry info for UI display
                 "expiry_info": {
                     "hours_to_expiry": expiry_info.get('hours_to_expiry'),
