@@ -387,16 +387,40 @@ const TradeRow = ({ trade, onViewSentiment }) => {
   // Check if trade has sentiment data
   const hasSentiment = trade.sentiment && (trade.sentiment.final !== undefined || trade.sentiment.layers);
   
+  // Extract expiry info for display
+  const expiryInfo = trade.expiry_info || {};
+  const hoursToExpiry = expiryInfo.hours_to_expiry;
+  
+  // Format expiry badge
+  const getExpiryBadge = () => {
+    if (!hoursToExpiry && hoursToExpiry !== 0) return null;
+    if (hoursToExpiry <= 0) return { text: 'EXP', color: 'text-red-500', bg: 'bg-red-500/20' };
+    if (hoursToExpiry <= 6) return { text: `${hoursToExpiry.toFixed(0)}h`, color: 'text-red-400', bg: 'bg-red-500/20' };
+    if (hoursToExpiry <= 24) return { text: `${hoursToExpiry.toFixed(0)}h`, color: 'text-orange-400', bg: 'bg-orange-500/20' };
+    const days = hoursToExpiry / 24;
+    if (days <= 7) return { text: `${days.toFixed(0)}d`, color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
+    return { text: `${days.toFixed(0)}d`, color: 'text-green-400', bg: 'bg-green-500/20' };
+  };
+  
+  const expiryBadge = getExpiryBadge();
+  
   return (
     <tr className="border-b border-white/5 hover:bg-white/5">
       <td className="py-3 px-4">
-        {isEntry ? (
-          <span className="text-xs px-2 py-1 rounded font-medium bg-blue-500/20 text-blue-400">OPEN</span>
-        ) : (
-          <span className={`text-xs px-2 py-1 rounded font-medium ${isProfit ? 'bg-green-500/20 text-green-400' : pnl < 0 ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'}`}>
-            COMPLETE
-          </span>
-        )}
+        <div className="flex items-center gap-1">
+          {isEntry ? (
+            <span className="text-xs px-2 py-1 rounded font-medium bg-blue-500/20 text-blue-400">OPEN</span>
+          ) : (
+            <span className={`text-xs px-2 py-1 rounded font-medium ${isProfit ? 'bg-green-500/20 text-green-400' : pnl < 0 ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'}`}>
+              COMPLETE
+            </span>
+          )}
+          {isEntry && expiryBadge && (
+            <span className={`text-xs px-1.5 py-0.5 rounded ${expiryBadge.bg} ${expiryBadge.color}`} title={`Expires in ${expiryBadge.text}`}>
+              ⏱️{expiryBadge.text}
+            </span>
+          )}
+        </div>
       </td>
       <td className="py-3 px-4 text-sm text-white/80 max-w-xs truncate" title={trade.market_question || trade.market_id}>
         {trade.market_question || trade.market_id?.substring(0, 30) + '...'}
