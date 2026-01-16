@@ -614,6 +614,182 @@ const Configuration = () => {
         </div>
       )}
 
+      {/* Exit Parameters Tab */}
+      {activeTab === 'exits' && (
+        <div className="space-y-6">
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-500 to-orange-600 flex items-center justify-center">
+                <Target className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Strategy Exit Parameters</h3>
+                <p className="text-xs text-white/50">Configure Take Profit, Stop Loss, and Max Hold Time per strategy</p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {STRATEGIES.map((strategy) => {
+                const exitParams = config.exit_params?.[strategy.id] || { take_profit: 0.05, stop_loss: -0.05, max_hours: 6 };
+                const Icon = strategy.icon;
+                
+                const updateExitParam = (param, value) => {
+                  setConfig(prev => ({
+                    ...prev,
+                    exit_params: {
+                      ...prev.exit_params,
+                      [strategy.id]: {
+                        ...prev.exit_params?.[strategy.id],
+                        [param]: value
+                      }
+                    }
+                  }));
+                };
+
+                return (
+                  <div key={strategy.id} className="rounded-xl bg-white/5 border border-white/10 p-5">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`w-10 h-10 rounded-lg bg-${strategy.color}-500/20 flex items-center justify-center`}>
+                        <Icon className={`w-5 h-5 text-${strategy.color}-400`} />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-semibold">{strategy.label}</h4>
+                        <p className="text-xs text-white/50">{strategy.description}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Take Profit */}
+                      <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-white/60 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-green-400" /> Take Profit
+                          </span>
+                          <span className="text-lg font-bold text-green-400">+{(exitParams.take_profit * 100).toFixed(0)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          value={(exitParams.take_profit || 0.05) * 100}
+                          onChange={(e) => updateExitParam('take_profit', parseFloat(e.target.value) / 100)}
+                          className="w-full h-2 bg-white/10 rounded-lg accent-green-500"
+                          min="1"
+                          max="20"
+                          step="0.5"
+                        />
+                        <div className="flex justify-between text-xs text-white/40 mt-1">
+                          <span>1%</span>
+                          <span>10%</span>
+                          <span>20%</span>
+                        </div>
+                      </div>
+
+                      {/* Stop Loss */}
+                      <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-white/60 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-red-400" /> Stop Loss
+                          </span>
+                          <span className="text-lg font-bold text-red-400">{(exitParams.stop_loss * 100).toFixed(0)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          value={Math.abs(exitParams.stop_loss || 0.05) * 100}
+                          onChange={(e) => updateExitParam('stop_loss', -parseFloat(e.target.value) / 100)}
+                          className="w-full h-2 bg-white/10 rounded-lg accent-red-500"
+                          min="1"
+                          max="20"
+                          step="0.5"
+                        />
+                        <div className="flex justify-between text-xs text-white/40 mt-1">
+                          <span>-1%</span>
+                          <span>-10%</span>
+                          <span>-20%</span>
+                        </div>
+                      </div>
+
+                      {/* Max Hold Time */}
+                      <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-white/60 flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-blue-400" /> Max Hold Time
+                          </span>
+                          <span className="text-lg font-bold text-blue-400">{exitParams.max_hours}h</span>
+                        </div>
+                        <input
+                          type="range"
+                          value={exitParams.max_hours || 6}
+                          onChange={(e) => updateExitParam('max_hours', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-white/10 rounded-lg accent-blue-500"
+                          min="1"
+                          max="48"
+                          step="1"
+                        />
+                        <div className="flex justify-between text-xs text-white/40 mt-1">
+                          <span>1h</span>
+                          <span>24h</span>
+                          <span>48h</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Presets */}
+                    <div className="flex items-center gap-2 mt-4">
+                      <span className="text-xs text-white/40">Presets:</span>
+                      <button
+                        onClick={() => {
+                          updateExitParam('take_profit', 0.02);
+                          updateExitParam('stop_loss', -0.02);
+                          updateExitParam('max_hours', 4);
+                        }}
+                        className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 transition"
+                      >
+                        Conservative
+                      </button>
+                      <button
+                        onClick={() => {
+                          updateExitParam('take_profit', 0.05);
+                          updateExitParam('stop_loss', -0.05);
+                          updateExitParam('max_hours', 8);
+                        }}
+                        className="px-2 py-1 text-xs rounded bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 transition"
+                      >
+                        Moderate
+                      </button>
+                      <button
+                        onClick={() => {
+                          updateExitParam('take_profit', 0.10);
+                          updateExitParam('stop_loss', -0.08);
+                          updateExitParam('max_hours', 24);
+                        }}
+                        className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition"
+                      >
+                        Aggressive
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Info Box */}
+            <div className="mt-6 rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-4">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-cyan-400 mt-0.5" />
+                <div>
+                  <h4 className="text-white font-medium mb-1">How Exit Parameters Work</h4>
+                  <ul className="text-xs text-white/60 space-y-1">
+                    <li>• <span className="text-green-400">Take Profit</span>: Close position when unrealized P&L reaches this % gain</li>
+                    <li>• <span className="text-red-400">Stop Loss</span>: Close position when unrealized P&L drops to this % loss</li>
+                    <li>• <span className="text-blue-400">Max Hold Time</span>: Force close after this many hours regardless of P&L</li>
+                    <li>• Asset class adjustments (crypto volatility, sports speed) are applied on top of these base values</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Asset Classes Tab */}
       {activeTab === 'assets' && (
         <div className="space-y-6">
