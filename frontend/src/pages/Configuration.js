@@ -828,6 +828,235 @@ const Configuration = () => {
         </div>
       )}
 
+      {/* Asset Class Exit Multipliers Tab */}
+      {activeTab === 'assetmult' && (
+        <div className="space-y-6">
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                <Sliders className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Asset Class Exit Multipliers</h3>
+                <p className="text-xs text-white/50">Adjust exit thresholds based on asset class characteristics</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ASSET_CLASSES.map((asset) => {
+                const mult = config.asset_class_exit_multipliers?.[asset.id] || { tp_mult: 1.0, sl_mult: 1.0, time_mult: 1.0 };
+                const Icon = asset.icon;
+                
+                const updateMult = (param, value) => {
+                  setConfig(prev => ({
+                    ...prev,
+                    asset_class_exit_multipliers: {
+                      ...prev.asset_class_exit_multipliers,
+                      [asset.id]: {
+                        ...prev.asset_class_exit_multipliers?.[asset.id],
+                        [param]: value
+                      }
+                    }
+                  }));
+                };
+
+                return (
+                  <div key={asset.id} className="rounded-xl bg-white/5 border border-white/10 p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Icon className={`w-5 h-5 text-${asset.color}-400`} />
+                      <span className="text-white font-medium">{asset.label}</span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-white/50">TP Multiplier</span>
+                          <span className="text-green-400">{mult.tp_mult?.toFixed(1)}x</span>
+                        </div>
+                        <input type="range" value={(mult.tp_mult || 1) * 10} onChange={(e) => updateMult('tp_mult', parseFloat(e.target.value) / 10)} className="w-full h-1.5 bg-white/10 rounded accent-green-500" min="5" max="20" step="1" />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-white/50">SL Multiplier</span>
+                          <span className="text-red-400">{mult.sl_mult?.toFixed(1)}x</span>
+                        </div>
+                        <input type="range" value={(mult.sl_mult || 1) * 10} onChange={(e) => updateMult('sl_mult', parseFloat(e.target.value) / 10)} className="w-full h-1.5 bg-white/10 rounded accent-red-500" min="5" max="20" step="1" />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-white/50">Time Multiplier</span>
+                          <span className="text-blue-400">{mult.time_mult?.toFixed(2)}x</span>
+                        </div>
+                        <input type="range" value={(mult.time_mult || 1) * 100} onChange={(e) => updateMult('time_mult', parseFloat(e.target.value) / 100)} className="w-full h-1.5 bg-white/10 rounded accent-blue-500" min="10" max="300" step="5" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 rounded-xl bg-purple-500/10 border border-purple-500/20 p-4">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-purple-400 mt-0.5" />
+                <div>
+                  <h4 className="text-white font-medium mb-1">How Multipliers Work</h4>
+                  <p className="text-xs text-white/60">These multipliers are applied to the base strategy exit parameters. For example, if Crypto has TP=1.5x and your Delta-Neutral strategy has TP=2%, the effective TP for Crypto trades is 3%.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Position Sizing Tab */}
+      {activeTab === 'advanced' && (
+        <div className="space-y-6">
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-500 to-zinc-600 flex items-center justify-center">
+                <Settings className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Advanced Position Sizing</h3>
+                <p className="text-xs text-white/50">Fine-tune position sizing algorithm parameters</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Kelly Bounds */}
+              <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                <h4 className="text-white font-medium mb-4 flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-cyan-400" /> Kelly Criterion Bounds
+                </h4>
+                
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white/60">Min Kelly Fraction</span>
+                      <span className="text-cyan-400">{(config.min_kelly_fraction * 100).toFixed(0)}%</span>
+                    </div>
+                    <input type="range" value={config.min_kelly_fraction * 100} onChange={(e) => setConfig({...config, min_kelly_fraction: parseFloat(e.target.value) / 100})} className="w-full h-2 bg-white/10 rounded-lg accent-cyan-500" min="1" max="30" step="1" />
+                    <p className="text-xs text-white/40 mt-1">Minimum position size as % of Kelly optimal</p>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white/60">Max Kelly Fraction</span>
+                      <span className="text-cyan-400">{(config.max_kelly_fraction * 100).toFixed(0)}%</span>
+                    </div>
+                    <input type="range" value={config.max_kelly_fraction * 100} onChange={(e) => setConfig({...config, max_kelly_fraction: parseFloat(e.target.value) / 100})} className="w-full h-2 bg-white/10 rounded-lg accent-cyan-500" min="10" max="100" step="5" />
+                    <p className="text-xs text-white/40 mt-1">Maximum position size cap (safety limit)</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Position Limits */}
+              <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                <h4 className="text-white font-medium mb-4 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-green-400" /> Position Limits
+                </h4>
+                
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white/60">Minimum Position Size</span>
+                      <span className="text-green-400">${config.min_position_size}</span>
+                    </div>
+                    <input type="range" value={config.min_position_size} onChange={(e) => setConfig({...config, min_position_size: parseFloat(e.target.value)})} className="w-full h-2 bg-white/10 rounded-lg accent-green-500" min="1" max="50" step="1" />
+                    <p className="text-xs text-white/40 mt-1">Smallest allowed trade size in USD</p>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white/60">Full Size Liquidity</span>
+                      <span className="text-green-400">${config.min_liquidity_for_full_size?.toLocaleString()}</span>
+                    </div>
+                    <input type="range" value={config.min_liquidity_for_full_size / 1000} onChange={(e) => setConfig({...config, min_liquidity_for_full_size: parseFloat(e.target.value) * 1000})} className="w-full h-2 bg-white/10 rounded-lg accent-green-500" min="1" max="100" step="1" />
+                    <p className="text-xs text-white/40 mt-1">24h volume needed for full position sizing</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl bg-slate-500/10 border border-slate-500/20 p-4">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-slate-400 mt-0.5" />
+                <div>
+                  <h4 className="text-white font-medium mb-1">Position Sizing Algorithm</h4>
+                  <p className="text-xs text-white/60">Position size = Kelly Fraction × Conviction Signals × Liquidity Factor. The size is bounded by min/max Kelly and scaled down for low-liquidity markets.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alerts Tab */}
+      {activeTab === 'alerts' && (
+        <div className="space-y-6">
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${config.alerts_enabled ? 'from-green-500 to-emerald-600' : 'from-slate-500 to-zinc-600'} flex items-center justify-center`}>
+                  {config.alerts_enabled ? <Bell className="w-5 h-5 text-white" /> : <BellOff className="w-5 h-5 text-white" />}
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Real-Time Market Alerts</h3>
+                  <p className="text-xs text-white/50">Get notified of high-volume markets with significant activity</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => setConfig({...config, alerts_enabled: !config.alerts_enabled})}
+                className={`px-4 py-2 rounded-lg font-medium transition ${config.alerts_enabled ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/5 text-white/60 border border-white/10'}`}
+              >
+                {config.alerts_enabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
+
+            {config.alerts_enabled && (
+              <div className="space-y-6">
+                <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                  <h4 className="text-white font-medium mb-4">Alert Triggers</h4>
+                  
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white/60">Volume Spike Threshold</span>
+                      <span className="text-yellow-400">{config.alert_volume_threshold}x</span>
+                    </div>
+                    <input type="range" value={config.alert_volume_threshold * 10} onChange={(e) => setConfig({...config, alert_volume_threshold: parseFloat(e.target.value) / 10})} className="w-full h-2 bg-white/10 rounded-lg accent-yellow-500" min="10" max="50" step="1" />
+                    <p className="text-xs text-white/40 mt-1">Alert when 24h volume exceeds this multiple of liquidity</p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5" />
+                    <div>
+                      <h4 className="text-white font-medium mb-1">Alert Types</h4>
+                      <ul className="text-xs text-white/60 space-y-1">
+                        <li>• <span className="text-yellow-400">Volume Spike</span>: Market trading volume increases significantly</li>
+                        <li>• <span className="text-cyan-400">Price Movement</span>: Large price swing detected (5%+ change)</li>
+                        <li>• Alerts appear in real-time via WebSocket connection</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!config.alerts_enabled && (
+              <div className="text-center py-8 text-white/40">
+                <BellOff className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Enable alerts to receive real-time notifications</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Asset Classes Tab */}
       {activeTab === 'assets' && (
         <div className="space-y-6">
