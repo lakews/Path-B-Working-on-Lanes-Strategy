@@ -1777,6 +1777,17 @@ class PaperTrader:
                         total_unrealized += unrealized
                     
                     self.unrealized_pnl = round(total_unrealized, 2)
+                    
+                    # CIRCUIT BREAKER: Check drawdown including unrealized losses
+                    combined_capital = self.current_capital + self.unrealized_pnl
+                    if self.peak_capital > 0:
+                        combined_drawdown = (self.peak_capital - combined_capital) / self.peak_capital
+                        combined_drawdown_pct = combined_drawdown * 100
+                        
+                        if combined_drawdown_pct >= self.max_drawdown_pct and not self.circuit_breaker_triggered:
+                            logger.warning(f"🚨 CIRCUIT BREAKER TRIGGERED (unrealized)! Drawdown {combined_drawdown_pct:.2f}% >= {self.max_drawdown_pct}% limit")
+                            logger.warning(f"   Peak: ${self.peak_capital:.2f} | Combined: ${combined_capital:.2f} | Unrealized: ${self.unrealized_pnl:.2f}")
+                            self.circuit_breaker_triggered = True
                 else:
                     self.unrealized_pnl = 0.0
                 
