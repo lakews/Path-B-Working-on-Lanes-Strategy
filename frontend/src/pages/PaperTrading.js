@@ -1178,7 +1178,7 @@ const PaperTrading = () => {
               <MetricCard title="Win Rate" value={`${((status.win_rate || 0) * 100).toFixed(1)}%`} subtitle={`${status.winning_trades || 0}/${status.total_trades || 0} wins`} icon={Target} color="cyan" />
               <MetricCard title="Total Trades" value={status.total_trades || 0} icon={Activity} color="purple" />
               <MetricCard title="Open Positions" value={status.open_positions ?? positions.length ?? 0} icon={Layers} color="orange" />
-              <MetricCard title="Max Drawdown" value={`${((status.max_drawdown || 0) * 100).toFixed(1)}%`} subtitle={`Limit: ${status.config?.max_drawdown_pct || 5}%`} icon={Shield} color="red" />
+              <MetricCard title="Max Drawdown" value={`${((status.max_drawdown || 0) * 100).toFixed(1)}%`} subtitle={`Limit: ${savedConfig?.max_drawdown_pct || status.config?.max_drawdown_pct || 10}%`} icon={Shield} color="red" />
             </div>
           )}
 
