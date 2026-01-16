@@ -335,15 +335,23 @@ Return ONLY a number between 0 and 1."""
             self.last_llm_call = now
             self.llm_calls_count += 1
             
-            # Call LLM with timeout
+            # Call LLM with timeout (send_message is already async)
             message = UserMessage(text=prompt)
             response = await asyncio.wait_for(
-                asyncio.to_thread(self.gpt_chat.send_message, message),
+                self.gpt_chat.send_message(message),
                 timeout=5.0
             )
             
+            # Ensure response is a string
+            if hasattr(response, 'text'):
+                response_text = response.text
+            elif hasattr(response, 'content'):
+                response_text = response.content
+            else:
+                response_text = str(response)
+            
             # Parse response
-            sentiment = self._extract_score(response)
+            sentiment = self._extract_score(response_text)
             
             # Calculate confidence based on how different from market price
             # If LLM agrees with market, lower confidence (not adding value)
@@ -355,7 +363,7 @@ Return ONLY a number between 0 and 1."""
             result = {
                 'sentiment': sentiment,
                 'confidence': confidence,
-                'reasoning': response[:200] if len(response) > 200 else response
+                'reasoning': response_text[:200] if len(response_text) > 200 else response_text
             }
             
             # Cache result
