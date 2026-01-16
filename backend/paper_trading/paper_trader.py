@@ -941,8 +941,18 @@ class PaperTrader:
             should_exit = False
             exit_reason = None
             
+            # AUTO-EXIT FOR APPROACHING EXPIRY (1 hour before market resolution)
+            expiry_info = self._calculate_time_to_expiry(market_data)
+            hours_to_expiry = expiry_info.get('hours_to_expiry')
+            
+            if hours_to_expiry is not None and hours_to_expiry <= 1.0:
+                # Force exit 1 hour before expiry - market will resolve soon
+                should_exit = True
+                exit_reason = f"expiry_safety_exit_{hours_to_expiry:.1f}h"
+                logger.info(f"⚠️ AUTO-EXIT: {market_id[:16]} expires in {hours_to_expiry:.1f}h - forcing exit")
+            
             # Take profit - configurable by strategy/asset
-            if pnl_pct >= take_profit_threshold:
+            elif pnl_pct >= take_profit_threshold:
                 should_exit = True
                 exit_reason = "take_profit"
             
@@ -966,6 +976,10 @@ class PaperTrader:
             if hours_open > max_hours:
                 should_exit = True
                 exit_reason = "time_limit"
+            
+            # WARN but don't force exit for positions expiring within 6 hours
+            if not should_exit and hours_to_expiry is not None and hours_to_expiry <= 6.0 and hours_to_expiry > 1.0:
+                logger.warning(f"⏱️ Position {market_id[:16]} expires in {hours_to_expiry:.1f}h - consider manual exit")
             
             if should_exit:
                 # Log exit parameters used
