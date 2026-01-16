@@ -638,12 +638,13 @@ class PaperTrader:
         
         Uses configurable exit_params from DB (loaded in _load_user_config),
         falling back to DEFAULT_EXIT_PARAMS if not configured.
+        Asset class multipliers are also configurable via DB.
         """
         # Base params from user-configured strategy exit params (or defaults)
         base = self.exit_params_by_strategy.get(strategy, self.DEFAULT_EXIT_PARAMS.get(strategy, self.DEFAULT_EXIT_PARAMS['arbitrage']))
         
-        # Adjustments from asset class
-        adj = self.EXIT_ADJUSTMENTS_BY_ASSET.get(asset_class.lower(), {'tp_mult': 1.0, 'sl_mult': 1.0, 'time_mult': 1.0})
+        # Adjustments from asset class (use DB-loaded or defaults)
+        adj = self.asset_class_exit_multipliers.get(asset_class.lower(), {'tp_mult': 1.0, 'sl_mult': 1.0, 'time_mult': 1.0})
         
         return {
             'take_profit': base['take_profit'] * adj['tp_mult'],
