@@ -1208,6 +1208,18 @@ async def update_config(config_update: TradingConfig):
         if config_update.alert_volume_threshold is not None:
             db_update["alert_volume_threshold"] = config_update.alert_volume_threshold
         
+        # Strategy selection thresholds
+        if config_update.volatility_threshold is not None:
+            db_update["volatility_threshold"] = config_update.volatility_threshold
+        if config_update.sentiment_strength_threshold is not None:
+            db_update["sentiment_strength_threshold"] = config_update.sentiment_strength_threshold
+        if config_update.sharp_alignment_threshold is not None:
+            db_update["sharp_alignment_threshold"] = config_update.sharp_alignment_threshold
+        if config_update.delta_neutral_price_min is not None:
+            db_update["delta_neutral_price_min"] = config_update.delta_neutral_price_min
+        if config_update.delta_neutral_price_max is not None:
+            db_update["delta_neutral_price_max"] = config_update.delta_neutral_price_max
+        
         # Store ALL config in database for persistence (not just strategies/asset classes)
         db = get_db()
         await db.user_config.update_one(
