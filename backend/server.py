@@ -1034,6 +1034,41 @@ async def get_config():
                     **saved_config.get("exit_params", {}).get("arbitrage", {})
                 } if saved_config else {"take_profit": 0.03, "stop_loss": -0.03, "max_hours": 6},
             },
+            # Asset class exit multipliers (merge saved with defaults)
+            "asset_class_exit_multipliers": {
+                "crypto": {
+                    **{"tp_mult": 1.5, "sl_mult": 1.3, "time_mult": 0.5},
+                    **saved_config.get("asset_class_exit_multipliers", {}).get("crypto", {})
+                } if saved_config else {"tp_mult": 1.5, "sl_mult": 1.3, "time_mult": 0.5},
+                "politics": {
+                    **{"tp_mult": 1.2, "sl_mult": 1.0, "time_mult": 1.5},
+                    **saved_config.get("asset_class_exit_multipliers", {}).get("politics", {})
+                } if saved_config else {"tp_mult": 1.2, "sl_mult": 1.0, "time_mult": 1.5},
+                "sports": {
+                    **{"tp_mult": 1.0, "sl_mult": 0.8, "time_mult": 0.25},
+                    **saved_config.get("asset_class_exit_multipliers", {}).get("sports", {})
+                } if saved_config else {"tp_mult": 1.0, "sl_mult": 0.8, "time_mult": 0.25},
+                "finance": {
+                    **{"tp_mult": 0.8, "sl_mult": 0.8, "time_mult": 1.0},
+                    **saved_config.get("asset_class_exit_multipliers", {}).get("finance", {})
+                } if saved_config else {"tp_mult": 0.8, "sl_mult": 0.8, "time_mult": 1.0},
+                "entertainment": {
+                    **{"tp_mult": 1.0, "sl_mult": 1.0, "time_mult": 1.0},
+                    **saved_config.get("asset_class_exit_multipliers", {}).get("entertainment", {})
+                } if saved_config else {"tp_mult": 1.0, "sl_mult": 1.0, "time_mult": 1.0},
+                "science": {
+                    **{"tp_mult": 1.0, "sl_mult": 1.0, "time_mult": 2.0},
+                    **saved_config.get("asset_class_exit_multipliers", {}).get("science", {})
+                } if saved_config else {"tp_mult": 1.0, "sl_mult": 1.0, "time_mult": 2.0},
+            },
+            # Advanced position sizing parameters
+            "min_kelly_fraction": saved_config.get("min_kelly_fraction", 0.10) if saved_config else 0.10,
+            "max_kelly_fraction": saved_config.get("max_kelly_fraction", 0.50) if saved_config else 0.50,
+            "min_position_size": saved_config.get("min_position_size", 5.0) if saved_config else 5.0,
+            "min_liquidity_for_full_size": saved_config.get("min_liquidity_for_full_size", 10000.0) if saved_config else 10000.0,
+            # Market alerts configuration
+            "alerts_enabled": saved_config.get("alerts_enabled", False) if saved_config else False,
+            "alert_volume_threshold": saved_config.get("alert_volume_threshold", 2.0) if saved_config else 2.0,
         }
     except Exception as e:
         logger.error(f"Error getting config: {e}")
