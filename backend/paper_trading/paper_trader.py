@@ -544,6 +544,47 @@ class PaperTrader:
                 except Exception as e:
                     logger.warning(f"Could not parse end_date '{end_date_str}': {e}")
             
+            # CHECK QUESTION TEXT FOR PAST DATES: Parse dates from question itself
+            # This catches markets like "Will X happen by January 15, 2026?" where end_date is Jan 31
+            question = market_data.get('question', '')
+            if question:
+                import re
+                now = datetime.now(timezone.utc)
+                current_year = now.year
+                
+                # Pattern: "by/before/on January 15, 2026" or "January 15th, 2026"
+                date_patterns = [
+                    r'(?:by|before|on|until)\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{4})',
+                    r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{4})',
+                ]
+                
+                month_map = {
+                    'January': 1, 'February': 2, 'March': 3, 'April': 4,
+                    'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                    'September': 9, 'October': 10, 'November': 11, 'December': 12
+                }
+                
+                for pattern in date_patterns:
+                    match = re.search(pattern, question, re.IGNORECASE)
+                    if match:
+                        try:
+                            month_name = match.group(1) if 'by' not in pattern.lower() else match.group(1)
+                            # Handle different group positions based on pattern
+                            groups = match.groups()
+                            if len(groups) >= 3:
+                                month_str = groups[-3] if groups[-3] in month_map else groups[0]
+                                day = int(groups[-2])
+                                year = int(groups[-1])
+                                month = month_map.get(month_str.capitalize(), 0)
+                                
+                                if month and day and year:
+                                    question_date = datetime(year, month, day, tzinfo=timezone.utc)
+                                    if question_date < now:
+                                        logger.warning(f"⛔ BLOCKING SEMANTICALLY EXPIRED: {market_id[:16]} - question date {question_date.date()} < today {now.date()} - {question[:50]}")
+                                        return
+                        except (ValueError, IndexError) as e:
+                            pass  # Date parsing failed, continue
+            
             # CHECK CLOSED/RESOLVED STATUS: Skip markets that are already resolved
             is_closed = market_data.get('closed', False) or market_data.get('resolved', False)
             is_active = market_data.get('active', True)
