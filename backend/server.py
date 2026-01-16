@@ -1083,6 +1083,20 @@ async def update_config(config_update: TradingConfig):
             user_config["enabled_strategies"] = config_update.enabled_strategies
             db_update["enabled_strategies"] = config_update.enabled_strategies
         
+        # Update exit parameters per strategy
+        if config_update.exit_params is not None:
+            # Convert Pydantic models to dicts for MongoDB storage
+            exit_params_dict = {}
+            for strategy, params in config_update.exit_params.items():
+                if params:
+                    exit_params_dict[strategy] = {
+                        "take_profit": params.take_profit,
+                        "stop_loss": params.stop_loss,
+                        "max_hours": params.max_hours
+                    }
+            db_update["exit_params"] = exit_params_dict
+            logger.info(f"Exit params updated: {list(exit_params_dict.keys())}")
+        
         # Store ALL config in database for persistence (not just strategies/asset classes)
         db = get_db()
         await db.user_config.update_one(
