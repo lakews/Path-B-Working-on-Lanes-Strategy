@@ -232,6 +232,11 @@ class StrategyExitParams(BaseModel):
     stop_loss: Optional[float] = None    # e.g., -0.02 = -2%
     max_hours: Optional[float] = None    # e.g., 4 = 4 hours
 
+class AssetClassExitMultipliers(BaseModel):
+    tp_mult: Optional[float] = None      # Take profit multiplier
+    sl_mult: Optional[float] = None      # Stop loss multiplier  
+    time_mult: Optional[float] = None    # Time limit multiplier
+
 class TradingConfig(BaseModel):
     trades_per_10min: Optional[int] = None
     initial_capital: Optional[float] = None
@@ -252,6 +257,16 @@ class TradingConfig(BaseModel):
     enabled_strategies: Optional[List[str]] = None
     # Exit parameters per strategy
     exit_params: Optional[Dict[str, StrategyExitParams]] = None
+    # Asset class exit multipliers
+    asset_class_exit_multipliers: Optional[Dict[str, AssetClassExitMultipliers]] = None
+    # Advanced position sizing parameters
+    min_kelly_fraction: Optional[float] = None      # Min Kelly bound (default 0.10)
+    max_kelly_fraction: Optional[float] = None      # Max Kelly bound (default 0.50)
+    min_position_size: Optional[float] = None       # Minimum position in USD (default 5)
+    min_liquidity_for_full_size: Optional[float] = None  # Volume needed for full position (default 10000)
+    # Market alerts configuration
+    alerts_enabled: Optional[bool] = None           # Enable real-time alerts
+    alert_volume_threshold: Optional[float] = None  # Volume spike threshold (e.g., 2.0 = 2x avg)
 
 # Store user config preferences
 user_config = {
