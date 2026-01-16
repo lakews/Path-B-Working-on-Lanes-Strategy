@@ -509,6 +509,41 @@ class PaperTrader:
                 logger.debug(f"Skipping {market_id[:16]}: above max liquidity ({liquidity} > {max_liq_threshold})")
                 return
             
+            # CHECK END DATE: Skip markets where the event deadline has passed
+            end_date_str = market_data.get('end_date') or market_data.get('endDate') or market_data.get('close_time')
+            if end_date_str:
+                try:
+                    # Parse various date formats
+                    if isinstance(end_date_str, str):
+                        # Try ISO format first
+                        if 'T' in end_date_str:
+                            end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                        else:
+                            # Try other common formats
+                            for fmt in ['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%m/%d/%Y']:
+                                try:
+                                    end_date = datetime.strptime(end_date_str, fmt)
+                                    end_date = end_date.replace(tzinfo=timezone.utc)
+                                    break
+                                except ValueError:
+                                    continue
+                            else:
+                                end_date = None
+                    elif isinstance(end_date_str, (int, float)):
+                        # Unix timestamp
+                        end_date = datetime.fromtimestamp(end_date_str, tz=timezone.utc)
+                    else:
+                        end_date = None
+                    
+                    if end_date:
+                        now = datetime.now(timezone.utc)
+                        if end_date < now:
+                            question = market_data.get('question', '')[:50]
+                            logger.debug(f"Skipping {market_id[:16]}: event deadline passed ({end_date.date()} < {now.date()}) - {question}")
+                            return
+                except Exception as e:
+                    logger.debug(f"Could not parse end_date '{end_date_str}': {e}")
+            
             # Check for stuck/stale prices - skip markets with default prices unless high volume confirms they're real
             yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
             if yes_price in [0.0, 0.5, 1.0]:  # Default/stuck prices
