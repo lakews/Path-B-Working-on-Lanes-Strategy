@@ -71,7 +71,9 @@ class RLAdaptiveEngine:
             action = self.actions[action_idx]
             
             # Store state for later reward assignment
-            await self._store_pending_action(market_data.get('id'), state, action_idx)
+            # Note: market_data uses 'market_id' key, not 'id'
+            market_id = market_data.get('market_id') or market_data.get('id')
+            await self._store_pending_action(market_id, state, action_idx)
             
             logger.info(f"RL Action: {action} (confidence: {confidence:.2f}, epsilon: {self.epsilon:.3f})")
             
