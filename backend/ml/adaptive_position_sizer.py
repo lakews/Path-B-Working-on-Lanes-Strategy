@@ -345,20 +345,22 @@ class AdaptivePositionSizer:
         signal_strength = (sentiment_strength * 0.3 + sharp_alignment * 0.4 + (1 - price_uncertainty) * 0.3)
         signal_mult = 0.5 + (signal_strength * 0.7)  # Range: 0.5 to 1.2
         
-        # ========== KELLY + ATR COMBO BASE POSITION ==========
-        # Instead of using max_position as base, use Kelly scaled by ATR (volatility)
-        # This creates natural variance: low vol = larger Kelly position, high vol = smaller
-        
+        # ========== ADAPTIVE BASE POSITION (Kelly + ATR + Fallback) ==========
         import math
         
-        # Kelly gives us the edge-based fraction
-        # ATR (vol_mult) scales it for risk
-        # Combined: position = Kelly * vol_adjustment * signal_strength
+        # Kelly gives us the edge-based fraction, ATR scales for risk
+        kelly_atr_base = kelly_position * vol_mult
         
-        kelly_atr_base = kelly_position * vol_mult  # ATR already inverse (high vol = lower mult)
+        # FALLBACK: If Kelly is too conservative (< min_trade_size), use signal-based sizing
+        # This ensures we don't just hit minimum floor for all trades
+        if kelly_atr_base < min_trade_size:
+            # Use max_position scaled by signals and volatility as fallback
+            # signal_strength 0.3-0.8 of max, vol_mult scales it further
+            fallback_pct = 0.3 + (signal_strength * 0.5)  # 30-80% of max based on signals
+            fallback_base = max_position_usd * fallback_pct * vol_mult
+            kelly_atr_base = fallback_base
         
-        # Apply signal strength to create variance within Kelly-ATR base
-        # Don't just multiply - use a blend to ensure variance
+        # Apply signal strength to create variance within base
         signal_variance = 0.6 + (signal_strength * 0.8)  # 0.6x to 1.4x
         
         base_position = kelly_atr_base * signal_variance
