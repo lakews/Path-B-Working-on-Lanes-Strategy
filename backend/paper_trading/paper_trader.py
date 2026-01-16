@@ -637,6 +637,25 @@ class PaperTrader:
             if 'BUY' not in rl_action and 'SELL' not in rl_action:
                 return
             
+            # OVERRIDE: Use sentiment-based side selection for more balanced YES/NO
+            # RL action determines size, but sentiment determines direction
+            sentiment = signals.get('sentiment', 0.5)
+            if sentiment > 0.55:
+                # Bullish sentiment -> YES (BUY)
+                side = 'YES'
+                if 'SELL' in rl_action:
+                    # Convert SELL to equivalent BUY size
+                    rl_action = rl_action.replace('SELL', 'BUY')
+            elif sentiment < 0.45:
+                # Bearish sentiment -> NO (SELL)  
+                side = 'NO'
+                if 'BUY' in rl_action:
+                    # Convert BUY to equivalent SELL size
+                    rl_action = rl_action.replace('BUY', 'SELL')
+            else:
+                # Neutral sentiment -> use RL action directly
+                side = 'YES' if 'BUY' in rl_action else 'NO'
+            
             # Determine strategy based on signals
             strategy = self._determine_strategy(signals, rl_action, market_data)
             
