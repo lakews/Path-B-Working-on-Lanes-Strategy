@@ -274,6 +274,9 @@ class TradingConfig(BaseModel):
     sharp_alignment_threshold: Optional[float] = None     # Threshold for arbitrage (default 0.8)
     delta_neutral_price_min: Optional[float] = None       # Min price for delta neutral (default 0.35)
     delta_neutral_price_max: Optional[float] = None       # Max price for delta neutral (default 0.65)
+    # Sentiment-based side selection thresholds
+    bullish_sentiment_threshold: Optional[float] = None   # Above this → YES (default 0.55)
+    bearish_sentiment_threshold: Optional[float] = None   # Below this → NO (default 0.45)
 
 # Store user config preferences
 user_config = {
