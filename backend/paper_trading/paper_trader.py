@@ -115,6 +115,15 @@ class PaperTrader:
         # Exit parameters per strategy - loaded from DB, defaults from DEFAULT_EXIT_PARAMS
         self.exit_params_by_strategy = dict(self.DEFAULT_EXIT_PARAMS)
         
+        # Asset class exit multipliers - loaded from DB, defaults from EXIT_ADJUSTMENTS_BY_ASSET
+        self.asset_class_exit_multipliers = dict(self.EXIT_ADJUSTMENTS_BY_ASSET)
+        
+        # Advanced position sizing parameters (configurable)
+        self.min_kelly_fraction = 0.10
+        self.max_kelly_fraction = 0.50
+        self.min_position_size = 5.0  # Minimum position in USD
+        self.min_liquidity_for_full_size = 10000.0  # Volume needed for full position
+        
         # Current capital starts at initial (will be set properly after config load)
         self.current_capital = self.initial_capital
         
