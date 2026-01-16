@@ -18,10 +18,10 @@ const ASSET_CLASSES = [
 
 // Trading strategies with metadata
 const STRATEGIES = [
-  { id: 'delta_neutral', label: 'Delta-Neutral', icon: Scale, color: 'cyan', description: 'Market making with zero directional exposure, captures spreads', risk: 'Low', expectedReturn: '5-15%' },
-  { id: 'volatility_exploitation', label: 'Volatility Exploitation', icon: Zap, color: 'yellow', description: 'Buy at extreme prices during volatility spikes', risk: 'High', expectedReturn: '30-100x' },
-  { id: 'alpha_directional', label: 'Alpha-Directional', icon: TrendingUp, color: 'green', description: 'Directional bets based on ML signals and sentiment', risk: 'Medium', expectedReturn: '10-30%' },
-  { id: 'arbitrage', label: 'Multi-Market Arbitrage', icon: GitBranch, color: 'purple', description: 'Exploit price discrepancies across similar markets', risk: 'Low', expectedReturn: '2-5%' },
+  { id: 'delta_neutral', label: 'Delta-Neutral', icon: Scale, color: 'cyan', description: 'Market making with zero directional exposure, captures spreads', risk: 'Low', expectedReturn: '5-15%', riskMultiplier: 1.2, bestFor: 'High liquidity, wide spreads' },
+  { id: 'volatility_exploitation', label: 'Volatility Exploitation', icon: Zap, color: 'yellow', description: 'Buy at extreme prices during volatility spikes', risk: 'High', expectedReturn: '30-100%+', riskMultiplier: 0.5, bestFor: 'Market panics, news events' },
+  { id: 'alpha_directional', label: 'Alpha-Directional', icon: TrendingUp, color: 'green', description: 'Directional bets based on ML signals and sentiment', risk: 'Medium', expectedReturn: '10-30%', riskMultiplier: 0.8, bestFor: 'Clear sentiment, news-driven' },
+  { id: 'arbitrage', label: 'Multi-Market Arbitrage', icon: GitBranch, color: 'purple', description: 'Exploit price discrepancies across similar markets', risk: 'Low', expectedReturn: '2-5%', riskMultiplier: 1.1, bestFor: 'Correlated markets, stale prices' },
 ];
 
 const Configuration = () => {
