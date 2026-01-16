@@ -1221,9 +1221,18 @@ class PaperTrader:
                 'sentiment_strength': round(sentiment_strength, 4),
                 'sentiment_layers': {
                     'market_microstructure': round(market_sentiment, 4),
+                    'llm_sentiment': round(llm_sentiment, 4),
+                    'llm_confidence': round(llm_confidence, 4),
+                    'correlation_sentiment': round(correlation_sentiment, 4),
+                    'correlation_strength': round(correlation_strength, 4),
                     'external_data': round(external_sentiment, 4),
                     'external_confidence': round(external_confidence, 4),
-                    'correlation': round(correlation_sentiment, 4)
+                },
+                'sentiment_weights': {
+                    'market_weight': round(market_weight, 4),
+                    'llm_weight': round(llm_weight, 4),
+                    'correlation_weight': round(corr_weight, 4),
+                    'external_weight': round(external_weight, 4),
                 },
                 'sentiment_components': {
                     'price': round(price_sentiment, 4),
@@ -1235,6 +1244,7 @@ class PaperTrader:
                     'social': round(social_sentiment, 4),
                     'maturity_weight': round(maturity_weight, 4)
                 },
+                'enhanced_data': enhanced_data,
                 'news_data': news_data,
                 'sharp_alignment': round(sharp_alignment, 4),
                 'whale_activity': round(whale_activity, 4),
