@@ -178,7 +178,30 @@ class PaperTrader:
             'alpha_directional': 0.0,
             'arbitrage': 0.0
         }
-        self.asset_class_equity: Dict[str, float] = {}
+        # Initialize asset class equity at 0 for all asset classes
+        self.asset_class_equity: Dict[str, float] = {
+            'finance': 0.0,
+            'politics': 0.0,
+            'crypto': 0.0,
+            'entertainment': 0.0,
+            'science': 0.0,
+            'sports': 0.0
+        }
+        # Track equity curves over time for charts
+        self.strategy_equity_history: Dict[str, List[Dict]] = {
+            'delta_neutral': [],
+            'volatility_exploitation': [],
+            'alpha_directional': [],
+            'arbitrage': []
+        }
+        self.asset_class_equity_history: Dict[str, List[Dict]] = {
+            'finance': [],
+            'politics': [],
+            'crypto': [],
+            'entertainment': [],
+            'science': [],
+            'sports': []
+        }
         
         # Calculate trade interval from trades_per_10min
         self.trade_interval = max(1, 600 / self.trades_per_10min)  # Seconds between trade evaluations
