@@ -70,6 +70,14 @@ class PaperTrader:
             logger.warning(f"Could not initialize social analyzer: {e}")
             self.social_analyzer = None
         
+        # Initialize enhanced sentiment analyzer (LLM + Cross-Market Correlation)
+        try:
+            self.enhanced_sentiment = get_enhanced_sentiment_analyzer()
+            logger.info("Enhanced sentiment analyzer (LLM + Correlation) initialized")
+        except Exception as e:
+            logger.warning(f"Could not initialize enhanced sentiment: {e}")
+            self.enhanced_sentiment = None
+        
         # Import adaptive position sizer
         from ml.adaptive_position_sizer import get_position_sizer
         self.position_sizer = get_position_sizer()
