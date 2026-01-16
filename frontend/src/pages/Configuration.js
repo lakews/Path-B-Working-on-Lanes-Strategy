@@ -1019,6 +1019,44 @@ const Configuration = () => {
                 </div>
                 <p className="text-xs text-white/40 mt-2">Price range for Delta-Neutral market making (default: 35%-65%)</p>
               </div>
+
+              {/* Sentiment Side Selection Thresholds */}
+              <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="w-4 h-4 text-rose-400" />
+                  <span className="text-white font-medium">Sentiment → Side Thresholds</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white/60">Bullish → YES</span>
+                      <span className="text-green-400 font-mono">&gt;{((config.bullish_sentiment_threshold || 0.55) * 100).toFixed(0)}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={(config.bullish_sentiment_threshold || 0.55) * 100} 
+                      onChange={(e) => setConfig({...config, bullish_sentiment_threshold: parseFloat(e.target.value) / 100})} 
+                      className="w-full h-2 bg-white/10 rounded-lg accent-green-500" 
+                      min="51" max="70" step="1" 
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white/60">Bearish → NO</span>
+                      <span className="text-red-400 font-mono">&lt;{((config.bearish_sentiment_threshold || 0.45) * 100).toFixed(0)}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={(config.bearish_sentiment_threshold || 0.45) * 100} 
+                      onChange={(e) => setConfig({...config, bearish_sentiment_threshold: parseFloat(e.target.value) / 100})} 
+                      className="w-full h-2 bg-white/10 rounded-lg accent-red-500" 
+                      min="30" max="49" step="1" 
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-white/40 mt-2">Sentiment between thresholds → RL decides direction. Wider gap = more RL influence.</p>
+              </div>
             </div>
 
             {/* Info Box */}
