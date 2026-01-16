@@ -1877,6 +1877,20 @@ class PaperTrader:
                         position['unrealized_pnl'] = round(unrealized, 2)
                         position['unrealized_pnl_pct'] = round((unrealized / size) * 100, 2) if size > 0 else 0
                         
+                        # Track max drawdown for this position (for reward shaping)
+                        current_pnl_pct = position['unrealized_pnl_pct']
+                        if current_pnl_pct < 0:
+                            # Position is underwater - track how bad it got
+                            current_drawdown = abs(current_pnl_pct)
+                            if current_drawdown > position.get('max_drawdown_pct', 0):
+                                position['max_drawdown_pct'] = round(current_drawdown, 2)
+                        
+                        # Track price extremes
+                        if current_price < position.get('min_price_seen', current_price):
+                            position['min_price_seen'] = current_price
+                        if current_price > position.get('max_price_seen', current_price):
+                            position['max_price_seen'] = current_price
+                        
                         total_unrealized += unrealized
                     
                     self.unrealized_pnl = round(total_unrealized, 2)
