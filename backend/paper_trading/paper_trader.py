@@ -1295,8 +1295,20 @@ class PaperTrader:
                 self.asset_class_equity[asset_class] = 0.0
             self.asset_class_equity[asset_class] += pnl
             
-            # Calculate reward for RL
-            reward = self._calculate_rl_reward(pnl_pct, is_win, exit_reason)
+            # Store closed trade with hold time calculation
+            entry_time = datetime.fromisoformat(position['entry_time'].replace('Z', '+00:00'))
+            exit_time = datetime.now(timezone.utc)
+            hold_time_seconds = (exit_time - entry_time).total_seconds()
+            hold_time_hours = hold_time_seconds / 3600
+            
+            # Calculate RISK-ADJUSTED reward for RL
+            reward = self._calculate_rl_reward(
+                pnl_pct=pnl_pct, 
+                is_win=is_win, 
+                exit_reason=exit_reason,
+                position=position,
+                hold_time_hours=hold_time_hours
+            )
             
             # Feed reward to RL engine - IMMEDIATELY updates Q-table for next trade
             await self.rl_engine.update_from_reward(market_id, reward)
