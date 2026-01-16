@@ -985,6 +985,9 @@ class PaperTrader:
             current_price = market_data.get('yes_price', 0.5)
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
+            # Extract expiry info from sizing breakdown
+            expiry_info = sizing_breakdown.get('expiry_info', {}) if sizing_breakdown else {}
+            
             position = {
                 "position_id": str(uuid.uuid4()),
                 "market_id": market_id,
@@ -998,7 +1001,15 @@ class PaperTrader:
                 "rl_action": rl_action,
                 "rl_confidence": rl_confidence,
                 "signals": signals,
-                "sizing_breakdown": sizing_breakdown or {}  # Store for learning
+                "sizing_breakdown": sizing_breakdown or {},  # Store for learning
+                # Store expiry info for UI display
+                "expiry_info": {
+                    "hours_to_expiry": expiry_info.get('hours_to_expiry'),
+                    "days_to_expiry": expiry_info.get('days_to_expiry'),
+                    "urgency": expiry_info.get('urgency', 'normal'),
+                    "expiry_label": expiry_info.get('expiry_label', 'No expiry'),
+                    "end_date": market_data.get('end_date')
+                }
             }
             
             self.paper_positions[market_id] = position
@@ -1029,6 +1040,8 @@ class PaperTrader:
                 "rl_action": rl_action,
                 "rl_confidence": rl_confidence,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
+                # Expiry info for UI
+                "expiry_info": position.get('expiry_info', {}),
                 # Sentiment breakdown for UI
                 "sentiment": {
                     "final": signals.get('sentiment', 0.5),
