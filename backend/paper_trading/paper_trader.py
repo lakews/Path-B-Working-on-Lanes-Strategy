@@ -629,8 +629,12 @@ class PaperTrader:
             # Get RL recommendation
             rl_action, rl_confidence = await self.rl_engine.get_optimal_action(market_data, signals)
             
-            # Skip if RL says wait or very low confidence
-            if rl_action == 'WAIT' or rl_confidence < 0.1:
+            # Skip if RL says wait/hold or very low confidence
+            if rl_action in ['WAIT', 'HOLD'] or rl_confidence < 0.15:
+                return
+            
+            # Skip if action is not a clear BUY or SELL
+            if 'BUY' not in rl_action and 'SELL' not in rl_action:
                 return
             
             # Determine strategy based on signals
