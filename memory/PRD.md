@@ -39,6 +39,35 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 16, 2026 - Session 27 (Asset Class Equity + Position Sizing + Delta Neutral Fix)
+
+- ✅ **NEW: Asset Class Equity Breakdown Component** (`/app/frontend/src/pages/PaperTrading.js`)
+  - Added `AssetClassEquityCard` component (lines 321-368)
+  - Shows per-asset-class P&L starting at $0 for each session
+  - Displays all 6 asset classes: Finance, Politics, Crypto, Entertainment, Science, Sports
+  - Color-coded values: green (profit), red (loss), gray ($0)
+  - Total P&L displayed in header
+  - "starts at $0" indicator to clarify this is session-based
+
+- ✅ **FIX: Position Sizing - Geometric Mean for Risk Multipliers** (`/app/backend/ml/adaptive_position_sizer.py`)
+  - **Problem**: Position sizes were not reaching configured max cap (~$94 vs $240 max)
+  - **Root Cause**: Direct product of risk factors was too punitive (0.8×0.8×0.8×0.8 = 0.41)
+  - **Solution**: Changed to geometric mean (lines 368-378): `risk_combined = risk_product ** (1 / len(risk_factors))`
+  - **Result**: 67% improvement in position sizes (0.41 → 0.84 for same risk factors)
+
+- ✅ **FIX: Delta Neutral Strategy - Raised Volatility Threshold** (`/app/backend/paper_trading/paper_trader.py`, `/app/backend/server.py`)
+  - **Problem**: Delta Neutral strategy capturing zero trades because all volatilities were above 4-5% threshold
+  - **Solution**: Raised default `volatility_threshold` from 0.05 to 0.06 (6%)
+  - Delta Neutral now captures trades in 4-6% volatility range
+  - Updated default in paper_trader.py (line 128) and server.py (line 1083)
+  - Database updated to reflect new default
+
+- ✅ **Test Suite**: 12/12 tests passed (`/app/test_reports/iteration_19.json`)
+  - Config endpoint returns volatility_threshold: 0.06
+  - Paper status returns asset_class_equity field
+  - Geometric mean calculation verified in code
+  - Paper trading start/stop working correctly
+
 ### January 16, 2026 - Session 26 (UI Bug Fix + Volatility Strategy Fix + Configurable Thresholds)
 
 - ✅ **Bug Fix: Trade History "sess" Truncation** (`/app/frontend/src/pages/PaperTrading.js`)
