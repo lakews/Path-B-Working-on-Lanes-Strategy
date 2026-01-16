@@ -1226,6 +1226,12 @@ async def update_config(config_update: TradingConfig):
         if config_update.delta_neutral_price_max is not None:
             db_update["delta_neutral_price_max"] = config_update.delta_neutral_price_max
         
+        # Sentiment-based side selection thresholds
+        if config_update.bullish_sentiment_threshold is not None:
+            db_update["bullish_sentiment_threshold"] = config_update.bullish_sentiment_threshold
+        if config_update.bearish_sentiment_threshold is not None:
+            db_update["bearish_sentiment_threshold"] = config_update.bearish_sentiment_threshold
+        
         # Store ALL config in database for persistence (not just strategies/asset classes)
         db = get_db()
         await db.user_config.update_one(
