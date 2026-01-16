@@ -264,95 +264,140 @@ class AdaptivePositionSizer:
         kelly_enabled: bool = True
     ) -> Dict:
         """
-        Calculate optimal position size using all factors.
+        Calculate optimal position size using ADAPTIVE multi-factor approach.
+        
+        Factors considered:
+        1. Kelly Criterion (learned win rates)
+        2. Liquidity (volume, spread, depth)
+        3. Volatility regime
+        4. RL model confidence
+        5. Asset class risk profile
+        6. Strategy risk profile
+        7. Signal strength
         
         Returns dict with:
         - position_size: Final USD amount
         - sizing_breakdown: Dict explaining each factor
-        - should_trade: Boolean if size > minimum
+        - should_trade: Boolean if size meets criteria
         """
         # Base max position from config
         max_position_usd = deployed_capital * (max_position_pct / 100)
         
-        # 1. Kelly-based sizing (only if enabled)
+        # Minimum viable trade size (configurable, but reasonable floor)
+        min_trade_size = max(5, deployed_capital * 0.005)  # $5 or 0.5% of capital, whichever is higher
+        
+        # ========== FACTOR 1: Kelly Criterion ==========
         if kelly_enabled:
             kelly_size = self.calculate_kelly_criterion(strategy, asset_class, kelly_fraction)
             kelly_position = deployed_capital * kelly_size
         else:
-            # Kelly disabled - use fixed fraction
             kelly_size = kelly_fraction
-            kelly_position = max_position_usd * 0.5  # Use 50% of max as base
+            kelly_position = max_position_usd * 0.5
         
-        # 2. Liquidity multiplier
+        # ========== FACTOR 2: Liquidity Score ==========
         liquidity_mult = self.calculate_liquidity_multiplier(market_data, max_position_usd)
         
-        # 3. Volatility adjustment
-        volatility = signals.get('volatility', 0.02)
+        # ========== FACTOR 3: Volatility Regime ==========
+        volatility = signals.get('volatility', 0.05)
         vol_mult = self.calculate_volatility_adjustment(volatility)
         
-        # 4. RL confidence multiplier
+        # ========== FACTOR 4: RL Confidence ==========
         rl_mult = self.calculate_rl_confidence_multiplier(rl_confidence, rl_action)
         
-        # 5. Asset class risk multiplier
-        asset_mult = self.ASSET_CLASS_RISK.get(asset_class, 1.0)
+        # ========== FACTOR 5: Asset Class Risk ==========
+        asset_mult = self.ASSET_CLASS_RISK.get(asset_class.lower() if asset_class else 'finance', 1.0)
         
-        # 6. Strategy risk multiplier
+        # ========== FACTOR 6: Strategy Risk ==========
         strat_mult = self.STRATEGY_RISK.get(strategy, 1.0)
         
-        # Combine all factors - note: these multipliers shouldn't reduce position too aggressively
-        combined_mult = liquidity_mult * vol_mult * rl_mult * asset_mult * strat_mult
+        # ========== FACTOR 7: Signal Strength ==========
+        # Combine sentiment strength, sharp alignment, and price uncertainty
+        sentiment = signals.get('sentiment', 0.5)
+        sentiment_strength = abs(sentiment - 0.5) * 2  # 0-1 scale
+        sharp_alignment = signals.get('sharp_alignment', 0.5)
+        price_uncertainty = signals.get('price_uncertainty', 0.5)
         
-        # Adaptive sizing: use Kelly when available, fall back to base position when Kelly is too conservative
-        # NOTE: With small capital ($800-1000), max_position_usd might be only $24-30
-        # We need to ensure trades can still execute
-        min_base_position = max_position_usd * 0.25  # Minimum 25% of max for HFT
+        # Strong signals = larger position
+        signal_strength = (sentiment_strength * 0.3 + sharp_alignment * 0.4 + (1 - price_uncertainty) * 0.3)
+        signal_mult = 0.7 + (signal_strength * 0.6)  # Range: 0.7 to 1.3
         
-        if kelly_enabled and kelly_position > min_base_position:
-            # Kelly has sufficient data - use it as primary with multipliers
-            raw_position = kelly_position * combined_mult
+        # ========== COMBINE FACTORS ==========
+        # Use geometric mean for more balanced combination (prevents one factor from dominating)
+        import math
+        factors = [liquidity_mult, vol_mult, rl_mult, asset_mult, strat_mult, signal_mult]
+        # Filter out zeros to avoid killing the position entirely
+        positive_factors = [f for f in factors if f > 0]
+        if positive_factors:
+            # Geometric mean is more stable than product
+            combined_mult = math.exp(sum(math.log(f) for f in positive_factors) / len(positive_factors))
         else:
-            # Kelly is too conservative (new strategy/no data) or disabled - use adaptive base
-            # Start with 60% of max, scaled by multipliers (increased from 30% to ensure viability)
-            base_position = max_position_usd * 0.6
-            raw_position = base_position * combined_mult
-            
-            # If Kelly is positive but small (and enabled), blend it in for learning
-            if kelly_enabled and kelly_position > 0:
-                raw_position = raw_position * 0.8 + kelly_position * combined_mult * 0.2
+            combined_mult = 0.5
         
-        # Apply hard caps
+        # ========== CALCULATE BASE POSITION ==========
+        # Adaptive base: blend Kelly, max position, and signal-adjusted base
+        if kelly_enabled and kelly_position > min_trade_size:
+            # Kelly has meaningful data - weight it heavily
+            base_position = kelly_position
+        else:
+            # Kelly is too conservative - use signal-adjusted base
+            # Higher signals = closer to max position, lower signals = closer to min
+            signal_pct = 0.3 + (signal_strength * 0.4)  # 30-70% of max based on signals
+            base_position = max_position_usd * signal_pct
+        
+        # Apply combined multiplier
+        raw_position = base_position * combined_mult
+        
+        # ========== APPLY CONSTRAINTS ==========
+        # Hard ceiling: never exceed max position or 10% of capital
         final_position = min(raw_position, max_position_usd)
-        final_position = min(final_position, deployed_capital * 0.10)  # Never more than 10% in one trade
+        final_position = min(final_position, deployed_capital * 0.10)
         
-        # Ensure minimum viable trade when liquidity is good
-        # If combined_mult killed the position but liquidity is fine, use a floor
-        min_trade_size = 5  # $5 minimum
-        if liquidity_mult >= 0.5 and final_position < min_trade_size and final_position > 0:
-            # Liquidity is good but position got too small from multipliers
-            # Use minimum viable size
+        # Adaptive floor based on conviction
+        # High liquidity + high RL confidence + strong signals = allow trade even if small
+        conviction_score = (liquidity_mult * 0.3 + rl_mult * 0.3 + signal_mult * 0.4)
+        
+        # If position is below minimum but conviction is high, scale up to minimum
+        if final_position < min_trade_size and conviction_score >= 0.7 and liquidity_mult >= 0.3:
+            # Scale position to minimum, but only if we have conviction
             final_position = min_trade_size
         
-        should_trade = final_position >= min_trade_size and liquidity_mult > 0
+        # ========== TRADING DECISION ==========
+        # Should trade if:
+        # 1. Position meets minimum size
+        # 2. Liquidity is acceptable
+        # 3. Not a WAIT/HOLD action with very low confidence
+        should_trade = (
+            final_position >= min_trade_size and 
+            liquidity_mult > 0.1 and
+            not (rl_action in ['WAIT', 'HOLD'] and rl_confidence < 0.3)
+        )
         
         return {
             'position_size': round(final_position, 2),
             'should_trade': should_trade,
             'sizing_breakdown': {
-                'base_max_position': max_position_usd,
+                'base_max_position': round(max_position_usd, 2),
+                'min_trade_size': round(min_trade_size, 2),
                 'kelly_fraction': round(kelly_size, 4),
                 'kelly_position': round(kelly_position, 2),
+                'base_position': round(base_position, 2),
                 'liquidity_multiplier': round(liquidity_mult, 3),
                 'volatility_multiplier': round(vol_mult, 3),
                 'rl_confidence_multiplier': round(rl_mult, 3),
                 'asset_class_multiplier': round(asset_mult, 3),
                 'strategy_multiplier': round(strat_mult, 3),
+                'signal_multiplier': round(signal_mult, 3),
                 'combined_multiplier': round(combined_mult, 4),
+                'conviction_score': round(conviction_score, 3),
                 'final_position': round(final_position, 2),
             },
             'factors': {
                 'volume_24h': market_data.get('volume_24h', market_data.get('volume', 0)),
-                'outstanding': market_data.get('outstanding_contracts', market_data.get('liquidity', 0)),
+                'liquidity': market_data.get('liquidity', market_data.get('outstanding_contracts', 0)),
                 'volatility': round(volatility, 4),
+                'sentiment_strength': round(sentiment_strength, 3),
+                'sharp_alignment': round(sharp_alignment, 3),
+                'signal_strength': round(signal_strength, 3),
                 'rl_confidence': round(rl_confidence, 3),
                 'rl_action': rl_action,
             }
