@@ -654,6 +654,7 @@ const PaperTrading = () => {
   // Modal states
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [sessionTradesModal, setSessionTradesModal] = useState({ isOpen: false, session: null, trades: [] });
+  const [sentimentModal, setSentimentModal] = useState({ isOpen: false, trade: null });
   
   // Sorting state for trades table
   const [tradeSort, setTradeSort] = useState({ key: 'timestamp', direction: 'desc' });
