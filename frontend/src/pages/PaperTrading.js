@@ -422,17 +422,33 @@ const TradeRow = ({ trade, onViewSentiment }) => {
   
   const exitReasonBadge = isComplete ? getExitReasonBadge(trade.exit_reason) : null;
   
+  // Determine status badge based on P&L outcome
+  const getStatusBadge = () => {
+    if (isEntry) {
+      return { text: 'OPEN', color: 'text-blue-400', bg: 'bg-blue-500/20' };
+    }
+    // For closed trades, show TP/SL/FLAT based on actual P&L
+    if (pnl > 0) {
+      return { text: 'TP', color: 'text-green-400', bg: 'bg-green-500/20', title: 'Take Profit' };
+    } else if (pnl < 0) {
+      return { text: 'SL', color: 'text-red-400', bg: 'bg-red-500/20', title: 'Stop Loss' };
+    } else {
+      return { text: 'FLAT', color: 'text-white/60', bg: 'bg-white/10', title: 'Break Even' };
+    }
+  };
+  
+  const statusBadge = getStatusBadge();
+  
   return (
     <tr className="border-b border-white/5 hover:bg-white/5">
       <td className="py-3 px-4">
         <div className="flex items-center gap-1">
-          {isEntry ? (
-            <span className="text-xs px-2 py-1 rounded font-medium bg-blue-500/20 text-blue-400">OPEN</span>
-          ) : (
-            <span className={`text-xs px-2 py-1 rounded font-medium ${isProfit ? 'bg-green-500/20 text-green-400' : pnl < 0 ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'}`}>
-              {exitReasonBadge ? exitReasonBadge.text : 'CLOSED'}
-            </span>
-          )}
+          <span 
+            className={`text-xs px-2 py-1 rounded font-medium ${statusBadge.bg} ${statusBadge.color}`}
+            title={statusBadge.title}
+          >
+            {statusBadge.text}
+          </span>
           {isEntry && expiryBadge && (
             <span className={`text-xs px-1.5 py-0.5 rounded ${expiryBadge.bg} ${expiryBadge.color}`} title={`Expires in ${expiryBadge.text}`}>
               ⏱️{expiryBadge.text}
