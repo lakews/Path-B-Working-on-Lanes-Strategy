@@ -125,7 +125,7 @@ class PaperTrader:
         self.min_liquidity_for_full_size = 10000.0  # Volume needed for full position
         
         # Strategy selection thresholds (configurable via UI)
-        self.volatility_threshold = 0.05           # Threshold for volatility strategy
+        self.volatility_threshold = 0.06           # Threshold for volatility strategy (raised to 6% to capture more Delta Neutral)
         self.sentiment_strength_threshold = 0.25   # Threshold for alpha directional
         self.sharp_alignment_threshold = 0.8       # Threshold for arbitrage
         self.delta_neutral_price_min = 0.35        # Min price for delta neutral
