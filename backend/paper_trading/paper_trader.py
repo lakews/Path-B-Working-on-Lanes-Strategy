@@ -1008,9 +1008,16 @@ class PaperTrader:
             # Extreme prices (near 0 or 1) = low volatility (resolved markets)
             # Mid-range prices with high volume = high volatility
             price_uncertainty = 1 - abs(yes_price - 0.5) * 2  # 0 at extremes, 1 at 0.5
-            volume_factor = min(1.0, volume_24h / 1000000) if volume_24h > 0 else 0  # Normalize by $1M
-            volatility = (price_uncertainty * 0.5 + spread * 5 + volume_factor * 0.3)
-            volatility = max(0.01, min(0.20, volatility))  # Clamp 1%-20%
+            volume_factor = min(1.0, volume_24h / 5000000) if volume_24h > 0 else 0  # Normalize by $5M (higher threshold)
+            spread_volatility = min(0.05, spread * 2)  # Cap spread contribution at 5%
+            
+            # Weighted volatility calculation - more balanced
+            volatility = (
+                price_uncertainty * 0.04 +  # 0-4% contribution from price uncertainty
+                spread_volatility +          # 0-5% from spread
+                volume_factor * 0.03         # 0-3% from volume
+            )
+            volatility = max(0.01, min(0.15, volatility))  # Clamp 1%-15%
             
             # SENTIMENT: Derive from price - price > 0.5 means market is bullish on YES
             # Also factor in recent volume direction if available
