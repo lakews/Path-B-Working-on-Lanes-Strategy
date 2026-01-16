@@ -1193,7 +1193,10 @@ const PaperTrading = () => {
               <span className="text-sm text-white/60">P&L Distribution (Live Session)</span>
               <ResetButton onClick={handleResetLiveSession} label="Reset" />
             </div>
-            <PnLDistributionChart data={status?.returns_distribution} title="Live Session P&L Distribution" />
+            <PnLDistributionChart 
+              data={status?.returns_distribution?.bins?.length > 0 ? status?.returns_distribution : status?.unrealized_distribution} 
+              title={status?.returns_distribution?.bins?.length > 0 ? "Realized P&L Distribution" : "Unrealized P&L Distribution (Open Positions)"} 
+            />
           </div>
 
           {/* Open Positions */}
