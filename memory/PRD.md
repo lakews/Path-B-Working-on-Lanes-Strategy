@@ -8,12 +8,13 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **AI/ML Models**: Volatility Prediction, Sentiment Fusion, Bayesian Outlier Detection, Sharp Trader Detection, Kelly-Sharpe Optimizer
 - **Trading Strategies**: Delta-Neutral Market Making, Volatility Exploitation, Alpha-Directional, Multi-Market Arbitrage
 - **Performance**: <100ms execution latency, <50ms ML inference, 500+ trades per 10 minutes (configurable)
-- **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit
+- **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **configurable exit parameters**
 
-## Current Status (January 15, 2026)
+## Current Status (January 16, 2026)
 - **Live Data**: ✅ Working - Uses Polymarket Gamma API for real market data
 - **Paper Trading**: ✅ Working - Position sizing fixed, trades executing correctly
 - **UI/UX**: ✅ Improved - Paper Trading redesigned with totals, reset buttons, P&L distribution charts
+- **Exit Parameters**: ✅ NEW - Configurable Take Profit, Stop Loss, Max Hold Time per strategy
 - **Production Deployment**: ⚠️ Blocked - ML dependencies (TensorFlow, PyTorch, Transformers) not deployable on Emergent
 
 ## Tech Stack
@@ -23,6 +24,30 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Deployment**: AWS EC2 with Terraform IaC
 
 ## What's Been Implemented
+
+### January 16, 2026 - Session 22 (Configurable Exit Parameters + Cumulative Stats Reset)
+
+- ✅ **NEW: Configurable Exit Parameters** (`/app/frontend/src/pages/Configuration.js`, `/app/backend/server.py`, `/app/backend/paper_trading/paper_trader.py`)
+  - **Feature**: Per-strategy configuration of Take Profit, Stop Loss, and Max Hold Time
+  - **UI**: New "Exit Parameters" tab in Configuration page
+    - Sliders for each parameter (TP: 1-20%, SL: -1 to -20%, MaxHrs: 1-48h)
+    - Preset buttons: Conservative, Moderate, Aggressive
+    - Info box explaining how exit parameters work
+  - **Backend**: 
+    - Added `StrategyExitParams` model and `exit_params` to `TradingConfig`
+    - GET /api/config returns exit_params merged with defaults
+    - POST /api/config/update saves exit_params to MongoDB
+    - Paper trader loads exit_params from DB (instead of hardcoded values)
+  - **Default Values**:
+    - Delta-Neutral: TP=2%, SL=-2%, 4h
+    - Volatility: TP=5%, SL=-5%, 8h
+    - Alpha-Directional: TP=8%, SL=-5%, 12h
+    - Arbitrage: TP=3%, SL=-3%, 6h
+  - **Test Suite**: 9/9 tests passed (`/app/test_reports/iteration_17.json`)
+
+- ✅ **Cumulative Stats Reset** - Cleared buggy historical P&L data from previous sessions
+
+- ✅ **P&L Distribution Chart Fix** - Shows unrealized P&L when no realized trades exist
 
 ### January 15, 2026 - Session 21 (P0 Fix: Position Sizing Too Aggressive + P&L Calculation Bug)
 
