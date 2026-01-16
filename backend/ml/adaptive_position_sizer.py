@@ -320,9 +320,10 @@ class AdaptivePositionSizer:
         sharp_alignment = signals.get('sharp_alignment', 0.5)
         price_uncertainty = signals.get('price_uncertainty', 0.5)
         
-        # Strong signals = larger position
+        # Strong signals = larger position, weak signals = smaller
+        # More variation: wider range to create position diversity
         signal_strength = (sentiment_strength * 0.3 + sharp_alignment * 0.4 + (1 - price_uncertainty) * 0.3)
-        signal_mult = 0.7 + (signal_strength * 0.6)  # Range: 0.7 to 1.3
+        signal_mult = 0.6 + (signal_strength * 0.8)  # Range: 0.6 to 1.4 (wider than before)
         
         # ========== COMBINE FACTORS ==========
         # Use geometric mean for more balanced combination (prevents one factor from dominating)
@@ -339,12 +340,14 @@ class AdaptivePositionSizer:
         # ========== CALCULATE BASE POSITION ==========
         # Adaptive base: blend Kelly, max position, and signal-adjusted base
         if kelly_enabled and kelly_position > min_trade_size:
-            # Kelly has meaningful data - weight it heavily
-            base_position = kelly_position
+            # Kelly has meaningful data - use it with signal adjustment
+            # Vary position based on signal strength even with Kelly
+            kelly_signal_adj = 0.7 + (signal_strength * 0.6)  # 0.7-1.3x Kelly based on signals
+            base_position = kelly_position * kelly_signal_adj
         else:
             # Kelly is too conservative - use signal-adjusted base
             # Higher signals = closer to max position, lower signals = closer to min
-            signal_pct = 0.3 + (signal_strength * 0.4)  # 30-70% of max based on signals
+            signal_pct = 0.3 + (signal_strength * 0.5)  # 30-80% of max based on signals
             base_position = max_position_usd * signal_pct
         
         # Apply combined multiplier
