@@ -153,7 +153,21 @@ const Configuration = () => {
         volatility_exploitation: { take_profit: 0.05, stop_loss: -0.05, max_hours: 8 },
         alpha_directional: { take_profit: 0.08, stop_loss: -0.05, max_hours: 12 },
         arbitrage: { take_profit: 0.03, stop_loss: -0.03, max_hours: 6 }
-      }
+      },
+      asset_class_exit_multipliers: {
+        crypto: { tp_mult: 1.5, sl_mult: 1.3, time_mult: 0.5 },
+        politics: { tp_mult: 1.2, sl_mult: 1.0, time_mult: 1.5 },
+        sports: { tp_mult: 1.0, sl_mult: 0.8, time_mult: 0.25 },
+        finance: { tp_mult: 0.8, sl_mult: 0.8, time_mult: 1.0 },
+        entertainment: { tp_mult: 1.0, sl_mult: 1.0, time_mult: 1.0 },
+        science: { tp_mult: 1.0, sl_mult: 1.0, time_mult: 2.0 }
+      },
+      min_kelly_fraction: 0.10,
+      max_kelly_fraction: 0.50,
+      min_position_size: 5,
+      min_liquidity_for_full_size: 10000,
+      alerts_enabled: false,
+      alert_volume_threshold: 2.0
     });
     toast.info('Reset to defaults');
   };
