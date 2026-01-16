@@ -939,6 +939,13 @@ const PaperTrading = () => {
         trades={sessionTradesModal.trades}
         onClose={() => setSessionTradesModal({ isOpen: false, session: null, trades: [] })}
       />
+      
+      {/* Sentiment Analysis Modal */}
+      <SentimentModal
+        isOpen={sentimentModal.isOpen}
+        trade={sentimentModal.trade}
+        onClose={() => setSentimentModal({ isOpen: false, trade: null })}
+      />
 
       {/* Header */}
       <div className="rounded-xl bg-slate-900/50 border border-white/10 overflow-hidden">
