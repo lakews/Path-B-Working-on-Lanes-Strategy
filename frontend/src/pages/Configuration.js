@@ -1084,6 +1084,7 @@ const Configuration = () => {
               {STRATEGIES.map((strategy) => {
                 const isEnabled = config.enabled_strategies?.includes(strategy.id);
                 const Icon = strategy.icon;
+                const exitParams = config.exit_params?.[strategy.id] || {};
                 return (
                   <div
                     key={strategy.id}
@@ -1113,7 +1114,9 @@ const Configuration = () => {
                           </div>
                         </div>
                         <p className="text-xs text-white/50 mt-1">{strategy.description}</p>
-                        <div className="flex items-center gap-4 mt-2">
+                        
+                        {/* Risk and Return Row */}
+                        <div className="flex items-center gap-3 mt-2">
                           <span className={`text-xs px-2 py-0.5 rounded ${
                             strategy.risk === 'Low' ? 'bg-green-500/20 text-green-400' :
                             strategy.risk === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -1121,7 +1124,30 @@ const Configuration = () => {
                           }`}>
                             {strategy.risk} Risk
                           </span>
-                          <span className="text-xs text-white/40">Expected: {strategy.expectedReturn}</span>
+                          <span className="text-xs text-white/40">Return: {strategy.expectedReturn}</span>
+                        </div>
+                        
+                        {/* Strategy Details (shown when enabled) */}
+                        {isEnabled && (
+                          <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-xs">
+                            <div className="text-center">
+                              <div className="text-green-400 font-semibold">+{((exitParams.take_profit || 0.05) * 100).toFixed(0)}%</div>
+                              <div className="text-white/40">TP</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-red-400 font-semibold">{((exitParams.stop_loss || -0.05) * 100).toFixed(0)}%</div>
+                              <div className="text-white/40">SL</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-blue-400 font-semibold">{exitParams.max_hours || 6}h</div>
+                              <div className="text-white/40">Max</div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Best For tooltip */}
+                        <div className="mt-2 text-xs text-white/30 italic">
+                          Best for: {strategy.bestFor}
                         </div>
                       </div>
                     </div>
