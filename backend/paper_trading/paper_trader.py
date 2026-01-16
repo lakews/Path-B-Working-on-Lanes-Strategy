@@ -574,6 +574,24 @@ class PaperTrader:
             # Determine strategy based on signals
             strategy = self._determine_strategy(signals, rl_action, market_data)
             
+            # TIME-TO-EXPIRY CHECK: Adjust or skip based on expiry proximity
+            expiry_info = self._calculate_time_to_expiry(market_data)
+            
+            # Check if we should enter at all based on expiry
+            if not expiry_info.get('should_enter', True):
+                question = market_data.get('question', '')[:50]
+                logger.debug(f"Skipping {market_id[:16]}: {expiry_info.get('urgency')} - {expiry_info.get('expiry_label')} - {question}")
+                return
+            
+            # Check strategy-specific expiry rules
+            strategy_expiry = self._should_strategy_trade_near_expiry(strategy, expiry_info, rl_confidence)
+            if not strategy_expiry.get('should_trade', True):
+                logger.debug(f"Skipping {market_id[:16]}: {strategy} blocked near expiry - {strategy_expiry.get('reason')}")
+                return
+            
+            # Get expiry-adjusted size multiplier
+            expiry_size_mult = strategy_expiry.get('size_multiplier', 1.0)
+            
             # ADAPTIVE POSITION SIZING - considers liquidity, volume, Kelly, RL confidence
             # Uses self.kelly_fraction and self.kelly_enabled from user config
             sizing_result = self._calculate_position_size(
@@ -590,7 +608,8 @@ class PaperTrader:
                 logger.debug(f"Skipping {market_id[:16]}: position sizing rejected")
                 return
             
-            position_size = sizing_result.get('position_size', 0)
+            # Apply expiry size multiplier
+            position_size = sizing_result.get('position_size', 0) * expiry_size_mult
             
             # Minimum position size for HFT - $5 minimum
             min_position_size = 5
@@ -600,6 +619,17 @@ class PaperTrader:
             
             # Determine side (YES/NO)
             side = 'YES' if 'BUY' in rl_action else 'NO'
+            
+            # Add expiry info to sizing breakdown for UI display
+            sizing_breakdown = sizing_result.get('sizing_breakdown', {})
+            sizing_breakdown['expiry_info'] = {
+                'hours_to_expiry': expiry_info.get('hours_to_expiry'),
+                'days_to_expiry': expiry_info.get('days_to_expiry'),
+                'urgency': expiry_info.get('urgency'),
+                'expiry_label': expiry_info.get('expiry_label'),
+                'size_multiplier': expiry_size_mult,
+                'strategy_reason': strategy_expiry.get('reason')
+            }
             
             # Execute paper trade with sizing breakdown for learning
             await self._execute_paper_entry(
