@@ -14,81 +14,106 @@ The user wants to build APEX TRADER, a complete, production-ready, end-to-end AI
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a nearly feature-complete algorithmic trading bot for Polymarket. In this session, the agent has made the system highly configurable, allowing the user to control almost every trading parameter through the UI, including:
-- Strategy-specific exit parameters (Take Profit, Stop Loss, Max Hold Time).
-- Advanced position sizing (Kelly Criterion bounds, minimum position size).
-- Asset-class-specific risk multipliers.
-- Real-time market alerts (via WebSocket).
+The application is a nearly feature-complete algorithmic trading bot for Polymarket. This session involved intensive debugging and enhancement of the core trading logic.
 
-Several critical bugs were also addressed:
-1.  **Semantically Expired Markets:** A robust, two-layer filter now prevents trading on markets where the event date in the question text has passed, even if the official market  is in the future.
-2.  **Premature Take-Profit on 'NO' Positions:** A flaw in the P&L calculation logic for 'NO' trades was fixed, which previously caused positions to exit for tiny, incorrect gains.
-3.  **Position Size Diversity:** The agent adjusted capital allocation and sizing formulas to produce a wider and more meaningful range of trade sizes, moving away from a small, clustered range.
-4.  **Time-to-Expiry Logic:** The system is now expiry-aware, adjusting position sizes and strategies based on how close a market is to its deadline, and includes a safety net to auto-exit positions 1 hour before expiry.
+Key achievements include:
+-   **Advanced Position Sizing:** A complete rewrite of the adaptive position sizing module to use a Kelly Criterion + ATR (Average True Range) model. This fixed issues where trades were either all at the maximum or minimum size, and now produces a diverse range of position sizes based on volatility, spread, and signal strength.
+-   **Configurable Strategies:** The UI was enhanced with a Strategy Thresholds tab, allowing the user to configure thresholds for volatility, sentiment, and side selection (YES/NO), removing hardcoded values.
+-   **Robust Circuit Breaker:** The circuit breaker logic was fixed. It now monitors for drawdowns (including unrealized P&L) continuously every 5 seconds and successfully stops new entries when the configured limit is breached.
+-   **RL Engine Fix:** A critical bug preventing the Reinforcement Learning engine from learning was identified and fixed. The engine is now correctly storing experiences and updating its Q-table.
+-   **Risk-Adjusted Rewards:** The RL reward function was significantly improved to be risk-adjusted, rewarding Sharpe-like returns (P&L adjusted for volatility and drawdown) and intelligent, RL-initiated exits, rather than just raw P&L.
+-   **Bug Fixes:** Several other bugs were fixed, including a UI text truncation issue, low trade volume due to an incorrect confidence threshold, and incorrect status badge displays.
 
-The UI has been significantly enhanced with new configuration tabs and improved data presentation, including risk/reward metadata on strategies and expiry indicators on trades. Comprehensive documentation for configuration and strategies has also been created.
+The agent was in the middle of implementing a per-asset-class equity breakdown.
 
 **Last working item**:
--   **Last item agent was working:** The user reported a UI bug: in Trade History table status says sess. This indicates the Session column header or status text within the trade history is being truncated. The agent began investigating the relevant frontend component, , to identify the cause of the text cutoff.
+-   **Last item agent was working:** The user requested a feature to break down equity by asset class, with each class starting at zero before any trades. The agent began implementing this by adding initialization logic for  in  to set all enabled asset classes to zero at the start of a session.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** screenshot tool
+-   **Which testing method agent to use?** backend testing agent
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Truncated text in Trade History table (P0)**
--   **Issue 2: Volatility Exploitation strategy is never used (P1)**
+-   **Issue 1: Implement per-asset-class equity breakdown (P0)**
+-   **Issue 2: Position sizes are not reaching the configured max cap (P1)**
+-   **Issue 3: Delta Neutral strategy is capturing zero trades (P1)**
+-   **Issue 4: Balance trade distribution across strategies (P2)**
 
 Issues Detail:
--   **Issue 1: Truncated text in Trade History table**
-    -   **Attempted fixes:** None yet. The agent was in the initial phase of investigation.
+-   **Issue 1: Implement per-asset-class equity breakdown**
+    -   **Attempted fixes:** The agent has added the initialization logic in  to create  and set all enabled classes to 0.
     -   **Next debug checklist**:
-        1.  Inspect the JSX and CSS for the  and parent table components in .
-        2.  Check for restrictive , , , or  properties on the column header or cell that could be causing the text to be cut off.
-        3.  Verify if the issue is in the  component or the main  page's history table.
-        4.  Adjust the styling to allow the full text (Session or the session ID) to be visible.
-    -   **Why fix this issue and what will be achieved with the fix?** To fix a minor but confusing UI display bug, ensuring all table headers and data are fully readable.
+        1.  Verify the logic in  that adds the  to the correct  in .
+        2.  Update the  endpoint to return the  dictionary.
+        3.  Add a new component to the  UI to display the equity breakdown for each asset class.
+    -   **Why fix this issue and what will be achieved with the fix?** To provide the user with a more granular view of performance, showing which asset classes are most profitable or risky.
     -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** frontend
+    -   **Should Test frontend/backend/both after fix?** both
     -   **Blocked on other issue:** None
 
--   **Issue 2: Volatility Exploitation strategy is never used**
-    -   **Attempted fixes:** None. This was identified through analysis but not yet approved for fixing.
+-   **Issue 2: Position sizes are not reaching the configured max cap**
+    -   **Attempted fixes:** The agent identified that the  multiplier, which is a simple product of four different risk factors (spread, liquidity, strategy, asset), is penalizing positions too aggressively, causing them to cap out around 4 instead of the configured 40 max.
     -   **Next debug checklist**:
-        1.  Review the strategy selection logic in  within .
-        2.  The current logic prioritizes Alpha Directional based on a broad sentiment score check, which catches almost all trades before the Volatility Exploitation check is reached.
-        3.  Propose and implement one of the following fixes:
-            -   **Reprioritize:** Move the volatility check *before* the general Alpha-Directional sentiment check.
-            -   **Adjust Thresholds:** Lower the volatility trigger threshold from  to a more realistic value like  based on observed market data.
-    -   **Why fix this issue and what will be achieved with the fix?** To enable one of the four core trading strategies, diversifying the bot's behavior and allowing it to capitalize on high-volatility market conditions as intended.
+        1.  In , modify the calculation of .
+        2.  Implement the agent's suggestion to use the geometric mean of the risk factors instead of the direct product. This will be less punitive. ().
+        3.  Alternatively, increase the base strategy multipliers.
+    -   **Why fix this issue and what will be achieved with the fix?** To allow the bot to take larger positions when market conditions are favorable, potentially increasing profitability and utilizing the full configured risk budget.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** backend
     -   **Blocked on other issue:** None
 
+-   **Issue 3: Delta Neutral strategy is capturing zero trades**
+    -   **Attempted fixes:** The agent diagnosed that all recent market volatilities have been above the configured  threshold for this strategy.
+    -   **Next debug checklist**:
+        1.  Update the default value for  in the database via a script or let the user do it via the UI.
+        2.  The user should change the Volatility Exploitation Threshold in the  >  tab from 4% to 6%. This will allow the Delta Neutral strategy (which requires volatility *below* this threshold) to capture trades in the 4-6% volatility range.
+    -   **Why fix this issue and what will be achieved with the fix?** To enable one of the core trading strategies, increasing strategy diversity and allowing the bot to trade in low-to-medium volatility, mid-price-range markets.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** backend
+    -   **Blocked on other issue:** None
+
+-   **Issue 4: Balance trade distribution across strategies**
+    -   **Attempted fixes:** The agent explained that the Alpha Directional strategy dominates because its sentiment check () happens early in the logic and catches most trades. Raising the Delta Neutral threshold (Issue 3) will help alleviate this.
+    -   **Next debug checklist**:
+        1.  Implement the fix for Issue 3.
+        2.  Monitor the new distribution of trades across strategies.
+        3.  If Alpha still dominates, consider adjusting the Sentiment Strength Threshold on the UI to be more selective (e.g., from 25% to 35%).
+    -   **Why fix this issue and what will be achieved with the fix?** To ensure the bot utilizes its full range of strategies, adapting its behavior to different market conditions as designed, rather than relying on a single dominant strategy.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** backend
+    -   **Blocked on other issue:** Issue 3
+
 **In progress Task List**:
--   None.
+-   **Task 1: Complete per-asset-class equity breakdown (P0)**
+    -   **Where to resume:** The backend logic is partially done. The agent needs to verify the P&L tracking, expose the data via the API, and then build the frontend component to display it.
+    -   **What will be achieved with this?** A UI component showing the P&L for each asset class ('finance', 'politics', 'crypto', etc.).
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** both
+    -   **Blocked on something:** None
 
 **Upcoming and Future Tasks**
+-   **Upcoming Tasks:**
+    -   **(P2) Revisit Circuit Breaker force-close:** The user decided against force-closing all positions when the circuit breaker is hit, but wanted to revisit this decision later.
 -   **Future Tasks:**
-    -   **Task 1 (P3):** Address AWS deployment blockers by removing or replacing heavy ML dependencies (, ).
-    -   **Task 2 (Low Priority):** Fix non-blocking ESLint and chart width warnings in the frontend.
+    -   **(P3) AWS Deployment:** Address deployment blockers by removing or replacing heavy ML dependencies (, ).
+    -   **(P3) Adaptive Sentiment Thresholds:** Implement a performance tracker that auto-adjusts the bullish/bearish sentiment thresholds based on win rates in different sentiment bands.
+    -   **(P3) Advanced RL Improvements:** Implement further RL enhancements like expanding state features, adaptive epsilon decay, and prioritized experience replay.
+    -   **(Low Priority):** Fix non-blocking ESLint and chart width warnings in the frontend.
 
 **Completed work in this session**
--   Verified P&L chart fix (showing unrealized P&L).
--   Reset cumulative P&L statistics to clear buggy historical data.
--   **Feature:** Implemented a fully configurable UI for strategy exit parameters (Take Profit, Stop Loss, Max Hold Time).
--   **Feature:** Implemented UI for Advanced Position Sizing (Kelly bounds, min size, liquidity threshold).
--   **Feature:** Implemented UI for Asset Class Exit Multipliers.
--   **Feature:** Implemented Real-Time Market Alerts via WebSockets, with a UI toggle.
--   **Bug Fix (Critical):** Prevented trading on expired markets by implementing a two-layer filter: one for the market's official  and a second, more robust filter that parses dates from the question text to catch semantically expired markets.
--   **Feature:** Implemented Time-to-Expiry awareness, which adjusts sizing/strategy and adds a safety net to auto-exit positions nearing their deadline.
--   **Bug Fix (Critical):** Corrected the P&L calculation for 'NO' positions during exit evaluation, which was causing premature take-profits. Verified the fix by monitoring live trades.
--   **Enhancement:** Improved position size diversity by increasing capital and adjusting sizing formulas.
--   **Enhancement:** Refined the Strategy Tuning UI to show more metadata (risk, return, etc.).
--   **Docs:** Created comprehensive documentation for all configuration options and trading strategies.
--   **Cleanup:** Removed now-unused trading parameters from the  file.
+-   **Bug Fix:** Fixed a UI bug where the trade history status was truncated to sess.
+-   **UI Enhancement:** Trade history status badges now correctly show TP (profit), SL (loss), FLAT (break-even), or OPEN.
+-   **Feature:** Created a Strategy Thresholds UI to make volatility, sentiment strength, and other strategy parameters configurable.
+-   **Feature:** Created a Sentiment → Side Thresholds UI to make bullish/bearish cutoffs configurable.
+-   **Major Refactor (Position Sizing):** Completely rewrote the adaptive sizing logic to use a Kelly Criterion + ATR model, resulting in a healthy variety of trade sizes.
+-   **Bug Fix (Circuit Breaker):** Fixed the circuit breaker to monitor drawdown continuously using both realized and unrealized P&L.
+-   **Bug Fix (RL Engine):** Fixed a critical bug preventing the RL engine from learning by correcting the key used to store pending actions.
+-   **Feature (RL Reward):** Implemented a sophisticated, risk-adjusted reward function to improve RL training.
+-   **Bug Fix (Trade Volume):** Restored trade volume by lowering the RL confidence threshold from an overly aggressive 0.15 back to 0.10.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1:** Heavy ML Dependencies (, , usage: transformers <command> [<args>]
@@ -105,76 +130,86 @@ options:
 -   **Issue 2:** Non-blocking ESLint and chart width warnings persist in the frontend browser console.
 
 **Known issue recurrence from previous fork**
--   None. The paper trading execution failure from the previous fork was a different issue. A new bug related to trading on expired markets was found and fixed in this session.
+-   None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Semantic Date Parsing:** To fix the expired markets bug, the agent implemented a regex-based function in  to extract dates directly from a market's question string, providing a safeguard against misleading  values from the API.
--   **Differentiated P&L Formulas:** The agent identified and fixed a critical bug where the P&L formula for  positions was incorrect during exit *evaluation*, while being correct during final P&L *calculation*. The fix involved applying the correct  formula in the  function.
--   **Time-Decay Logic:** The system now incorporates time-to-expiry as a core factor, adjusting strategies (e.g., boosting volatility plays near expiry) and position sizing (scaling down as expiry approaches).
--   **Centralized Configuration:** All major trading parameters are now managed via the database through API endpoints and a comprehensive React UI, removing hardcoded values from the Python code.
+-   **Kelly+ATR Position Sizing:** A hybrid model that combines the Kelly Criterion (for optimal fraction of capital) with an ATR-like volatility component and spread-based cost adjustment to determine trade size.
+-   **Risk-Adjusted Reward Shaping:** The RL reward function was rewritten to incorporate not just P&L, but also drawdown, hold time (for RL-initiated exits), exit reasons, and volatility, creating a more sophisticated learning signal similar to a Sharpe Ratio.
+-   **Continuous Circuit Breaker:** The circuit breaker was moved from a post-trade check to a continuous monitoring loop that checks the combined (realized + unrealized) P&L every 5 seconds, making it much more effective.
+-   **Sentiment Fusion Framework:** The system uses a 4-layer weighted model to determine market sentiment, and its trigger thresholds are now configurable.
 
 **key DB schema**
--   ****: The  field is now populated on trade closure (e.g., 'tp', 'sl', 'time_limit', 'expiry_safety_exit'). The  dictionary is added on trade entry.
--   ****: This collection in MongoDB is now the source of truth, storing a large document with all user-configurable parameters, from Kelly fractions to strategy-specific exit params.
+-   ****: The  dictionary is now correctly saved with each trade. The position dictionary now includes  and .
+-   ****: Expanded to store  (e.g., ) and  (e.g., ).
+-   ****: This collection is now being correctly written to and read from, enabling the RL engine to learn from closed trades.
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   : Contains the UI for trade history where the current bug exists. Also contains UI for expiry badges and exit reasons.
--   : The core engine file. Contains the pending issue with strategy selection logic and the recent critical bug fixes for expired markets and 'NO' position P&L.
--   : The main configuration UI.
--   : The FastAPI server file containing all API endpoints for configuration.
+-   : The core engine file, heavily modified for all major logic changes.
+-   : Contains the new Kelly+ATR position sizing model.
+-   : Contains the RL logic, where the learning bug was fixed.
+-   : The FastAPI server, modified for new configuration endpoints.
+-   : The main configuration UI, with new tabs and sliders.
+-   : The main monitoring UI.
 
 **Areas that need refactoring**:
--   The strategy selection logic in  within  needs to be refactored to allow the Volatility Exploitation strategy to be triggered.
+-   The  calculation in  should be changed from a direct product to a geometric mean to be less punitive on position sizes.
+-   The RL engine itself is a basic Q-table. For future scalability, it could be refactored into a Deep Q-Network (DQN).
 
 **key api endpoints**
--   : Now returns a comprehensive configuration object including sizing parameters, exit parameters, asset multipliers, and alert settings.
--   : Updates the centralized configuration in the database.
--   : New WebSocket endpoint for broadcasting real-time market alerts.
+-   : Endpoint was expanded to handle updates to  and .
+-   : Updated to return more detailed drawdown information.
 
 **Critical Info for New Agent**
--   The immediate task is a minor UI bug fix in the trade history table ().
--   The next most important task is to fix the strategy selection logic in  so that the Volatility Exploitation strategy can be triggered. It is currently being pre-empted by other strategies.
--   The system has undergone significant changes to make it highly configurable. The source of truth for all trading parameters is the  collection in MongoDB, managed via the  page. Do not look for hardcoded values in the Python code.
--   Two very subtle but critical bugs have been fixed: 1) trading on semantically expired markets, and 2) incorrect P&L calculation for 'NO' positions during exit checks. Be aware of this context if similar issues arise.
+-   The immediate task is to complete the per-asset-class equity breakdown feature.
+-   The next set of tasks involves tuning the trading strategies: fixing position sizing to allow for larger trades and enabling the Delta Neutral strategy by adjusting its volatility threshold.
+-   The user is highly engaged and technically adept. Provide clear, data-driven explanations for system behavior.
+-   The RL engine was just fixed and is now actively learning. Its decisions and the resulting trade distribution will evolve. Monitor its performance.
+-   The NO side dominance was investigated and found to be a reflection of bearish market data, not a bug, after the sentiment-based side selection was implemented.
 
 **documents and test reports created in this job**
--   
--   
--   
--   
 -    (updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks why trade sizes are all clustered in the 0s. **Status: Completed** (Agent analyzed, proposed fixes, and implemented them).
-2.  **User:** Approves all suggested fixes for position sizing. **Status: Completed**.
-3.  **User:** Reports that a trade on an expired market (Jan 15) happened again. **Status: Completed** (Agent debugged and found the root cause was a semantically expired market, then fixed it).
-4.  **User:** Asks if recent ML parameter changes will affect its learning. **Status: Completed** (Agent explained why it would not).
-5.  **User:** Asks why no volatility trades are being captured. **Status: Completed** (Agent analyzed and found the root cause in the strategy selection priority; fix is pending).
-6.  **User:** Reports a trade taking profit at a tiny +0.05%. **Status: Completed** (Agent found a critical P&L calculation bug for 'NO' positions and fixed it).
-7.  **User:** Approves the fix for the premature take-profit bug. **Status: Completed**.
-8.  **User:** Asks the agent to monitor the performance of 'NO' positions after the fix. **Status: Completed** (Agent monitored and confirmed the fix was working).
-9.  **User:** Reports a new UI bug: in Trade History table status says sess. **Status: In Progress**.
-10. **Pending User Message:** None.
+1.  **User:** Asks why RL is not learning. **Status: Completed** (Agent investigated, found the root cause was an incorrect key uid=0(root) gid=0(root) groups=0(root) vs , and fixed it).
+2.  **User:** Asks for more RL improvements. **Status: Completed** (Agent suggested several, and implemented risk-adjusted reward shaping).
+3.  **User:** Asks if rewarding quick exits on Take Profit makes sense. **Status: Completed** (Agent agreed it was a flaw and fixed the logic to only reward quick exits for RL-initiated reversals).
+4.  **User:** Asks if the bot can exit via RL. **Status: Completed** (Agent explained the  mechanism exists but is rarely triggered).
+5.  **User:** Asks why so few trades are being captured. **Status: Completed** (Agent identified an overly aggressive confidence threshold of 0.15 was blocking trades).
+6.  **User:** Asks for a recommendation on the confidence threshold. **Status: Completed** (Agent recommended lowering it to 0.10).
+7.  **User:** Scolds agent for making the change before getting approval. **Status: Completed** (Agent apologized and reverted the change).
+8.  **User:** Asks again for a suggestion on the confidence threshold. **Status: Completed** (Agent formally suggested lowering it to 0.10, explaining the reasoning).
+9.  **User:** Approves the change to the confidence threshold. **Status: Completed** (Agent implemented the fix, and trade volume was restored).
+10. **User:** Asks for asset class equity to have a breakdown and start at zero. **Status: In Progress**.
 
 **Project Health Check:**
--   **Broken:** Minor UI text truncation bug.
--   **Mocked:** Finnhub and SendGrid integrations still require user-provided API keys to be functional.
--   **Deployment Blocker:** Heavy ML dependencies (, ) are still present.
+-   **Broken:** None, but several core parameters require tuning for optimal performance.
+-   **Mocked:** Finnhub (external news) and SendGrid (email alerts) integrations are present but require user-provided API keys to be functional.
+-   **Deployment Blocker:** Heavy ML dependencies (, , usage: transformers <command> [<args>]
+
+positional arguments:
+  {chat,convert,download,env,run,serve,add-new-model-like,add-fast-image-processor}
+                        transformers command helpers
+    convert             CLI tool to run convert model from original author
+                        checkpoints to Transformers PyTorch checkpoints.
+    run                 Run a pipeline through the CLI
+
+options:
+  -h, --help            show this help message and exit) are still in the environment and will prevent standard deployment.
 
 **3rd Party Integrations**
 -   **Polymarket:** Integrated with the live Gamma API.
 -   **OpenAI GPT-4o-mini:** Integrated via  for sentiment analysis. Uses Emergent LLM Key.
--   **Finnhub:** Infrastructure in place for news/social sentiment, but requires a user-provided API key to be functional.
+-   **Finnhub:** Infrastructure in place for news/social sentiment, but requires a user-provided API key.
 -   **SendGrid:** Infrastructure in place for email alerts, but requires a user-provided API key.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES (Twice, for major configuration feature additions).
+-   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** []
 -   **Known regressions:** None.
@@ -184,4 +219,6 @@ options:
 -   **Password:** 
 
 **What agent forgot to execute**
--   The agent identified the reason for the Volatility Exploitation strategy not being used but has not yet implemented the fix, as it requires user confirmation which was not explicitly given for that specific issue.</analysis>
+-   The agent identified several necessary tuning adjustments based on user feedback but has not yet implemented them, as they were superseded by more critical debugging tasks. These are now captured in the All Pending/In progress Issue list:
+    -   Adjusting the  multiplier to enable larger position sizes.
+    -   Raising the  to enable the Delta Neutral strategy.</analysis>
