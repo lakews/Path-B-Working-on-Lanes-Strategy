@@ -404,6 +404,23 @@ const TradeRow = ({ trade, onViewSentiment }) => {
   
   const expiryBadge = getExpiryBadge();
   
+  // Format exit reason for display
+  const getExitReasonBadge = (reason) => {
+    if (!reason) return null;
+    const reasonMap = {
+      'take_profit': { text: 'TP', color: 'text-green-400', bg: 'bg-green-500/20', title: 'Take Profit Hit' },
+      'stop_loss': { text: 'SL', color: 'text-red-400', bg: 'bg-red-500/20', title: 'Stop Loss Hit' },
+      'time_limit': { text: '⏱️', color: 'text-yellow-400', bg: 'bg-yellow-500/20', title: 'Max Hold Time' },
+      'rl_signal_reversal': { text: 'RL', color: 'text-purple-400', bg: 'bg-purple-500/20', title: 'RL Signal Reversal' },
+    };
+    if (reason.startsWith('expiry_safety_exit')) {
+      return { text: '⚠️EXP', color: 'text-orange-400', bg: 'bg-orange-500/20', title: 'Auto-Exit: Approaching Expiry' };
+    }
+    return reasonMap[reason] || { text: reason.slice(0, 4), color: 'text-white/60', bg: 'bg-white/10', title: reason };
+  };
+  
+  const exitReasonBadge = isComplete ? getExitReasonBadge(trade.exit_reason) : null;
+  
   return (
     <tr className="border-b border-white/5 hover:bg-white/5">
       <td className="py-3 px-4">
@@ -412,7 +429,7 @@ const TradeRow = ({ trade, onViewSentiment }) => {
             <span className="text-xs px-2 py-1 rounded font-medium bg-blue-500/20 text-blue-400">OPEN</span>
           ) : (
             <span className={`text-xs px-2 py-1 rounded font-medium ${isProfit ? 'bg-green-500/20 text-green-400' : pnl < 0 ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'}`}>
-              COMPLETE
+              {exitReasonBadge ? exitReasonBadge.text : 'CLOSED'}
             </span>
           )}
           {isEntry && expiryBadge && (
