@@ -910,6 +910,137 @@ const Configuration = () => {
         </div>
       )}
 
+      {/* Strategy Thresholds Tab */}
+      {activeTab === 'thresholds' && (
+        <div className="space-y-6">
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                <Crosshair className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Strategy Selection Thresholds</h3>
+                <p className="text-xs text-white/50">Configure when each strategy is triggered based on market signals</p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Volatility Threshold */}
+              <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-purple-400" />
+                    <span className="text-white font-medium">Volatility Exploitation Threshold</span>
+                  </div>
+                  <span className="text-purple-400 font-mono text-lg">{((config.volatility_threshold || 0.05) * 100).toFixed(0)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.volatility_threshold || 0.05) * 100} 
+                  onChange={(e) => setConfig({...config, volatility_threshold: parseFloat(e.target.value) / 100})} 
+                  className="w-full h-2 bg-white/10 rounded-lg accent-purple-500" 
+                  min="1" max="20" step="1" 
+                />
+                <p className="text-xs text-white/40 mt-2">Volatility above this triggers the Volatility Exploitation strategy (default: 5%)</p>
+              </div>
+
+              {/* Sentiment Strength Threshold */}
+              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-amber-400" />
+                    <span className="text-white font-medium">Sentiment Strength Threshold</span>
+                  </div>
+                  <span className="text-amber-400 font-mono text-lg">{((config.sentiment_strength_threshold || 0.25) * 100).toFixed(0)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.sentiment_strength_threshold || 0.25) * 100} 
+                  onChange={(e) => setConfig({...config, sentiment_strength_threshold: parseFloat(e.target.value) / 100})} 
+                  className="w-full h-2 bg-white/10 rounded-lg accent-amber-500" 
+                  min="5" max="50" step="1" 
+                />
+                <p className="text-xs text-white/40 mt-2">Sentiment divergence from 50% required for Alpha Directional (default: 25%)</p>
+              </div>
+
+              {/* Sharp Alignment Threshold */}
+              <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Scale className="w-4 h-4 text-emerald-400" />
+                    <span className="text-white font-medium">Sharp Alignment Threshold</span>
+                  </div>
+                  <span className="text-emerald-400 font-mono text-lg">{((config.sharp_alignment_threshold || 0.8) * 100).toFixed(0)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.sharp_alignment_threshold || 0.8) * 100} 
+                  onChange={(e) => setConfig({...config, sharp_alignment_threshold: parseFloat(e.target.value) / 100})} 
+                  className="w-full h-2 bg-white/10 rounded-lg accent-emerald-500" 
+                  min="50" max="95" step="1" 
+                />
+                <p className="text-xs text-white/40 mt-2">Sharp trader alignment required for Arbitrage strategy (default: 80%)</p>
+              </div>
+
+              {/* Delta Neutral Price Range */}
+              <div className="p-4 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <GitBranch className="w-4 h-4 text-cyan-400" />
+                  <span className="text-white font-medium">Delta-Neutral Price Range</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white/60">Min Price</span>
+                      <span className="text-cyan-400 font-mono">{((config.delta_neutral_price_min || 0.35) * 100).toFixed(0)}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={(config.delta_neutral_price_min || 0.35) * 100} 
+                      onChange={(e) => setConfig({...config, delta_neutral_price_min: parseFloat(e.target.value) / 100})} 
+                      className="w-full h-2 bg-white/10 rounded-lg accent-cyan-500" 
+                      min="10" max="45" step="1" 
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white/60">Max Price</span>
+                      <span className="text-cyan-400 font-mono">{((config.delta_neutral_price_max || 0.65) * 100).toFixed(0)}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={(config.delta_neutral_price_max || 0.65) * 100} 
+                      onChange={(e) => setConfig({...config, delta_neutral_price_max: parseFloat(e.target.value) / 100})} 
+                      className="w-full h-2 bg-white/10 rounded-lg accent-cyan-500" 
+                      min="55" max="90" step="1" 
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-white/40 mt-2">Price range for Delta-Neutral market making (default: 35%-65%)</p>
+              </div>
+            </div>
+
+            {/* Info Box */}
+            <div className="mt-6 rounded-xl bg-blue-500/10 border border-blue-500/20 p-4">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-blue-400 mt-0.5" />
+                <div>
+                  <h4 className="text-white font-medium mb-2">Strategy Selection Order</h4>
+                  <ol className="text-xs text-white/60 space-y-1 list-decimal list-inside">
+                    <li><span className="text-amber-400">Alpha Directional</span>: Extreme prices (&lt;10% or &gt;90%)</li>
+                    <li><span className="text-emerald-400">Arbitrage</span>: Sharp alignment above threshold</li>
+                    <li><span className="text-cyan-400">Delta-Neutral</span>: Mid-range price + low volatility</li>
+                    <li><span className="text-purple-400">Volatility Exploitation</span>: Volatility above threshold</li>
+                    <li><span className="text-amber-400">Alpha Directional</span>: Sentiment strength above threshold</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Advanced Position Sizing Tab */}
       {activeTab === 'advanced' && (
         <div className="space-y-6">
