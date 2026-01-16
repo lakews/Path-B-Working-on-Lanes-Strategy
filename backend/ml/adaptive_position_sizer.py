@@ -238,13 +238,16 @@ class AdaptivePositionSizer:
         Also considers action type (HOLD actions get smaller sizes).
         
         NOTE: Less aggressive dampening - RL confidence shouldn't block trades entirely.
+        Even low confidence (0.15) should still allow reasonable position sizes.
         """
-        # Base multiplier from confidence - higher floor (0.7 to 1.2)
-        base_mult = 0.7 + (rl_confidence * 0.5)  # Range: 0.7 to 1.2
+        # Base multiplier from confidence - higher floor to prevent over-dampening
+        # Old: 0.7 + (conf * 0.5) → conf=0.15 gives 0.775
+        # New: 0.85 + (conf * 0.3) → conf=0.15 gives 0.895 (less dampening)
+        base_mult = 0.85 + (rl_confidence * 0.3)  # Range: 0.85 to 1.15
         
         # Action-based adjustment
         if 'HOLD' in rl_action or 'WAIT' in rl_action:
-            base_mult *= 0.7  # Reduce if model suggests holding
+            base_mult *= 0.8  # Mild reduction if model suggests holding
         elif 'STRONG' in rl_action or 'LARGE' in rl_action:
             base_mult *= 1.2  # Increase for strong signals
         
