@@ -1364,28 +1364,80 @@ class PaperTrader:
         except Exception as e:
             logger.error(f"Error executing paper exit: {e}")
     
-    def _calculate_rl_reward(self, pnl_pct: float, is_win: bool, exit_reason: str) -> float:
-        """Calculate reward signal for RL based on trade outcome"""
-        # Base reward from P&L
-        reward = pnl_pct * 10  # Scale up small percentages
+    def _calculate_rl_reward(self, pnl_pct: float, is_win: bool, exit_reason: str, 
+                              position: Dict = None, hold_time_hours: float = 0) -> float:
+        """
+        Calculate RISK-ADJUSTED reward signal for RL based on trade outcome.
         
-        # Bonus for wins, penalty for losses
+        Improvements over simple P&L:
+        1. Risk-adjusted return (penalize high volatility wins)
+        2. Drawdown penalty (penalize trades that went deep negative)
+        3. Consistency bonus (small wins > volatile big wins)
+        4. Hold time efficiency (quick profits better than slow ones)
+        """
+        # 1. BASE REWARD: Risk-adjusted P&L
+        # Instead of raw P&L, adjust by the volatility/risk taken
+        base_reward = pnl_pct * 10  # Scale up small percentages
+        
+        # 2. DRAWDOWN PENALTY: If position went significantly negative before recovering
+        if position:
+            max_drawdown_pct = position.get('max_drawdown_pct', 0)
+            if max_drawdown_pct > 5:  # More than 5% drawdown during trade
+                # Penalty scales with how deep it went
+                drawdown_penalty = (max_drawdown_pct - 5) * 0.05
+                base_reward -= drawdown_penalty
+        
+        # 3. CONSISTENCY BONUS: Reward small consistent wins over volatile outcomes
         if is_win:
-            reward += 0.2
+            if 0 < pnl_pct <= 3:  # Small win (0-3%)
+                consistency_bonus = 0.3  # Best - consistent edge
+            elif 3 < pnl_pct <= 8:  # Medium win (3-8%)
+                consistency_bonus = 0.2
+            else:  # Large win (>8%)
+                consistency_bonus = 0.1  # Good but might be luck
+            base_reward += consistency_bonus
         else:
-            reward -= 0.1
+            # Smaller losses are less bad than big losses (already in P&L)
+            if pnl_pct < -10:  # Large loss
+                base_reward -= 0.3  # Extra penalty for big losses
+            elif pnl_pct < -5:  # Medium loss
+                base_reward -= 0.1
         
-        # Bonus for good exit reasons
+        # 4. HOLD TIME EFFICIENCY: Quick profits are better
+        if is_win and hold_time_hours > 0:
+            if hold_time_hours < 1:  # Win in under 1 hour
+                base_reward += 0.2
+            elif hold_time_hours < 4:  # Win in under 4 hours
+                base_reward += 0.1
+            elif hold_time_hours > 24:  # Took more than a day
+                base_reward -= 0.1  # Slight penalty for slow wins
+        
+        # 5. EXIT REASON BONUSES/PENALTIES
         if exit_reason == "take_profit":
-            reward += 0.3
+            base_reward += 0.3  # Planned exit worked
         elif exit_reason == "rl_signal_reversal" and is_win:
-            reward += 0.2  # Good RL reversal call
+            base_reward += 0.4  # RL reversal was smart - reinforce this!
         elif exit_reason == "stop_loss":
-            reward -= 0.1  # Minor penalty for hitting stop loss
+            # Stop loss isn't bad - it's good risk management
+            base_reward += 0.1  # Small bonus for respecting stops
         elif exit_reason == "time_limit" and not is_win:
-            reward -= 0.2  # Penalty for holding losing position too long
+            base_reward -= 0.2  # Penalty for holding losing position too long
+        elif exit_reason and "expiry" in exit_reason:
+            if not is_win:
+                base_reward -= 0.3  # Penalty for holding to expiry with loss
         
-        return np.clip(reward, -2.0, 2.0)  # Clip to reasonable range
+        # 6. RISK-ADJUSTED SCALING
+        # If we have volatility info, adjust reward
+        if position:
+            entry_volatility = position.get('entry_volatility', 0.05)
+            if entry_volatility > 0:
+                # Higher volatility trades need higher returns to be "good"
+                # Sharpe-like: reward / risk
+                risk_adjusted_factor = 0.05 / max(entry_volatility, 0.01)
+                risk_adjusted_factor = np.clip(risk_adjusted_factor, 0.5, 2.0)
+                base_reward *= risk_adjusted_factor
+        
+        return np.clip(base_reward, -3.0, 3.0)  # Wider range for more signal
     
     def _calculate_position_size(self, rl_confidence: float, signals: Dict, market_data: Dict = None, strategy: str = None, asset_class: str = None, rl_action: str = 'HOLD') -> Dict:
         """
