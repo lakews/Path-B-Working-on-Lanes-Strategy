@@ -1000,17 +1000,24 @@ async def get_config():
             # Strategies and asset classes
             "enabled_strategies": saved_config.get("enabled_strategies", user_config["enabled_strategies"]) if saved_config else user_config["enabled_strategies"],
             "enabled_asset_classes": saved_config.get("enabled_asset_classes", user_config["enabled_asset_classes"]) if saved_config else user_config["enabled_asset_classes"],
-            # Exit parameters per strategy (with defaults)
-            "exit_params": saved_config.get("exit_params", {
-                "delta_neutral": {"take_profit": 0.02, "stop_loss": -0.02, "max_hours": 4},
-                "volatility_exploitation": {"take_profit": 0.05, "stop_loss": -0.05, "max_hours": 8},
-                "alpha_directional": {"take_profit": 0.08, "stop_loss": -0.05, "max_hours": 12},
-                "arbitrage": {"take_profit": 0.03, "stop_loss": -0.03, "max_hours": 6}
-            }) if saved_config else {
-                "delta_neutral": {"take_profit": 0.02, "stop_loss": -0.02, "max_hours": 4},
-                "volatility_exploitation": {"take_profit": 0.05, "stop_loss": -0.05, "max_hours": 8},
-                "alpha_directional": {"take_profit": 0.08, "stop_loss": -0.05, "max_hours": 12},
-                "arbitrage": {"take_profit": 0.03, "stop_loss": -0.03, "max_hours": 6}
+            # Exit parameters per strategy (merge saved with defaults)
+            "exit_params": {
+                "delta_neutral": {
+                    **{"take_profit": 0.02, "stop_loss": -0.02, "max_hours": 4},
+                    **saved_config.get("exit_params", {}).get("delta_neutral", {})
+                } if saved_config else {"take_profit": 0.02, "stop_loss": -0.02, "max_hours": 4},
+                "volatility_exploitation": {
+                    **{"take_profit": 0.05, "stop_loss": -0.05, "max_hours": 8},
+                    **saved_config.get("exit_params", {}).get("volatility_exploitation", {})
+                } if saved_config else {"take_profit": 0.05, "stop_loss": -0.05, "max_hours": 8},
+                "alpha_directional": {
+                    **{"take_profit": 0.08, "stop_loss": -0.05, "max_hours": 12},
+                    **saved_config.get("exit_params", {}).get("alpha_directional", {})
+                } if saved_config else {"take_profit": 0.08, "stop_loss": -0.05, "max_hours": 12},
+                "arbitrage": {
+                    **{"take_profit": 0.03, "stop_loss": -0.03, "max_hours": 6},
+                    **saved_config.get("exit_params", {}).get("arbitrage", {})
+                } if saved_config else {"take_profit": 0.03, "stop_loss": -0.03, "max_hours": 6},
             },
         }
     except Exception as e:
