@@ -1232,6 +1232,11 @@ const PaperTrading = () => {
             </div>
           )}
 
+          {/* Asset Class Equity Breakdown (starts at $0 per session) */}
+          {status && (
+            <AssetClassEquityCard equityData={status?.asset_class_equity} initialCapital={initialCapital} />
+          )}
+
           {/* Strategy & Asset Class Tables with Totals */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-3">
