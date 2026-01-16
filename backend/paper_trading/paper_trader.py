@@ -966,32 +966,31 @@ class PaperTrader:
         if market_data:
             yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
         
-        # Strategy selection based on ACTUAL signals - more balanced distribution
+        # Strategy selection based on ACTUAL signals - balanced distribution
         
-        # 1. ARBITRAGE: Best for high liquidity markets with tight spreads (sharp_alignment > 0.7)
-        if sharp_alignment > 0.7 and volatility < 0.06 and 'arbitrage' in self.enabled_strategies:
-            return 'arbitrage'
-        
-        # 2. DELTA NEUTRAL: Low volatility, mid-range price - good for market making
-        if volatility < 0.05 and 0.30 <= yes_price <= 0.70 and 'delta_neutral' in self.enabled_strategies:
-            return 'delta_neutral'
-        
-        # 3. ALPHA DIRECTIONAL: Strong sentiment or extreme prices
-        if sentiment_strength > 0.20 and sharp_alignment > 0.3 and 'alpha_directional' in self.enabled_strategies:
-            return 'alpha_directional'
-        
-        # 4. ALPHA DIRECTIONAL: Extreme prices (< 0.10 or > 0.90) - high conviction bets
+        # 1. ALPHA DIRECTIONAL: Extreme prices (< 0.10 or > 0.90) - clear directional bets
         if (yes_price < 0.10 or yes_price > 0.90) and 'alpha_directional' in self.enabled_strategies:
             return 'alpha_directional'
         
-        # 5. VOLATILITY EXPLOITATION: Higher volatility markets
-        if volatility > 0.07 and 'volatility_exploitation' in self.enabled_strategies:
+        # 2. ARBITRAGE: High liquidity markets with good sharp alignment
+        if sharp_alignment > 0.8 and 'arbitrage' in self.enabled_strategies:
+            return 'arbitrage'
+        
+        # 3. DELTA NEUTRAL: Mid-range price with moderate volatility - market making
+        if 0.35 <= yes_price <= 0.65 and volatility < 0.08 and 'delta_neutral' in self.enabled_strategies:
+            return 'delta_neutral'
+        
+        # 4. ALPHA DIRECTIONAL: Strong sentiment divergence from 50%
+        if sentiment_strength > 0.25 and 'alpha_directional' in self.enabled_strategies:
+            return 'alpha_directional'
+        
+        # 5. VOLATILITY EXPLOITATION: Higher volatility or uncertain markets
+        if (volatility > 0.08 or price_uncertainty > 0.7) and 'volatility_exploitation' in self.enabled_strategies:
             return 'volatility_exploitation'
         
-        # 6. Default distribution based on market characteristics
-        # Mid-range prices with moderate conditions -> round-robin based on price bucket
-        price_bucket = int(yes_price * 10) % 4  # 0-3 based on price
-        strategies_order = ['arbitrage', 'delta_neutral', 'alpha_directional', 'volatility_exploitation']
+        # 6. Default: Distribute remaining based on price bucket for variety
+        price_bucket = int(yes_price * 10) % 4
+        strategies_order = ['delta_neutral', 'arbitrage', 'volatility_exploitation', 'alpha_directional']
         for i in range(4):
             candidate = strategies_order[(price_bucket + i) % 4]
             if candidate in self.enabled_strategies:
