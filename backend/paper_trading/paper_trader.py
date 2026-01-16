@@ -1100,7 +1100,7 @@ class PaperTrader:
             # 1F: Market maturity weight
             maturity_weight = min(1.0, total_volume / 1000000)
             
-            # Combine Layer 1: Market Microstructure (50% of total)
+            # Combine Layer 1: Market Microstructure (base sentiment)
             market_sentiment = (
                 price_sentiment * 0.30 +
                 momentum_sentiment * 0.25 +
@@ -1110,7 +1110,44 @@ class PaperTrader:
             )
             
             # ================================================================
-            # LAYER 2: EXTERNAL DATA SENTIMENT (News + Social)
+            # LAYER 2: LLM + CROSS-MARKET CORRELATION (Enhanced Sentiment)
+            # ================================================================
+            llm_sentiment = 0.5
+            llm_confidence = 0.0
+            correlation_sentiment = 0.5
+            correlation_strength = 0.0
+            enhanced_data = {}
+            
+            # Try to get enhanced sentiment (LLM + Correlation)
+            try:
+                if hasattr(self, 'enhanced_sentiment') and self.enhanced_sentiment:
+                    enhanced_result = await asyncio.wait_for(
+                        self.enhanced_sentiment.analyze(market_data),
+                        timeout=3.0  # 3 second timeout
+                    )
+                    
+                    llm_sentiment = enhanced_result.get('llm_sentiment', 0.5)
+                    llm_confidence = enhanced_result.get('llm_confidence', 0.0)
+                    correlation_sentiment = enhanced_result.get('correlation_sentiment', 0.5)
+                    correlation_strength = enhanced_result.get('correlation_strength', 0.0)
+                    
+                    enhanced_data = {
+                        'llm_sentiment': llm_sentiment,
+                        'llm_confidence': llm_confidence,
+                        'llm_reasoning': enhanced_result.get('llm_reasoning', ''),
+                        'correlation_sentiment': correlation_sentiment,
+                        'correlation_strength': correlation_strength,
+                        'category_momentum': enhanced_result.get('category_momentum', 0.0),
+                        'related_groups': enhanced_result.get('related_groups', []),
+                        'analysis_source': enhanced_result.get('analysis_source', 'none')
+                    }
+            except asyncio.TimeoutError:
+                logger.debug(f"Enhanced sentiment timeout for {market_id[:16]}")
+            except Exception as e:
+                logger.debug(f"Enhanced sentiment error: {e}")
+            
+            # ================================================================
+            # LAYER 3: EXTERNAL NEWS/SOCIAL (Finnhub - if available)
             # ================================================================
             news_sentiment = 0.5
             social_sentiment = 0.5
@@ -1120,10 +1157,9 @@ class PaperTrader:
             # Try to get news/social sentiment (non-blocking, with timeout)
             try:
                 if hasattr(self, 'social_analyzer') and self.social_analyzer:
-                    # Use cached or fetch new
                     social_result = await asyncio.wait_for(
                         self.social_analyzer.analyze_market_sentiment(market_data),
-                        timeout=2.0  # 2 second timeout to not slow down trading
+                        timeout=2.0
                     )
                     
                     news_sentiment = social_result.get('news_sentiment', 0.5)
@@ -1140,33 +1176,28 @@ class PaperTrader:
             except Exception as e:
                 logger.debug(f"External sentiment error: {e}")
             
-            # Combine Layer 2: External Data (weighted by confidence)
             external_sentiment = (news_sentiment * 0.6 + social_sentiment * 0.4)
             
             # ================================================================
-            # LAYER 3: CROSS-MARKET CORRELATION (Optional)
+            # FINAL SENTIMENT FUSION (4 Layers)
             # ================================================================
-            correlation_sentiment = 0.5
-            # Check if related markets are moving in same direction
-            # (This could be enhanced with actual correlation tracking)
+            # Calculate weights based on data availability/confidence
+            market_weight = 0.40  # Market microstructure always gets 40%
+            llm_weight = llm_confidence * 0.30  # LLM gets up to 30% based on confidence
+            corr_weight = correlation_strength * 0.15  # Correlation gets up to 15%
+            external_weight = external_confidence * 0.15  # External data gets up to 15%
             
-            # ================================================================
-            # FINAL SENTIMENT FUSION
-            # ================================================================
-            # Weight layers based on data availability
-            if external_confidence > 0.3:
-                # Good external data - blend 50% market, 40% external, 10% correlation
+            total_weight = market_weight + llm_weight + corr_weight + external_weight
+            
+            if total_weight > 0:
                 raw_sentiment = (
-                    market_sentiment * 0.50 +
-                    external_sentiment * 0.40 +
-                    correlation_sentiment * 0.10
-                )
+                    market_sentiment * market_weight +
+                    llm_sentiment * llm_weight +
+                    correlation_sentiment * corr_weight +
+                    external_sentiment * external_weight
+                ) / total_weight
             else:
-                # No external data - rely on market microstructure
-                raw_sentiment = (
-                    market_sentiment * 0.85 +
-                    correlation_sentiment * 0.15
-                )
+                raw_sentiment = market_sentiment
             
             # Apply maturity dampening
             sentiment = raw_sentiment * maturity_weight + 0.5 * (1 - maturity_weight)
