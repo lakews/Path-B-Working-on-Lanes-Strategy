@@ -17,6 +17,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Exit Parameters**: ✅ Configurable per strategy + asset class multipliers
 - **Position Sizing**: ✅ Advanced config (Kelly bounds, min position, liquidity threshold)
 - **Market Alerts**: ✅ Real-time alerts with configurable volume threshold
+- **Documentation**: ✅ Comprehensive guides in `/app/docs/`
 - **Production Deployment**: ⚠️ Blocked - ML dependencies (TensorFlow, PyTorch) not deployable on Emergent
 
 ## Tech Stack
@@ -25,7 +26,33 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Database**: MongoDB (source of truth for ALL config)
 - **Deployment**: AWS EC2 with Terraform IaC
 
+## Documentation
+- `/app/docs/CONFIGURATION.md` - Complete guide to all configuration tabs
+- `/app/docs/STRATEGIES.md` - Detailed trading strategies guide
+- `/app/docs/API_REFERENCE.md` - REST API documentation
+- `/app/docs/ARCHITECTURE.md` - System architecture overview
+- `/app/docs/DEPLOYMENT.md` - Deployment instructions
+- `/app/docs/OPERATIONS.md` - Operations guide
+
 ## What's Been Implemented
+
+### January 16, 2026 - Session 24 (Strategy Tuning Refinement + Documentation)
+
+- ✅ **Refined Strategy Tuning UI** (`/app/frontend/src/pages/Configuration.js`)
+  - Enhanced strategy cards show TP/SL/Max when enabled
+  - "Best for" tooltip explains ideal market conditions
+  - Risk multipliers and expected returns clearly displayed
+  - 4 strategies: Delta-Neutral, Volatility Exploitation, Alpha-Directional, Arbitrage
+
+- ✅ **Comprehensive Documentation** (`/app/docs/`)
+  - `CONFIGURATION.md` (199 lines) - All 9 configuration tabs explained
+  - `STRATEGIES.md` (268 lines) - Trading strategies deep dive
+
+- ✅ **Clarified Kelly vs Adaptive Position Sizing**
+  - Kelly Criterion = theoretical foundation (optimal bet size math)
+  - Adaptive Sizing = practical implementation using Kelly as ONE factor
+  - Formula: `Position = Kelly × Liquidity × Volatility × RL Confidence × Asset Risk`
+  - Kelly bounds (10%-50%) prevent extreme sizing
 
 ### January 16, 2026 - Session 23 (Full Configuration Suite + Alerts + .env Cleanup)
 
