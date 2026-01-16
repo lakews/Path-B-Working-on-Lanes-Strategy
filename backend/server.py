@@ -27,6 +27,7 @@ from auth import (
     create_user, init_default_admin, Token, UserCreate, UserLogin, UserResponse,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
+from services.market_alerts import get_market_alerts_service, MarketAlertsService
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
