@@ -319,6 +319,56 @@ const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = "cyan" 
   </div>
 );
 
+// Asset Class Equity Breakdown - Shows P&L by asset class starting at $0
+const AssetClassEquityCard = ({ equityData, initialCapital = 10000 }) => {
+  if (!equityData || Object.keys(equityData).length === 0) {
+    return (
+      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+        <h4 className="text-sm font-semibold text-white/60 mb-3 flex items-center gap-2">
+          <PieChart className="w-4 h-4 text-orange-400" />
+          Asset Class Equity (starts at $0)
+        </h4>
+        <p className="text-xs text-white/40">No trades yet</p>
+      </div>
+    );
+  }
+
+  const entries = Object.entries(equityData).sort((a, b) => b[1] - a[1]);
+  const total = Object.values(equityData).reduce((sum, val) => sum + val, 0);
+
+  return (
+    <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+          <PieChart className="w-4 h-4 text-orange-400" />
+          Asset Class Equity
+          <span className="text-[10px] text-white/40 font-normal">(starts at $0)</span>
+        </h4>
+        <span className={`text-sm font-bold ${total >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          {total >= 0 ? '+' : ''}${total.toFixed(2)}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {entries.map(([assetClass, pnl]) => {
+          const isPositive = pnl >= 0;
+          const color = ASSET_CLASS_COLORS[assetClass] || '#94a3b8';
+          return (
+            <div key={assetClass} className="bg-white/5 rounded-lg p-2 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                <span className="text-[10px] text-white/60 uppercase tracking-wider">{assetClass}</span>
+              </div>
+              <span className={`text-sm font-bold ${isPositive ? 'text-green-400' : pnl < 0 ? 'text-red-400' : 'text-white/40'}`}>
+                {pnl === 0 ? '$0' : (isPositive ? '+' : '') + '$' + pnl.toFixed(2)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // Position Card Component with Expiry Indicator
 const PositionCard = ({ position }) => {
   const pnlPct = position.unrealized_pnl_pct || 0;
