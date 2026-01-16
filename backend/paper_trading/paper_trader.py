@@ -1404,7 +1404,14 @@ class PaperTrader:
         return result.get('position_size', 0)
     
     def _determine_strategy(self, signals: Dict, rl_action: str, market_data: Dict = None) -> Optional[str]:
-        """Determine strategy based on REAL signals from market data"""
+        """Determine strategy based on REAL signals from market data
+        
+        Uses configurable thresholds from self (loaded from DB):
+        - volatility_threshold: for volatility exploitation trigger
+        - sentiment_strength_threshold: for alpha directional trigger
+        - sharp_alignment_threshold: for arbitrage trigger
+        - delta_neutral_price_min/max: price range for delta neutral
+        """
         volatility = signals.get('volatility', 0.05)
         sentiment = signals.get('sentiment', 0.5)
         sentiment_strength = abs(sentiment - 0.5)
@@ -1417,26 +1424,29 @@ class PaperTrader:
             yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
         
         # Strategy selection based on ACTUAL signals - balanced distribution
+        # Uses configurable thresholds (loaded from DB config)
         
         # 1. ALPHA DIRECTIONAL: Extreme prices (< 0.10 or > 0.90) - clear directional bets
         if (yes_price < 0.10 or yes_price > 0.90) and 'alpha_directional' in self.enabled_strategies:
             return 'alpha_directional'
         
         # 2. ARBITRAGE: High liquidity markets with good sharp alignment
-        if sharp_alignment > 0.8 and 'arbitrage' in self.enabled_strategies:
+        if sharp_alignment > self.sharp_alignment_threshold and 'arbitrage' in self.enabled_strategies:
             return 'arbitrage'
         
         # 3. DELTA NEUTRAL: Mid-range price with moderate volatility - market making
-        if 0.35 <= yes_price <= 0.65 and volatility < 0.05 and 'delta_neutral' in self.enabled_strategies:
+        if (self.delta_neutral_price_min <= yes_price <= self.delta_neutral_price_max 
+            and volatility < self.volatility_threshold 
+            and 'delta_neutral' in self.enabled_strategies):
             return 'delta_neutral'
         
         # 4. VOLATILITY EXPLOITATION: Higher volatility or uncertain markets (check BEFORE alpha directional)
-        # Lowered threshold from 0.08 to 0.05 to capture more volatility opportunities
-        if (volatility > 0.05 or price_uncertainty > 0.7) and 'volatility_exploitation' in self.enabled_strategies:
+        if ((volatility > self.volatility_threshold or price_uncertainty > 0.7) 
+            and 'volatility_exploitation' in self.enabled_strategies):
             return 'volatility_exploitation'
         
         # 5. ALPHA DIRECTIONAL: Strong sentiment divergence from 50%
-        if sentiment_strength > 0.25 and 'alpha_directional' in self.enabled_strategies:
+        if sentiment_strength > self.sentiment_strength_threshold and 'alpha_directional' in self.enabled_strategies:
             return 'alpha_directional'
         
         # 6. Default: Distribute remaining based on price bucket for variety
