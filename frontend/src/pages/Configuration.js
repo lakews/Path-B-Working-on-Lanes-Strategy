@@ -1031,8 +1031,8 @@ const Configuration = () => {
                     <li><span className="text-amber-400">Alpha Directional</span>: Extreme prices (&lt;10% or &gt;90%)</li>
                     <li><span className="text-emerald-400">Arbitrage</span>: Sharp alignment above threshold</li>
                     <li><span className="text-cyan-400">Delta-Neutral</span>: Mid-range price + low volatility</li>
-                    <li><span className="text-purple-400">Volatility Exploitation</span>: Volatility above threshold</li>
                     <li><span className="text-amber-400">Alpha Directional</span>: Sentiment strength above threshold</li>
+                    <li><span className="text-purple-400">Volatility Exploitation</span>: Volatility above threshold</li>
                   </ol>
                 </div>
               </div>
