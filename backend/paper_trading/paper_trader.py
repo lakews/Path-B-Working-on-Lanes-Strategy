@@ -1328,11 +1328,6 @@ class PaperTrader:
                 sizing_used=position.get('sizing_breakdown', {})
             )
             
-            # Store closed trade with hold time calculation
-            entry_time = datetime.fromisoformat(position['entry_time'].replace('Z', '+00:00'))
-            exit_time = datetime.now(timezone.utc)
-            hold_time_seconds = (exit_time - entry_time).total_seconds()
-            
             closed_trade = {
                 **position,
                 "exit_price": current_price,
