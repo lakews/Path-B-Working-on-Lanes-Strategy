@@ -112,6 +112,9 @@ class PaperTrader:
         self.max_open_positions = 50
         self.stuck_price_multiplier = 2.0  # Volume multiplier for stuck prices (0.0, 0.5, 1.0)
         
+        # Exit parameters per strategy - loaded from DB, defaults from DEFAULT_EXIT_PARAMS
+        self.exit_params_by_strategy = dict(self.DEFAULT_EXIT_PARAMS)
+        
         # Current capital starts at initial (will be set properly after config load)
         self.current_capital = self.initial_capital
         
