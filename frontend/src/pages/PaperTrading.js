@@ -319,10 +319,29 @@ const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = "cyan" 
   </div>
 );
 
-// Position Card Component
+// Position Card Component with Expiry Indicator
 const PositionCard = ({ position }) => {
   const pnlPct = position.unrealized_pnl_pct || 0;
   const isProfit = pnlPct >= 0;
+  
+  // Extract expiry info
+  const expiryInfo = position.expiry_info || {};
+  const hoursToExpiry = expiryInfo.hours_to_expiry;
+  const urgency = expiryInfo.urgency || 'normal';
+  
+  // Format expiry display
+  const getExpiryDisplay = () => {
+    if (!hoursToExpiry && hoursToExpiry !== 0) return null;
+    if (hoursToExpiry <= 0) return { text: 'Expired', color: 'text-red-500', bg: 'bg-red-500/20' };
+    if (hoursToExpiry <= 6) return { text: `${hoursToExpiry.toFixed(1)}h`, color: 'text-red-400', bg: 'bg-red-500/20' };
+    if (hoursToExpiry <= 24) return { text: `${hoursToExpiry.toFixed(0)}h`, color: 'text-orange-400', bg: 'bg-orange-500/20' };
+    const days = hoursToExpiry / 24;
+    if (days <= 7) return { text: `${days.toFixed(0)}d`, color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
+    return { text: `${days.toFixed(0)}d`, color: 'text-green-400', bg: 'bg-green-500/20' };
+  };
+  
+  const expiryDisplay = getExpiryDisplay();
+  
   return (
     <div className="rounded-lg bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors">
       <div className="flex items-start justify-between mb-2">
@@ -331,6 +350,11 @@ const PositionCard = ({ position }) => {
           <div className="flex items-center gap-2 mt-1">
             <span className={`text-xs px-2 py-0.5 rounded ${position.side === 'YES' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{position.side}</span>
             <span className="text-xs text-white/40">{position.strategy}</span>
+            {expiryDisplay && (
+              <span className={`text-xs px-2 py-0.5 rounded ${expiryDisplay.bg} ${expiryDisplay.color} font-medium`}>
+                ⏱️ {expiryDisplay.text}
+              </span>
+            )}
           </div>
         </div>
         <div className={`text-right ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
