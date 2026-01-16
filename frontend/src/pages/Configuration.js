@@ -123,7 +123,13 @@ const Configuration = () => {
       max_open_positions: 50,
       stuck_price_multiplier: 2.0,
       enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'],
-      enabled_strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage']
+      enabled_strategies: ['delta_neutral', 'volatility_exploitation', 'alpha_directional', 'arbitrage'],
+      exit_params: {
+        delta_neutral: { take_profit: 0.02, stop_loss: -0.02, max_hours: 4 },
+        volatility_exploitation: { take_profit: 0.05, stop_loss: -0.05, max_hours: 8 },
+        alpha_directional: { take_profit: 0.08, stop_loss: -0.05, max_hours: 12 },
+        arbitrage: { take_profit: 0.03, stop_loss: -0.03, max_hours: 6 }
+      }
     });
     toast.info('Reset to defaults');
   };
