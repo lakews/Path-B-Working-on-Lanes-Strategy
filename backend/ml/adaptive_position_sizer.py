@@ -409,6 +409,7 @@ class AdaptivePositionSizer:
                 'asset_class_multiplier': round(asset_mult, 3),
                 'strategy_multiplier': round(strat_mult, 3),
                 'signal_multiplier': round(signal_mult, 3),
+                'directional_dampening': round(directional_dampening, 3),
                 'combined_multiplier': round(combined_mult, 4),
                 'conviction_score': round(conviction_score, 3),
                 'final_position': round(final_position, 2),
