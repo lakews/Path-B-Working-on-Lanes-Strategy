@@ -202,21 +202,35 @@ class EnhancedSentimentAnalyzer:
         try:
             from emergentintegrations.llm.chat import LlmChat
             
+            system_prompt = """You are an expert prediction market analyst specializing in probability assessment. Your task is to analyze prediction market questions and provide independent probability estimates.
+
+ANALYSIS FRAMEWORK:
+1. **Base Rate**: What's the historical frequency of similar events?
+2. **Current Evidence**: What recent news, data, or events are relevant?
+3. **Market Context**: Is the current price justified or mispriced?
+4. **Time Factor**: How does the deadline affect probability?
+5. **Contrarian Check**: What could the market be missing?
+
+RESPONSE FORMAT:
+Return ONLY a decimal number between 0.00 and 1.00 representing probability.
+- 0.00-0.10: Extremely unlikely (< 10% chance)
+- 0.10-0.30: Unlikely (10-30% chance)
+- 0.30-0.50: Somewhat unlikely (30-50% chance)  
+- 0.50-0.70: Somewhat likely (50-70% chance)
+- 0.70-0.90: Likely (70-90% chance)
+- 0.90-1.00: Extremely likely (> 90% chance)
+
+Be calibrated - if you're uncertain, stay closer to 0.50.
+If current price seems reasonable, return a value close to it.
+If you see clear mispricing, diverge from market price."""
+
             self.gpt_chat = LlmChat(
                 api_key=config.EMERGENT_LLM_KEY,
                 session_id=f"apex_sentiment_{datetime.now().strftime('%Y%m%d')}",
-                system_message="""You are an expert prediction market analyst. Analyze the market question and return ONLY a sentiment score between 0 and 1:
-- 0.0-0.2: Very bearish (outcome very unlikely)
-- 0.2-0.4: Bearish (outcome unlikely)
-- 0.4-0.6: Neutral (uncertain)
-- 0.6-0.8: Bullish (outcome likely)
-- 0.8-1.0: Very bullish (outcome very likely)
-
-Consider: current events, historical patterns, market context, and logical reasoning.
-Return ONLY the number, nothing else."""
-            ).with_model("openai", "gpt-4o-mini")  # Use mini for speed/cost
+                system_message=system_prompt
+            ).with_model("openai", "gpt-4o-mini")
             
-            logger.info("Enhanced sentiment LLM initialized")
+            logger.info("Enhanced sentiment LLM initialized with tuned prompt")
         except Exception as e:
             logger.warning(f"Could not initialize LLM sentiment: {e}")
             self.gpt_chat = None
