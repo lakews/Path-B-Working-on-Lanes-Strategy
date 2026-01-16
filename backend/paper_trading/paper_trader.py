@@ -524,10 +524,9 @@ class PaperTrader:
         except Exception as e:
             logger.error(f"Error evaluating entry: {e}")
     
-    # Exit parameters by STRATEGY - different strategies have different risk profiles
-    # NOTE: For paper trading in prediction markets, prices move slowly
-    # These thresholds are intentionally tight to generate more exits for learning
-    EXIT_PARAMS_BY_STRATEGY = {
+    # DEFAULT Exit parameters by STRATEGY - different strategies have different risk profiles
+    # NOTE: These are defaults. The actual values are loaded from DB in _load_user_config()
+    DEFAULT_EXIT_PARAMS = {
         'delta_neutral': {
             'take_profit': 0.02,    # 2% - quick profits
             'stop_loss': -0.02,     # 2% - tight stop
@@ -585,9 +584,13 @@ class PaperTrader:
     }
     
     def _get_exit_params(self, strategy: str, asset_class: str) -> Dict:
-        """Get exit parameters adjusted for strategy and asset class"""
-        # Base params from strategy
-        base = self.EXIT_PARAMS_BY_STRATEGY.get(strategy, self.EXIT_PARAMS_BY_STRATEGY['arbitrage'])
+        """Get exit parameters adjusted for strategy and asset class
+        
+        Uses configurable exit_params from DB (loaded in _load_user_config),
+        falling back to DEFAULT_EXIT_PARAMS if not configured.
+        """
+        # Base params from user-configured strategy exit params (or defaults)
+        base = self.exit_params_by_strategy.get(strategy, self.DEFAULT_EXIT_PARAMS.get(strategy, self.DEFAULT_EXIT_PARAMS['arbitrage']))
         
         # Adjustments from asset class
         adj = self.EXIT_ADJUSTMENTS_BY_ASSET.get(asset_class.lower(), {'tp_mult': 1.0, 'sl_mult': 1.0, 'time_mult': 1.0})
