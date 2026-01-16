@@ -525,26 +525,28 @@ class PaperTrader:
             logger.error(f"Error evaluating entry: {e}")
     
     # Exit parameters by STRATEGY - different strategies have different risk profiles
+    # NOTE: For paper trading in prediction markets, prices move slowly
+    # These thresholds are intentionally tight to generate more exits for learning
     EXIT_PARAMS_BY_STRATEGY = {
         'delta_neutral': {
-            'take_profit': 0.05,    # 5% - conservative, quick profits
-            'stop_loss': -0.03,     # 3% - tight stop
-            'max_hours': 12         # Close faster
+            'take_profit': 0.02,    # 2% - quick profits
+            'stop_loss': -0.02,     # 2% - tight stop
+            'max_hours': 4          # Close faster for paper testing
         },
         'volatility_exploitation': {
-            'take_profit': 0.25,    # 25% - ride volatility
-            'stop_loss': -0.10,     # 10% - wider stop for swings
-            'max_hours': 48         # Hold longer
+            'take_profit': 0.05,    # 5% - capture volatility
+            'stop_loss': -0.05,     # 5% - symmetric stop
+            'max_hours': 8          # Hold longer for swings
         },
         'alpha_directional': {
-            'take_profit': 0.40,    # 40% - conviction trades
-            'stop_loss': -0.15,     # 15% - give room to be right
-            'max_hours': 72         # Hold for directional moves
+            'take_profit': 0.08,    # 8% - conviction trades
+            'stop_loss': -0.05,     # 5% - give room to be right
+            'max_hours': 12         # Hold for directional moves
         },
         'arbitrage': {
-            'take_profit': 0.10,    # 10% - capture spread
-            'stop_loss': -0.05,     # 5% - tight risk
-            'max_hours': 24         # Standard hold
+            'take_profit': 0.03,    # 3% - capture spread
+            'stop_loss': -0.03,     # 3% - tight risk
+            'max_hours': 6          # Standard hold
         }
     }
     
