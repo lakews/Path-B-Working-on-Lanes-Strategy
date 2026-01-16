@@ -641,9 +641,7 @@ class PaperTrader:
             rl_action, rl_confidence = await self.rl_engine.get_optimal_action(market_data, signals)
             
             # Skip if RL says wait/hold or very low confidence
-            # Note: RL confidence is ~0.14 when Q-table hasn't learned (1/7 uniform)
-            # Keep threshold at 0.10 until RL has meaningful learning
-            if rl_action in ['WAIT', 'HOLD'] or rl_confidence < 0.10:
+            if rl_action in ['WAIT', 'HOLD'] or rl_confidence < 0.15:
                 return
             
             # Skip if action is not a clear BUY or SELL
