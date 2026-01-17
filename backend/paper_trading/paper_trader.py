@@ -1155,6 +1155,13 @@ class PaperTrader:
                                     sizing_breakdown: Dict = None):
         """Execute a paper trade entry with adaptive sizing info"""
         try:
+            # Check if we already have a position (shouldn't happen but let's be safe)
+            if market_id in self.paper_positions:
+                logger.warning(f"[ENTRY-SKIP] Already have position in {market_id[:16]}")
+                return
+            
+            logger.info(f"[ENTRY-EXEC] Opening {strategy} {side} ${size:.2f} in {market_id[:16]}")
+            
             current_price = market_data.get('yes_price', 0.5)
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
