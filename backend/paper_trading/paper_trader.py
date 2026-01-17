@@ -698,12 +698,12 @@ class PaperTrader:
             # Note: RL confidence is ~0.14 when Q-table hasn't learned (1/7 uniform)
             # Threshold at 0.10 allows trades through until RL learns meaningful patterns
             if rl_action in ['WAIT', 'HOLD'] or rl_confidence < 0.10:
-                logger.info(f"[SKIP-RL] {market_id[:16]}: action={rl_action}, confidence={rl_confidence:.3f}")
+                track_skip("rl_wait_or_low_conf")
                 return
             
             # Skip if action is not a clear BUY or SELL
             if 'BUY' not in rl_action and 'SELL' not in rl_action:
-                logger.info(f"[SKIP-ACTION] {market_id[:16]}: action={rl_action} not BUY/SELL")
+                track_skip("rl_no_buy_sell")
                 return
             
             # SENTIMENT-BASED SIDE SELECTION (configurable thresholds)
