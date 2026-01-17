@@ -530,14 +530,17 @@ class PaperTrader:
     async def _evaluate_entry(self, market_data: Dict):
         """Evaluate market for potential paper trade entry using ADAPTIVE sizing"""
         try:
+            market_id = market_data.get('id', '')[:16]
+            
             # CIRCUIT BREAKER CHECK: Stop new entries if max drawdown exceeded
             if self.circuit_breaker_triggered:
-                logger.debug("Circuit breaker active - no new entries allowed")
+                logger.debug(f"[{market_id}] SKIP: Circuit breaker active")
                 return
             
             # Check if we're at max positions limit
             if len(self.paper_positions) >= self.max_open_positions:
-                return  # Skip new entries when at capacity
+                logger.debug(f"[{market_id}] SKIP: At max positions ({len(self.paper_positions)}/{self.max_open_positions})")
+                return
             
             market_id = market_data.get('id')
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
