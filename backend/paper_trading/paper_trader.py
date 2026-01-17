@@ -1169,7 +1169,15 @@ class PaperTrader:
         }
     
     async def _evaluate_exit(self, market_id: str, market_data: Dict):
-        """Evaluate existing paper position for exit using strategy/asset-specific params"""
+        """
+        Evaluate existing paper position for exit using DYNAMIC TP/SL (Option 4 Framework).
+        
+        Dynamic exit params are calculated based on:
+        - Entry price and side (determines max possible gain)
+        - Extremeness (how far from 50% the entry was)
+        - TP = 10% of max possible gain, capped between 0.5% and 50%
+        - SL = -10% at mid-range, scaling to -30% at extreme prices
+        """
         try:
             position = self.paper_positions.get(market_id)
             if not position:
@@ -1185,14 +1193,30 @@ class PaperTrader:
             # UPDATE position's current_price for UI display
             position['current_price'] = current_price
             
-            # Get exit parameters for this strategy + asset class combination
-            exit_params = self._get_exit_params(strategy, asset_class)
-            take_profit_threshold = exit_params['take_profit']
-            stop_loss_threshold = exit_params['stop_loss']
-            max_hours = exit_params['max_hours']
+            # ============================================
+            # DYNAMIC EXIT PARAMETERS (Option 4 Framework)
+            # ============================================
+            dynamic_params = self._get_dynamic_exit_params(side, entry_price)
+            take_profit_threshold = dynamic_params['take_profit']
+            stop_loss_threshold = dynamic_params['stop_loss']
+            max_hours = dynamic_params['max_hours']
+            zone = dynamic_params['zone']
+            max_gain_possible = dynamic_params['max_gain_possible']
+            extremeness = dynamic_params['extremeness']
             
-            # Calculate unrealized P&L using SAME LOGIC as _execute_paper_exit
-            # This ensures TP/SL triggers match actual P&L
+            # Store dynamic params in position for UI display
+            position['dynamic_exit_params'] = {
+                'tp': take_profit_threshold,
+                'sl': stop_loss_threshold,
+                'max_hours': max_hours,
+                'zone': zone,
+                'max_gain': max_gain_possible,
+                'extremeness': extremeness
+            }
+            
+            # ============================================
+            # CALCULATE UNREALIZED P&L
+            # ============================================
             if side == 'YES':
                 # YES position: bought YES shares at entry_price, now worth current_price
                 if entry_price > 0:
@@ -1224,87 +1248,61 @@ class PaperTrader:
             signals = await self._get_signals(market_data)
             rl_action, rl_confidence = await self.rl_engine.get_optimal_action(market_data, signals)
             
-            # Exit conditions
+            # ============================================
+            # EXIT CONDITIONS (Priority Order)
+            # ============================================
             should_exit = False
             exit_reason = None
             
-            # AUTO-EXIT FOR APPROACHING EXPIRY (1 hour before market resolution)
+            # 1. AUTO-EXIT FOR APPROACHING EXPIRY (1 hour before market resolution)
             expiry_info = self._calculate_time_to_expiry(market_data)
             hours_to_expiry = expiry_info.get('hours_to_expiry')
             
             if hours_to_expiry is not None and hours_to_expiry <= 1.0:
-                # Force exit 1 hour before expiry - market will resolve soon
                 should_exit = True
-                exit_reason = f"expiry_safety_exit_{hours_to_expiry:.1f}h"
-                logger.info(f"⚠️ AUTO-EXIT: {market_id[:16]} expires in {hours_to_expiry:.1f}h - forcing exit")
+                exit_reason = f"expiry_safety_{hours_to_expiry:.1f}h"
+                logger.info(f"⚠️ AUTO-EXIT: {market_id[:16]} expires in {hours_to_expiry:.1f}h")
             
-            # SMART TP/SL: Use price-based exit for extreme prices
-            # At extreme prices (YES < 5% or YES > 95%), ROI-based TP/SL is mathematically limited
-            # For NO positions at ~$0.99, max possible profit is ~1%
-            # Use price-based TP/SL: exit when price moves significantly from entry
-            is_extreme_price = entry_price < 0.05 or entry_price > 0.95
+            # 2. DYNAMIC TAKE PROFIT (based on % of max possible gain)
+            if not should_exit and pnl_pct >= take_profit_threshold:
+                should_exit = True
+                exit_reason = f"dynamic_tp_{pnl_pct:.1%}_of_{max_gain_possible:.0%}max"
+                logger.info(f"✅ TP EXIT: {market_id[:16]} | P&L: {pnl_pct:.1%} >= {take_profit_threshold:.1%} (Zone: {zone})")
             
-            if is_extreme_price:
-                # Price-based TP/SL for extreme prices
-                # TP: Price moves favorably by 30% (e.g., 0.03 -> 0.021 for YES drop)
-                # SL: Price moves adversely by 50% (e.g., 0.03 -> 0.045 for YES rise)
-                price_tp_threshold = 0.30  # 30% price move in our favor
-                price_sl_threshold = 0.50  # 50% adverse price move
-                
-                if side == 'YES':
-                    # YES position profits when price goes up
-                    price_change = (current_price - entry_price) / entry_price if entry_price > 0 else 0
-                    if price_change >= price_tp_threshold:
-                        should_exit = True
-                        exit_reason = f"price_tp_{price_change:.0%}"
-                    elif price_change <= -price_sl_threshold:
-                        should_exit = True
-                        exit_reason = f"price_sl_{price_change:.0%}"
-                else:
-                    # NO position profits when YES price goes down (NO price goes up)
-                    price_change = (entry_price - current_price) / entry_price if entry_price > 0 else 0
-                    if price_change >= price_tp_threshold:
-                        should_exit = True
-                        exit_reason = f"price_tp_{price_change:.0%}"
-                    elif price_change <= -price_sl_threshold:
-                        should_exit = True
-                        exit_reason = f"price_sl_{price_change:.0%}"
-            else:
-                # Standard ROI-based TP/SL for normal prices
-                # Take profit - configurable by strategy/asset
-                if pnl_pct >= take_profit_threshold:
-                    should_exit = True
-                    exit_reason = "take_profit"
-                
-                # Stop loss - configurable by strategy/asset
-                elif pnl_pct <= stop_loss_threshold:
-                    should_exit = True
-                    exit_reason = "stop_loss"
+            # 3. DYNAMIC STOP LOSS (tighter at extreme prices)
+            if not should_exit and pnl_pct <= stop_loss_threshold:
+                should_exit = True
+                exit_reason = f"dynamic_sl_{pnl_pct:.1%}_limit_{stop_loss_threshold:.0%}"
+                logger.info(f"🛑 SL EXIT: {market_id[:16]} | P&L: {pnl_pct:.1%} <= {stop_loss_threshold:.1%} (Zone: {zone})")
             
-            # RL suggests opposite action with high confidence
+            # 4. RL SIGNAL REVERSAL (high confidence opposite signal)
             if not should_exit and rl_confidence > 0.7:
                 if side == 'YES' and 'SELL' in rl_action:
                     should_exit = True
-                    exit_reason = "rl_signal_reversal"
+                    exit_reason = f"rl_reversal_{rl_action}_{rl_confidence:.0%}"
                 elif side == 'NO' and 'BUY' in rl_action:
                     should_exit = True
-                    exit_reason = "rl_signal_reversal"
+                    exit_reason = f"rl_reversal_{rl_action}_{rl_confidence:.0%}"
             
-            # Time-based exit - configurable by strategy/asset
+            # 5. TIME-BASED EXIT (dynamic based on zone)
             entry_time = datetime.fromisoformat(position['entry_time'].replace('Z', '+00:00'))
             hours_open = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
             if not should_exit and hours_open > max_hours:
                 should_exit = True
-                exit_reason = "time_limit"
+                exit_reason = f"time_limit_{hours_open:.1f}h>{max_hours:.0f}h_{zone}"
+                logger.info(f"⏰ TIME EXIT: {market_id[:16]} | Open: {hours_open:.1f}h > {max_hours:.0f}h (Zone: {zone})")
             
             # WARN but don't force exit for positions expiring within 6 hours
             if not should_exit and hours_to_expiry is not None and hours_to_expiry <= 6.0 and hours_to_expiry > 1.0:
-                logger.warning(f"⏱️ Position {market_id[:16]} expires in {hours_to_expiry:.1f}h - consider manual exit")
+                logger.warning(f"⏱️ Position {market_id[:16]} expires in {hours_to_expiry:.1f}h - P&L: {pnl_pct:.2%}")
             
+            # ============================================
+            # EXECUTE EXIT
+            # ============================================
             if should_exit:
-                # Log exit parameters used
-                logger.debug(f"Exit triggered for {market_id[:16]}: {exit_reason} | Strategy: {strategy}, Asset: {asset_class}")
-                logger.debug(f"  Params: TP={take_profit_threshold:.0%}, SL={stop_loss_threshold:.0%}, MaxHrs={max_hours:.1f}")
+                logger.info(f"📤 EXIT: {market_id[:16]} | Reason: {exit_reason}")
+                logger.debug(f"  Dynamic Params: TP={take_profit_threshold:.1%}, SL={stop_loss_threshold:.1%}, MaxHrs={max_hours:.0f}")
+                logger.debug(f"  Position: {side} @ ${entry_price:.4f} -> ${current_price:.4f} | P&L: ${unrealized_pnl:.2f} ({pnl_pct:.2%})")
                 await self._execute_paper_exit(market_id, market_data, exit_reason)
                 
         except Exception as e:
