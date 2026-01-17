@@ -1958,15 +1958,23 @@ class PaperTrader:
                     
                     self.unrealized_pnl = round(total_unrealized, 2)
                     
-                    # CIRCUIT BREAKER: Check drawdown including unrealized losses
-                    combined_capital = self.current_capital + self.unrealized_pnl
+                    # Calculate DEPLOYED capital (sum of position sizes)
+                    deployed_capital = sum(p.get('size', 0) for p in self.paper_positions.values())
+                    
+                    # CIRCUIT BREAKER: Check drawdown based on TOTAL EQUITY (cash + deployed + unrealized)
+                    # Equity = cash + position_value + unrealized_pnl
+                    # Position value = deployed_capital (what we paid for positions)
+                    total_equity = self.current_capital + deployed_capital + self.unrealized_pnl
+                    
                     if self.peak_capital > 0:
-                        combined_drawdown = (self.peak_capital - combined_capital) / self.peak_capital
+                        # Drawdown should only trigger if total equity drops below peak
+                        # NOT when we simply deploy cash to positions
+                        combined_drawdown = (self.peak_capital - total_equity) / self.peak_capital
                         combined_drawdown_pct = combined_drawdown * 100
                         
                         if combined_drawdown_pct >= self.max_drawdown_pct and not self.circuit_breaker_triggered:
-                            logger.warning(f"🚨 CIRCUIT BREAKER TRIGGERED (unrealized)! Drawdown {combined_drawdown_pct:.2f}% >= {self.max_drawdown_pct}% limit")
-                            logger.warning(f"   Peak: ${self.peak_capital:.2f} | Combined: ${combined_capital:.2f} | Unrealized: ${self.unrealized_pnl:.2f}")
+                            logger.warning(f"🚨 CIRCUIT BREAKER TRIGGERED! Drawdown {combined_drawdown_pct:.2f}% >= {self.max_drawdown_pct}% limit")
+                            logger.warning(f"   Peak: ${self.peak_capital:.2f} | Equity: ${total_equity:.2f} (Cash: ${self.current_capital:.2f} + Deployed: ${deployed_capital:.2f} + Unrealized: ${self.unrealized_pnl:.2f})")
                             self.circuit_breaker_triggered = True
                 else:
                     self.unrealized_pnl = 0.0
