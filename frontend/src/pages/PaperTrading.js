@@ -1196,6 +1196,42 @@ const PaperTrading = () => {
         </div>
       </div>
 
+      {/* CIRCUIT BREAKER ALERT BANNER */}
+      {status?.circuit_breaker_triggered && (
+        <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-red-900/40 via-red-800/30 to-red-900/40 border-2 border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.2)]" data-testid="circuit-breaker-banner">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-red-500/30 flex items-center justify-center animate-pulse">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-red-400 flex items-center gap-2">
+                  CIRCUIT BREAKER TRIGGERED
+                </h3>
+                <p className="text-sm text-red-300/80">
+                  Maximum drawdown limit ({status?.config?.max_drawdown_pct || 5}%) exceeded. New entries blocked.
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-red-400">
+                {status?.current_drawdown_pct?.toFixed(2) || 0}%
+              </p>
+              <p className="text-xs text-red-300/60">Current Drawdown</p>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-red-500/20 flex items-center justify-between text-xs">
+            <span className="text-red-300/60">
+              Peak: ${status?.peak_capital?.toLocaleString() || '10,000'} → 
+              Equity: ${status?.total_equity?.toLocaleString() || status?.current_capital?.toLocaleString() || '0'}
+            </span>
+            <span className="text-red-300/60">
+              Open positions will continue to be monitored for TP/SL exits
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Tab Navigation */}
       <div className="flex gap-1 p-1.5 rounded-xl bg-slate-900/50 border border-white/10">
         {TAB_CONFIG.map(tab => {
