@@ -405,6 +405,17 @@ class AdaptivePositionSizer:
             not (rl_action in ['WAIT', 'HOLD'] and rl_confidence < 0.3)
         )
         
+        # Debug why trades are rejected
+        if not should_trade:
+            reject_reasons = []
+            if final_position < min_trade_size:
+                reject_reasons.append(f"size ${final_position:.2f} < ${min_trade_size}")
+            if liquidity_mult <= 0.1:
+                reject_reasons.append(f"liquidity_mult {liquidity_mult:.3f} <= 0.1")
+            if rl_action in ['WAIT', 'HOLD'] and rl_confidence < 0.3:
+                reject_reasons.append(f"RL {rl_action} with low conf {rl_confidence:.2f}")
+            logger.info(f"[SIZING-REJECT] {', '.join(reject_reasons)}")
+        
         return {
             'position_size': round(final_position, 2),
             'should_trade': should_trade,
