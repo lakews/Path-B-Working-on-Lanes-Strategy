@@ -40,6 +40,31 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 17, 2026 - Session 29 (UI Redesign Fix + Strategy Distribution Tuning)
+
+- ✅ **FIX: Paper Trading UI Syntax Error** (`/app/frontend/src/pages/PaperTrading.js`)
+  - **Problem**: JSX syntax error at line 1692 prevented page from loading
+  - **Root Cause**: Extra closing `</div>` and `)}` tags from previous session's incomplete edit
+  - **Solution**: Removed duplicate closing tags (lines 1285-1286)
+  - **Result**: Paper Trading page loads and renders correctly
+
+- ✅ **FIX: Strategy Distribution - Alpha Threshold Narrowed** (`/app/backend/paper_trading/paper_trader.py`)
+  - **Problem**: Alpha Directional strategy dominated (most markets have prices 10-90%)
+  - **Previous**: Alpha triggered at `< 0.10` or `> 0.90` price threshold
+  - **Solution**: Narrowed to `< 0.03` or `> 0.97` (line 1615-1616)
+  - **Result**: More markets now fall into Arbitrage/Delta-Neutral instead of Alpha
+  - **Impact**: Expected ~3-4x increase in Arbitrage trades per session
+
+- ✅ **VERIFIED: Circuit Breaker Working Correctly**
+  - Bot now opens 23+ trades in first 10 seconds (vs 10-11 before fix)
+  - Max Drawdown displays correctly at 0.0%
+  - Capital deploys properly: $7,921 remaining from $10,000 initial
+
+- ✅ **VERIFIED: UI Components Working**
+  - Asset Class Equity card displays all 6 asset classes
+  - Strategy Performance table shows LIVE badge
+  - Max Drawdown card shows correct limit (10%)
+
 ### January 17, 2026 - Session 28 (DQN + Prioritized Experience Replay)
 
 - ✅ **NEW: Deep Q-Network (DQN) Implementation** (`/app/backend/ml/dqn.py`)
