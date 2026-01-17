@@ -1327,6 +1327,9 @@ class PaperTrader:
             # Extract expiry info from sizing breakdown
             expiry_info = sizing_breakdown.get('expiry_info', {}) if sizing_breakdown else {}
             
+            # Calculate dynamic exit params for this entry
+            dynamic_exit = self._get_dynamic_exit_params(side, current_price)
+            
             position = {
                 "position_id": str(uuid.uuid4()),
                 "market_id": market_id,
@@ -1353,6 +1356,15 @@ class PaperTrader:
                     "urgency": expiry_info.get('urgency', 'normal'),
                     "expiry_label": expiry_info.get('expiry_label', 'No expiry'),
                     "end_date": market_data.get('end_date')
+                },
+                # Dynamic exit params (Option 4 Framework)
+                "dynamic_exit_params": {
+                    "tp": dynamic_exit['take_profit'],
+                    "sl": dynamic_exit['stop_loss'],
+                    "max_hours": dynamic_exit['max_hours'],
+                    "zone": dynamic_exit['zone'],
+                    "max_gain": dynamic_exit['max_gain_possible'],
+                    "extremeness": dynamic_exit['extremeness']
                 }
             }
             
