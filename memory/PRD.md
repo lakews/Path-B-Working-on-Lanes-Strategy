@@ -950,7 +950,27 @@ The RL model learns from completed backtests. To train it:
 3. As more backtests complete, Training Iterations increase and Q-Table populates
 4. Current status: 29 iterations trained, model is "Active"
 
-## Prioritized Backlog
+## Prioritized Backlog (Updated January 17, 2026)
+
+### P0 - Critical
+- None (all critical issues resolved)
+
+### P1 - High Priority
+- **Monitor Strategy Distribution**: Run longer sessions to verify Arbitrage trades increase with new 0.03/0.97 thresholds
+- **Delta Neutral Strategy Fix**: Currently capturing zero trades; consider UI-configurable price range
+
+### P2 - Medium Priority  
+- **Position Size Max Cap**: Verify positions reach configured max under optimal conditions
+- **Circuit Breaker Force-Close**: Revisit behavior when breaker triggers
+
+### P3 - Low Priority / Blocked
+- **AWS Deployment**: Blocked by ML dependencies (tensorflow, transformers, torch)
+- **Adaptive Sentiment Thresholds**: Auto-adjust based on win rates
+- **ESLint Warnings**: Non-blocking frontend warnings
+
+---
+
+## Legacy Backlog (Reference)
 
 ### P0 (Critical) - COMPLETED
 - [x] Paper Trading Config Loading Fix (Session 19)
