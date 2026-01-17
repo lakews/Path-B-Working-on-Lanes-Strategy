@@ -1010,3 +1010,52 @@ The RL model learns from completed backtests. To train it:
 - Real price data collection uses Polymarket CLOB `/prices-history` endpoint
 - Backtest engine auto-detects and uses real price data when available
 - Price simulation (Brownian motion) used as fallback for markets without history
+
+## Trade Volume Optimization Recommendations (January 17, 2026)
+
+### Current Observations
+- **RL is NOT blocking trades** - 98% of RL decisions are valid (not WAIT)
+- Most markets have extreme prices (<10% or >90%) which trigger Alpha Directional
+- Positions aren't closing fast enough due to TP/SL settings for extreme prices
+- Only ~10-14 positions open at a time, blocking those markets from new entries
+
+### Recommendations to Increase Trade Volume
+
+#### 1. Adjust Strategy Selection Order
+**Problem:** Alpha Directional catches 80%+ of markets due to extreme prices
+**Solution:** Check Delta Neutral and Volatility BEFORE Alpha
+```python
+# New order:
+1. Delta Neutral (mid-price + low vol) 
+2. Volatility Exploitation (high vol)
+3. Arbitrage (high sharp alignment)
+4. Alpha Directional (everything else)
+```
+
+#### 2. Lower Extreme Price Threshold
+**Problem:** 10%/90% is too wide, catches too many markets
+**Solution:** Change to 5%/95%
+```python
+if (yes_price < 0.05 or yes_price > 0.95)  # More selective
+```
+
+#### 3. Adjust Exit Parameters for Extreme Prices
+**Problem:** TP=6% is unrealistic for markets at 0.1% or 99%
+**Solution:** Dynamic TP/SL based on entry price
+```python
+if entry_price < 0.10 or entry_price > 0.90:
+    take_profit = 0.02  # 2% is huge for extreme markets
+    stop_loss = -0.01   # Tighter stops
+```
+
+#### 4. Add Position Stagnation Timeout
+**Problem:** Positions sit open for 8 hours even if price doesn't move
+**Solution:** Close if no price movement for X minutes
+```python
+if price_change_last_30min < 0.001:  # < 0.1% movement
+    close_position("stagnation")
+```
+
+#### 5. Increase Max Open Positions
+**Current:** 50 positions max, but only ~14 used
+**Why:** Each market can only have 1 position, limiting diversity
