@@ -2262,14 +2262,25 @@ class PaperTrader:
         # Calculate total P&L including unrealized
         combined_pnl = self.total_pnl + self.unrealized_pnl
         
+        # Calculate ACTUAL deployed capital (sum of open position sizes)
+        actual_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+        
+        # Calculate total equity = cash + deployed + unrealized
+        total_equity = self.current_capital + actual_deployed + self.unrealized_pnl
+        
+        # Calculate TRUE drawdown based on total equity, not just cash
+        true_drawdown_pct = ((self.peak_capital - total_equity) / self.peak_capital * 100) if self.peak_capital > 0 else 0
+        
         return {
             "session_id": self.session_id,
             "running": self.running,
             "initial_capital": self.initial_capital,
             "current_capital": self.current_capital,
             "peak_capital": self.peak_capital,  # Highest capital reached
-            "current_drawdown_pct": ((self.peak_capital - self.current_capital) / self.peak_capital * 100) if self.peak_capital > 0 else 0,
-            "deployed_capital": self.deployed_capital,  # Capital available for trading
+            "total_equity": round(total_equity, 2),  # Cash + Deployed + Unrealized
+            "current_drawdown_pct": round(max(0, true_drawdown_pct), 2),  # True drawdown based on equity
+            "deployed_capital": round(actual_deployed, 2),  # ACTUAL deployed (sum of position sizes)
+            "max_deployed_capital": self.deployed_capital,  # Max allowed deployment (config setting)
             "total_pnl": self.total_pnl,  # Realized P&L (closed trades)
             "unrealized_pnl": self.unrealized_pnl,  # Unrealized P&L (open positions)
             "combined_pnl": combined_pnl,  # Total = Realized + Unrealized
