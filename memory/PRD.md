@@ -10,18 +10,19 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Performance**: <100ms execution latency, <50ms ML inference, 500+ trades per 10 minutes (configurable)
 - **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters, time-to-expiry awareness**
 
-## Current Status (January 16, 2026)
+## Current Status (January 17, 2026)
 - **Live Data**: ✅ Working - Uses Polymarket Gamma API for real market data
-- **Paper Trading**: ✅ Working - Position sizing fixed, trades executing correctly
-- **UI/UX**: ✅ Fully Configurable - All trading parameters now managed via UI
-- **Exit Parameters**: ✅ Configurable per strategy + asset class multipliers
-- **Position Sizing**: ✅ Advanced config (Kelly bounds, min position, liquidity threshold, **geometric mean for risk_combined**)
+- **Paper Trading**: ✅ Working - Circuit breaker fixed, 50-80+ trades per session
+- **UI/UX**: ✅ Fully Configurable - Redesigned Paper Trading Live Session tab
+- **Circuit Breaker**: ✅ Fixed - Now correctly calculates drawdown including deployed capital
+- **DQN Engine**: ✅ Working - Deep Q-Network with Prioritized Experience Replay
+- **Position Sizing**: ✅ Advanced config (Kelly bounds, min position, liquidity threshold, geometric mean for risk_combined)
+- **Strategy Distribution**: ✅ Improved - Alpha threshold narrowed to 0.03/0.97 for better Arbitrage distribution
 - **Time-to-Expiry**: ✅ Strategy adjustments and UI indicators based on expiry
 - **Market Alerts**: ✅ Real-time alerts with configurable volume threshold
-- **Strategy Selection**: ✅ Fixed volatility strategy (threshold raised to 0.06 for Delta Neutral capture)
 - **Asset Class Equity**: ✅ Per-asset-class P&L breakdown starting at $0
 - **Documentation**: ✅ Comprehensive guides in `/app/docs/`
-- **Production Deployment**: ⚠️ Blocked - ML dependencies (TensorFlow, PyTorch) not deployable on Emergent
+- **Production Deployment**: ⚠️ Blocked - ML dependencies (TensorFlow, PyTorch, torch) not deployable on Emergent
 
 ## Tech Stack
 - **Backend**: FastAPI (Python)
