@@ -1255,16 +1255,69 @@ const PaperTrading = () => {
 
       {/* Live Session Tab */}
       {activeTab === 'live' && (
-        <div className="space-y-6">
-          {/* Performance Metrics */}
+        <div className="space-y-5">
+          
+          {/* Circuit Breaker Alert - Compact with Flash Animation */}
+          {status?.circuit_breaker_triggered && (
+            <div className="relative overflow-hidden rounded-lg border border-red-500/60 bg-red-950/40" data-testid="circuit-breaker-banner">
+              {/* Animated background pulse */}
+              <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 via-red-500/10 to-red-600/20 animate-pulse" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(239,68,68,0.15),transparent_70%)]" />
+              
+              <div className="relative flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-40" />
+                    <div className="relative w-8 h-8 rounded-full bg-red-500/30 flex items-center justify-center border border-red-500/50">
+                      <AlertTriangle className="w-4 h-4 text-red-400" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-red-400 tracking-wide">CIRCUIT BREAKER ACTIVE</p>
+                    <p className="text-xs text-red-300/60">New entries blocked • Monitoring exits</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xs text-red-300/50 uppercase tracking-wider">Drawdown</p>
+                    <p className="text-lg font-bold text-red-400 tabular-nums">{status?.current_drawdown_pct?.toFixed(1) || 0}%</p>
+                  </div>
+                  <div className="h-8 w-px bg-red-500/30" />
+                  <div className="text-right">
+                    <p className="text-xs text-red-300/50 uppercase tracking-wider">Limit</p>
+                    <p className="text-lg font-bold text-red-300/80 tabular-nums">{status?.config?.max_drawdown_pct || 5}%</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Performance Metrics - Improved Grid */}
           {status && (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              <MetricCard title="Capital" value={`$${(status.current_capital || 0).toFixed(0)}`} subtitle={`Initial: $${status.initial_capital}`} icon={Wallet} color="blue" />
-              <MetricCard title="Total P&L" value={`${(status.combined_pnl || status.total_pnl || 0) >= 0 ? '+' : ''}$${(status.combined_pnl || status.total_pnl || 0).toFixed(2)}`} subtitle={`Realized: $${(status.total_pnl || 0).toFixed(2)}`} trend={status.combined_pnl_pct || status.total_pnl_pct} icon={DollarSign} color={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "green" : "red"} />
+            <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+              <MetricCard title="Capital" value={`$${(status.current_capital || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`} subtitle={`Initial: $${(status.initial_capital || 10000).toLocaleString()}`} icon={Wallet} color="blue" />
+              <MetricCard title="Total P&L" value={`${(status.combined_pnl || status.total_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(status.combined_pnl || status.total_pnl || 0).toFixed(2)}`} subtitle={`Realized: $${(status.total_pnl || 0).toFixed(2)}`} trend={status.combined_pnl_pct || status.total_pnl_pct} icon={DollarSign} color={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "green" : "red"} />
               <MetricCard title="Win Rate" value={`${((status.win_rate || 0) * 100).toFixed(1)}%`} subtitle={`${status.winning_trades || 0}/${status.total_trades || 0} wins`} icon={Target} color="cyan" />
               <MetricCard title="Total Trades" value={status.total_trades || 0} icon={Activity} color="purple" />
               <MetricCard title="Open Positions" value={status.open_positions ?? positions.length ?? 0} icon={Layers} color="orange" />
-              <MetricCard title="Max Drawdown" value={`${((status.max_drawdown || 0) * 100).toFixed(1)}%`} subtitle={`Limit: ${savedConfig?.max_drawdown_pct || status.config?.max_drawdown_pct || 10}%`} icon={Shield} color="red" />
+              <div className={`rounded-xl p-4 transition-all ${
+                status?.circuit_breaker_triggered 
+                  ? 'bg-red-500/20 border-2 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3)] animate-pulse' 
+                  : 'bg-white/5 border border-white/10'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-xs uppercase tracking-wider ${status?.circuit_breaker_triggered ? 'text-red-400' : 'text-white/40'}`}>Max Drawdown</span>
+                  <Shield className={`w-4 h-4 ${status?.circuit_breaker_triggered ? 'text-red-400' : 'text-red-400/60'}`} />
+                </div>
+                <p className={`text-2xl font-bold tabular-nums ${status?.circuit_breaker_triggered ? 'text-red-400' : 'text-white'}`}>
+                  {(status?.current_drawdown_pct || 0).toFixed(1)}%
+                </p>
+                <p className={`text-xs mt-1 ${status?.circuit_breaker_triggered ? 'text-red-300/60' : 'text-white/40'}`}>
+                  Limit: {savedConfig?.max_drawdown_pct || status.config?.max_drawdown_pct || 5}%
+                </p>
+              </div>
+            </div>
+          )}
             </div>
           )}
 
