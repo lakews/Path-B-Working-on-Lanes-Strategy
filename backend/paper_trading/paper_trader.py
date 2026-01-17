@@ -1252,6 +1252,7 @@ class PaperTrader:
                 "side": side,
                 "size": size,
                 "price": current_price,
+                "entry_price": current_price,  # For consistency with exit trades
                 "strategy": strategy,
                 "asset_class": asset_class,
                 "rl_action": rl_action,
