@@ -1282,8 +1282,6 @@ const PaperTrading = () => {
               </div>
             </div>
           )}
-            </div>
-          )}
 
           {/* Asset Class Equity Breakdown (starts at $0 per session) */}
           {status && (
