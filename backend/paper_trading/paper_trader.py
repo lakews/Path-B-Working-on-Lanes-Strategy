@@ -685,7 +685,7 @@ class PaperTrader:
                 # Use user-configured multiplier for stuck price volume requirement
                 stale_price_min_volume = min_vol_threshold * self.stuck_price_multiplier
                 if effective_volume < stale_price_min_volume:
-                    logger.debug(f"Skipping {market_id[:16]}: stuck price ({yes_price}) requires {self.stuck_price_multiplier}x volume ({effective_volume} < {stale_price_min_volume})")
+                    track_skip("stuck_price")
                     return
             
             # Get ML signals
