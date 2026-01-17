@@ -545,12 +545,13 @@ class PaperTrader:
     async def _evaluate_entry(self, market_data: Dict):
         """Evaluate market for potential paper trade entry using ADAPTIVE sizing"""
         try:
-            market_id = market_data.get('id', '')[:16]
+            market_id_short = market_data.get('id', '')[:16]
             
-            # Track entries evaluated
-            if not hasattr(self, '_entry_attempts'):
-                self._entry_attempts = {}
-            self._entry_attempts[market_id] = self._entry_attempts.get(market_id, 0) + 1
+            # Track EVERY entry attempt with a simple counter
+            if not hasattr(self, '_total_entry_attempts'):
+                self._total_entry_attempts = 0
+                self._entry_passed_all = 0
+            self._total_entry_attempts += 1
             
             # CIRCUIT BREAKER CHECK: Stop new entries if max drawdown exceeded
             if self.circuit_breaker_triggered:
