@@ -1221,7 +1221,16 @@ class PaperTrader:
             }
             
             self.paper_positions[market_id] = position
-            self.current_capital -= size
+            
+            # Only deduct from capital if we have enough
+            if self.current_capital >= size:
+                self.current_capital -= size
+            else:
+                # Limit the actual size to available capital
+                actual_size = max(0, self.current_capital)
+                self.current_capital = 0
+                position['size'] = actual_size  # Update position with actual size
+            
             self.total_trades += 1
             
             # Track strategy stats
