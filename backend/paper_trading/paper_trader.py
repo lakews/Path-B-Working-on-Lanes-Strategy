@@ -559,7 +559,7 @@ class PaperTrader:
             
             # Check minimum liquidity requirements
             if effective_volume < min_vol_threshold and liquidity < min_liq_threshold:
-                logger.debug(f"Skipping {market_id[:16]}: below min thresholds (vol={effective_volume} < {min_vol_threshold}, liq={liquidity} < {min_liq_threshold})")
+                logger.info(f"[SKIP-LIQUIDITY] {market_id[:16]}: vol={effective_volume:.0f} < {min_vol_threshold:.0f}, liq={liquidity:.0f} < {min_liq_threshold:.0f}")
                 return
             
             # Check maximum liquidity (if user wants to avoid very liquid markets)
