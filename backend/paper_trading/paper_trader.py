@@ -778,6 +778,7 @@ class PaperTrader:
             }
             
             # Execute paper trade with sizing breakdown for learning
+            self._entry_passed_all = getattr(self, '_entry_passed_all', 0) + 1
             await self._execute_paper_entry(
                 market_id=market_id,
                 market_data=market_data,
