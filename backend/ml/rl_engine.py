@@ -1,6 +1,7 @@
 """
 Reinforcement Learning Adaptive Strategy Engine
-Uses Q-Learning and policy gradients to optimize trading decisions
+Uses Deep Q-Network (DQN) with Prioritized Experience Replay
+Architecture: 2 hidden layers, 64 neurons each
 """
 import numpy as np
 import logging
@@ -10,14 +11,23 @@ from database import get_db
 from config import config
 import uuid
 import json
+import os
+
+# Import DQN components
+from ml.dqn import DQNAgent, device
 
 logger = logging.getLogger(__name__)
 
+
 class RLAdaptiveEngine:
-    """Reinforcement Learning engine for adaptive trading strategy optimization"""
+    """
+    Reinforcement Learning engine for adaptive trading strategy optimization
+    Now powered by Deep Q-Network (DQN) with Prioritized Experience Replay
+    """
     
-    def __init__(self):
+    def __init__(self, use_dqn: bool = True):
         self.db = get_db()
+        self.use_dqn = use_dqn
         
         # State space dimensions
         self.state_features = [
@@ -30,18 +40,38 @@ class RLAdaptiveEngine:
         self.actions = ['WAIT', 'BUY_SMALL', 'BUY_MEDIUM', 'BUY_LARGE', 'SELL_SMALL', 'SELL_MEDIUM', 'SELL_LARGE']
         self.n_actions = len(self.actions)
         
-        # Q-Table initialization (discretized state space)
-        self.state_bins = 10
-        self.q_table = np.zeros((self.state_bins ** 4, self.n_actions))  # Simplified 4D state
+        # Initialize DQN Agent
+        if self.use_dqn:
+            self.dqn_agent = DQNAgent(
+                state_size=self.n_states,
+                action_size=self.n_actions,
+                hidden_size=64,  # Simple architecture
+                learning_rate=0.001,
+                gamma=0.95,
+                epsilon=0.15,
+                epsilon_decay=0.995,
+                epsilon_min=0.05,
+                buffer_size=10000,
+                batch_size=32,
+                target_update_freq=100
+            )
+            logger.info("RL Engine initialized with DQN + Prioritized Experience Replay")
+        else:
+            self.dqn_agent = None
+            logger.info("RL Engine initialized with Q-table (legacy mode)")
         
-        # Learning parameters
+        # Legacy Q-Table (kept as fallback)
+        self.state_bins = 10
+        self.q_table = np.zeros((self.state_bins ** 4, self.n_actions))
+        
+        # Learning parameters (for legacy mode)
         self.learning_rate = 0.1
         self.discount_factor = 0.95
-        self.epsilon = 0.15  # Exploration rate
+        self.epsilon = 0.15
         self.epsilon_decay = 0.995
         self.min_epsilon = 0.05
         
-        # Experience replay buffer
+        # Legacy experience replay buffer
         self.replay_buffer: List[Dict] = []
         self.max_buffer_size = 10000
         self.batch_size = 32
@@ -50,38 +80,53 @@ class RLAdaptiveEngine:
         self.episode_rewards: List[float] = []
         self.training_iterations = 0
         
+        # Pending actions store (for reward assignment)
+        self._pending_states: Dict[str, Tuple[np.ndarray, int]] = {}
+    
     async def get_optimal_action(self, market_data: Dict, signals: Dict) -> Tuple[str, float]:
-        """Get optimal action using trained policy
+        """
+        Get optimal action using trained DQN policy
         Returns: (action, confidence)
         """
         try:
             # Build state representation
             state = self._build_state(market_data, signals)
-            state_idx = self._discretize_state(state)
             
-            # Epsilon-greedy action selection
-            if np.random.random() < self.epsilon:
-                action_idx = np.random.randint(self.n_actions)
-                confidence = 0.5
+            if self.use_dqn and self.dqn_agent:
+                # Use DQN for action selection
+                action_idx, confidence = self.dqn_agent.select_action(state)
             else:
-                q_values = self.q_table[state_idx]
-                action_idx = np.argmax(q_values)
-                confidence = self._softmax_confidence(q_values, action_idx)
+                # Legacy Q-table mode
+                state_idx = self._discretize_state(state)
+                
+                if np.random.random() < self.epsilon:
+                    action_idx = np.random.randint(self.n_actions)
+                    confidence = 0.5
+                else:
+                    q_values = self.q_table[state_idx]
+                    action_idx = np.argmax(q_values)
+                    confidence = self._softmax_confidence(q_values, action_idx)
             
             action = self.actions[action_idx]
             
             # Store state for later reward assignment
-            # Note: market_data uses 'market_id' key, not 'id'
             market_id = market_data.get('market_id') or market_data.get('id')
+            self._pending_states[market_id] = (state.copy(), action_idx)
             await self._store_pending_action(market_id, state, action_idx)
             
-            logger.info(f"RL Action: {action} (confidence: {confidence:.2f}, epsilon: {self.epsilon:.3f})")
+            logger.info(f"RL Action: {action} (confidence: {confidence:.2f}, epsilon: {self._get_epsilon():.3f})")
             
             return action, confidence
             
         except Exception as e:
             logger.error(f"Error getting optimal action: {e}")
             return 'WAIT', 0.0
+    
+    def _get_epsilon(self) -> float:
+        """Get current epsilon value"""
+        if self.use_dqn and self.dqn_agent:
+            return self.dqn_agent.epsilon
+        return self.epsilon
     
     def _build_state(self, market_data: Dict, signals: Dict) -> np.ndarray:
         """Build state vector from market data and signals"""
@@ -95,20 +140,18 @@ class RLAdaptiveEngine:
                 min(market_data.get('volume', 0) / 50000, 1.0),
                 self._calculate_time_to_expiry(market_data),
                 self._get_portfolio_exposure()
-            ])
+            ], dtype=np.float32)
             return state
         except Exception as e:
             logger.error(f"Error building state: {e}")
-            return np.zeros(self.n_states)
+            return np.zeros(self.n_states, dtype=np.float32)
     
     def _discretize_state(self, state: np.ndarray) -> int:
-        """Discretize continuous state to index"""
+        """Discretize continuous state to index (for legacy Q-table)"""
         try:
-            # Use first 4 features for simplified state space
             key_features = state[:4]
             bins = np.digitize(key_features, np.linspace(0, 1, self.state_bins))
             
-            # Convert to single index
             idx = 0
             for i, b in enumerate(bins):
                 idx += b * (self.state_bins ** i)
@@ -141,7 +184,6 @@ class RLAdaptiveEngine:
             now = datetime.now(timezone.utc)
             time_remaining = (end_date - now).total_seconds()
             
-            # Normalize: 0 = expired, 1 = more than 30 days
             normalized = min(max(time_remaining / (30 * 24 * 3600), 0), 1)
             return normalized
         except Exception:
@@ -150,60 +192,84 @@ class RLAdaptiveEngine:
     def _get_portfolio_exposure(self) -> float:
         """Get current portfolio exposure as normalized value"""
         try:
-            # Placeholder - would calculate actual exposure
             return 0.5
         except Exception:
             return 0.5
     
-    async def update_from_reward(self, market_id: str, reward: float):
-        """Update Q-values based on received reward"""
+    async def update_from_reward(self, market_id: str, reward: float, next_market_data: Optional[Dict] = None, done: bool = False):
+        """
+        Update DQN based on received reward
+        For DQN: stores experience and triggers training step
+        For legacy: updates Q-table directly
+        """
         try:
             # Get pending action for this market
-            pending = await self.db.rl_pending_actions.find_one(
-                {"market_id": market_id},
-                sort=[("timestamp", -1)]
-            )
+            if market_id in self._pending_states:
+                state, action_idx = self._pending_states[market_id]
+                del self._pending_states[market_id]
+            else:
+                pending = await self.db.rl_pending_actions.find_one(
+                    {"market_id": market_id},
+                    sort=[("timestamp", -1)]
+                )
+                
+                if not pending:
+                    return
+                
+                state = np.array(pending.get('state', []), dtype=np.float32)
+                action_idx = pending.get('action_idx', 0)
             
-            if not pending:
-                return
+            # Build next state
+            if next_market_data:
+                next_state = self._build_state(next_market_data, {})
+            else:
+                next_state = state.copy()  # Same state if not provided
             
-            state = np.array(pending.get('state', []))
-            action_idx = pending.get('action_idx', 0)
+            if self.use_dqn and self.dqn_agent:
+                # Store experience in prioritized replay buffer
+                self.dqn_agent.store_experience(state, action_idx, reward, next_state, done)
+                
+                # Perform training step
+                loss = self.dqn_agent.train_step()
+                
+                if loss is not None:
+                    logger.info(f"DQN Update: reward={reward:.4f}, loss={loss:.6f}, epsilon={self.dqn_agent.epsilon:.4f}")
+                else:
+                    logger.info(f"DQN Experience stored: reward={reward:.4f}")
+                
+                self.training_iterations = self.dqn_agent.training_iterations
+            else:
+                # Legacy Q-table update
+                state_idx = self._discretize_state(state)
+                current_q = self.q_table[state_idx, action_idx]
+                
+                max_next_q = np.max(self.q_table[state_idx])
+                new_q = current_q + self.learning_rate * (
+                    reward + self.discount_factor * max_next_q - current_q
+                )
+                
+                self.q_table[state_idx, action_idx] = new_q
+                
+                # Add to replay buffer
+                experience = {
+                    'state': state.tolist(),
+                    'action': action_idx,
+                    'reward': reward,
+                    'next_state': next_state.tolist(),
+                    'timestamp': datetime.now(timezone.utc).isoformat()
+                }
+                self.replay_buffer.append(experience)
+                
+                if len(self.replay_buffer) > self.max_buffer_size:
+                    self.replay_buffer.pop(0)
+                
+                self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
+                self.training_iterations += 1
+                
+                logger.info(f"Q-Table Update: reward={reward:.4f}, new_q={new_q:.4f}, epsilon={self.epsilon:.4f}")
             
-            # Get current Q-value
-            state_idx = self._discretize_state(state)
-            current_q = self.q_table[state_idx, action_idx]
-            
-            # Q-learning update
-            max_next_q = np.max(self.q_table[state_idx])  # Simplified: same state
-            new_q = current_q + self.learning_rate * (
-                reward + self.discount_factor * max_next_q - current_q
-            )
-            
-            self.q_table[state_idx, action_idx] = new_q
-            
-            # Add to replay buffer
-            experience = {
-                'state': state.tolist(),
-                'action': action_idx,
-                'reward': reward,
-                'next_state': state.tolist(),
-                'timestamp': datetime.now(timezone.utc).isoformat()
-            }
-            self.replay_buffer.append(experience)
-            
-            if len(self.replay_buffer) > self.max_buffer_size:
-                self.replay_buffer.pop(0)
-            
-            # Decay epsilon
-            self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
-            
-            self.training_iterations += 1
-            
-            # Store training progress
+            self.episode_rewards.append(reward)
             await self._store_training_progress(reward)
-            
-            logger.info(f"RL Update: reward={reward:.4f}, new_q={new_q:.4f}, epsilon={self.epsilon:.4f}")
             
         except Exception as e:
             logger.error(f"Error updating from reward: {e}")
@@ -211,32 +277,41 @@ class RLAdaptiveEngine:
     async def train_from_replay(self):
         """Train on batch from experience replay buffer"""
         try:
-            if len(self.replay_buffer) < self.batch_size:
-                return
-            
-            # Sample random batch
-            indices = np.random.choice(len(self.replay_buffer), self.batch_size, replace=False)
-            batch = [self.replay_buffer[i] for i in indices]
-            
-            for experience in batch:
-                state = np.array(experience['state'])
-                action = experience['action']
-                reward = experience['reward']
-                next_state = np.array(experience['next_state'])
+            if self.use_dqn and self.dqn_agent:
+                # DQN training step (uses prioritized replay internally)
+                for _ in range(5):  # Multiple training steps
+                    loss = self.dqn_agent.train_step()
+                    if loss is not None:
+                        logger.debug(f"DQN batch training loss: {loss:.6f}")
                 
-                state_idx = self._discretize_state(state)
-                next_state_idx = self._discretize_state(next_state)
+                logger.info("DQN batch training completed")
+            else:
+                # Legacy Q-table replay training
+                if len(self.replay_buffer) < self.batch_size:
+                    return
                 
-                current_q = self.q_table[state_idx, action]
-                max_next_q = np.max(self.q_table[next_state_idx])
+                indices = np.random.choice(len(self.replay_buffer), self.batch_size, replace=False)
+                batch = [self.replay_buffer[i] for i in indices]
                 
-                new_q = current_q + self.learning_rate * (
-                    reward + self.discount_factor * max_next_q - current_q
-                )
+                for experience in batch:
+                    state = np.array(experience['state'])
+                    action = experience['action']
+                    reward = experience['reward']
+                    next_state = np.array(experience['next_state'])
+                    
+                    state_idx = self._discretize_state(state)
+                    next_state_idx = self._discretize_state(next_state)
+                    
+                    current_q = self.q_table[state_idx, action]
+                    max_next_q = np.max(self.q_table[next_state_idx])
+                    
+                    new_q = current_q + self.learning_rate * (
+                        reward + self.discount_factor * max_next_q - current_q
+                    )
+                    
+                    self.q_table[state_idx, action] = new_q
                 
-                self.q_table[state_idx, action] = new_q
-            
-            logger.info(f"RL batch training completed: {self.batch_size} experiences")
+                logger.info(f"Q-table batch training completed: {self.batch_size} experiences")
             
         except Exception as e:
             logger.error(f"Error in replay training: {e}")
@@ -248,7 +323,7 @@ class RLAdaptiveEngine:
                 "id": str(uuid.uuid4()),
                 "market_id": market_id,
                 "state": state.tolist(),
-                "action_idx": int(action_idx),  # Convert numpy int64 to Python int
+                "action_idx": int(action_idx),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             })
         except Exception as e:
@@ -257,58 +332,75 @@ class RLAdaptiveEngine:
     async def _store_training_progress(self, reward: float):
         """Store training progress metrics"""
         try:
-            self.episode_rewards.append(reward)
-            
             if self.training_iterations % 100 == 0:
                 avg_reward = np.mean(self.episode_rewards[-100:]) if self.episode_rewards else 0
                 
-                await self.db.rl_training_progress.insert_one({
+                progress_data = {
                     "id": str(uuid.uuid4()),
                     "iteration": self.training_iterations,
-                    "epsilon": self.epsilon,
+                    "epsilon": self._get_epsilon(),
                     "avg_reward_100": avg_reward,
-                    "buffer_size": len(self.replay_buffer),
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                })
+                    "buffer_size": len(self.dqn_agent.memory) if self.use_dqn and self.dqn_agent else len(self.replay_buffer),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "model_type": "DQN" if self.use_dqn else "Q-table"
+                }
+                
+                await self.db.rl_training_progress.insert_one(progress_data)
         except Exception as e:
             logger.error(f"Error storing training progress: {e}")
     
     async def get_training_stats(self) -> Dict:
         """Get current training statistics with detailed performance metrics"""
         try:
-            recent_rewards = self.episode_rewards[-100:] if self.episode_rewards else []
-            
-            # Calculate additional metrics
-            positive_rewards = [r for r in recent_rewards if r > 0]
-            negative_rewards = [r for r in recent_rewards if r < 0]
-            
-            # Q-table analysis
-            q_values_flat = self.q_table.flatten()
-            nonzero_q = q_values_flat[q_values_flat != 0]
-            
-            # Action distribution from Q-table
-            best_actions = np.argmax(self.q_table, axis=1)
-            action_counts = {action: int(np.sum(best_actions == i)) for i, action in enumerate(self.actions)}
-            
-            return {
-                "total_iterations": self.training_iterations,
-                "epsilon": float(self.epsilon),
-                "avg_reward_100": float(np.mean(recent_rewards)) if recent_rewards else 0,
-                "max_reward_100": float(max(recent_rewards)) if recent_rewards else 0,
-                "min_reward_100": float(min(recent_rewards)) if recent_rewards else 0,
-                "std_reward_100": float(np.std(recent_rewards)) if len(recent_rewards) > 1 else 0,
-                "positive_rate": float(len(positive_rewards) / len(recent_rewards)) if recent_rewards else 0,
-                "avg_positive_reward": float(np.mean(positive_rewards)) if positive_rewards else 0,
-                "avg_negative_reward": float(np.mean(negative_rewards)) if negative_rewards else 0,
-                "buffer_size": len(self.replay_buffer),
-                "q_table_size": list(self.q_table.shape),
-                "q_table_nonzero_pct": float(len(nonzero_q) / len(q_values_flat) * 100) if len(q_values_flat) > 0 else 0,
-                "q_table_mean": float(np.mean(nonzero_q)) if len(nonzero_q) > 0 else 0,
-                "q_table_max": float(np.max(nonzero_q)) if len(nonzero_q) > 0 else 0,
-                "action_distribution": action_counts,
-                "learning_rate": float(self.learning_rate),
-                "discount_factor": float(self.discount_factor)
-            }
+            if self.use_dqn and self.dqn_agent:
+                # Get DQN stats
+                dqn_stats = self.dqn_agent.get_stats()
+                
+                # Add action distribution
+                action_counts = {action: 0 for action in self.actions}
+                
+                return {
+                    **dqn_stats,
+                    "model_type": "DQN",
+                    "prioritized_replay": True,
+                    "device": str(device),
+                    "action_distribution": action_counts,
+                    "state_features": self.state_features
+                }
+            else:
+                # Legacy Q-table stats
+                recent_rewards = self.episode_rewards[-100:] if self.episode_rewards else []
+                
+                positive_rewards = [r for r in recent_rewards if r > 0]
+                negative_rewards = [r for r in recent_rewards if r < 0]
+                
+                q_values_flat = self.q_table.flatten()
+                nonzero_q = q_values_flat[q_values_flat != 0]
+                
+                best_actions = np.argmax(self.q_table, axis=1)
+                action_counts = {action: int(np.sum(best_actions == i)) for i, action in enumerate(self.actions)}
+                
+                return {
+                    "model_type": "Q-table",
+                    "prioritized_replay": False,
+                    "total_iterations": self.training_iterations,
+                    "epsilon": float(self.epsilon),
+                    "avg_reward_100": float(np.mean(recent_rewards)) if recent_rewards else 0,
+                    "max_reward_100": float(max(recent_rewards)) if recent_rewards else 0,
+                    "min_reward_100": float(min(recent_rewards)) if recent_rewards else 0,
+                    "std_reward_100": float(np.std(recent_rewards)) if len(recent_rewards) > 1 else 0,
+                    "positive_rate": float(len(positive_rewards) / len(recent_rewards)) if recent_rewards else 0,
+                    "avg_positive_reward": float(np.mean(positive_rewards)) if positive_rewards else 0,
+                    "avg_negative_reward": float(np.mean(negative_rewards)) if negative_rewards else 0,
+                    "buffer_size": len(self.replay_buffer),
+                    "q_table_size": list(self.q_table.shape),
+                    "q_table_nonzero_pct": float(len(nonzero_q) / len(q_values_flat) * 100) if len(q_values_flat) > 0 else 0,
+                    "q_table_mean": float(np.mean(nonzero_q)) if len(nonzero_q) > 0 else 0,
+                    "q_table_max": float(np.max(nonzero_q)) if len(nonzero_q) > 0 else 0,
+                    "action_distribution": action_counts,
+                    "learning_rate": float(self.learning_rate),
+                    "discount_factor": float(self.discount_factor)
+                }
         except Exception as e:
             logger.error(f"Error getting training stats: {e}")
             return {}
@@ -327,10 +419,8 @@ class RLAdaptiveEngine:
                     continue
                 
                 # Calculate reward signal for each strategy
-                # Positive reward for profitable strategies, scaled by performance
-                reward = pnl / 100  # Scale down to reasonable reward range
+                reward = pnl / 100
                 
-                # Bonus for high win rate
                 if win_rate > 0.6:
                     reward *= 1.2
                 elif win_rate < 0.4:
@@ -338,31 +428,43 @@ class RLAdaptiveEngine:
                 
                 # Create synthetic experience for this strategy
                 state = np.array([
-                    0.5,  # Neutral price
-                    0.05 if 'volatility' in strategy else 0.02,  # Volatility estimate
-                    0.5,  # Neutral sentiment
-                    win_rate  # Use win rate as sharp alignment proxy
-                ])
+                    0.5,
+                    0.05 if 'volatility' in strategy else 0.02,
+                    0.5,
+                    win_rate,
+                    0.5,
+                    0.5,
+                    0.7,
+                    0.3
+                ], dtype=np.float32)
                 
                 # Map strategy to action
                 action_map = {
-                    'delta_neutral': 0,  # WAIT-like (low risk)
-                    'volatility_exploitation': 2,  # BUY_MEDIUM
-                    'alpha_directional': 3,  # BUY_LARGE
-                    'arbitrage': 1  # BUY_SMALL
+                    'delta_neutral': 0,
+                    'volatility_exploitation': 2,
+                    'alpha_directional': 3,
+                    'arbitrage': 1
                 }
                 action_idx = action_map.get(strategy, 0)
                 
-                # Update Q-table
-                state_idx = self._discretize_state(state)
-                current_q = self.q_table[state_idx, action_idx]
-                new_q = current_q + self.learning_rate * (reward - current_q)
-                self.q_table[state_idx, action_idx] = new_q
+                if self.use_dqn and self.dqn_agent:
+                    # Store experience in DQN
+                    next_state = state.copy()
+                    self.dqn_agent.store_experience(state, action_idx, reward, next_state, done=True)
+                    
+                    # Train
+                    self.dqn_agent.train_step()
+                else:
+                    # Legacy Q-table update
+                    state_idx = self._discretize_state(state)
+                    current_q = self.q_table[state_idx, action_idx]
+                    new_q = current_q + self.learning_rate * (reward - current_q)
+                    self.q_table[state_idx, action_idx] = new_q
                 
                 self.training_iterations += 1
                 self.episode_rewards.append(reward)
                 
-                logger.info(f"RL learned from {strategy}: reward={reward:.4f}, new_q={new_q:.4f}")
+                logger.info(f"RL learned from {strategy}: reward={reward:.4f}")
             
             # Save model after learning
             await self.save_model()
@@ -374,9 +476,7 @@ class RLAdaptiveEngine:
         """Get RL model's confidence for a specific strategy in current market conditions"""
         try:
             state = self._build_state(market_data, {})
-            state_idx = self._discretize_state(state)
             
-            # Map strategy to action
             action_map = {
                 'delta_neutral': 0,
                 'volatility_exploitation': 2,
@@ -385,15 +485,26 @@ class RLAdaptiveEngine:
             }
             action_idx = action_map.get(strategy, 0)
             
-            # Get Q-value for this strategy
-            q_value = self.q_table[state_idx, action_idx]
-            
-            # Normalize to confidence [0, 1]
-            all_q = self.q_table[state_idx]
-            if np.max(all_q) - np.min(all_q) > 0:
-                confidence = (q_value - np.min(all_q)) / (np.max(all_q) - np.min(all_q))
+            if self.use_dqn and self.dqn_agent:
+                # Get Q-values from DQN
+                q_values = self.dqn_agent.get_q_values(state)
+                q_value = q_values[action_idx]
+                
+                # Normalize to confidence [0, 1]
+                if np.max(q_values) - np.min(q_values) > 0:
+                    confidence = (q_value - np.min(q_values)) / (np.max(q_values) - np.min(q_values))
+                else:
+                    confidence = 0.5
             else:
-                confidence = 0.5
+                # Legacy Q-table
+                state_idx = self._discretize_state(state)
+                q_value = self.q_table[state_idx, action_idx]
+                
+                all_q = self.q_table[state_idx]
+                if np.max(all_q) - np.min(all_q) > 0:
+                    confidence = (q_value - np.min(all_q)) / (np.max(all_q) - np.min(all_q))
+                else:
+                    confidence = 0.5
             
             return float(confidence)
             
@@ -401,29 +512,42 @@ class RLAdaptiveEngine:
             logger.error(f"Error getting strategy confidence: {e}")
             return 0.5
     
-    async def save_model(self, filepath: str = "/app/backend/ml/rl_model.npz"):
-        """Save Q-table and parameters"""
+    async def save_model(self):
+        """Save both DQN and Q-table models"""
         try:
+            if self.use_dqn and self.dqn_agent:
+                self.dqn_agent.save("/app/backend/ml/dqn_model.pt")
+            
+            # Also save Q-table as backup
             np.savez(
-                filepath,
+                "/app/backend/ml/rl_model.npz",
                 q_table=self.q_table,
                 epsilon=self.epsilon,
                 training_iterations=self.training_iterations
             )
-            logger.info(f"RL model saved to {filepath}")
+            logger.info("RL models saved")
         except Exception as e:
             logger.error(f"Error saving RL model: {e}")
     
-    async def load_model(self, filepath: str = "/app/backend/ml/rl_model.npz"):
-        """Load Q-table and parameters"""
+    async def load_model(self):
+        """Load both DQN and Q-table models"""
         try:
-            data = np.load(filepath)
-            self.q_table = data['q_table']
-            self.epsilon = float(data['epsilon'])
-            self.training_iterations = int(data['training_iterations'])
-            logger.info(f"RL model loaded from {filepath}")
-        except FileNotFoundError:
-            logger.info("No saved RL model found, using fresh initialization")
+            if self.use_dqn and self.dqn_agent:
+                self.dqn_agent.load("/app/backend/ml/dqn_model.pt")
+                self.training_iterations = self.dqn_agent.training_iterations
+            
+            # Also try to load Q-table
+            try:
+                data = np.load("/app/backend/ml/rl_model.npz")
+                self.q_table = data['q_table']
+                self.epsilon = float(data['epsilon'])
+                if not self.use_dqn:
+                    self.training_iterations = int(data['training_iterations'])
+                logger.info("Q-table loaded as backup")
+            except FileNotFoundError:
+                pass
+                
+            logger.info("RL models loaded")
         except Exception as e:
             logger.error(f"Error loading RL model: {e}")
     
@@ -447,3 +571,14 @@ class RLAdaptiveEngine:
     def is_sell_action(self, action: str) -> bool:
         """Check if action is a sell"""
         return action.startswith('SELL')
+    
+    def switch_mode(self, use_dqn: bool):
+        """Switch between DQN and Q-table modes"""
+        if use_dqn and not self.dqn_agent:
+            self.dqn_agent = DQNAgent(
+                state_size=self.n_states,
+                action_size=self.n_actions,
+                hidden_size=64
+            )
+        self.use_dqn = use_dqn
+        logger.info(f"RL Engine switched to {'DQN' if use_dqn else 'Q-table'} mode")
