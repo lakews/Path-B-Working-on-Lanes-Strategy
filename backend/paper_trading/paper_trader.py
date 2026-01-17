@@ -626,8 +626,7 @@ class PaperTrader:
                     if end_date:
                         now = datetime.now(timezone.utc)
                         if end_date < now:
-                            question = market_data.get('question', '')[:50]
-                            logger.warning(f"⛔ BLOCKING EXPIRED MARKET: {market_id[:16]} - deadline {end_date.date()} < today {now.date()} - {question}")
+                            track_skip("expired_end_date")
                             return
                 except Exception as e:
                     logger.warning(f"Could not parse end_date '{end_date_str}': {e}")
