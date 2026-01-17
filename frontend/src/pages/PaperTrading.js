@@ -1514,41 +1514,120 @@ const PaperTrading = () => {
       {activeTab === 'rl' && (
         <div className="space-y-6">
           <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-6">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2 mb-6"><Brain className="w-6 h-6 text-blue-400" />Reinforcement Learning Status</h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Brain className="w-6 h-6 text-blue-400" />
+                Reinforcement Learning Status
+              </h3>
+              {rlStats && (
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    rlStats.model_type === 'DQN' 
+                      ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50' 
+                      : 'bg-blue-500/30 text-blue-300 border border-blue-500/50'
+                  }`}>
+                    {rlStats.model_type || 'Q-table'}
+                  </span>
+                  {rlStats.prioritized_replay && (
+                    <span className="px-2 py-1 rounded-full text-[10px] bg-green-500/20 text-green-400 border border-green-500/30">
+                      Prioritized Replay
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            
             {rlStats && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <MetricCard title="Training Iterations" value={rlStats.total_iterations?.toLocaleString() || 0} icon={Zap} color="blue" />
                 <MetricCard title="Exploration Rate" value={`${((rlStats.epsilon || 0) * 100).toFixed(1)}%`} subtitle="Lower = more exploitation" icon={Crosshair} color="purple" />
                 <MetricCard title="Avg Reward (100)" value={(rlStats.avg_reward_100 || 0).toFixed(3)} icon={Award} color={rlStats.avg_reward_100 >= 0 ? "green" : "red"} />
-                <MetricCard title="Experience Buffer" value={rlStats.buffer_size?.toLocaleString() || 0} subtitle="Max: 10,000" icon={Database} color="cyan" />
+                <MetricCard title="Experience Buffer" value={rlStats.buffer_size?.toLocaleString() || 0} subtitle={rlStats.model_type === 'DQN' ? `β: ${(rlStats.buffer_beta || 0).toFixed(2)}` : "Max: 10,000"} icon={Database} color="cyan" />
               </div>
             )}
+            
             {rlStats && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Model-specific info */}
                 <div className="rounded-lg bg-white/5 p-4">
-                  <h4 className="text-white font-medium mb-3">Q-Table Analysis</h4>
+                  <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                    {rlStats.model_type === 'DQN' ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                        DQN Architecture
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        Q-Table Analysis
+                      </>
+                    )}
+                  </h4>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-white/60">Table Size</span><span className="text-white">{rlStats.q_table_size?.join(' x ')}</span></div>
-                    <div className="flex justify-between"><span className="text-white/60">Non-zero %</span><span className="text-white">{(rlStats.q_table_nonzero_pct || 0).toFixed(1)}%</span></div>
-                    <div className="flex justify-between"><span className="text-white/60">Mean Q-Value</span><span className="text-white">{(rlStats.q_table_mean || 0).toFixed(4)}</span></div>
+                    {rlStats.model_type === 'DQN' ? (
+                      <>
+                        <div className="flex justify-between"><span className="text-white/60">Architecture</span><span className="text-white font-mono text-xs">{rlStats.architecture}</span></div>
+                        <div className="flex justify-between"><span className="text-white/60">Device</span><span className="text-white">{rlStats.device}</span></div>
+                        <div className="flex justify-between"><span className="text-white/60">Learning Rate</span><span className="text-white">{rlStats.learning_rate}</span></div>
+                        <div className="flex justify-between"><span className="text-white/60">Gamma (discount)</span><span className="text-white">{rlStats.gamma}</span></div>
+                        <div className="flex justify-between"><span className="text-white/60">Target Update Freq</span><span className="text-white">{rlStats.target_update_freq}</span></div>
+                        <div className="flex justify-between"><span className="text-white/60">Avg Loss (100)</span><span className="text-white">{(rlStats.avg_loss_100 || 0).toFixed(6)}</span></div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between"><span className="text-white/60">Table Size</span><span className="text-white">{rlStats.q_table_size?.join(' x ')}</span></div>
+                        <div className="flex justify-between"><span className="text-white/60">Non-zero %</span><span className="text-white">{(rlStats.q_table_nonzero_pct || 0).toFixed(1)}%</span></div>
+                        <div className="flex justify-between"><span className="text-white/60">Mean Q-Value</span><span className="text-white">{(rlStats.q_table_mean || 0).toFixed(4)}</span></div>
+                        <div className="flex justify-between"><span className="text-white/60">Max Q-Value</span><span className="text-white">{(rlStats.q_table_max || 0).toFixed(4)}</span></div>
+                        <div className="flex justify-between"><span className="text-white/60">Learning Rate</span><span className="text-white">{rlStats.learning_rate}</span></div>
+                        <div className="flex justify-between"><span className="text-white/60">Discount Factor</span><span className="text-white">{rlStats.discount_factor}</span></div>
+                      </>
+                    )}
                   </div>
                 </div>
+                
+                {/* Reward stats */}
                 <div className="rounded-lg bg-white/5 p-4">
-                  <h4 className="text-white font-medium mb-3">Action Distribution</h4>
-                  <div className="space-y-2">
-                    {rlStats.action_distribution && Object.entries(rlStats.action_distribution).map(([action, count]) => (
-                      <div key={action} className="flex items-center gap-2">
-                        <span className="text-white/60 text-sm w-24">{action}</span>
-                        <div className="flex-1 bg-white/10 rounded-full h-2">
-                          <div className="bg-cyan-500 h-2 rounded-full" style={{ width: `${(count / Math.max(...Object.values(rlStats.action_distribution))) * 100}%` }} />
-                        </div>
-                        <span className="text-white text-sm w-12 text-right">{count}</span>
-                      </div>
-                    ))}
+                  <h4 className="text-white font-medium mb-3">Reward Statistics</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-white/60">Positive Rate</span><span className="text-green-400">{((rlStats.positive_rate || 0) * 100).toFixed(1)}%</span></div>
+                    <div className="flex justify-between"><span className="text-white/60">Avg Positive</span><span className="text-green-400">+{(rlStats.avg_positive_reward || 0).toFixed(4)}</span></div>
+                    <div className="flex justify-between"><span className="text-white/60">Avg Negative</span><span className="text-red-400">{(rlStats.avg_negative_reward || 0).toFixed(4)}</span></div>
+                    <div className="flex justify-between"><span className="text-white/60">Std Dev</span><span className="text-white">{(rlStats.std_reward_100 || 0).toFixed(4)}</span></div>
+                    <div className="flex justify-between"><span className="text-white/60">Max Reward</span><span className="text-cyan-400">{(rlStats.max_reward_100 || 0).toFixed(4)}</span></div>
+                    <div className="flex justify-between"><span className="text-white/60">Min Reward</span><span className="text-orange-400">{(rlStats.min_reward_100 || 0).toFixed(4)}</span></div>
                   </div>
                 </div>
               </div>
             )}
+            
+            {/* Action Distribution */}
+            {rlStats && rlStats.action_distribution && (
+              <div className="mt-6 rounded-lg bg-white/5 p-4">
+                <h4 className="text-white font-medium mb-3">Action Distribution</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {Object.entries(rlStats.action_distribution).map(([action, count]) => {
+                    const maxCount = Math.max(...Object.values(rlStats.action_distribution), 1);
+                    const pct = (count / maxCount) * 100;
+                    const isBuy = action.startsWith('BUY');
+                    const isSell = action.startsWith('SELL');
+                    const color = isBuy ? 'green' : isSell ? 'red' : 'blue';
+                    return (
+                      <div key={action} className="bg-white/5 rounded-lg p-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-xs font-medium text-${color}-400`}>{action}</span>
+                          <span className="text-white text-xs">{count}</span>
+                        </div>
+                        <div className="bg-white/10 rounded-full h-1.5">
+                          <div className={`bg-${color}-500 h-1.5 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
             <div className="mt-6 flex gap-4">
               <button onClick={trainRLFromSession} disabled={!running} className="px-4 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-400 hover:bg-purple-500/30 disabled:opacity-50 flex items-center gap-2 text-sm">
                 <Brain className="w-4 h-4" />Force Train Now
