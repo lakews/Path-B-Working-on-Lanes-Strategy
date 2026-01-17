@@ -547,9 +547,13 @@ class PaperTrader:
         try:
             market_id = market_data.get('id', '')[:16]
             
+            # Track entries evaluated
+            if not hasattr(self, '_entry_attempts'):
+                self._entry_attempts = {}
+            self._entry_attempts[market_id] = self._entry_attempts.get(market_id, 0) + 1
+            
             # CIRCUIT BREAKER CHECK: Stop new entries if max drawdown exceeded
             if self.circuit_breaker_triggered:
-                logger.debug(f"[{market_id}] SKIP: Circuit breaker active")
                 return
             
             # Check if we're at max positions limit
