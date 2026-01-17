@@ -721,13 +721,13 @@ class PaperTrader:
             # Check if we should enter at all based on expiry
             if not expiry_info.get('should_enter', True):
                 question = market_data.get('question', '')[:50]
-                logger.debug(f"Skipping {market_id[:16]}: {expiry_info.get('urgency')} - {expiry_info.get('expiry_label')} - {question}")
+                logger.info(f"[SKIP-EXPIRY] {market_id[:16]}: {expiry_info.get('urgency')} - {expiry_info.get('expiry_label')}")
                 return
             
             # Check strategy-specific expiry rules
             strategy_expiry = self._should_strategy_trade_near_expiry(strategy, expiry_info, rl_confidence)
             if not strategy_expiry.get('should_trade', True):
-                logger.debug(f"Skipping {market_id[:16]}: {strategy} blocked near expiry - {strategy_expiry.get('reason')}")
+                logger.info(f"[SKIP-STRAT-EXPIRY] {market_id[:16]}: {strategy} blocked - {strategy_expiry.get('reason')}")
                 return
             
             # Get expiry-adjusted size multiplier
