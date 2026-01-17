@@ -1611,8 +1611,9 @@ class PaperTrader:
         # Strategy selection based on ACTUAL signals - balanced distribution
         # Uses configurable thresholds (loaded from DB config)
         
-        # 1. ALPHA DIRECTIONAL: Extreme prices (< 0.10 or > 0.90) - clear directional bets
-        if (yes_price < 0.10 or yes_price > 0.90) and 'alpha_directional' in self.enabled_strategies:
+        # 1. ALPHA DIRECTIONAL: Extreme prices (< 0.03 or > 0.97) - clear directional bets
+        # Narrowed from 0.10/0.90 to allow more Arbitrage opportunities
+        if (yes_price < 0.03 or yes_price > 0.97) and 'alpha_directional' in self.enabled_strategies:
             return 'alpha_directional'
         
         # 2. ARBITRAGE: High liquidity markets with good sharp alignment
