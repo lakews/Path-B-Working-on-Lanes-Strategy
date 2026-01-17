@@ -1086,6 +1086,9 @@ class PaperTrader:
             strategy = position.get('strategy', 'arbitrage')
             asset_class = position.get('asset_class', 'unknown')
             
+            # UPDATE position's current_price for UI display
+            position['current_price'] = current_price
+            
             # Get exit parameters for this strategy + asset class combination
             exit_params = self._get_exit_params(strategy, asset_class)
             take_profit_threshold = exit_params['take_profit']
@@ -1103,6 +1106,7 @@ class PaperTrader:
                     pnl_pct = unrealized_pnl / size if size > 0 else 0
                 else:
                     pnl_pct = 0
+                    unrealized_pnl = 0
             else:
                 # NO position: bought NO shares at (1 - entry_price), now worth (1 - current_price)
                 no_entry_price = 1 - entry_price
@@ -1114,6 +1118,11 @@ class PaperTrader:
                     pnl_pct = unrealized_pnl / size if size > 0 else 0
                 else:
                     pnl_pct = 0
+                    unrealized_pnl = 0
+            
+            # UPDATE position's unrealized P&L for UI display
+            position['unrealized_pnl'] = unrealized_pnl
+            position['unrealized_pnl_pct'] = pnl_pct
             
             # Get RL recommendation for exit
             signals = await self._get_signals(market_data)
