@@ -1142,18 +1142,51 @@ class PaperTrader:
                 exit_reason = f"expiry_safety_exit_{hours_to_expiry:.1f}h"
                 logger.info(f"⚠️ AUTO-EXIT: {market_id[:16]} expires in {hours_to_expiry:.1f}h - forcing exit")
             
-            # Take profit - configurable by strategy/asset
-            elif pnl_pct >= take_profit_threshold:
-                should_exit = True
-                exit_reason = "take_profit"
+            # SMART TP/SL: Use price-based exit for extreme prices
+            # At extreme prices (YES < 5% or YES > 95%), ROI-based TP/SL is mathematically limited
+            # For NO positions at ~$0.99, max possible profit is ~1%
+            # Use price-based TP/SL: exit when price moves significantly from entry
+            is_extreme_price = entry_price < 0.05 or entry_price > 0.95
             
-            # Stop loss - configurable by strategy/asset
-            elif pnl_pct <= stop_loss_threshold:
-                should_exit = True
-                exit_reason = "stop_loss"
+            if is_extreme_price:
+                # Price-based TP/SL for extreme prices
+                # TP: Price moves favorably by 30% (e.g., 0.03 -> 0.021 for YES drop)
+                # SL: Price moves adversely by 50% (e.g., 0.03 -> 0.045 for YES rise)
+                price_tp_threshold = 0.30  # 30% price move in our favor
+                price_sl_threshold = 0.50  # 50% adverse price move
+                
+                if side == 'YES':
+                    # YES position profits when price goes up
+                    price_change = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+                    if price_change >= price_tp_threshold:
+                        should_exit = True
+                        exit_reason = f"price_tp_{price_change:.0%}"
+                    elif price_change <= -price_sl_threshold:
+                        should_exit = True
+                        exit_reason = f"price_sl_{price_change:.0%}"
+                else:
+                    # NO position profits when YES price goes down (NO price goes up)
+                    price_change = (entry_price - current_price) / entry_price if entry_price > 0 else 0
+                    if price_change >= price_tp_threshold:
+                        should_exit = True
+                        exit_reason = f"price_tp_{price_change:.0%}"
+                    elif price_change <= -price_sl_threshold:
+                        should_exit = True
+                        exit_reason = f"price_sl_{price_change:.0%}"
+            else:
+                # Standard ROI-based TP/SL for normal prices
+                # Take profit - configurable by strategy/asset
+                if pnl_pct >= take_profit_threshold:
+                    should_exit = True
+                    exit_reason = "take_profit"
+                
+                # Stop loss - configurable by strategy/asset
+                elif pnl_pct <= stop_loss_threshold:
+                    should_exit = True
+                    exit_reason = "stop_loss"
             
             # RL suggests opposite action with high confidence
-            elif rl_confidence > 0.7:
+            if not should_exit and rl_confidence > 0.7:
                 if side == 'YES' and 'SELL' in rl_action:
                     should_exit = True
                     exit_reason = "rl_signal_reversal"
@@ -1164,7 +1197,7 @@ class PaperTrader:
             # Time-based exit - configurable by strategy/asset
             entry_time = datetime.fromisoformat(position['entry_time'].replace('Z', '+00:00'))
             hours_open = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
-            if hours_open > max_hours:
+            if not should_exit and hours_open > max_hours:
                 should_exit = True
                 exit_reason = "time_limit"
             
