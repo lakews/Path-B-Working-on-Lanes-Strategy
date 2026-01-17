@@ -512,7 +512,9 @@ class PaperTrader:
                     self._cycle_count = 0
                 self._cycle_count += 1
                 if self._cycle_count % 10 == 0:
-                    logger.info(f"[CYCLE {self._cycle_count}] Entries: {entry_evaluated}, Exits: {exit_evaluated}, Skipped(asset): {skipped_asset_class}, Open positions: {len(self.paper_positions)}, Total entry attempts: {getattr(self, '_total_entry_attempts', 0)}, Passed all: {getattr(self, '_entry_passed_all', 0)}")
+                    skip_summary = ", ".join([f"{k}:{v}" for k,v in sorted(getattr(self, '_skip_reasons', {}).items(), key=lambda x: -x[1])[:5]])
+                    logger.info(f"[CYCLE {self._cycle_count}] Entries: {entry_evaluated}, Exits: {exit_evaluated}, Open: {len(self.paper_positions)}, Attempts: {getattr(self, '_total_entry_attempts', 0)}, Passed: {getattr(self, '_entry_passed_all', 0)}")
+                    logger.info(f"[SKIP REASONS] {skip_summary}")
                 
                 # Check if graceful stop is complete (all positions closed)
                 if self.graceful_stop and not self.paper_positions:
