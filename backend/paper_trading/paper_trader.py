@@ -1549,11 +1549,12 @@ class PaperTrader:
         - sharp_alignment_threshold: for arbitrage trigger
         - delta_neutral_price_min/max: price range for delta neutral
         
-        STRATEGY SELECTION ORDER (optimized for better distribution):
-        1. Delta Neutral - mid-price, low vol (market making opportunities)
-        2. Volatility Exploitation - high vol markets
-        3. Arbitrage - high sharp alignment
-        4. Alpha Directional - extreme prices OR strong sentiment (catch-all)
+        STRATEGY SELECTION ORDER (optimized for balanced distribution):
+        1. Delta Neutral - mid-price (35-65%), low vol (<6%)
+        2. Volatility Exploitation - high vol (>6%) markets  
+        3. Alpha Directional (extreme) - VERY extreme prices (<5% or >95%)
+        4. Arbitrage - high sharp alignment (>80%)
+        5. Alpha Directional (sentiment) - strong sentiment divergence
         """
         volatility = signals.get('volatility', 0.05)
         sentiment = signals.get('sentiment', 0.5)
@@ -1567,32 +1568,32 @@ class PaperTrader:
             yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
         
         # ============================================================
-        # REORDERED STRATEGY SELECTION - Better distribution
+        # BALANCED STRATEGY SELECTION
         # ============================================================
         
         # 1. DELTA NEUTRAL (FIRST): Mid-range price with low volatility - market making
-        #    Check this BEFORE extreme prices to capture more opportunities
+        #    These are prime opportunities for spread capture
         if (self.delta_neutral_price_min <= yes_price <= self.delta_neutral_price_max 
             and volatility < self.volatility_threshold 
             and 'delta_neutral' in self.enabled_strategies):
             return 'delta_neutral'
         
         # 2. VOLATILITY EXPLOITATION: Higher volatility or uncertain markets
-        #    Check BEFORE Alpha to give vol strategy a chance
+        #    Good for momentum plays
         if ((volatility > self.volatility_threshold or price_uncertainty > 0.7) 
             and 'volatility_exploitation' in self.enabled_strategies):
             return 'volatility_exploitation'
         
-        # 3. ARBITRAGE: High liquidity markets with good sharp alignment
-        if sharp_alignment > self.sharp_alignment_threshold and 'arbitrage' in self.enabled_strategies:
-            return 'arbitrage'
-        
-        # 4. ALPHA DIRECTIONAL: VERY extreme prices (< 5% or > 95%) - clear directional bets
-        #    Threshold lowered from 10%/90% to 5%/95% to be more selective
+        # 3. ALPHA DIRECTIONAL (EXTREME): VERY extreme prices - clear directional bets
+        #    Threshold: <5% or >95% (more selective than before)
         if (yes_price < 0.05 or yes_price > 0.95) and 'alpha_directional' in self.enabled_strategies:
             return 'alpha_directional'
         
-        # 5. ALPHA DIRECTIONAL: Strong sentiment divergence from 50%
+        # 4. ARBITRAGE: High sharp alignment - whale/smart money following
+        if sharp_alignment > self.sharp_alignment_threshold and 'arbitrage' in self.enabled_strategies:
+            return 'arbitrage'
+        
+        # 5. ALPHA DIRECTIONAL (SENTIMENT): Strong sentiment divergence from 50%
         if sentiment_strength > self.sentiment_strength_threshold and 'alpha_directional' in self.enabled_strategies:
             return 'alpha_directional'
         
