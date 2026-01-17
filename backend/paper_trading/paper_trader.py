@@ -478,6 +478,11 @@ class PaperTrader:
                 # High-frequency: process ALL markets, not just top 20
                 markets_to_process = markets[:100]  # Process up to 100 markets per cycle
                 
+                # Debug counters
+                entry_evaluated = 0
+                exit_evaluated = 0
+                skipped_asset_class = 0
+                
                 for market_data in markets_to_process:
                     if not self.running:
                         break
@@ -485,6 +490,7 @@ class PaperTrader:
                     # Filter by asset class
                     asset_class = market_data.get('asset_class', market_data.get('category', 'unknown')).lower()
                     if asset_class not in [ac.lower() for ac in self.enabled_asset_classes]:
+                        skipped_asset_class += 1
                         continue
                     
                     # Check existing paper position
@@ -492,18 +498,21 @@ class PaperTrader:
                     if market_id in self.paper_positions:
                         # Always evaluate exits (even during graceful stop)
                         await self._evaluate_exit(market_id, market_data)
+                        exit_evaluated += 1
                     elif not self.graceful_stop:
                         # Only evaluate new entries if not in graceful stop mode
                         await self._evaluate_entry(market_data)
-                    
-                    # Log every 100 markets processed for monitoring
-                    if hasattr(self, '_market_counter'):
-                        self._market_counter += 1
-                    else:
-                        self._market_counter = 1
+                        entry_evaluated += 1
                     
                     # High-frequency: minimal pause between markets
                     await asyncio.sleep(trade_interval / len(markets_to_process))
+                
+                # Log cycle stats every 10 cycles
+                if not hasattr(self, '_cycle_count'):
+                    self._cycle_count = 0
+                self._cycle_count += 1
+                if self._cycle_count % 10 == 0:
+                    logger.info(f"[CYCLE {self._cycle_count}] Entries: {entry_evaluated}, Exits: {exit_evaluated}, Skipped(asset): {skipped_asset_class}, Open positions: {len(self.paper_positions)}")
                 
                 # Check if graceful stop is complete (all positions closed)
                 if self.graceful_stop and not self.paper_positions:
