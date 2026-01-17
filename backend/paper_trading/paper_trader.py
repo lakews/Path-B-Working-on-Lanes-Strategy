@@ -496,6 +496,12 @@ class PaperTrader:
                         # Only evaluate new entries if not in graceful stop mode
                         await self._evaluate_entry(market_data)
                     
+                    # Log every 100 markets processed for monitoring
+                    if hasattr(self, '_market_counter'):
+                        self._market_counter += 1
+                    else:
+                        self._market_counter = 1
+                    
                     # High-frequency: minimal pause between markets
                     await asyncio.sleep(trade_interval / len(markets_to_process))
                 
