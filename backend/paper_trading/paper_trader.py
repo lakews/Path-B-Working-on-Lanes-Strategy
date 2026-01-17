@@ -545,24 +545,34 @@ class PaperTrader:
     async def _evaluate_entry(self, market_data: Dict):
         """Evaluate market for potential paper trade entry using ADAPTIVE sizing"""
         try:
-            market_id_short = market_data.get('id', '')[:16]
+            market_id = market_data.get('id', '')
+            market_id_short = market_id[:16]
             
             # Track EVERY entry attempt with a simple counter
             if not hasattr(self, '_total_entry_attempts'):
                 self._total_entry_attempts = 0
                 self._entry_passed_all = 0
+                self._skip_reasons = {}
             self._total_entry_attempts += 1
+            
+            def track_skip(reason):
+                self._skip_reasons[reason] = self._skip_reasons.get(reason, 0) + 1
             
             # CIRCUIT BREAKER CHECK: Stop new entries if max drawdown exceeded
             if self.circuit_breaker_triggered:
+                track_skip("circuit_breaker")
                 return
             
             # Check if we're at max positions limit
             if len(self.paper_positions) >= self.max_open_positions:
-                logger.debug(f"[{market_id}] SKIP: At max positions ({len(self.paper_positions)}/{self.max_open_positions})")
+                track_skip("max_positions")
                 return
             
-            market_id = market_data.get('id')
+            # CHECK IF WE ALREADY HAVE POSITION (shouldn't happen but let's track)
+            if market_id in self.paper_positions:
+                track_skip("already_have_position")
+                return
+            
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
             # LIQUIDITY CHECK: Use user-configured thresholds from Configuration page
