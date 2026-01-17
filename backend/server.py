@@ -1825,6 +1825,31 @@ async def load_rl_model():
             content={"message": f"Failed to load RL model: {str(e)}"}
         )
 
+@api_router.post("/rl/switch-mode")
+async def switch_rl_mode(use_dqn: bool = True):
+    """Switch between DQN and Q-table modes"""
+    global rl_engine
+    
+    try:
+        if not rl_engine:
+            rl_engine = RLAdaptiveEngine(use_dqn=use_dqn)
+        else:
+            rl_engine.switch_mode(use_dqn)
+        
+        stats = await rl_engine.get_training_stats()
+        
+        return {
+            "message": f"Switched to {'DQN' if use_dqn else 'Q-table'} mode",
+            "mode": "DQN" if use_dqn else "Q-table",
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Error switching RL mode: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to switch RL mode: {str(e)}"}
+        )
+
 # =============================================
 # SOCIAL SENTIMENT ANALYSIS ENDPOINTS
 # =============================================
