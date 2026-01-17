@@ -39,6 +39,51 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 17, 2026 - Session 28 (DQN + Prioritized Experience Replay)
+
+- ✅ **NEW: Deep Q-Network (DQN) Implementation** (`/app/backend/ml/dqn.py`)
+  - **DQNetwork class**: Neural network with simple architecture (8 → 64 → 64 → 7)
+    - Input: 8 state features (price, volatility, sentiment, sharp_alignment, liquidity, volume, time_to_expiry, portfolio_exposure)
+    - Hidden: 2 layers with 64 neurons each + ReLU activation
+    - Output: Q-values for 7 actions (WAIT, BUY_SMALL/MEDIUM/LARGE, SELL_SMALL/MEDIUM/LARGE)
+    - Xavier weight initialization for stable training
+  - **SumTree class**: Binary tree for O(log n) prioritized sampling
+  - **PrioritizedReplayBuffer class**: Experience replay with TD-error based prioritization
+    - Alpha: 0.6 (priority exponent)
+    - Beta: 0.4 → 1.0 (importance sampling weight, anneals over training)
+  - **DQNAgent class**: Full agent with:
+    - Policy network and target network
+    - Target network updates every 100 training iterations
+    - Double DQN to reduce overestimation
+    - Gradient clipping for stability
+
+- ✅ **UPGRADED: RL Engine Now Uses DQN by Default** (`/app/backend/ml/rl_engine.py`)
+  - `use_dqn=True` by default
+  - Seamlessly integrates with existing paper trading system
+  - Stores experiences in prioritized replay buffer
+  - Falls back to Q-table mode if needed
+  - Model save/load for both DQN (.pt) and Q-table (.npz)
+
+- ✅ **NEW: /api/rl/switch-mode Endpoint** (`/app/backend/server.py`)
+  - `POST /api/rl/switch-mode?use_dqn=true` - Switch to DQN mode
+  - `POST /api/rl/switch-mode?use_dqn=false` - Switch to Q-table mode
+  - Returns current stats after switching
+
+- ✅ **ENHANCED: RL Learning Tab UI** (`/app/frontend/src/pages/PaperTrading.js`)
+  - DQN badge (purple) shows current model type
+  - "Prioritized Replay" badge (green) when enabled
+  - DQN Architecture card: shows architecture, device, learning rate, gamma, target update freq
+  - Q-Table Analysis card: shows table size, non-zero %, mean Q-value (legacy mode)
+  - Reward Statistics card: positive rate, avg positive/negative rewards, std dev
+  - Action Distribution: visual bars for all 7 actions
+
+- ✅ **Test Suite**: 23/23 tests passed (`/app/test_reports/iteration_20.json`)
+  - DQN module imports correctly
+  - Network architecture verified (8 → 64 → 64 → 7)
+  - Agent selects actions and returns confidence
+  - Switch mode endpoint works
+  - Prioritized replay parameters correct
+
 ### January 16, 2026 - Session 27 (Asset Class Equity + Position Sizing + Delta Neutral Fix)
 
 - ✅ **NEW: Asset Class Equity Breakdown Component** (`/app/frontend/src/pages/PaperTrading.js`)
