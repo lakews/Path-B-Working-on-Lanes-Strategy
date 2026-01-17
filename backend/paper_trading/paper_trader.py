@@ -128,8 +128,8 @@ class PaperTrader:
         self.volatility_threshold = 0.06           # Threshold for volatility strategy (raised to 6% to capture more Delta Neutral)
         self.sentiment_strength_threshold = 0.25   # Threshold for alpha directional
         self.sharp_alignment_threshold = 0.8       # Threshold for arbitrage
-        self.delta_neutral_price_min = 0.35        # Min price for delta neutral
-        self.delta_neutral_price_max = 0.65        # Max price for delta neutral
+        self.delta_neutral_price_min = 0.40        # Min price for delta neutral
+        self.delta_neutral_price_max = 0.70        # Max price for delta neutral
         
         # Sentiment-based side selection thresholds (configurable via UI)
         self.bullish_sentiment_threshold = 0.55    # Above this → YES
