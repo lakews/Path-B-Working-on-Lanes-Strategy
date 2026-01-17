@@ -667,7 +667,7 @@ class PaperTrader:
                                 if month and day and year:
                                     question_date = datetime(year, month, day, tzinfo=timezone.utc)
                                     if question_date < now:
-                                        logger.warning(f"⛔ BLOCKING SEMANTICALLY EXPIRED: {market_id[:16]} - question date {question_date.date()} < today {now.date()} - {question[:50]}")
+                                        track_skip("semantic_expiry")
                                         return
                         except (ValueError, IndexError) as e:
                             pass  # Date parsing failed, continue
