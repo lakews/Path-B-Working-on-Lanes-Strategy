@@ -1430,6 +1430,7 @@ class PaperTrader:
             await broadcast_paper_event("paper_status_update", {"status": self.get_status()})
             
             logger.info(f"📝 PAPER ENTRY: {side} ${size:.2f} @ {current_price:.4f} | Strategy: {strategy} | RL: {rl_action} ({rl_confidence:.2f})")
+            logger.info(f"   Dynamic Exit: TP={dynamic_exit['take_profit']:.1%}, SL={dynamic_exit['stop_loss']:.1%}, MaxHrs={dynamic_exit['max_hours']:.0f} ({dynamic_exit['zone']})")
             
         except Exception as e:
             logger.error(f"Error executing paper entry: {e}")
