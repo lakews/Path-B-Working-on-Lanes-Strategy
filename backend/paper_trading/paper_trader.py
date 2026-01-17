@@ -1072,6 +1072,102 @@ class PaperTrader:
             'max_hours': base['max_hours'] * adj['time_mult']
         }
     
+    # ============================================
+    # DYNAMIC EXIT PARAMETERS (Option 4 Framework)
+    # ============================================
+    
+    # Configuration for dynamic TP/SL
+    DYNAMIC_EXIT_CONFIG = {
+        'tp_capture_pct': 0.10,      # Capture 10% of max possible gain
+        'tp_min': 0.005,             # Minimum 0.5% TP
+        'tp_max': 0.50,              # Maximum 50% TP
+        'sl_base': -0.10,            # -10% SL at 50% price (center)
+        'sl_extreme': -0.30,         # -30% SL at 0% or 100% price (edges)
+        'extreme_threshold': 0.10,   # 0-10% and 90-100% = extreme
+        'moderate_threshold': 0.25,  # 10-25% and 75-90% = moderate
+    }
+    
+    def _calculate_max_gain(self, side: str, entry_price: float) -> float:
+        """
+        Calculate the theoretical maximum gain percentage for a position.
+        
+        YES position: Profits when price goes UP toward $1.00
+        NO position:  Profits when YES price goes DOWN toward $0.00
+        """
+        if side == 'YES':
+            # Max value = $1.00 per share
+            # Max return = (1.00 - entry_price) / entry_price
+            if entry_price > 0 and entry_price < 1:
+                return (1.0 - entry_price) / entry_price
+            return 0
+        else:  # NO
+            # NO price = 1 - YES price
+            # Max NO price = $1.00 (when YES = $0)
+            # Max return = entry_yes / (1 - entry_yes)
+            no_entry = 1 - entry_price
+            if no_entry > 0 and no_entry < 1:
+                return entry_price / no_entry
+            return 0
+    
+    def _calculate_extremeness(self, entry_price: float) -> float:
+        """
+        How far from 50% is this price? (0 = at 50%, 1 = at 0% or 100%)
+        
+        This determines risk level:
+        - At 50%: Both outcomes equally likely, moderate risk
+        - At extremes: One outcome heavily favored, less room for error
+        """
+        return abs(entry_price - 0.5) / 0.5
+    
+    def _get_dynamic_exit_params(self, side: str, entry_price: float) -> Dict:
+        """
+        Calculate dynamic TP/SL based on entry price and position side.
+        
+        Key insight: At extreme prices, max possible gain varies dramatically.
+        - YES @ $0.03: Max gain = 3,233%
+        - NO @ YES $0.03: Max gain = 3.09%
+        - YES @ $0.50: Max gain = 100%
+        
+        This function sets TP as a % of max possible gain, capped to realistic levels.
+        SL scales with extremeness (tighter at extreme prices).
+        """
+        cfg = self.DYNAMIC_EXIT_CONFIG
+        
+        # Step 1: Calculate max possible gain
+        max_gain = self._calculate_max_gain(side, entry_price)
+        
+        # Step 2: Dynamic TP = capture_pct of max gain, with floor and ceiling
+        raw_tp = max_gain * cfg['tp_capture_pct']
+        dynamic_tp = max(min(raw_tp, cfg['tp_max']), cfg['tp_min'])
+        
+        # Step 3: Calculate extremeness (0 at 50%, 1 at 0% or 100%)
+        extremeness = self._calculate_extremeness(entry_price)
+        
+        # Step 4: Dynamic SL scales with extremeness
+        # More extreme = tighter SL (less room for error)
+        dynamic_sl = cfg['sl_base'] + (extremeness * (cfg['sl_extreme'] - cfg['sl_base']))
+        
+        # Step 5: Determine zone and max_hours
+        if extremeness > 0.80:  # 0-10% or 90-100%
+            zone = 'extreme'
+            max_hours = 24
+        elif extremeness > 0.50:  # 10-25% or 75-90%
+            zone = 'moderate'
+            max_hours = 12
+        else:  # 25-75%
+            zone = 'mid_range'
+            max_hours = 4
+        
+        return {
+            'take_profit': dynamic_tp,
+            'stop_loss': dynamic_sl,
+            'max_hours': max_hours,
+            'zone': zone,
+            'max_gain_possible': max_gain,
+            'extremeness': extremeness,
+            'raw_tp_before_cap': raw_tp
+        }
+    
     async def _evaluate_exit(self, market_id: str, market_data: Dict):
         """Evaluate existing paper position for exit using strategy/asset-specific params"""
         try:
