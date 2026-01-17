@@ -675,6 +675,7 @@ class PaperTrader:
             
             # Skip if action is not a clear BUY or SELL
             if 'BUY' not in rl_action and 'SELL' not in rl_action:
+                logger.info(f"[SKIP-ACTION] {market_id[:16]}: action={rl_action} not BUY/SELL")
                 return
             
             # SENTIMENT-BASED SIDE SELECTION (configurable thresholds)
