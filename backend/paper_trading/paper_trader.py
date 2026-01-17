@@ -575,6 +575,14 @@ class PaperTrader:
                 track_skip("already_have_position")
                 return
             
+            # CHECK AVAILABLE CAPITAL before proceeding
+            # Calculate how much is currently deployed
+            current_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+            available_capital = self.deployed_capital - current_deployed  # deployed_capital is max allowed
+            if available_capital < 5:  # Need at least $5 for min trade
+                track_skip("no_available_capital")
+                return
+            
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
             # LIQUIDITY CHECK: Use user-configured thresholds from Configuration page
