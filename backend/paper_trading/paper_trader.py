@@ -737,7 +737,7 @@ class PaperTrader:
             
             # Check if we should trade (liquidity/size requirements met)
             if not sizing_result.get('should_trade', False):
-                logger.debug(f"Skipping {market_id[:16]}: position sizing rejected")
+                logger.info(f"[SKIP-SIZING] {market_id[:16]}: position sizing rejected - {sizing_result.get('reason', 'unknown')}")
                 return
             
             # Apply expiry size multiplier
@@ -746,7 +746,7 @@ class PaperTrader:
             # Minimum position size for HFT - $5 minimum
             min_position_size = 5
             if position_size < min_position_size:
-                logger.debug(f"Skipping {market_id[:16]}: position_size={position_size:.2f} < {min_position_size}")
+                logger.info(f"[SKIP-MINSIZE] {market_id[:16]}: position_size={position_size:.2f} < {min_position_size}")
                 return
             
             # Side already determined above based on sentiment
