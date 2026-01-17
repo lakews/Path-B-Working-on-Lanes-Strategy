@@ -1548,13 +1548,6 @@ class PaperTrader:
         - sentiment_strength_threshold: for alpha directional trigger
         - sharp_alignment_threshold: for arbitrage trigger
         - delta_neutral_price_min/max: price range for delta neutral
-        
-        STRATEGY SELECTION ORDER (optimized for balanced distribution):
-        1. Delta Neutral - mid-price (35-65%), low vol (<6%)
-        2. Volatility Exploitation - high vol (>6%) markets  
-        3. Alpha Directional (extreme) - VERY extreme prices (<5% or >95%)
-        4. Arbitrage - high sharp alignment (>80%)
-        5. Alpha Directional (sentiment) - strong sentiment divergence
         """
         volatility = signals.get('volatility', 0.05)
         sentiment = signals.get('sentiment', 0.5)
@@ -1567,39 +1560,35 @@ class PaperTrader:
         if market_data:
             yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
         
-        # ============================================================
-        # BALANCED STRATEGY SELECTION
-        # ============================================================
+        # Strategy selection based on ACTUAL signals - balanced distribution
+        # Uses configurable thresholds (loaded from DB config)
         
-        # 1. DELTA NEUTRAL (FIRST): Mid-range price with low volatility - market making
-        #    These are prime opportunities for spread capture
+        # 1. ALPHA DIRECTIONAL: Extreme prices (< 0.10 or > 0.90) - clear directional bets
+        if (yes_price < 0.10 or yes_price > 0.90) and 'alpha_directional' in self.enabled_strategies:
+            return 'alpha_directional'
+        
+        # 2. ARBITRAGE: High liquidity markets with good sharp alignment
+        if sharp_alignment > self.sharp_alignment_threshold and 'arbitrage' in self.enabled_strategies:
+            return 'arbitrage'
+        
+        # 3. DELTA NEUTRAL: Mid-range price with moderate volatility - market making
         if (self.delta_neutral_price_min <= yes_price <= self.delta_neutral_price_max 
             and volatility < self.volatility_threshold 
             and 'delta_neutral' in self.enabled_strategies):
             return 'delta_neutral'
         
-        # 2. VOLATILITY EXPLOITATION: Higher volatility or uncertain markets
-        #    Good for momentum plays
+        # 4. ALPHA DIRECTIONAL: Strong sentiment divergence from 50% (BEFORE volatility)
+        if sentiment_strength > self.sentiment_strength_threshold and 'alpha_directional' in self.enabled_strategies:
+            return 'alpha_directional'
+        
+        # 5. VOLATILITY EXPLOITATION: Higher volatility or uncertain markets
         if ((volatility > self.volatility_threshold or price_uncertainty > 0.7) 
             and 'volatility_exploitation' in self.enabled_strategies):
             return 'volatility_exploitation'
         
-        # 3. ALPHA DIRECTIONAL (EXTREME): VERY extreme prices - clear directional bets
-        #    Threshold: <5% or >95% (more selective than before)
-        if (yes_price < 0.05 or yes_price > 0.95) and 'alpha_directional' in self.enabled_strategies:
-            return 'alpha_directional'
-        
-        # 4. ARBITRAGE: High sharp alignment - whale/smart money following
-        if sharp_alignment > self.sharp_alignment_threshold and 'arbitrage' in self.enabled_strategies:
-            return 'arbitrage'
-        
-        # 5. ALPHA DIRECTIONAL (SENTIMENT): Strong sentiment divergence from 50%
-        if sentiment_strength > self.sentiment_strength_threshold and 'alpha_directional' in self.enabled_strategies:
-            return 'alpha_directional'
-        
         # 6. Default: Distribute remaining based on price bucket for variety
         price_bucket = int(yes_price * 10) % 4
-        strategies_order = ['delta_neutral', 'volatility_exploitation', 'arbitrage', 'alpha_directional']
+        strategies_order = ['delta_neutral', 'arbitrage', 'volatility_exploitation', 'alpha_directional']
         for i in range(4):
             candidate = strategies_order[(price_bucket + i) % 4]
             if candidate in self.enabled_strategies:
