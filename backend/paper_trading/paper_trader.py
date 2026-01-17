@@ -676,8 +676,7 @@ class PaperTrader:
             is_closed = market_data.get('closed', False) or market_data.get('resolved', False)
             is_active = market_data.get('active', True)
             if is_closed or not is_active:
-                question = market_data.get('question', '')[:50]
-                logger.debug(f"Skipping {market_id[:16]}: market is closed/resolved - {question}")
+                track_skip("closed_or_inactive")
                 return
             
             # Check for stuck/stale prices - skip markets with default prices unless high volume confirms they're real
