@@ -2248,6 +2248,9 @@ async def stop_paper_trading(
         )
     
     try:
+        # Capture positions BEFORE stopping (they get cleared on stop)
+        positions_before_stop = paper_trader.get_positions()
+        
         await paper_trader.stop(graceful=graceful)
         trading_mode = "stopped"
         
@@ -2256,7 +2259,7 @@ async def stop_paper_trading(
         # Save session analytics for historical tracking
         try:
             logger.info(f"Saving session analytics for session {status.get('session_id')}")
-            await save_session_analytics(paper_trader, status)
+            await save_session_analytics(positions_before_stop, status)
             logger.info(f"Successfully saved session analytics")
         except Exception as analytics_err:
             logger.error(f"Error saving session analytics: {analytics_err}", exc_info=True)
@@ -2273,9 +2276,8 @@ async def stop_paper_trading(
         )
 
 
-async def save_session_analytics(trader, status):
+async def save_session_analytics(positions, status):
     """Save session-level analytics for historical comparison."""
-    positions = trader.get_positions()
     trades = status.get('trades', [])
     
     # Combine positions and trades for analysis
