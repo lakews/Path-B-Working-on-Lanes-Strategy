@@ -1260,6 +1260,14 @@ async def update_config(config_update: TradingConfig):
         if config_update.bearish_sentiment_threshold is not None:
             db_update["bearish_sentiment_threshold"] = config_update.bearish_sentiment_threshold
         
+        # NEW: Polymarket Position Sizer Configuration
+        if config_update.use_polymarket_sizer is not None:
+            db_update["use_polymarket_sizer"] = config_update.use_polymarket_sizer
+        if config_update.polymarket_fee_pct is not None:
+            db_update["polymarket_fee_pct"] = config_update.polymarket_fee_pct
+        if config_update.sector_caps is not None:
+            db_update["sector_caps"] = config_update.sector_caps
+        
         # Store ALL config in database for persistence (not just strategies/asset classes)
         db = get_db()
         await db.user_config.update_one(
