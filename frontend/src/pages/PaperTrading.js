@@ -379,6 +379,31 @@ const PositionCard = ({ position }) => {
   const hoursToExpiry = expiryInfo.hours_to_expiry;
   const urgency = expiryInfo.urgency || 'normal';
   
+  // Extract dynamic exit params
+  const exitParams = position.dynamic_exit_params || {};
+  const isDynamic = exitParams.is_dynamic !== false;
+  const exitMode = exitParams.exit_mode || 'standard';
+  const tp = exitParams.tp;
+  const sl = exitParams.sl;
+  const maxGain = exitParams.max_gain;
+  const zone = exitParams.zone || 'unknown';
+  
+  // Calculate progress to TP/SL
+  const getTPProgress = () => {
+    if (tp === null || tp === undefined) return null; // Hold to resolution mode
+    if (tp === 0) return 100;
+    return Math.min(100, Math.max(0, (pnlPct / tp) * 100));
+  };
+  
+  const getSLProgress = () => {
+    if (sl === null || sl === undefined) return null; // No SL mode
+    if (sl === 0) return 0;
+    return Math.min(100, Math.max(0, (pnlPct / sl) * 100));
+  };
+  
+  const tpProgress = getTPProgress();
+  const slProgress = getSLProgress();
+  
   // Format expiry display
   const getExpiryDisplay = () => {
     if (!hoursToExpiry && hoursToExpiry !== 0) return null;
@@ -390,14 +415,29 @@ const PositionCard = ({ position }) => {
     return { text: `${days.toFixed(0)}d`, color: 'text-green-400', bg: 'bg-green-500/20' };
   };
   
+  // Get exit mode badge
+  const getExitModeBadge = () => {
+    const modes = {
+      'resolution': { text: 'HOLD→RES', color: 'text-purple-400', bg: 'bg-purple-500/20', desc: 'Holding to resolution' },
+      'hold_protected': { text: 'HOLD+SL', color: 'text-blue-400', bg: 'bg-blue-500/20', desc: 'Holding with SL protection' },
+      'active': { text: 'ACTIVE', color: 'text-cyan-400', bg: 'bg-cyan-500/20', desc: 'Active TP/SL' },
+      'quick_trade': { text: 'QUICK', color: 'text-yellow-400', bg: 'bg-yellow-500/20', desc: 'Quick exit (24h)' },
+      'standard': { text: 'STD', color: 'text-white/60', bg: 'bg-white/10', desc: 'Standard exit' },
+      'simple': { text: 'SIMPLE', color: 'text-gray-400', bg: 'bg-gray-500/20', desc: 'Simple configurable' }
+    };
+    return modes[exitMode] || modes['standard'];
+  };
+  
   const expiryDisplay = getExpiryDisplay();
+  const exitModeBadge = getExitModeBadge();
   
   return (
     <div className="rounded-lg bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors">
+      {/* Header: Market question and P&L */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
           <p className="text-sm text-white font-medium truncate">{position.market_question}</p>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className={`text-xs px-2 py-0.5 rounded ${position.side === 'YES' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{position.side}</span>
             <span className="text-xs text-white/40">{position.strategy}</span>
             {expiryDisplay && (
@@ -405,17 +445,75 @@ const PositionCard = ({ position }) => {
                 ⏱️ {expiryDisplay.text}
               </span>
             )}
+            {/* Exit Mode Badge */}
+            <span className={`text-xs px-2 py-0.5 rounded ${exitModeBadge.bg} ${exitModeBadge.color} font-medium`} title={exitModeBadge.desc}>
+              {exitModeBadge.text}
+            </span>
           </div>
         </div>
         <div className={`text-right ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
-          <p className="text-sm font-bold">{isProfit ? '+' : ''}{pnlPct.toFixed(1)}%</p>
+          <p className="text-sm font-bold">{isProfit ? '+' : ''}{(pnlPct * 100).toFixed(2)}%</p>
+          {maxGain !== null && maxGain !== undefined && (
+            <p className="text-xs text-white/40">Max: {(maxGain * 100).toFixed(0)}%</p>
+          )}
         </div>
       </div>
+      
+      {/* Dynamic Exit Progress Bars */}
+      {isDynamic && (tp !== null || sl !== null) && (
+        <div className="mb-3 space-y-2">
+          {/* TP Progress */}
+          {tp !== null && tp !== undefined && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-green-400 w-8">TP</span>
+              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-green-500 transition-all duration-300"
+                  style={{ width: `${Math.max(0, tpProgress)}%` }}
+                />
+              </div>
+              <span className="text-xs text-white/60 w-12 text-right">{(tp * 100).toFixed(1)}%</span>
+            </div>
+          )}
+          {/* SL Progress */}
+          {sl !== null && sl !== undefined && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-red-400 w-8">SL</span>
+              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-red-500 transition-all duration-300"
+                  style={{ width: `${Math.max(0, slProgress)}%` }}
+                />
+              </div>
+              <span className="text-xs text-white/60 w-12 text-right">{(sl * 100).toFixed(1)}%</span>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Hold to Resolution indicator */}
+      {exitMode === 'resolution' && (
+        <div className="mb-3 px-3 py-2 bg-purple-500/10 rounded border border-purple-500/30">
+          <p className="text-xs text-purple-300 text-center">🎯 Holding to market resolution</p>
+        </div>
+      )}
+      
+      {/* Position Details */}
       <div className="flex items-center justify-between text-xs text-white/40">
         <span>Entry: ${position.entry_price?.toFixed(4)}</span>
         <span>Size: ${position.size?.toFixed(2)}</span>
-        <span>RL: {(position.rl_confidence * 100).toFixed(0)}%</span>
+        <span>RL: {((position.rl_confidence || 0) * 100).toFixed(0)}%</span>
       </div>
+      
+      {/* Zone indicator */}
+      {zone && zone !== 'unknown' && (
+        <div className="mt-2 flex items-center justify-between text-xs">
+          <span className="text-white/30">Zone: <span className="text-white/50 capitalize">{zone}</span></span>
+          {exitParams.max_hours && (
+            <span className="text-white/30">Max Hold: <span className="text-white/50">{exitParams.max_hours}h</span></span>
+          )}
+        </div>
+      )}
     </div>
   );
 };
