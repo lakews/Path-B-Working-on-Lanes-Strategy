@@ -2279,9 +2279,8 @@ async def stop_paper_trading(
 async def save_session_analytics(positions, status):
     """Save session-level analytics for historical comparison.
     
-    Calculates simulated realized P&L for positions:
-    - If position has moved from entry: use unrealized P&L
-    - If position hasn't moved: simulate bid-ask spread (1-2% slippage on exit)
+    Uses unrealized P&L from open positions as simulated realized P&L
+    since positions are closed at session stop.
     """
     trades = status.get('trades', [])
     
@@ -2294,36 +2293,9 @@ async def save_session_analytics(positions, status):
     all_items = []
     for p in positions:
         if p.get('sizing_breakdown'):
-            entry_price = p.get('entry_price', 0)
-            current_price = p.get('current_price', 0)
-            size = p.get('size', 0)
-            side = p.get('side', 'YES')
-            
-            # Calculate P&L with realistic bid-ask spread
-            # Assume 1-2% spread on exit (bid is lower than current ask)
-            spread_pct = 0.015  # 1.5% spread
-            
-            if side == 'YES':
-                # Exit at bid (current_price - spread)
-                exit_price = current_price * (1 - spread_pct)
-                if entry_price > 0:
-                    shares = size / entry_price
-                    exit_value = shares * exit_price
-                    simulated_pnl = exit_value - size
-                else:
-                    simulated_pnl = 0
-            else:
-                # For NO position, exit at 1 - bid
-                exit_price = (1 - current_price) * (1 - spread_pct)
-                entry_no_price = 1 - entry_price
-                if entry_no_price > 0:
-                    shares = size / entry_no_price
-                    exit_value = shares * exit_price
-                    simulated_pnl = exit_value - size
-                else:
-                    simulated_pnl = 0
-            
-            simulated_pnl_pct = simulated_pnl / size if size > 0 else 0
+            # Use unrealized P&L directly (no spread in prediction markets)
+            simulated_pnl = p.get('unrealized_pnl', 0)
+            simulated_pnl_pct = p.get('unrealized_pnl_pct', 0)
             
             total_simulated_pnl += simulated_pnl
             total_positions += 1
@@ -2336,10 +2308,10 @@ async def save_session_analytics(positions, status):
                 'category': p.get('sizing_breakdown', {}).get('category', 'unknown'),
                 'pnl': simulated_pnl,
                 'pnl_pct': simulated_pnl_pct,
-                'entry_price': entry_price,
-                'exit_price': exit_price,
-                'size': size,
-                'side': side
+                'entry_price': p.get('entry_price', 0),
+                'current_price': p.get('current_price', 0),
+                'size': p.get('size', 0),
+                'side': p.get('side', 'YES')
             })
     
     # Also include any closed trades from the session
