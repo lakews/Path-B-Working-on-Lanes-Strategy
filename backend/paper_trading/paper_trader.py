@@ -135,6 +135,31 @@ class PaperTrader:
         self.bullish_sentiment_threshold = 0.55    # Above this → YES
         self.bearish_sentiment_threshold = 0.45    # Below this → NO
         
+        # ============================================
+        # DYNAMIC EXIT MODE CONFIGURATION
+        # ============================================
+        # When True: Use time-aware dynamic TP/SL based on max gain and expiry
+        # When False: Use simple configurable TP/SL from exit_params_by_strategy
+        self.use_dynamic_exit = True  # Toggle between dynamic and simple mode
+        
+        # Dynamic exit parameters (Option 4 Framework)
+        self.dynamic_exit_config = {
+            'tp_capture_pct': 0.10,      # Capture 10% of max possible gain
+            'tp_min': 0.005,             # Minimum 0.5% TP
+            'tp_max': 0.50,              # Maximum 50% TP
+            'sl_base': -0.10,            # -10% SL at 50% price (center)
+            'sl_extreme': -0.30,         # -30% SL at 0% or 100% price (edges)
+        }
+        
+        # Time-aware entry filtering thresholds
+        self.time_entry_config = {
+            'min_gain_near_expiry': 0.001,      # 0.1% min gain if ≤7 days
+            'min_gain_medium_term': 0.005,      # 0.5% min gain if 8-30 days
+            'min_gain_longer_term': 0.01,       # 1% min gain if 31-90 days
+            'min_gain_far_expiry': 0.02,        # 2% min gain if >90 days
+            'skip_no_extreme_far_expiry': True, # Skip NO at extreme low YES if >90 days
+        }
+        
         # Current capital starts at initial (will be set properly after config load)
         self.current_capital = self.initial_capital
         
