@@ -64,8 +64,17 @@ const Configuration = () => {
     min_liquidity_for_full_size: 10000,
     // Market alerts
     alerts_enabled: false,
-    alert_volume_threshold: 2.0
+    alert_volume_threshold: 2.0,
+    // Position Sizer
+    use_polymarket_sizer: true,
+    polymarket_fee_pct: 0.02,
+    sector_caps: {
+      crypto: 0.20, politics: 0.25, sports: 0.30, finance: 0.20,
+      entertainment: 0.15, science: 0.15, conflict: 0.10, social: 0.10, unknown: 0.15
+    },
+    oracle_multipliers: null
   });
+  const [oracleMultipliersDefault, setOracleMultipliersDefault] = useState({});
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
