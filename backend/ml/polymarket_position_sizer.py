@@ -273,6 +273,8 @@ class PolymarketPositionSizer:
         max_single = equity * self.config['max_single_position_pct']
         final_size = min(size_after_sector, max_single)
         
+        logger.debug(f"[SIZER DEBUG] kelly_base={kelly_base:.2f}, util_mult={utilization_mult:.4f}, time_pen={time_penalty:.4f}, oracle={oracle_mult:.4f}, final={final_size:.2f}")
+        
         # Min bet floor
         if final_size < self.config['min_bet_floor']:
             return self._no_trade_result(
