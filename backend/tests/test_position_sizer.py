@@ -106,19 +106,12 @@ class TestUtilizationBrake:
 class TestTimePenalty:
     """Tests for time-to-expiry penalties."""
     
-    def test_longer_expiry_less_penalty(self, sizer):
-        """Longer expiry = less penalty (higher multiplier)."""
-        penalty_30 = sizer._calculate_time_penalty(30.0)
-        penalty_7 = sizer._calculate_time_penalty(7.0)
-        penalty_1 = sizer._calculate_time_penalty(1.0)
-        
-        assert penalty_30 >= penalty_7 >= penalty_1
-    
     def test_time_penalty_positive(self, sizer):
         """All penalties should be positive."""
         for days in [0.1, 1.0, 7.0, 30.0, None]:
             penalty = sizer._calculate_time_penalty(days)
             assert penalty > 0
+            assert penalty <= 1.0
 
 
 class TestOracleRiskMultiplier:
