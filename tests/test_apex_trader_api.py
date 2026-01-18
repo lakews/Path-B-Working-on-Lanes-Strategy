@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pm-trader.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://apex-sizer.preview.emergentagent.com')
 
 class TestHealthAndStatus:
     """Health check and status endpoint tests"""
