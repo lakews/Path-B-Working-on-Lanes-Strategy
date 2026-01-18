@@ -255,6 +255,7 @@ class PolymarketPositionSizer:
         # STEP 9: Calculate Adjusted Size
         # =================================================================
         kelly_adjusted = kelly_base * utilization_mult * time_penalty * oracle_mult * correlation_mult
+        logger.info(f"[SIZER ADJ] kelly_base={kelly_base:.2f} × util={utilization_mult:.3f} × time={time_penalty:.3f} × oracle={oracle_mult:.3f} × corr={correlation_mult:.3f} = {kelly_adjusted:.2f}")
         
         # =================================================================
         # STEP 10: Apply Liquidity Cap
