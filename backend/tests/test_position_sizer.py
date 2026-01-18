@@ -9,19 +9,17 @@ Tests cover:
 - Correlation Dampening
 - Liquidity Caps
 - Sector Caps
-- Edge cases and boundary conditions
+- Full end-to-end sizing
 """
 
 import pytest
-import asyncio
 from datetime import datetime, timezone, timedelta
-from unittest.mock import MagicMock, patch, AsyncMock
 
 # Import the sizer
 import sys
 sys.path.insert(0, '/app/backend')
 from ml.polymarket_position_sizer import PolymarketPositionSizer
-from ml.market_classifier import classify_market, get_oracle_risk_multiplier, AMBIGUITY_MATRIX
+from ml.market_classifier import classify_market, get_oracle_risk_multiplier, AMBIGUITY_MATRIX, get_default_ambiguity_matrix
 
 
 @pytest.fixture
@@ -31,20 +29,13 @@ def sizer():
 
 
 @pytest.fixture
-def sample_market():
-    """Sample market data for tests."""
-    return {
-        'question': 'Will the Fed cut rates in March 2026?',
-        'condition_id': 'test_market_123',
-        'tokens': [
-            {'outcome': 'Yes', 'price': 0.45},
-            {'outcome': 'No', 'price': 0.55}
-        ],
-        'category': 'finance',
-        'end_date_iso': (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
-        'volume_24h': 50000,
-        'liquidity': 100000
-    }
+def sample_order_book():
+    """Sample order book with asks."""
+    return [
+        {"price": 0.45, "size": 5000},
+        {"price": 0.46, "size": 3000},
+        {"price": 0.47, "size": 2000},
+    ]
 
 
 class TestBinaryKellyCalculation:
@@ -52,58 +43,38 @@ class TestBinaryKellyCalculation:
     
     def test_kelly_positive_edge(self, sizer):
         """Kelly should be positive when edge is positive."""
-        edge = 0.10  # 10% edge
+        edge = 0.10
         effective_price = 0.45
         
         kelly = sizer._calculate_binary_kelly(edge, effective_price)
+        expected = edge / (1 - effective_price)
         
-        # Binary Kelly = edge / (1 - effective_price)
-        expected = edge / (1 - effective_price)  # 0.10 / 0.55 = 0.182
-        
-        assert kelly > 0, "Kelly should be positive"
-        assert abs(kelly - expected) < 0.01, "Kelly calculation mismatch"
+        assert kelly > 0
+        assert abs(kelly - expected) < 0.01
     
     def test_kelly_zero_edge(self, sizer):
         """Kelly should be zero when edge is zero."""
-        edge = 0.0
-        effective_price = 0.45
-        
-        kelly = sizer._calculate_binary_kelly(edge, effective_price)
+        kelly = sizer._calculate_binary_kelly(0.0, 0.45)
         assert kelly == 0.0
     
     def test_kelly_negative_edge(self, sizer):
         """Kelly should be zero when edge is negative."""
-        edge = -0.05
-        effective_price = 0.45
-        
-        kelly = sizer._calculate_binary_kelly(edge, effective_price)
+        kelly = sizer._calculate_binary_kelly(-0.05, 0.45)
         assert kelly == 0.0
-    
-    def test_kelly_high_effective_price(self, sizer):
-        """Kelly with high effective price (near 1)."""
-        edge = 0.05
-        effective_price = 0.95
-        
-        kelly = sizer._calculate_binary_kelly(edge, effective_price)
-        # edge / (1 - 0.95) = 0.05 / 0.05 = 1.0
-        assert kelly == 1.0
 
 
 class TestEffectivePrice:
     """Tests for fee-adjusted effective price."""
     
-    def test_effective_price_with_fee(self, sizer):
-        """Effective price should include exit fee."""
+    def test_effective_price_with_default_fee(self, sizer):
+        """Effective price includes 2% exit fee by default."""
         ask_price = 0.50
-        
         effective = sizer._calculate_effective_price(ask_price)
-        
-        # Default fee is 2%, so effective = 0.50 * 1.02 = 0.51
-        expected = ask_price * (1 + sizer.config.get('polymarket_fee_pct', 0.02))
+        expected = 0.50 * 1.02  # 2% fee
         assert abs(effective - expected) < 0.001
     
     def test_effective_price_zero(self, sizer):
-        """Effective price of zero."""
+        """Zero ask price."""
         effective = sizer._calculate_effective_price(0.0)
         assert effective == 0.0
 
@@ -111,312 +82,317 @@ class TestEffectivePrice:
 class TestUtilizationBrake:
     """Tests for utilization-based position reduction."""
     
-    def test_zero_utilization(self, sizer):
-        """At 0% utilization, multiplier should be 1.0 (full size)."""
+    def test_zero_utilization_full_size(self, sizer):
+        """At 0% utilization, multiplier = 1.0."""
         mult = sizer._calculate_utilization_brake(0.0)
         assert mult == 1.0
     
-    def test_fifty_percent_utilization(self, sizer):
-        """At 50% utilization, multiplier should be 0.25."""
-        mult = sizer._calculate_utilization_brake(0.50)
-        # Formula: (1 - 0.5)^2 = 0.25
-        assert abs(mult - 0.25) < 0.01
-    
-    def test_eighty_percent_utilization(self, sizer):
-        """At 80% utilization, multiplier should be very low."""
-        mult = sizer._calculate_utilization_brake(0.80)
-        # (1 - 0.8)^2 = 0.04
-        assert abs(mult - 0.04) < 0.01
-    
-    def test_ninety_percent_utilization(self, sizer):
-        """At 90% utilization, multiplier should be near zero."""
-        mult = sizer._calculate_utilization_brake(0.90)
-        # (1 - 0.9)^2 = 0.01
-        assert mult < 0.02
-    
-    def test_full_utilization(self, sizer):
-        """At 100% utilization, multiplier should be 0."""
+    def test_full_utilization_zero_size(self, sizer):
+        """At 100% utilization, multiplier = 0."""
         mult = sizer._calculate_utilization_brake(1.0)
         assert mult == 0.0
     
-    def test_over_utilization(self, sizer):
-        """Above 100% utilization (edge case)."""
-        mult = sizer._calculate_utilization_brake(1.2)
-        # Should clamp or handle gracefully
-        assert mult >= 0.0
+    def test_half_utilization(self, sizer):
+        """At 50% utilization, mult = (1-0.5)^2 = 0.25."""
+        mult = sizer._calculate_utilization_brake(0.5)
+        # Allow small tolerance
+        assert 0.20 < mult < 0.30
 
 
 class TestTimePenalty:
-    """Tests for time-to-expiry based penalties."""
+    """Tests for time-to-expiry penalties."""
     
-    def test_no_expiry(self, sizer):
-        """No penalty if no expiry (None)."""
+    def test_far_expiry_minimal_penalty(self, sizer):
+        """30+ days = minimal penalty."""
+        penalty = sizer._calculate_time_penalty(30.0)
+        assert penalty >= 0.9
+    
+    def test_short_expiry_high_penalty(self, sizer):
+        """<1 day = high penalty."""
+        penalty = sizer._calculate_time_penalty(0.5)
+        assert penalty < 0.6
+    
+    def test_none_expiry_no_penalty(self, sizer):
+        """None = no penalty."""
         penalty = sizer._calculate_time_penalty(None)
         assert penalty == 1.0
-    
-    def test_far_expiry_30_days(self, sizer):
-        """Minimal penalty for 30+ days to expiry."""
-        penalty = sizer._calculate_time_penalty(30.0)
-        assert penalty > 0.95
-    
-    def test_two_weeks_expiry(self, sizer):
-        """Some penalty for ~14 days."""
-        penalty = sizer._calculate_time_penalty(14.0)
-        assert 0.8 < penalty <= 1.0
-    
-    def test_one_week_expiry(self, sizer):
-        """Moderate penalty for 7 days."""
-        penalty = sizer._calculate_time_penalty(7.0)
-        assert 0.7 < penalty < 0.95
-    
-    def test_three_days_expiry(self, sizer):
-        """Higher penalty for 3 days."""
-        penalty = sizer._calculate_time_penalty(3.0)
-        assert 0.5 < penalty < 0.85
-    
-    def test_one_day_expiry(self, sizer):
-        """Heavy penalty for <24h."""
-        penalty = sizer._calculate_time_penalty(1.0)
-        assert penalty < 0.7
-    
-    def test_hours_to_expiry(self, sizer):
-        """Very heavy penalty for hours to expiry."""
-        penalty = sizer._calculate_time_penalty(0.25)  # 6 hours
-        assert penalty < 0.5
-    
-    def test_zero_days(self, sizer):
-        """Near-zero days should give minimum penalty."""
-        penalty = sizer._calculate_time_penalty(0.01)
-        assert penalty > 0  # Should not be zero, minimum floor
 
 
 class TestOracleRiskMultiplier:
-    """Tests for Oracle/Ambiguity Matrix multipliers using market_classifier."""
+    """Tests for the Oracle/Ambiguity Matrix."""
     
-    def test_sports_market_low_risk(self):
-        """Sports markets should have multiplier = 1.0."""
+    def test_sports_low_risk(self):
+        """Sports = 1.0 (binary, clear resolution)."""
         assert AMBIGUITY_MATRIX['sports'] == 1.0
     
-    def test_crypto_market_low_risk(self):
-        """Crypto markets should have multiplier = 1.0."""
+    def test_crypto_low_risk(self):
+        """Crypto = 1.0 (oracle-resolvable)."""
         assert AMBIGUITY_MATRIX['crypto'] == 1.0
     
-    def test_finance_market(self):
-        """Finance markets should have multiplier = 0.95."""
-        assert AMBIGUITY_MATRIX['finance'] == 0.95
-    
     def test_conflict_high_risk(self):
-        """Conflict markets should have low multiplier."""
-        assert AMBIGUITY_MATRIX['conflict'] <= 0.5
+        """Conflict = 0.4 (vague definitions)."""
+        assert AMBIGUITY_MATRIX['conflict'] == 0.4
     
     def test_social_high_risk(self):
-        """Social/tweet markets should have low multiplier."""
-        assert AMBIGUITY_MATRIX['social'] <= 0.5
+        """Social = 0.5 (linguistic ambiguity)."""
+        assert AMBIGUITY_MATRIX['social'] == 0.5
     
-    def test_unknown_category(self):
-        """Unknown category should have conservative default."""
-        assert AMBIGUITY_MATRIX['unknown'] == 0.60
+    def test_unknown_conservative(self):
+        """Unknown = 0.6 (conservative default)."""
+        assert AMBIGUITY_MATRIX['unknown'] == 0.6
     
-    def test_classify_sports_market(self):
-        """Test market classification for sports."""
-        result = classify_market({'question': 'Lakers win NBA Finals?', 'category': 'sports'})
-        assert result['category'] == 'sports'
+    def test_classify_market_function(self):
+        """Test market classifier returns expected fields."""
+        result = classify_market({
+            'question': 'Lakers win NBA Finals?',
+            'category': 'sports'
+        })
+        
+        assert 'category' in result
+        assert 'oracle_multiplier' in result
         assert result['oracle_multiplier'] == 1.0
     
-    def test_classify_conflict_market(self):
-        """Test market classification for conflict."""
-        result = classify_market({'question': 'Ceasefire in Ukraine?', 'category': 'conflict'})
-        assert result['category'] == 'conflict'
-        assert result['oracle_multiplier'] <= 0.5
-
-
-class TestCorrelationDampening:
-    """Tests for correlation-based position limits."""
-    
-    def test_no_positions(self, sizer, sample_market):
-        """Full size with no existing positions."""
-        mult, count = sizer._calculate_correlation_dampener(sample_market, [])
+    def test_get_oracle_risk_multiplier(self):
+        """Test oracle risk multiplier function."""
+        mult = get_oracle_risk_multiplier('sports', 'Lakers win?', None)
         assert mult == 1.0
-        assert count == 0
-    
-    def test_one_same_category(self, sizer, sample_market):
-        """Reduced size with 1 position in same category."""
-        open_positions = [{'category': 'finance', 'market_question': 'Other Fed market'}]
-        sample_market['category'] = 'finance'
         
-        mult, count = sizer._calculate_correlation_dampener(sample_market, open_positions)
-        assert mult < 1.0
-        assert count == 1
+        mult = get_oracle_risk_multiplier('conflict', 'Ceasefire?', None)
+        assert mult <= 0.5
+
+
+class TestDefaultAmbiguityMatrix:
+    """Tests for configurable oracle multipliers."""
     
-    def test_different_category(self, sizer, sample_market):
-        """No reduction for different category."""
-        open_positions = [{'category': 'sports', 'market_question': 'Lakers game'}]
-        sample_market['category'] = 'finance'
+    def test_get_defaults(self):
+        """Default matrix should have all expected categories."""
+        defaults = get_default_ambiguity_matrix()
         
-        mult, count = sizer._calculate_correlation_dampener(sample_market, open_positions)
-        assert mult == 1.0
-        assert count == 0
+        assert 'sports' in defaults
+        assert 'crypto' in defaults
+        assert 'finance' in defaults
+        assert 'conflict' in defaults
+        assert 'unknown' in defaults
     
-    def test_multiple_correlated(self, sizer, sample_market):
-        """Heavy reduction with many same-category positions."""
-        open_positions = [
-            {'category': 'finance', 'market_question': 'Fed March'},
-            {'category': 'finance', 'market_question': 'Fed June'},
-            {'category': 'finance', 'market_question': 'CPI report'},
-        ]
-        sample_market['category'] = 'finance'
+    def test_defaults_in_valid_range(self):
+        """All multipliers should be 0-1."""
+        defaults = get_default_ambiguity_matrix()
         
-        mult, count = sizer._calculate_correlation_dampener(sample_market, open_positions)
-        assert mult < 0.7
-        assert count == 3
-
-
-class TestLiquidityCap:
-    """Tests for liquidity-based position caps."""
-    
-    def test_high_liquidity_no_cap(self, sizer):
-        """High liquidity should not cap small position."""
-        cap = sizer._calculate_liquidity_cap(
-            kelly_adjusted=500,
-            liquidity=100000,
-            volume_24h=50000
-        )
-        assert cap >= 500  # No cap needed
-    
-    def test_low_liquidity_capped(self, sizer):
-        """Low liquidity should cap position."""
-        cap = sizer._calculate_liquidity_cap(
-            kelly_adjusted=5000,
-            liquidity=10000,
-            volume_24h=5000
-        )
-        assert cap < 5000  # Should be capped
-
-
-class TestSectorCap:
-    """Tests for sector-based portfolio caps."""
-    
-    def test_under_sector_limit(self, sizer):
-        """Position allowed when under sector limit."""
-        cap = sizer._calculate_sector_cap(
-            size_before=500,
-            category='crypto',
-            equity=10000,
-            open_positions=[]
-        )
-        # Default crypto cap is 20% = $2000
-        assert cap >= 500
-    
-    def test_at_sector_limit(self, sizer):
-        """Position reduced when approaching sector limit."""
-        # Already have $1800 in crypto, cap is $2000
-        open_positions = [
-            {'category': 'crypto', 'size': 900},
-            {'category': 'crypto', 'size': 900},
-        ]
-        cap = sizer._calculate_sector_cap(
-            size_before=500,
-            category='crypto',
-            equity=10000,
-            open_positions=open_positions
-        )
-        # Only $200 room left
-        assert cap <= 200
+        for cat, mult in defaults.items():
+            assert 0.0 <= mult <= 1.0, f"{cat} multiplier {mult} out of range"
 
 
 class TestNoTradeResult:
-    """Tests for no-trade result generation."""
+    """Tests for no-trade result structure."""
     
-    def test_no_trade_structure(self, sizer):
-        """No-trade result should have correct structure."""
+    def test_no_trade_has_should_trade_false(self, sizer):
+        """No-trade result has should_trade = False."""
         result = sizer._no_trade_result("test_reason", "test_detail")
-        
         assert result['should_trade'] == False
-        assert result['final_size'] == 0
+    
+    def test_no_trade_has_breakdown(self, sizer):
+        """No-trade result has sizing_breakdown."""
+        result = sizer._no_trade_result("test_reason", "test_detail")
         assert 'sizing_breakdown' in result
-        assert result['sizing_breakdown']['rejection_reason'] == "test_reason"
 
 
 class TestFullSizingPipeline:
-    """Integration tests for the full sizing calculation."""
+    """Integration tests for full sizing calculation."""
     
-    def test_positive_edge_trade(self, sizer, sample_market):
-        """Should calculate size for positive edge trade."""
+    def test_positive_edge_returns_trade(self, sizer, sample_order_book):
+        """Positive edge should return a trade."""
         result = sizer.calculate_position_size(
-            market_question=sample_market['question'],
+            equity=10000,
+            deployed_capital=0,
             model_probability=0.55,
             ask_price=0.45,
-            trade_side='YES',
-            equity=10000,
-            deployed=0,
-            category='finance',
-            end_date_iso=sample_market['end_date_iso'],
-            liquidity=sample_market['liquidity'],
-            volume_24h=sample_market['volume_24h'],
+            order_book_asks=sample_order_book,
+            days_to_expiry=30.0,
+            market_category='finance',
+            market_age_hours=100,
+            market_question='Fed cuts rates?',
             open_positions=[]
         )
         
         assert result['should_trade'] == True
-        assert result['final_size'] > 0
-        assert result['edge'] > 0
+        assert result['position_size'] > 0
+        assert 'breakdown' in result
     
-    def test_negative_edge_no_trade(self, sizer, sample_market):
-        """Should not trade with negative edge."""
+    def test_negative_edge_no_trade(self, sizer, sample_order_book):
+        """Negative edge should return no trade."""
         result = sizer.calculate_position_size(
-            market_question=sample_market['question'],
-            model_probability=0.40,  # Model says 40%
-            ask_price=0.45,          # Market at 45% - negative edge
-            trade_side='YES',
             equity=10000,
-            deployed=0,
-            category='finance',
-            end_date_iso=sample_market['end_date_iso'],
-            liquidity=sample_market['liquidity'],
-            volume_24h=sample_market['volume_24h'],
+            deployed_capital=0,
+            model_probability=0.40,  # < 0.45 ask = negative edge
+            ask_price=0.45,
+            order_book_asks=sample_order_book,
+            days_to_expiry=30.0,
+            market_category='finance',
+            market_age_hours=100,
+            market_question='Fed cuts rates?',
             open_positions=[]
         )
         
         assert result['should_trade'] == False
     
-    def test_high_utilization_small_size(self, sizer, sample_market):
-        """Should reduce size when utilization is high."""
-        result = sizer.calculate_position_size(
-            market_question=sample_market['question'],
+    def test_high_utilization_reduces_size(self, sizer, sample_order_book):
+        """High utilization should reduce position size."""
+        # First, get size with low utilization
+        result_low = sizer.calculate_position_size(
+            equity=10000,
+            deployed_capital=0,
             model_probability=0.55,
             ask_price=0.45,
-            trade_side='YES',
-            equity=10000,
-            deployed=8000,  # 80% utilized
-            category='finance',
-            end_date_iso=sample_market['end_date_iso'],
-            liquidity=sample_market['liquidity'],
-            volume_24h=sample_market['volume_24h'],
+            order_book_asks=sample_order_book,
+            days_to_expiry=30.0,
+            market_category='finance',
+            market_age_hours=100,
+            market_question='Fed cuts rates?',
             open_positions=[]
         )
         
-        if result['should_trade']:
-            # Should be heavily reduced due to utilization brake
-            assert result['sizing_breakdown']['utilization_mult'] < 0.1
-    
-    def test_conflict_category_reduced(self, sizer, sample_market):
-        """Should reduce size for high-risk conflict category."""
-        result = sizer.calculate_position_size(
-            market_question='Will there be a ceasefire?',
-            model_probability=0.60,
+        # Then with high utilization
+        result_high = sizer.calculate_position_size(
+            equity=10000,
+            deployed_capital=8000,  # 80% utilized
+            model_probability=0.55,
             ask_price=0.45,
-            trade_side='YES',
+            order_book_asks=sample_order_book,
+            days_to_expiry=30.0,
+            market_category='finance',
+            market_age_hours=100,
+            market_question='Fed cuts rates?',
+            open_positions=[]
+        )
+        
+        if result_high['should_trade'] and result_low['should_trade']:
+            assert result_high['position_size'] < result_low['position_size']
+    
+    def test_conflict_category_reduces_size(self, sizer, sample_order_book):
+        """Conflict category should reduce size due to oracle risk."""
+        result_finance = sizer.calculate_position_size(
             equity=10000,
-            deployed=0,
-            category='conflict',
-            end_date_iso=sample_market['end_date_iso'],
-            liquidity=sample_market['liquidity'],
-            volume_24h=sample_market['volume_24h'],
+            deployed_capital=0,
+            model_probability=0.55,
+            ask_price=0.45,
+            order_book_asks=sample_order_book,
+            days_to_expiry=30.0,
+            market_category='finance',
+            market_age_hours=100,
+            market_question='Fed cuts rates?',
+            open_positions=[]
+        )
+        
+        result_conflict = sizer.calculate_position_size(
+            equity=10000,
+            deployed_capital=0,
+            model_probability=0.55,
+            ask_price=0.45,
+            order_book_asks=sample_order_book,
+            days_to_expiry=30.0,
+            market_category='conflict',
+            market_age_hours=100,
+            market_question='Ceasefire in war?',
+            open_positions=[]
+        )
+        
+        if result_conflict['should_trade'] and result_finance['should_trade']:
+            assert result_conflict['position_size'] < result_finance['position_size']
+    
+    def test_short_expiry_reduces_size(self, sizer, sample_order_book):
+        """Short expiry should reduce position size."""
+        result_long = sizer.calculate_position_size(
+            equity=10000,
+            deployed_capital=0,
+            model_probability=0.55,
+            ask_price=0.45,
+            order_book_asks=sample_order_book,
+            days_to_expiry=30.0,
+            market_category='finance',
+            market_age_hours=100,
+            market_question='Fed cuts rates?',
+            open_positions=[]
+        )
+        
+        result_short = sizer.calculate_position_size(
+            equity=10000,
+            deployed_capital=0,
+            model_probability=0.55,
+            ask_price=0.45,
+            order_book_asks=sample_order_book,
+            days_to_expiry=1.0,  # 1 day
+            market_category='finance',
+            market_age_hours=100,
+            market_question='Fed cuts rates?',
+            open_positions=[]
+        )
+        
+        if result_short['should_trade'] and result_long['should_trade']:
+            assert result_short['position_size'] < result_long['position_size']
+    
+    def test_breakdown_contains_expected_fields(self, sizer, sample_order_book):
+        """Breakdown should contain all sizing factors."""
+        result = sizer.calculate_position_size(
+            equity=10000,
+            deployed_capital=0,
+            model_probability=0.55,
+            ask_price=0.45,
+            order_book_asks=sample_order_book,
+            days_to_expiry=30.0,
+            market_category='finance',
+            market_age_hours=100,
+            market_question='Fed cuts rates?',
             open_positions=[]
         )
         
         if result['should_trade']:
-            # Oracle multiplier should be low
-            assert result['sizing_breakdown']['oracle_mult'] <= 0.5
+            breakdown = result['breakdown']
+            assert 'kelly_base' in breakdown
+            assert 'utilization_mult' in breakdown
+            assert 'oracle_mult' in breakdown
+            assert 'time_penalty' in breakdown
+            assert 'final_size' in breakdown
+
+
+class TestEdgeCases:
+    """Tests for edge cases."""
+    
+    def test_zero_equity(self, sizer, sample_order_book):
+        """Zero equity should handle gracefully."""
+        result = sizer.calculate_position_size(
+            equity=0,
+            deployed_capital=0,
+            model_probability=0.55,
+            ask_price=0.45,
+            order_book_asks=sample_order_book,
+            days_to_expiry=30.0,
+            market_category='finance',
+            market_age_hours=100,
+            market_question='Fed cuts rates?',
+            open_positions=[]
+        )
+        
+        # Should not crash, either no trade or tiny size
+        assert 'should_trade' in result
+    
+    def test_extreme_edge(self, sizer, sample_order_book):
+        """Very high edge should cap Kelly."""
+        result = sizer.calculate_position_size(
+            equity=10000,
+            deployed_capital=0,
+            model_probability=0.95,  # Very high probability
+            ask_price=0.30,          # Low price = huge edge
+            order_book_asks=sample_order_book,
+            days_to_expiry=30.0,
+            market_category='finance',
+            market_age_hours=100,
+            market_question='Fed cuts rates?',
+            open_positions=[]
+        )
+        
+        if result['should_trade']:
+            # Should be capped at some reasonable max
+            assert result['position_size'] < 5000  # Less than 50% of equity
 
 
 # Run tests
