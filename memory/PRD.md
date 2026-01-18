@@ -150,6 +150,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 - ✅ **FEATURE: Historical Analytics Charts** (`/app/frontend/src/pages/PaperTrading.js` + `/app/backend/server.py`)
   - **Backend**: Session analytics saved to `paper_trading_analytics` collection on stop
+  - **Simulated Closure**: Calculates P&L with 1.5% bid-ask spread simulation
   - **API**: `GET /api/paper/analytics/history` returns chart-friendly data
   - **Frontend Charts**:
     - **Sizing Efficiency Trend**: Area chart showing % of Kelly used over sessions
