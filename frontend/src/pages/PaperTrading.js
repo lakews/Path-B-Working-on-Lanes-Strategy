@@ -1707,84 +1707,61 @@ const PaperTrading = () => {
               <div>
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                   <Target className="w-6 h-6 text-cyan-400" />
-                  Exit Mode Configuration
+                  Exit Mode
                 </h3>
-                <p className="text-white/60 text-sm mt-1">Choose between time-aware dynamic exits or simple configurable thresholds</p>
               </div>
-              <button 
-                onClick={toggleExitMode}
-                disabled={!running}
-                className={`px-4 py-2 rounded-lg border flex items-center gap-2 transition-all ${
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
                   useDynamicExit 
-                    ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/30' 
-                    : 'bg-gray-500/20 border-gray-500/30 text-gray-400 hover:bg-gray-500/30'
-                } disabled:opacity-50`}
-              >
-                {useDynamicExit ? 'Dynamic Mode' : 'Simple Mode'}
-              </button>
+                    ? 'bg-cyan-500/20 border border-cyan-500/30 text-cyan-400' 
+                    : 'bg-gray-500/20 border border-gray-500/30 text-gray-400'
+                }`}>
+                  {useDynamicExit ? '⚡ Dynamic (Time-Aware)' : '⚙️ Simple (Fixed)'}
+                </span>
+                <button 
+                  onClick={toggleExitMode}
+                  disabled={!running}
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/60 hover:text-white text-sm transition-all disabled:opacity-40"
+                >
+                  Switch
+                </button>
+              </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Dynamic Mode Card */}
-              <div className={`rounded-lg p-4 border transition-all ${useDynamicExit ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/5 border-white/10 opacity-60'}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-white font-medium flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-cyan-400" />
-                    Dynamic (Time-Aware)
-                  </h4>
-                  {useDynamicExit && <span className="text-xs px-2 py-0.5 rounded bg-cyan-500/30 text-cyan-300">Active</span>}
-                </div>
-                <div className="space-y-2 text-sm">
-                  <p className="text-white/60 text-xs mb-3">TP/SL calculated from max possible gain and time to expiry</p>
-                  <div className="flex justify-between"><span className="text-white/50">TP Capture</span><span className="text-white">{dynamicExitConfig?.tp_capture_pct ? (dynamicExitConfig.tp_capture_pct * 100).toFixed(0) : 10}% of max</span></div>
-                  <div className="flex justify-between"><span className="text-white/50">TP Range</span><span className="text-white">{dynamicExitConfig?.tp_min ? (dynamicExitConfig.tp_min * 100).toFixed(1) : 0.5}% - {dynamicExitConfig?.tp_max ? (dynamicExitConfig.tp_max * 100).toFixed(0) : 50}%</span></div>
-                  <div className="flex justify-between"><span className="text-white/50">SL Range</span><span className="text-white">{dynamicExitConfig?.sl_base ? (dynamicExitConfig.sl_base * 100).toFixed(0) : -10}% to {dynamicExitConfig?.sl_extreme ? (dynamicExitConfig.sl_extreme * 100).toFixed(0) : -30}%</span></div>
-                  <div className="mt-3 pt-3 border-t border-white/10">
-                    <p className="text-white/40 text-xs">Exit modes by expiry:</p>
-                    <div className="grid grid-cols-2 gap-1 mt-2 text-xs">
-                      <span className="text-purple-400">≤3d: Hold→Res</span>
-                      <span className="text-blue-400">4-7d: Hold+SL</span>
-                      <span className="text-cyan-400">8-30d: Active</span>
-                      <span className="text-yellow-400">&gt;30d: Quick</span>
-                    </div>
+            <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+              {useDynamicExit ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-white/80">TP/SL calculated dynamically based on:</p>
+                  <ul className="text-xs text-white/60 space-y-1 ml-4 list-disc">
+                    <li>Max possible gain (10% capture, capped 0.5%-50%)</li>
+                    <li>Price extremeness (tighter SL at extremes)</li>
+                    <li>Time to expiry (hold to resolution if ≤3 days)</li>
+                  </ul>
+                  <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-white/10">
+                    <span className="text-xs px-2 py-1 rounded bg-purple-500/20 text-purple-300">≤3d: Hold→Res</span>
+                    <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-300">4-7d: Hold+SL</span>
+                    <span className="text-xs px-2 py-1 rounded bg-cyan-500/20 text-cyan-300">8-30d: Active</span>
+                    <span className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-300">&gt;30d: Quick</span>
                   </div>
                 </div>
-              </div>
-              
-              {/* Simple Mode Card */}
-              <div className={`rounded-lg p-4 border transition-all ${!useDynamicExit ? 'bg-gray-500/10 border-gray-500/30' : 'bg-white/5 border-white/10 opacity-60'}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-white font-medium flex items-center gap-2">
-                    <Settings className="w-4 h-4 text-gray-400" />
-                    Simple (Configurable)
-                  </h4>
-                  {!useDynamicExit && <span className="text-xs px-2 py-0.5 rounded bg-gray-500/30 text-gray-300">Active</span>}
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-white/80">Fixed TP/SL per strategy (configure in Settings → Exit Parameters)</p>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {savedConfig?.exit_params && Object.entries(savedConfig.exit_params).slice(0, 4).map(([strategy, params]) => (
+                      <div key={strategy} className="text-xs flex justify-between px-2 py-1 rounded bg-white/5">
+                        <span className="text-white/50 capitalize">{strategy.replace('_', ' ').substring(0, 12)}</span>
+                        <span className="text-white/80">TP:{(params.take_profit * 100).toFixed(0)}% SL:{(params.stop_loss * 100).toFixed(0)}%</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  <p className="text-white/60 text-xs mb-3">Fixed TP/SL per strategy from configuration</p>
-                  {savedConfig?.exit_params && Object.entries(savedConfig.exit_params).map(([strategy, params]) => (
-                    <div key={strategy} className="flex justify-between items-center">
-                      <span className="text-white/50 capitalize">{strategy.replace('_', ' ')}</span>
-                      <span className="text-white text-xs">
-                        TP: {(params.take_profit * 100).toFixed(0)}% | SL: {(params.stop_loss * 100).toFixed(0)}% | {params.max_hours}h
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
             
-            {/* Current Status */}
-            {status?.exit_mode && (
-              <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-white/60">Current Mode:</span>
-                  <span className={`font-medium ${status.exit_mode.use_dynamic_exit ? 'text-cyan-400' : 'text-gray-400'}`}>
-                    {status.exit_mode.mode_name}
-                  </span>
-                </div>
-              </div>
-            )}
+            <p className="text-xs text-white/40 mt-3 text-center">
+              Configure exit parameters in <a href="/config" className="text-cyan-400 hover:underline">Settings → Exit Parameters</a>
+            </p>
           </div>
         </div>
       )}
