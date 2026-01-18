@@ -92,6 +92,8 @@ class PolymarketPositionSizer:
     
     def __init__(self, config: Optional[Dict] = None):
         self.config = {**DEFAULT_CONFIG, **(config or {})}
+        self._version = "v2.0_edge_logging"  # Version indicator
+        logger.info(f"[SIZER] Initialized PolymarketPositionSizer {self._version}")
         
         # Try to get DB, but don't fail if not available
         try:
