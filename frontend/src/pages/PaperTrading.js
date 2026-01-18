@@ -1683,6 +1683,92 @@ const PaperTrading = () => {
               </div>
             )}
           </div>
+          
+          {/* Exit Mode Configuration */}
+          <div className="rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Target className="w-6 h-6 text-cyan-400" />
+                  Exit Mode Configuration
+                </h3>
+                <p className="text-white/60 text-sm mt-1">Choose between time-aware dynamic exits or simple configurable thresholds</p>
+              </div>
+              <button 
+                onClick={toggleExitMode}
+                disabled={!running}
+                className={`px-4 py-2 rounded-lg border flex items-center gap-2 transition-all ${
+                  useDynamicExit 
+                    ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/30' 
+                    : 'bg-gray-500/20 border-gray-500/30 text-gray-400 hover:bg-gray-500/30'
+                } disabled:opacity-50`}
+              >
+                {useDynamicExit ? 'Dynamic Mode' : 'Simple Mode'}
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Dynamic Mode Card */}
+              <div className={`rounded-lg p-4 border transition-all ${useDynamicExit ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/5 border-white/10 opacity-60'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-white font-medium flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-cyan-400" />
+                    Dynamic (Time-Aware)
+                  </h4>
+                  {useDynamicExit && <span className="text-xs px-2 py-0.5 rounded bg-cyan-500/30 text-cyan-300">Active</span>}
+                </div>
+                <div className="space-y-2 text-sm">
+                  <p className="text-white/60 text-xs mb-3">TP/SL calculated from max possible gain and time to expiry</p>
+                  <div className="flex justify-between"><span className="text-white/50">TP Capture</span><span className="text-white">{dynamicExitConfig?.tp_capture_pct ? (dynamicExitConfig.tp_capture_pct * 100).toFixed(0) : 10}% of max</span></div>
+                  <div className="flex justify-between"><span className="text-white/50">TP Range</span><span className="text-white">{dynamicExitConfig?.tp_min ? (dynamicExitConfig.tp_min * 100).toFixed(1) : 0.5}% - {dynamicExitConfig?.tp_max ? (dynamicExitConfig.tp_max * 100).toFixed(0) : 50}%</span></div>
+                  <div className="flex justify-between"><span className="text-white/50">SL Range</span><span className="text-white">{dynamicExitConfig?.sl_base ? (dynamicExitConfig.sl_base * 100).toFixed(0) : -10}% to {dynamicExitConfig?.sl_extreme ? (dynamicExitConfig.sl_extreme * 100).toFixed(0) : -30}%</span></div>
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    <p className="text-white/40 text-xs">Exit modes by expiry:</p>
+                    <div className="grid grid-cols-2 gap-1 mt-2 text-xs">
+                      <span className="text-purple-400">≤3d: Hold→Res</span>
+                      <span className="text-blue-400">4-7d: Hold+SL</span>
+                      <span className="text-cyan-400">8-30d: Active</span>
+                      <span className="text-yellow-400">&gt;30d: Quick</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Simple Mode Card */}
+              <div className={`rounded-lg p-4 border transition-all ${!useDynamicExit ? 'bg-gray-500/10 border-gray-500/30' : 'bg-white/5 border-white/10 opacity-60'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-white font-medium flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-gray-400" />
+                    Simple (Configurable)
+                  </h4>
+                  {!useDynamicExit && <span className="text-xs px-2 py-0.5 rounded bg-gray-500/30 text-gray-300">Active</span>}
+                </div>
+                <div className="space-y-2 text-sm">
+                  <p className="text-white/60 text-xs mb-3">Fixed TP/SL per strategy from configuration</p>
+                  {savedConfig?.exit_params && Object.entries(savedConfig.exit_params).map(([strategy, params]) => (
+                    <div key={strategy} className="flex justify-between items-center">
+                      <span className="text-white/50 capitalize">{strategy.replace('_', ' ')}</span>
+                      <span className="text-white text-xs">
+                        TP: {(params.take_profit * 100).toFixed(0)}% | SL: {(params.stop_loss * 100).toFixed(0)}% | {params.max_hours}h
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* Current Status */}
+            {status?.exit_mode && (
+              <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/60">Current Mode:</span>
+                  <span className={`font-medium ${status.exit_mode.use_dynamic_exit ? 'text-cyan-400' : 'text-gray-400'}`}>
+                    {status.exit_mode.mode_name}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
