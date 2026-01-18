@@ -245,9 +245,14 @@ If you see clear mispricing, diverge from market price."""
             logger.warning(f"Could not initialize LLM sentiment: {e}")
             self.gpt_chat = None
     
-    async def analyze(self, market_data: Dict) -> Dict:
+    async def analyze(self, market_data: Dict, trades: List = None, order_book: Dict = None) -> Dict:
         """
         Comprehensive sentiment analysis combining all sources.
+        
+        Args:
+            market_data: Market info (price, volume, etc.)
+            trades: Optional recent trades for Polymarket sentiment
+            order_book: Optional order book for spread analysis
         
         Returns:
         {
@@ -255,6 +260,8 @@ If you see clear mispricing, diverge from market price."""
             'llm_confidence': float,     # LLM confidence
             'correlation_sentiment': float,  # Cross-market correlation
             'correlation_strength': float,   # Correlation confidence
+            'polymarket_sentiment': float,   # Polymarket-native signals
+            'polymarket_momentum': dict,     # Sentiment momentum (1h/6h/24h)
             'combined_sentiment': float,     # Final fused sentiment
             'combined_confidence': float,    # Overall confidence
             'analysis_source': str,          # What sources were used
@@ -271,6 +278,9 @@ If you see clear mispricing, diverge from market price."""
             'llm_reasoning': '',
             'correlation_sentiment': 0.5,
             'correlation_strength': 0.0,
+            'polymarket_sentiment': 0.5,
+            'polymarket_confidence': 0.0,
+            'polymarket_momentum': {},
             'combined_sentiment': 0.5,
             'combined_confidence': 0.0,
             'analysis_source': 'none'
@@ -279,7 +289,42 @@ If you see clear mispricing, diverge from market price."""
         sources_used = []
         
         # ================================================================
-        # 1. LLM SENTIMENT (with caching)
+        # 1. POLYMARKET-NATIVE SENTIMENT (NEW - No external API needed)
+        # ================================================================
+        if self.polymarket_sentiment:
+            try:
+                poly_result = await self.polymarket_sentiment.analyze_market(
+                    market_id=market_id,
+                    market_data=market_data,
+                    trades=trades,
+                    order_book=order_book
+                )
+                
+                result['polymarket_sentiment'] = poly_result.get('combined_score', 0.5)
+                result['polymarket_momentum'] = poly_result.get('sentiment_momentum', {})
+                result['polymarket_signals'] = poly_result.get('signals', {})
+                result['polymarket_interpretation'] = poly_result.get('interpretation', '')
+                
+                # Confidence based on data quality
+                data_quality = poly_result.get('data_quality', {})
+                poly_confidence = 0.3  # Base confidence
+                if data_quality.get('has_trades'):
+                    poly_confidence += 0.2
+                if data_quality.get('has_order_book'):
+                    poly_confidence += 0.2
+                if data_quality.get('price_history_points', 0) > 10:
+                    poly_confidence += 0.15
+                if data_quality.get('trade_history_points', 0) > 20:
+                    poly_confidence += 0.15
+                
+                result['polymarket_confidence'] = min(0.9, poly_confidence)
+                sources_used.append('polymarket')
+                
+            except Exception as e:
+                logger.debug(f"Polymarket sentiment error: {e}")
+        
+        # ================================================================
+        # 2. LLM SENTIMENT (with caching)
         # ================================================================
         llm_result = await self._get_llm_sentiment(market_id, question, category, yes_price)
         if llm_result:
@@ -289,7 +334,7 @@ If you see clear mispricing, diverge from market price."""
             sources_used.append('llm')
         
         # ================================================================
-        # 2. CROSS-MARKET CORRELATION
+        # 3. CROSS-MARKET CORRELATION
         # ================================================================
         correlation_result = self.correlation_tracker.get_correlation_signal(
             market_id, category, question, yes_price
@@ -301,16 +346,18 @@ If you see clear mispricing, diverge from market price."""
         sources_used.append('correlation')
         
         # ================================================================
-        # 3. COMBINE SIGNALS
+        # 4. COMBINE ALL SIGNALS
         # ================================================================
-        # Weight by confidence
-        llm_weight = result['llm_confidence'] * 0.6  # LLM gets 60% max weight
-        corr_weight = result['correlation_strength'] * 0.4  # Correlation gets 40% max
+        # Dynamic weighting based on confidence
+        poly_weight = result.get('polymarket_confidence', 0) * 0.35   # Polymarket: 35% max
+        llm_weight = result['llm_confidence'] * 0.40                   # LLM: 40% max  
+        corr_weight = result['correlation_strength'] * 0.25            # Correlation: 25% max
         
-        total_weight = llm_weight + corr_weight
+        total_weight = poly_weight + llm_weight + corr_weight
         
         if total_weight > 0:
             result['combined_sentiment'] = (
+                result.get('polymarket_sentiment', 0.5) * poly_weight +
                 result['llm_sentiment'] * llm_weight +
                 result['correlation_sentiment'] * corr_weight
             ) / total_weight
@@ -321,6 +368,14 @@ If you see clear mispricing, diverge from market price."""
             result['combined_confidence'] = 0.1
         
         result['analysis_source'] = '+'.join(sources_used) if sources_used else 'fallback'
+        
+        # Add weight breakdown for debugging
+        result['weight_breakdown'] = {
+            'polymarket': round(poly_weight, 3),
+            'llm': round(llm_weight, 3),
+            'correlation': round(corr_weight, 3),
+            'total': round(total_weight, 3)
+        }
         
         return result
     
