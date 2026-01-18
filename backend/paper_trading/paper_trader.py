@@ -654,6 +654,7 @@ class PaperTrader:
             # Calculate how much is currently deployed
             current_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
             available_capital = self.deployed_capital - current_deployed  # deployed_capital is max allowed
+            logger.debug(f"[CAPITAL CHECK] deployed_capital={self.deployed_capital}, current_deployed={current_deployed}, available={available_capital}")
             if available_capital < 5:  # Need at least $5 for min trade
                 track_skip("no_available_capital")
                 return
