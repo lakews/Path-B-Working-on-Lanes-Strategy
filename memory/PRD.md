@@ -117,6 +117,28 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
     - EDGE %, KELLY $, ORACLE ×, FINAL $
     - "Details" button to open full breakdown modal
 
+- ✅ **NEW: Polymarket-Native Sentiment** (`/app/backend/ml/polymarket_sentiment.py`)
+  - **Order Flow Imbalance**: Buy vs sell pressure from recent trades
+  - **Volume Momentum**: Volume changes over 1h/6h/24h windows
+  - **Spread Confidence**: Bid/ask spread tightening = market confidence
+  - **Price Velocity**: Rate of price change with acceleration detection
+  - **Whale Detection**: Large trade signals ($1000+ threshold)
+  - **Price Momentum**: SMA-based trend direction
+  - **Sentiment Momentum**: Tracks how sentiment changes over 1h/6h/24h
+  - No external API required - uses existing Polymarket data
+
+- ✅ **NEW: Polymarket WebSocket Client** (`/app/backend/data/polymarket_websocket.py`)
+  - Real-time price updates via WebSocket
+  - Live order book changes and trade notifications
+  - Auto-reconnect with exponential backoff
+  - Market subscription management
+  - Event callback system for price_update, trade, order_book events
+
+- ✅ **NEW: Enhanced Sentiment API Endpoints**
+  - `GET /api/sentiment/enhanced/{market_id}`: Full sentiment breakdown with all signals
+  - `GET /api/sentiment/momentum/{market_id}`: Sentiment change over 1h/6h/24h
+  - `GET /api/realtime/status`: WebSocket connection statistics
+
 - ✅ **FEATURE: Position Sizer Configuration Tab** (`/app/frontend/src/pages/Configuration.js`)
   - **Dynamic/Simple Mode Toggle**: Switch between new engine and legacy
   - **Polymarket Fee**: Slider for exit fee (0-5%, default 2%)
