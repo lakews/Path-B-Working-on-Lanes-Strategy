@@ -277,6 +277,7 @@ class PolymarketPositionSizer:
         
         # Min bet floor
         if final_size < self.config['min_bet_floor']:
+            logger.info(f"[SIZER] Below min: kelly_base={kelly_base:.2f} × util={utilization_mult:.4f} × time={time_penalty:.4f} × oracle={oracle_mult:.4f} = {kelly_adjusted:.2f}, final={final_size:.2f}")
             return self._no_trade_result(
                 "below_min_bet",
                 f"Final size ${final_size:.2f} < min ${self.config['min_bet_floor']}"
