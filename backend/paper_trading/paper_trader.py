@@ -2098,6 +2098,9 @@ class PaperTrader:
                 sizing_result['sizing_breakdown']['rl_confidence'] = rl_confidence
                 sizing_result['sizing_breakdown']['model_probability'] = model_probability
                 
+                # Add probability model diagnostics for UI panel
+                sizing_result['sizing_breakdown']['probability_diagnostics'] = model_diagnostics
+                
                 # Log sizing decision
                 if sizing_result['should_trade']:
                     breakdown = sizing_result.get('breakdown', sizing_result.get('sizing_breakdown', {}))
