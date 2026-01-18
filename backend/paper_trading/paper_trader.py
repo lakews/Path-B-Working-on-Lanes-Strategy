@@ -2023,14 +2023,16 @@ class PaperTrader:
                 # The RL action direction is critical - it tells us which side the model favors
                 sentiment = signals.get('sentiment', 0.5)
                 
-                # Calculate raw model probability (probability YES wins)
-                raw_model_prob = self._calculate_model_probability(
+                # Calculate raw model probability WITH DIAGNOSTICS for UI display
+                model_diagnostics = self._calculate_model_probability(
                     sentiment=sentiment,
                     sharp_alignment=signals.get('sharp_alignment', 0.5),
                     rl_confidence=rl_confidence,
                     yes_price=yes_price,
-                    rl_action=rl_action
+                    rl_action=rl_action,
+                    return_diagnostics=True
                 )
+                raw_model_prob = model_diagnostics['final_probability']
                 
                 # Determine which side to bet on based on where we see edge
                 # BUY/YES: edge when model_prob > effective_yes_price
