@@ -2164,21 +2164,21 @@ class PaperTrader:
         """
         Calculate model probability for position sizing.
         
-        This converts available signals into a probability estimate that
-        represents our belief that YES will win, which may differ from the
-        market price (creating our edge).
+        Uses MULTIPLICATIVE adjustment for ALL prices to ensure consistent
+        interpretation of signals across the probability spectrum.
         
-        **KEY INSIGHT**: The RL action (BUY/SELL) is the primary directional signal.
-        - BUY actions indicate the model thinks YES is underpriced
-        - SELL actions indicate the model thinks YES is overpriced (NO underpriced)
+        **Why multiplicative everywhere?**
+        - A "medium confidence" signal should mean the same thing at any base price
+        - Additive adjustment at 50% (+5% → 55%) is "10% more likely"
+        - Additive adjustment at 5% (+5% → 10%) is "100% more likely" - inconsistent!
+        - Multiplicative (×1.1) means "10% more likely" at ANY base price
         
-        **CRITICAL FIX**: Uses MULTIPLICATIVE adjustment for extreme prices (<10% or >90%)
-        to prevent unrealistic edge claims on longshots.
+        Multiplier ranges:
+        - SMALL: ×1.12 (12% more/less likely)
+        - MEDIUM: ×1.22 (22% more/less likely)  
+        - LARGE: ×1.35 (35% more/less likely)
         
-        Example of why this matters:
-        - At 50%: +5% additive → 55% (reasonable)
-        - At 1%: +5% additive → 6% (claims 6x more likely - WRONG!)
-        - At 1%: x1.5 multiplicative → 1.5% (claims 50% more likely - CORRECT)
+        These are further scaled by RL confidence and sentiment agreement.
         """
         # Parse RL action for direction and strength
         rl_action = rl_action.upper() if rl_action else 'HOLD'
@@ -2186,82 +2186,61 @@ class PaperTrader:
         is_buy = 'BUY' in rl_action
         is_sell = 'SELL' in rl_action
         
-        # Determine action strength multiplier
+        # Base multiplier by action strength
         if 'LARGE' in rl_action:
-            strength_mult = 1.0
+            base_mult = 1.35  # 35% adjustment
         elif 'MEDIUM' in rl_action:
-            strength_mult = 0.7
+            base_mult = 1.22  # 22% adjustment
         elif 'SMALL' in rl_action:
-            strength_mult = 0.4
+            base_mult = 1.12  # 12% adjustment
         else:
-            strength_mult = 0.2  # HOLD or unknown
+            base_mult = 1.05  # 5% for HOLD/unknown
         
         # Scale by RL confidence (0-1)
-        # But don't require high confidence - even 0.15 should create some adjustment
-        conf_scale = max(rl_confidence, 0.3)  # Floor at 0.3 to avoid zero edge
+        # Interpolate between 1.0 (no adjustment) and base_mult
+        # confidence 0.0 → multiplier of 1.0 (no change)
+        # confidence 1.0 → full base_mult
+        conf_scale = max(rl_confidence, 0.2)  # Floor at 0.2 to avoid zero adjustment
+        scaled_mult = 1.0 + (base_mult - 1.0) * conf_scale
         
-        # Sentiment agreement bonus factor
-        sentiment_bonus = 1.0
+        # Sentiment agreement bonus (multiplicative)
+        # If sentiment agrees with RL direction, boost the multiplier
+        sentiment_factor = 1.0
         if is_buy and sentiment > 0.55:
-            sentiment_bonus = 1.0 + (sentiment - 0.5) * 0.5  # Up to 1.25x
+            # Bullish sentiment agrees with BUY
+            sentiment_factor = 1.0 + (sentiment - 0.5) * 0.3  # Up to 1.15x
         elif is_sell and sentiment < 0.45:
-            sentiment_bonus = 1.0 + (0.5 - sentiment) * 0.5  # Up to 1.25x
+            # Bearish sentiment agrees with SELL
+            sentiment_factor = 1.0 + (0.5 - sentiment) * 0.3  # Up to 1.15x
+        elif is_buy and sentiment < 0.45:
+            # Bearish sentiment DISAGREES with BUY - reduce confidence
+            sentiment_factor = 1.0 - (0.5 - sentiment) * 0.2  # Down to 0.9x
+        elif is_sell and sentiment > 0.55:
+            # Bullish sentiment DISAGREES with SELL - reduce confidence
+            sentiment_factor = 1.0 - (sentiment - 0.5) * 0.2  # Down to 0.9x
         
-        # Sharp alignment boost factor
-        alignment_factor = 1.0 + max(0, (sharp_alignment - 0.5) * 0.2)  # Up to 1.1x
+        # Sharp alignment boost (multiplicative)
+        alignment_factor = 1.0 + max(0, (sharp_alignment - 0.5) * 0.15)  # Up to 1.075x
         
-        # ============================================================
-        # MULTIPLICATIVE ADJUSTMENT FOR EXTREME PRICES
-        # ============================================================
-        # For prices near 0% or 100%, use multiplicative adjustment
-        # This prevents claiming unrealistic edges on longshots
+        # Combine all factors into final multiplier
+        total_mult = scaled_mult * sentiment_factor * alignment_factor
         
-        # Determine if price is extreme (longshot territory)
-        is_extreme_low = yes_price < 0.10   # < 10%
-        is_extreme_high = yes_price > 0.90  # > 90%
-        
-        if is_extreme_low or is_extreme_high:
-            # MULTIPLICATIVE MODE for extreme prices
-            # Base multiplier: 1.2 to 2.0 depending on strength
-            base_mult = 1.0 + (0.5 * strength_mult * conf_scale)  # 1.1 to 1.5
-            total_mult = base_mult * sentiment_bonus * alignment_factor
-            
-            if is_extreme_low:
-                # Longshot YES (e.g., 1% candidate)
-                if is_buy:
-                    # BUY YES: multiply up (e.g., 1% * 1.5 = 1.5%)
-                    model_prob = yes_price * total_mult
-                elif is_sell:
-                    # SELL YES (buy NO): divide down (e.g., 1% / 1.5 = 0.67%)
-                    model_prob = yes_price / total_mult
-                else:
-                    model_prob = yes_price
-            else:
-                # Near-certainty YES (e.g., 95%)
-                # Work with NO price for symmetry
-                no_price = 1.0 - yes_price
-                if is_buy:
-                    # BUY YES: reduce NO probability
-                    model_prob = 1.0 - (no_price / total_mult)
-                elif is_sell:
-                    # SELL YES: increase NO probability
-                    model_prob = 1.0 - (no_price * total_mult)
-                else:
-                    model_prob = yes_price
+        # Apply direction using multiplicative logic
+        if is_buy:
+            # BUY YES: We think YES is underpriced
+            # Multiply YES probability up
+            model_prob = yes_price * total_mult
+        elif is_sell:
+            # SELL YES (buy NO): We think YES is overpriced
+            # This is equivalent to thinking NO is underpriced
+            # Divide YES probability down (or equivalently, multiply NO up)
+            model_prob = yes_price / total_mult
         else:
-            # ADDITIVE MODE for normal prices (10% - 90%)
-            # Original behavior works fine in this range
-            base_adj = 0.15 * strength_mult  # Max 15% adjustment for LARGE
-            total_adj = base_adj * conf_scale * sentiment_bonus * alignment_factor
-            
-            if is_buy:
-                model_prob = yes_price + total_adj
-            elif is_sell:
-                model_prob = yes_price - total_adj
-            else:
-                model_prob = yes_price
+            # HOLD: No strong signal
+            model_prob = yes_price
         
-        # Clamp to valid range (tighter bounds to prevent extreme bets)
+        # Clamp to valid range
+        # Tighter bounds (2%-98%) to prevent extreme positions
         return max(0.02, min(0.98, model_prob))
     
     def _get_portfolio_state(self) -> Dict:
