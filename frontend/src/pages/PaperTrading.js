@@ -2077,6 +2077,9 @@ const PaperTrading = () => {
             </div>
           </div>
 
+          {/* Sizing Analytics Dashboard */}
+          <SizingAnalyticsDashboard positions={positions} trades={trades} />
+
           {/* Trade History */}
           <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
             <div className="p-4 border-b border-white/10">
