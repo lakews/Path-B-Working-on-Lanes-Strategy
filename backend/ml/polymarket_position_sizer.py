@@ -118,6 +118,8 @@ class PolymarketPositionSizer:
     
     async def _async_load_config(self):
         """Async config loader."""
+        if self.db is None:
+            return
         try:
             user_config = await self.db.user_config.find_one(
                 {"type": "position_sizing_v2"},
