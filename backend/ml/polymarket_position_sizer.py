@@ -92,7 +92,13 @@ class PolymarketPositionSizer:
     
     def __init__(self, config: Optional[Dict] = None):
         self.config = {**DEFAULT_CONFIG, **(config or {})}
-        self.db = get_db()
+        
+        # Try to get DB, but don't fail if not available
+        try:
+            self.db = get_db()
+        except Exception as e:
+            logger.debug(f"Could not get DB connection: {e}")
+            self.db = None
         
         # Load user config from database
         self._load_config_from_db()
