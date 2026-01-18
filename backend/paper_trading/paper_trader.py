@@ -2301,7 +2301,41 @@ class PaperTrader:
         )
         
         # Final clamp to valid probability range
-        return max(0.01, min(0.99, model_prob))
+        final_prob = max(0.01, min(0.99, model_prob))
+        
+        # Return diagnostics if requested
+        if return_diagnostics:
+            return {
+                'final_probability': final_prob,
+                'components': {
+                    'p_market': round(p_market, 4),
+                    'p_sentiment': round(p_sentiment, 4),
+                    'p_rl': round(p_rl, 4),
+                },
+                'weights': {
+                    'w_market': round(w_market, 4),
+                    'w_sentiment': round(w_sentiment, 4),
+                    'w_rl': round(w_rl, 4),
+                },
+                'contributions': {
+                    'market_contribution': round(w_market * p_market, 4),
+                    'sentiment_contribution': round(w_sentiment * p_sentiment, 4),
+                    'rl_contribution': round(w_rl * p_rl, 4),
+                },
+                'rl_details': {
+                    'action': rl_action,
+                    'confidence': round(rl_confidence, 4),
+                    'deviation': round(scaled_deviation, 4),
+                    'direction': 'bullish' if is_buy else ('bearish' if is_sell else 'neutral'),
+                },
+                'signal_agreement': {
+                    'sentiment_agrees_rl': sentiment_agrees_with_rl if 'sentiment_agrees_with_rl' in dir() else False,
+                    'sentiment_disagrees_rl': sentiment_disagrees if 'sentiment_disagrees' in dir() else False,
+                },
+                'pre_clamp': round(model_prob, 4),
+            }
+        
+        return final_prob
     
     def _get_portfolio_state(self) -> Dict:
         """
