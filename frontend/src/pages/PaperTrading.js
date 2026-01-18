@@ -628,6 +628,232 @@ const SizingBreakdownModal = ({ isOpen, position, onClose }) => {
   );
 };
 
+// Sizing Analytics Dashboard Component
+const SizingAnalyticsDashboard = ({ positions, trades }) => {
+  // Combine positions and trades for full analysis
+  const allItems = [
+    ...positions.map(p => ({ ...p, type: 'position' })),
+    ...trades.filter(t => t.sizing_breakdown).map(t => ({ ...t, type: 'trade' }))
+  ];
+  
+  if (allItems.length === 0) {
+    return (
+      <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-purple-400" />Sizing Analytics
+        </h3>
+        <p className="text-white/40 text-center py-4">No sizing data available yet. Start trading to see analytics.</p>
+      </div>
+    );
+  }
+  
+  // Calculate analytics
+  const analytics = {
+    byCategory: {},
+    byOracleRange: { high: [], medium: [], low: [] },
+    sizingEfficiency: []
+  };
+  
+  allItems.forEach(item => {
+    const breakdown = item.sizing_breakdown || {};
+    const category = breakdown.category || item.category || 'unknown';
+    const edge = breakdown.edge || 0;
+    const oracleMult = breakdown.oracle_mult || 1;
+    const kellyBase = breakdown.kelly_base || 0;
+    const finalSize = breakdown.final_size || item.size || 0;
+    const pnl = item.type === 'trade' ? (item.pnl || 0) : (item.unrealized_pnl || 0);
+    const pnlPct = item.type === 'trade' ? (item.return_pct || 0) : (item.unrealized_pnl_pct || 0);
+    
+    // By Category
+    if (!analytics.byCategory[category]) {
+      analytics.byCategory[category] = { count: 0, totalEdge: 0, totalPnl: 0, wins: 0 };
+    }
+    analytics.byCategory[category].count++;
+    analytics.byCategory[category].totalEdge += edge;
+    analytics.byCategory[category].totalPnl += pnl;
+    if (pnl > 0) analytics.byCategory[category].wins++;
+    
+    // By Oracle Range
+    if (oracleMult >= 0.9) {
+      analytics.byOracleRange.high.push({ pnlPct, pnl });
+    } else if (oracleMult >= 0.6) {
+      analytics.byOracleRange.medium.push({ pnlPct, pnl });
+    } else {
+      analytics.byOracleRange.low.push({ pnlPct, pnl });
+    }
+    
+    // Sizing Efficiency
+    if (kellyBase > 0) {
+      analytics.sizingEfficiency.push({
+        efficiency: finalSize / kellyBase,
+        pnlPct,
+        oracleMult,
+        category
+      });
+    }
+  });
+  
+  // Calculate averages
+  const categoryStats = Object.entries(analytics.byCategory).map(([cat, data]) => ({
+    category: cat,
+    count: data.count,
+    avgEdge: data.count > 0 ? (data.totalEdge / data.count) * 100 : 0,
+    totalPnl: data.totalPnl,
+    winRate: data.count > 0 ? (data.wins / data.count) * 100 : 0
+  })).sort((a, b) => b.count - a.count);
+  
+  const oracleStats = {
+    high: {
+      count: analytics.byOracleRange.high.length,
+      avgPnl: analytics.byOracleRange.high.length > 0 
+        ? analytics.byOracleRange.high.reduce((s, x) => s + x.pnl, 0) / analytics.byOracleRange.high.length 
+        : 0,
+      winRate: analytics.byOracleRange.high.length > 0
+        ? (analytics.byOracleRange.high.filter(x => x.pnl > 0).length / analytics.byOracleRange.high.length) * 100
+        : 0
+    },
+    medium: {
+      count: analytics.byOracleRange.medium.length,
+      avgPnl: analytics.byOracleRange.medium.length > 0 
+        ? analytics.byOracleRange.medium.reduce((s, x) => s + x.pnl, 0) / analytics.byOracleRange.medium.length 
+        : 0,
+      winRate: analytics.byOracleRange.medium.length > 0
+        ? (analytics.byOracleRange.medium.filter(x => x.pnl > 0).length / analytics.byOracleRange.medium.length) * 100
+        : 0
+    },
+    low: {
+      count: analytics.byOracleRange.low.length,
+      avgPnl: analytics.byOracleRange.low.length > 0 
+        ? analytics.byOracleRange.low.reduce((s, x) => s + x.pnl, 0) / analytics.byOracleRange.low.length 
+        : 0,
+      winRate: analytics.byOracleRange.low.length > 0
+        ? (analytics.byOracleRange.low.filter(x => x.pnl > 0).length / analytics.byOracleRange.low.length) * 100
+        : 0
+    }
+  };
+  
+  const avgEfficiency = analytics.sizingEfficiency.length > 0
+    ? analytics.sizingEfficiency.reduce((s, x) => s + x.efficiency, 0) / analytics.sizingEfficiency.length
+    : 1;
+  
+  return (
+    <div className="rounded-xl bg-gradient-to-br from-purple-500/10 to-cyan-500/10 border border-purple-500/20 p-6">
+      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <BarChart3 className="w-5 h-5 text-purple-400" />Sizing Analytics Dashboard
+        <span className="text-xs text-white/40 ml-auto">{allItems.length} positions analyzed</span>
+      </h3>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Edge by Category */}
+        <div className="bg-white/5 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-white/80 mb-3 flex items-center gap-2">
+            <Target className="w-4 h-4 text-cyan-400" />Avg Edge by Category
+          </h4>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {categoryStats.slice(0, 6).map(stat => (
+              <div key={stat.category} className="flex items-center justify-between">
+                <span className="text-xs text-white/60 capitalize">{stat.category}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-white/40">({stat.count})</span>
+                  <span className={`text-sm font-bold ${stat.avgEdge > 3 ? 'text-green-400' : 'text-yellow-400'}`}>
+                    +{stat.avgEdge.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Win Rate by Oracle Range */}
+        <div className="bg-white/5 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-white/80 mb-3 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-400" />Win Rate by Oracle Risk
+          </h4>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-xs text-white/60">High Trust (≥0.9)</span>
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-bold text-white">{oracleStats.high.winRate.toFixed(0)}%</span>
+                <span className="text-xs text-white/40 ml-2">({oracleStats.high.count})</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                <span className="text-xs text-white/60">Medium (0.6-0.9)</span>
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-bold text-white">{oracleStats.medium.winRate.toFixed(0)}%</span>
+                <span className="text-xs text-white/40 ml-2">({oracleStats.medium.count})</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <span className="text-xs text-white/60">Low Trust (&lt;0.6)</span>
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-bold text-white">{oracleStats.low.winRate.toFixed(0)}%</span>
+                <span className="text-xs text-white/40 ml-2">({oracleStats.low.count})</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Sizing Efficiency */}
+        <div className="bg-white/5 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-white/80 mb-3 flex items-center gap-2">
+            <Scale className="w-4 h-4 text-purple-400" />Sizing Efficiency
+          </h4>
+          <div className="text-center py-2">
+            <p className="text-3xl font-black text-purple-400">{(avgEfficiency * 100).toFixed(0)}%</p>
+            <p className="text-xs text-white/50 mt-1">Actual vs Kelly Base</p>
+          </div>
+          <div className="mt-3 space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-white/40">Avg reduction from caps</span>
+              <span className="text-white/60">{((1 - avgEfficiency) * 100).toFixed(0)}%</span>
+            </div>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-purple-500 to-cyan-500"
+                style={{ width: `${avgEfficiency * 100}%` }}
+              />
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <p className="text-[10px] text-white/30">
+              Higher = more aggressive (fewer caps applied).<br/>
+              Lower = more conservative (caps protecting capital).
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Category P&L Summary */}
+      <div className="mt-4 bg-white/5 rounded-lg p-4">
+        <h4 className="text-sm font-medium text-white/80 mb-3">P&L by Category</h4>
+        <div className="flex flex-wrap gap-2">
+          {categoryStats.map(stat => (
+            <div 
+              key={stat.category}
+              className={`px-3 py-1.5 rounded-lg text-xs ${stat.totalPnl >= 0 ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}
+            >
+              <span className="text-white/60 capitalize">{stat.category}</span>
+              <span className={`ml-2 font-bold ${stat.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {stat.totalPnl >= 0 ? '+' : ''}{stat.totalPnl.toFixed(2)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PositionCard = ({ position, onViewSizing }) => {
   const pnlPct = position.unrealized_pnl_pct || 0;
   const isProfit = pnlPct >= 0;
