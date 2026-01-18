@@ -2670,6 +2670,13 @@ class PaperTrader:
                 "trades_per_10min": self.trades_per_10min,
                 "trade_interval_seconds": self.trade_interval
             },
+            # Dynamic exit mode settings
+            "exit_mode": {
+                "use_dynamic_exit": self.use_dynamic_exit,
+                "mode_name": "Dynamic (Time-Aware)" if self.use_dynamic_exit else "Simple (Configurable)",
+                "dynamic_config": self.dynamic_exit_config if self.use_dynamic_exit else None,
+                "time_entry_config": self.time_entry_config if self.use_dynamic_exit else None
+            },
             # Position sizer learning stats
             "position_sizer_learning": self.position_sizer.get_learning_stats() if hasattr(self, 'position_sizer') else {},
             "ai_learning": {
