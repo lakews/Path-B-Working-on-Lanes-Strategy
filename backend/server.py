@@ -2336,7 +2336,6 @@ async def save_session_analytics(positions, status):
     
     # Calculate simulated win rate
     simulated_win_rate = (total_wins / total_positions * 100) if total_positions > 0 else 0
-        return
     
     # Calculate analytics
     analytics = {
