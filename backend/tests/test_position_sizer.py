@@ -149,11 +149,11 @@ class TestOracleRiskMultiplier:
     
     def test_get_oracle_risk_multiplier(self):
         """Test oracle risk multiplier function."""
-        # get_oracle_risk_multiplier(category, question) 
-        mult = get_oracle_risk_multiplier('sports', 'Lakers win?')
+        # get_oracle_risk_multiplier(category, question, market_age_hours) 
+        mult = get_oracle_risk_multiplier('sports', 'Lakers win?', 100)
         assert mult == 1.0
         
-        mult = get_oracle_risk_multiplier('conflict', 'Ceasefire?')
+        mult = get_oracle_risk_multiplier('conflict', 'Ceasefire?', 100)
         assert mult <= 0.5
 
 
