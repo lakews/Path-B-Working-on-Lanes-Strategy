@@ -2062,6 +2062,7 @@ class PaperTrader:
                 logger.info(f"[MODEL_PROB] yes_price={yes_price:.3f}, raw_prob={raw_model_prob:.3f}, yes_edge={yes_edge:.3f}, no_edge={no_edge:.3f}, sizing_side={sizing_side}")
                 
                 # Call the new Polymarket sizer
+                logger.info(f"[SIZER CALL] equity={equity:.2f}, deployed={deployed:.2f}, model_prob={model_probability:.4f}, ask={sizer_ask_price:.4f}, days={days_to_expiry}")
                 sizing_result = self.polymarket_sizer.calculate_position_size(
                     equity=equity,
                     deployed_capital=deployed,
