@@ -1199,6 +1199,7 @@ const PaperTrading = () => {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [sessionTradesModal, setSessionTradesModal] = useState({ isOpen: false, session: null, trades: [] });
   const [sentimentModal, setSentimentModal] = useState({ isOpen: false, trade: null });
+  const [sizingModal, setSizingModal] = useState({ isOpen: false, position: null });
   
   // Exit mode state (Dynamic vs Simple)
   const [useDynamicExit, setUseDynamicExit] = useState(true);
