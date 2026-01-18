@@ -2018,14 +2018,15 @@ class PaperTrader:
                 # Get ask price from market data
                 yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
                 
-                # Calculate model probability from signals (sentiment as proxy)
-                # In production, this would come from a proper probability model
+                # Calculate model probability from signals
+                # The RL action direction is critical - it tells us which side the model favors
                 sentiment = signals.get('sentiment', 0.5)
                 model_probability = self._calculate_model_probability(
                     sentiment=sentiment,
                     sharp_alignment=signals.get('sharp_alignment', 0.5),
                     rl_confidence=rl_confidence,
-                    yes_price=yes_price
+                    yes_price=yes_price,
+                    rl_action=rl_action
                 )
                 
                 # Call the new Polymarket sizer
