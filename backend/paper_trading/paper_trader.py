@@ -1441,28 +1441,26 @@ class PaperTrader:
             exit_reason = None
             
             # 1. AUTO-EXIT FOR APPROACHING EXPIRY (1 hour before market resolution)
-            expiry_info = self._calculate_time_to_expiry(market_data)
-            hours_to_expiry = expiry_info.get('hours_to_expiry')
-            
             if hours_to_expiry is not None and hours_to_expiry <= 1.0:
                 should_exit = True
                 exit_reason = f"expiry_safety_{hours_to_expiry:.1f}h"
                 logger.info(f"⚠️ AUTO-EXIT: {market_id[:16]} expires in {hours_to_expiry:.1f}h")
             
-            # 2. DYNAMIC TAKE PROFIT (based on % of max possible gain)
-            if not should_exit and pnl_pct >= take_profit_threshold:
+            # 2. TAKE PROFIT (only if TP threshold is set - None means hold to resolution)
+            if not should_exit and take_profit_threshold is not None and pnl_pct >= take_profit_threshold:
                 should_exit = True
-                exit_reason = f"dynamic_tp_{pnl_pct:.1%}_of_{max_gain_possible:.0%}max"
-                logger.info(f"✅ TP EXIT: {market_id[:16]} | P&L: {pnl_pct:.1%} >= {take_profit_threshold:.1%} (Zone: {zone})")
+                max_gain_str = f"of_{max_gain_possible:.0%}max" if max_gain_possible else ""
+                exit_reason = f"tp_{pnl_pct:.1%}_{exit_mode}{max_gain_str}"
+                logger.info(f"✅ TP EXIT: {market_id[:16]} | P&L: {pnl_pct:.1%} >= {take_profit_threshold:.1%} ({exit_mode})")
             
-            # 3. DYNAMIC STOP LOSS (tighter at extreme prices)
-            if not should_exit and pnl_pct <= stop_loss_threshold:
+            # 3. STOP LOSS (only if SL threshold is set - None means no SL protection)
+            if not should_exit and stop_loss_threshold is not None and pnl_pct <= stop_loss_threshold:
                 should_exit = True
-                exit_reason = f"dynamic_sl_{pnl_pct:.1%}_limit_{stop_loss_threshold:.0%}"
-                logger.info(f"🛑 SL EXIT: {market_id[:16]} | P&L: {pnl_pct:.1%} <= {stop_loss_threshold:.1%} (Zone: {zone})")
+                exit_reason = f"sl_{pnl_pct:.1%}_{exit_mode}"
+                logger.info(f"🛑 SL EXIT: {market_id[:16]} | P&L: {pnl_pct:.1%} <= {stop_loss_threshold:.1%} ({exit_mode})")
             
-            # 4. RL SIGNAL REVERSAL (high confidence opposite signal)
-            if not should_exit and rl_confidence > 0.7:
+            # 4. RL SIGNAL REVERSAL (high confidence opposite signal) - skip in resolution mode
+            if not should_exit and exit_mode != 'resolution' and rl_confidence > 0.7:
                 if side == 'YES' and 'SELL' in rl_action:
                     should_exit = True
                     exit_reason = f"rl_reversal_{rl_action}_{rl_confidence:.0%}"
@@ -1470,13 +1468,13 @@ class PaperTrader:
                     should_exit = True
                     exit_reason = f"rl_reversal_{rl_action}_{rl_confidence:.0%}"
             
-            # 5. TIME-BASED EXIT (dynamic based on zone)
+            # 5. TIME-BASED EXIT
             entry_time = datetime.fromisoformat(position['entry_time'].replace('Z', '+00:00'))
             hours_open = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
-            if not should_exit and hours_open > max_hours:
+            if not should_exit and max_hours is not None and hours_open > max_hours:
                 should_exit = True
-                exit_reason = f"time_limit_{hours_open:.1f}h>{max_hours:.0f}h_{zone}"
-                logger.info(f"⏰ TIME EXIT: {market_id[:16]} | Open: {hours_open:.1f}h > {max_hours:.0f}h (Zone: {zone})")
+                exit_reason = f"time_{hours_open:.1f}h>{max_hours:.0f}h_{exit_mode}"
+                logger.info(f"⏰ TIME EXIT: {market_id[:16]} | Open: {hours_open:.1f}h > {max_hours:.0f}h ({exit_mode})")
             
             # WARN but don't force exit for positions expiring within 6 hours
             if not should_exit and hours_to_expiry is not None and hours_to_expiry <= 6.0 and hours_to_expiry > 1.0:
@@ -1486,8 +1484,10 @@ class PaperTrader:
             # EXECUTE EXIT
             # ============================================
             if should_exit:
-                logger.info(f"📤 EXIT: {market_id[:16]} | Reason: {exit_reason}")
-                logger.debug(f"  Dynamic Params: TP={take_profit_threshold:.1%}, SL={stop_loss_threshold:.1%}, MaxHrs={max_hours:.0f}")
+                tp_str = f"{take_profit_threshold:.1%}" if take_profit_threshold else "None"
+                sl_str = f"{stop_loss_threshold:.1%}" if stop_loss_threshold else "None"
+                logger.info(f"📤 EXIT: {market_id[:16]} | Reason: {exit_reason} | Mode: {exit_mode}")
+                logger.debug(f"  Params: TP={tp_str}, SL={sl_str}, MaxHrs={max_hours}")
                 logger.debug(f"  Position: {side} @ ${entry_price:.4f} -> ${current_price:.4f} | P&L: ${unrealized_pnl:.2f} ({pnl_pct:.2%})")
                 await self._execute_paper_exit(market_id, market_data, exit_reason)
                 
