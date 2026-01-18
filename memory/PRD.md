@@ -12,12 +12,12 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 17, 2026)
 - **Live Data**: ✅ Working - Uses Polymarket Gamma API for real market data
-- **Paper Trading**: ✅ Working - Circuit breaker fixed, 50-80+ trades per session
-- **UI/UX**: ✅ Fully Configurable - Redesigned Paper Trading Live Session tab
-- **Circuit Breaker**: ✅ Fixed - Now correctly calculates drawdown including deployed capital
+- **Paper Trading**: ✅ Working - Dynamic TP/SL framework (Option 4) implemented
+- **Dynamic Exit Params**: ✅ TP = 10% of max gain (capped 0.5%-50%), SL scales with extremeness (-10% to -30%)
+- **Circuit Breaker**: ✅ Fixed - Correctly calculates drawdown including deployed capital
 - **DQN Engine**: ✅ Working - Deep Q-Network with Prioritized Experience Replay
 - **Position Sizing**: ✅ Advanced config (Kelly bounds, min position, liquidity threshold, geometric mean for risk_combined)
-- **Strategy Distribution**: ✅ Improved - Alpha threshold narrowed to 0.03/0.97 for better Arbitrage distribution
+- **Strategy Distribution**: ✅ Alpha threshold: <25% or >75%, Delta Neutral: 40%-70%
 - **Time-to-Expiry**: ✅ Strategy adjustments and UI indicators based on expiry
 - **Market Alerts**: ✅ Real-time alerts with configurable volume threshold
 - **Asset Class Equity**: ✅ Per-asset-class P&L breakdown starting at $0
