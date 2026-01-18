@@ -2159,7 +2159,8 @@ class PaperTrader:
         sharp_alignment: float,
         rl_confidence: float,
         yes_price: float,
-        rl_action: str = 'HOLD'
+        rl_action: str = 'HOLD',
+        return_diagnostics: bool = False
     ) -> float:
         """
         Calculate model probability using WEIGHTED ENSEMBLE approach.
@@ -2178,6 +2179,9 @@ class PaperTrader:
         - P_rl: DQN's implied probability from action + confidence
         
         The model only deviates from market when signals disagree.
+        
+        Args:
+            return_diagnostics: If True, returns a dict with full diagnostic breakdown
         """
         # ================================================================
         # COMPONENT 1: Market Probability (P_market)
