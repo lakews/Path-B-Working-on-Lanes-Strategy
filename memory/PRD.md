@@ -40,6 +40,53 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 18, 2026 - Session 31 (Continuous Position Sizing Engine)
+
+- ✅ **NEW: Polymarket-Optimized Position Sizer** (`/app/backend/ml/polymarket_position_sizer.py`)
+  - **Binary Kelly Criterion**: Fee-adjusted Kelly formula for prediction markets
+    - `effective_price = ask_price + (ask_price × fee%)`
+    - `edge = model_probability - effective_price`
+    - `kelly_fraction = edge / (1 - effective_price)`
+  - **Utilization Brake**: Convex curve to slow trading as capital deploys
+    - Formula: `(1 - utilization)^1.5`
+    - Hard stop at 95% utilization
+  - **Edge-Retention Liquidity Cap**: Maximum order size before slippage eats >20% of edge
+    - Walks order book to find max fill price
+    - Falls back to $1000 default when no order book available
+  - **Time/Duration Penalty**: Penalizes long-dated bets (>90 days = 50% penalty floor)
+  - **Oracle/Ambiguity Risk Matrix**: Risk multipliers by market category
+    - Sports: 1.0x, Politics: 0.75x, Crypto: 0.80x, Conflict: 0.40x, Social: 0.75x
+  - **Correlation Dampener**: `1/(1+N)` where N = correlated open positions
+  - **Sector Caps**: Configurable max allocation per category (Crypto: 20%, Politics: 25%, etc.)
+  - **Minimum Bet Floor**: $5.00 minimum position size
+
+- ✅ **NEW: Portfolio Manager** (`/app/backend/ml/portfolio_manager.py`)
+  - Calculates Total Equity = Cash + Position Values at current market prices
+  - Tracks deployed capital, utilization, sector exposure
+  - Supports position value calculation for YES and NO sides
+
+- ✅ **NEW: Model Probability Calculator** (`/app/backend/paper_trading/paper_trader.py`)
+  - `_calculate_model_probability()`: Converts RL signals to probability estimate
+  - Uses RL action direction (BUY/SELL) as primary signal
+  - Incorporates sentiment, sharp alignment, and RL confidence
+  - Automatically selects YES or NO side based on edge calculation
+
+- ✅ **ENHANCED: Paper Trader Integration**
+  - Toggle between Polymarket sizer (new) and legacy sizer via config
+  - `use_polymarket_sizer` flag in configuration
+  - Configurable `polymarket_fee_pct` (default: 2%)
+  - Configurable `sector_caps` dictionary
+  - Detailed sizing breakdown in position data for UI display
+
+- ✅ **NEW: Configuration API Updates** (`/app/backend/server.py`)
+  - `GET /api/config` returns new fields: `use_polymarket_sizer`, `polymarket_fee_pct`, `sector_caps`
+  - `POST /api/config/update` saves new configuration to database
+
+- ✅ **Verified Working**: 26 trades executed with Polymarket sizer
+  - Positions show `sizer_mode: polymarket` 
+  - Edge percentages: 4.49% - 11.67%
+  - Position sizes: $52 - $207 (appropriate for $10K capital)
+
 ### January 18, 2026 - Session 30 (Time-Aware Dynamic Exit Framework)
 
 - ✅ **FEATURE: Time-Aware Dynamic Exit Mode** (`/app/backend/paper_trading/paper_trader.py`)
