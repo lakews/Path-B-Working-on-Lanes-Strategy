@@ -277,6 +277,10 @@ class TradingConfig(BaseModel):
     # Sentiment-based side selection thresholds
     bullish_sentiment_threshold: Optional[float] = None   # Above this → YES (default 0.55)
     bearish_sentiment_threshold: Optional[float] = None   # Below this → NO (default 0.45)
+    # NEW: Polymarket Position Sizer Configuration
+    use_polymarket_sizer: Optional[bool] = None           # Toggle new vs legacy sizer
+    polymarket_fee_pct: Optional[float] = None            # Exit fee (default 0.02 = 2%)
+    sector_caps: Optional[Dict[str, float]] = None        # Max portfolio allocation per category
 
 # Store user config preferences
 user_config = {
