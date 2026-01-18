@@ -1144,53 +1144,203 @@ class PaperTrader:
         """
         return abs(entry_price - 0.5) / 0.5
     
-    def _get_dynamic_exit_params(self, side: str, entry_price: float) -> Dict:
+    def _get_dynamic_exit_params(self, side: str, entry_price: float, days_to_expiry: float = None) -> Dict:
         """
-        Calculate dynamic TP/SL based on entry price and position side.
+        Calculate dynamic TP/SL based on entry price, position side, AND time to expiry.
         
-        Key insight: At extreme prices, max possible gain varies dramatically.
-        - YES @ $0.03: Max gain = 3,233%
-        - NO @ YES $0.03: Max gain = 3.09%
-        - YES @ $0.50: Max gain = 100%
+        Time-aware logic:
+        - Near expiry (≤3 days): Hold to resolution, no TP/SL
+        - Short term (4-7 days): Hold with SL protection only
+        - Medium term (8-30 days): Active TP/SL management
+        - Long term (>30 days): Quick trade with tight parameters
         
-        This function sets TP as a % of max possible gain, capped to realistic levels.
-        SL scales with extremeness (tighter at extreme prices).
+        Key insight: The same price at different expiry times has very different risk profiles.
         """
-        cfg = self.DYNAMIC_EXIT_CONFIG
+        cfg = self.dynamic_exit_config
         
         # Step 1: Calculate max possible gain
         max_gain = self._calculate_max_gain(side, entry_price)
         
-        # Step 2: Dynamic TP = capture_pct of max gain, with floor and ceiling
-        raw_tp = max_gain * cfg['tp_capture_pct']
-        dynamic_tp = max(min(raw_tp, cfg['tp_max']), cfg['tp_min'])
-        
-        # Step 3: Calculate extremeness (0 at 50%, 1 at 0% or 100%)
+        # Step 2: Calculate extremeness (0 at 50%, 1 at 0% or 100%)
         extremeness = self._calculate_extremeness(entry_price)
         
-        # Step 4: Dynamic SL scales with extremeness
-        # More extreme = tighter SL (less room for error)
-        dynamic_sl = cfg['sl_base'] + (extremeness * (cfg['sl_extreme'] - cfg['sl_base']))
-        
-        # Step 5: Determine zone and max_hours
+        # Step 3: Determine zone based on extremeness
         if extremeness > 0.80:  # 0-10% or 90-100%
-            zone = 'extreme'
-            max_hours = 24
+            price_zone = 'extreme'
         elif extremeness > 0.50:  # 10-25% or 75-90%
-            zone = 'moderate'
-            max_hours = 12
+            price_zone = 'moderate'
         else:  # 25-75%
-            zone = 'mid_range'
-            max_hours = 4
+            price_zone = 'mid_range'
+        
+        # Step 4: TIME-AWARE EXIT STRATEGY
+        # Adjust TP/SL based on days to expiry
+        if days_to_expiry is not None and days_to_expiry <= 3:
+            # HOLD TO RESOLUTION: Near expiry, just wait for market resolution
+            exit_mode = 'resolution'
+            dynamic_tp = None  # No TP - hold to resolution
+            dynamic_sl = None  # No SL - thesis is almost confirmed
+            max_hours = max(1, days_to_expiry * 24 - 1)  # Exit 1 hour before expiry
+            
+        elif days_to_expiry is not None and days_to_expiry <= 7:
+            # HOLD WITH PROTECTION: Near expiry but use SL as safety net
+            exit_mode = 'hold_protected'
+            dynamic_tp = None  # No TP - let it ride
+            dynamic_sl = -0.15  # Tighter SL near expiry
+            max_hours = max(1, days_to_expiry * 24 - 2)
+            
+        elif days_to_expiry is not None and days_to_expiry <= 30:
+            # ACTIVE MANAGEMENT: Use TP/SL but capture more of max gain
+            exit_mode = 'active'
+            # For NO at extreme low YES: TP = 50% of max gain (more aggressive capture)
+            # For others: standard 10% of max gain
+            if side == 'NO' and entry_price < 0.05:
+                raw_tp = max_gain * 0.50  # Capture 50% for NO at extreme
+            else:
+                raw_tp = max_gain * cfg['tp_capture_pct']
+            dynamic_tp = max(min(raw_tp, cfg['tp_max']), cfg['tp_min'])
+            dynamic_sl = cfg['sl_base'] + (extremeness * (cfg['sl_extreme'] - cfg['sl_base']))
+            max_hours = min(days_to_expiry * 12, 168)  # Max 1 week hold
+            
+        elif days_to_expiry is not None and days_to_expiry > 30:
+            # QUICK TRADE: Far from expiry, use tight params and exit fast
+            exit_mode = 'quick_trade'
+            # Capture only 30% of max gain - take profits quickly
+            raw_tp = max_gain * 0.30
+            dynamic_tp = max(min(raw_tp, cfg['tp_max']), cfg['tp_min'])
+            # Tighter SL for long-dated positions (more can go wrong)
+            dynamic_sl = max(cfg['sl_base'] * 0.8, -0.08)  # -8% SL
+            max_hours = 24  # Exit within 24 hours regardless
+            
+        else:
+            # UNKNOWN EXPIRY: Use standard dynamic calculation
+            exit_mode = 'standard'
+            raw_tp = max_gain * cfg['tp_capture_pct']
+            dynamic_tp = max(min(raw_tp, cfg['tp_max']), cfg['tp_min'])
+            dynamic_sl = cfg['sl_base'] + (extremeness * (cfg['sl_extreme'] - cfg['sl_base']))
+            # Default max hours based on price zone
+            if price_zone == 'extreme':
+                max_hours = 24
+            elif price_zone == 'moderate':
+                max_hours = 12
+            else:
+                max_hours = 4
         
         return {
             'take_profit': dynamic_tp,
             'stop_loss': dynamic_sl,
             'max_hours': max_hours,
-            'zone': zone,
+            'zone': price_zone,
+            'exit_mode': exit_mode,
             'max_gain_possible': max_gain,
             'extremeness': extremeness,
-            'raw_tp_before_cap': raw_tp
+            'days_to_expiry': days_to_expiry,
+            'raw_tp_before_cap': raw_tp if 'raw_tp' in dir() else None,
+            'is_dynamic': True
+        }
+    
+    def _should_enter_no_at_extreme(self, yes_price: float, days_to_expiry: float) -> Dict:
+        """
+        Time-aware entry filter for NO positions at extreme low YES prices.
+        
+        Returns decision dict with:
+        - should_enter: bool
+        - reason: str
+        - size_multiplier: float (0-1.5)
+        """
+        max_gain = yes_price / (1 - yes_price) if yes_price < 1 else 0
+        cfg = self.time_entry_config
+        
+        # Near expiry (≤7 days): Almost always enter
+        if days_to_expiry is not None and days_to_expiry <= 7:
+            if max_gain >= cfg['min_gain_near_expiry']:
+                return {
+                    'should_enter': True,
+                    'reason': f'near_expiry_{days_to_expiry:.0f}d_gain_{max_gain:.2%}',
+                    'size_multiplier': 1.5 if days_to_expiry <= 3 else 1.2
+                }
+        
+        # Medium term (8-30 days): Enter if gain is meaningful
+        if days_to_expiry is not None and 7 < days_to_expiry <= 30:
+            if max_gain >= cfg['min_gain_medium_term']:
+                return {
+                    'should_enter': True,
+                    'reason': f'medium_term_{days_to_expiry:.0f}d_gain_{max_gain:.2%}',
+                    'size_multiplier': 1.0
+                }
+            else:
+                return {
+                    'should_enter': False,
+                    'reason': f'medium_term_low_gain_{max_gain:.2%}<{cfg["min_gain_medium_term"]:.2%}',
+                    'size_multiplier': 0
+                }
+        
+        # Longer term (31-90 days): Need higher gain to justify
+        if days_to_expiry is not None and 30 < days_to_expiry <= 90:
+            if max_gain >= cfg['min_gain_longer_term']:
+                return {
+                    'should_enter': True,
+                    'reason': f'longer_term_{days_to_expiry:.0f}d_gain_{max_gain:.2%}',
+                    'size_multiplier': 0.7
+                }
+            else:
+                return {
+                    'should_enter': False,
+                    'reason': f'longer_term_low_gain_{max_gain:.2%}<{cfg["min_gain_longer_term"]:.2%}',
+                    'size_multiplier': 0
+                }
+        
+        # Far expiry (>90 days): Very selective
+        if days_to_expiry is not None and days_to_expiry > 90:
+            if cfg['skip_no_extreme_far_expiry'] and yes_price < 0.05:
+                return {
+                    'should_enter': False,
+                    'reason': f'far_expiry_{days_to_expiry:.0f}d_no_extreme_skip',
+                    'size_multiplier': 0
+                }
+            if max_gain >= cfg['min_gain_far_expiry']:
+                return {
+                    'should_enter': True,
+                    'reason': f'far_expiry_{days_to_expiry:.0f}d_high_gain_{max_gain:.2%}',
+                    'size_multiplier': 0.5
+                }
+            else:
+                return {
+                    'should_enter': False,
+                    'reason': f'far_expiry_low_gain_{max_gain:.2%}<{cfg["min_gain_far_expiry"]:.2%}',
+                    'size_multiplier': 0
+                }
+        
+        # Unknown expiry: Use default behavior
+        return {
+            'should_enter': True,
+            'reason': 'unknown_expiry_default',
+            'size_multiplier': 1.0
+        }
+    
+    def _get_simple_exit_params(self, strategy: str, asset_class: str) -> Dict:
+        """
+        Get simple/configurable exit parameters (non-dynamic mode).
+        Uses exit_params_by_strategy from DB or defaults.
+        """
+        base = self.exit_params_by_strategy.get(
+            strategy, 
+            self.DEFAULT_EXIT_PARAMS.get(strategy, self.DEFAULT_EXIT_PARAMS['arbitrage'])
+        )
+        adj = self.asset_class_exit_multipliers.get(
+            asset_class.lower(), 
+            {'tp_mult': 1.0, 'sl_mult': 1.0, 'time_mult': 1.0}
+        )
+        
+        return {
+            'take_profit': base['take_profit'] * adj['tp_mult'],
+            'stop_loss': base['stop_loss'] * adj['sl_mult'],
+            'max_hours': base['max_hours'] * adj['time_mult'],
+            'zone': 'simple',
+            'exit_mode': 'simple',
+            'max_gain_possible': None,
+            'extremeness': None,
+            'days_to_expiry': None,
+            'is_dynamic': False
         }
     
     async def _evaluate_exit(self, market_id: str, market_data: Dict):
