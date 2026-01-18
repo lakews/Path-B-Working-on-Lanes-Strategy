@@ -899,8 +899,9 @@ class PaperTrader:
                 track_skip("position_too_small")
                 return
             
-            # Side already determined above based on sentiment
-            # (removed duplicate side assignment)
+            # For Polymarket sizer, use the edge-derived side instead of sentiment
+            if self.use_polymarket_sizer and '_sizing_side' in sizing_result:
+                side = sizing_result['_sizing_side']
             
             # Add expiry info to sizing breakdown for UI display
             sizing_breakdown = sizing_result.get('sizing_breakdown', {})
