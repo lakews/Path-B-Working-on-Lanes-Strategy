@@ -40,6 +40,25 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 18, 2026 - Session 30 (Time-Aware Dynamic Exit Framework)
+
+- ✅ **FEATURE: Time-Aware Dynamic Exit Mode** (`/app/backend/paper_trading/paper_trader.py`)
+  - `_get_dynamic_exit_params()`: Calculates TP/SL based on entry price, side, AND time to expiry
+  - `_should_enter_no_at_extreme()`: Filters NO positions at extreme low YES prices based on expiry
+  - Exit modes by time: resolution (≤3d), hold_protected (4-7d), active (8-30d), quick_trade (>30d)
+  - TP scales from 10% of max gain (capped 0.5%-50%)
+  - SL scales with extremeness (-10% at 50% price, -30% at extremes)
+
+- ✅ **FEATURE: Exit Mode Toggle API** (`/app/backend/server.py`)
+  - `GET/POST /api/paper/exit-mode`: Toggle between Dynamic and Simple modes
+  - `POST /api/paper/dynamic-config`: Update dynamic exit parameters
+
+- ✅ **FEATURE: Dynamic Exit UI** (`/app/frontend/src/pages/PaperTrading.js`)
+  - Exit Mode Configuration panel in Strategy Optimizer tab
+  - Dynamic vs Simple mode comparison cards
+  - Position cards show exit mode badges, TP/SL progress bars, max gain, zone, max hold time
+  - Color-coded badges: ACTIVE (cyan), QUICK (yellow), HOLD→RES (purple), STD (gray)
+
 ### January 17, 2026 - Session 29 (UI Redesign Fix + Strategy Distribution Tuning)
 
 - ✅ **FIX: Paper Trading UI Syntax Error** (`/app/frontend/src/pages/PaperTrading.js`)
