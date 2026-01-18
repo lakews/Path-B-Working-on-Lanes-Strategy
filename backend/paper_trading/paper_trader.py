@@ -2162,86 +2162,142 @@ class PaperTrader:
         rl_action: str = 'HOLD'
     ) -> float:
         """
-        Calculate model probability for position sizing.
+        Calculate model probability using WEIGHTED ENSEMBLE approach.
         
-        Uses MULTIPLICATIVE adjustment for ALL prices to ensure consistent
-        interpretation of signals across the probability spectrum.
+        Combines multiple probability estimates:
+        P_final = w1 * P_market + w2 * P_sentiment + w3 * P_rl
         
-        **Why multiplicative everywhere?**
-        - A "medium confidence" signal should mean the same thing at any base price
-        - Additive adjustment at 50% (+5% → 55%) is "10% more likely"
-        - Additive adjustment at 5% (+5% → 10%) is "100% more likely" - inconsistent!
-        - Multiplicative (×1.1) means "10% more likely" at ANY base price
+        This is statistically sound because:
+        - All inputs are probabilities (0-1)
+        - Weights sum to 1
+        - Output is naturally bounded (no >100% issues)
         
-        Multiplier ranges:
-        - SMALL: ×1.12 (12% more/less likely)
-        - MEDIUM: ×1.22 (22% more/less likely)  
-        - LARGE: ×1.35 (35% more/less likely)
+        Components:
+        - P_market: Market's implied probability (yes_price)
+        - P_sentiment: AI sentiment as probability estimate
+        - P_rl: DQN's implied probability from action + confidence
         
-        These are further scaled by RL confidence and sentiment agreement.
+        The model only deviates from market when signals disagree.
         """
-        # Parse RL action for direction and strength
+        # ================================================================
+        # COMPONENT 1: Market Probability (P_market)
+        # ================================================================
+        # The market's current estimate - our baseline
+        p_market = yes_price
+        
+        # ================================================================
+        # COMPONENT 2: Sentiment Probability (P_sentiment)
+        # ================================================================
+        # Sentiment score (0-1) directly represents probability estimate
+        # 0.65 sentiment → model thinks 65% chance of YES
+        p_sentiment = sentiment
+        
+        # ================================================================
+        # COMPONENT 3: RL Probability (P_rl)
+        # ================================================================
+        # Convert DQN action + confidence into implied probability
+        # BUY = thinks YES is underpriced → P_rl > market
+        # SELL = thinks YES is overpriced → P_rl < market
+        
         rl_action = rl_action.upper() if rl_action else 'HOLD'
         
+        # Determine direction and strength
         is_buy = 'BUY' in rl_action
         is_sell = 'SELL' in rl_action
         
-        # Base multiplier by action strength
+        # Action strength determines how far from market the RL thinks true prob is
         if 'LARGE' in rl_action:
-            base_mult = 1.35  # 35% adjustment
+            deviation = 0.20  # Thinks true prob is 20% different from market
         elif 'MEDIUM' in rl_action:
-            base_mult = 1.22  # 22% adjustment
+            deviation = 0.12  # 12% different
         elif 'SMALL' in rl_action:
-            base_mult = 1.12  # 12% adjustment
+            deviation = 0.06  # 6% different
         else:
-            base_mult = 1.05  # 5% for HOLD/unknown
+            deviation = 0.0   # HOLD = agrees with market
         
-        # Scale by RL confidence (0-1)
-        # Interpolate between 1.0 (no adjustment) and base_mult
-        # confidence 0.0 → multiplier of 1.0 (no change)
-        # confidence 1.0 → full base_mult
-        conf_scale = max(rl_confidence, 0.2)  # Floor at 0.2 to avoid zero adjustment
-        scaled_mult = 1.0 + (base_mult - 1.0) * conf_scale
+        # Scale deviation by confidence (0-1)
+        # Low confidence = smaller deviation
+        scaled_deviation = deviation * max(rl_confidence, 0.2)
         
-        # Sentiment agreement bonus (multiplicative)
-        # If sentiment agrees with RL direction, boost the multiplier
-        sentiment_factor = 1.0
-        if is_buy and sentiment > 0.55:
-            # Bullish sentiment agrees with BUY
-            sentiment_factor = 1.0 + (sentiment - 0.5) * 0.3  # Up to 1.15x
-        elif is_sell and sentiment < 0.45:
-            # Bearish sentiment agrees with SELL
-            sentiment_factor = 1.0 + (0.5 - sentiment) * 0.3  # Up to 1.15x
-        elif is_buy and sentiment < 0.45:
-            # Bearish sentiment DISAGREES with BUY - reduce confidence
-            sentiment_factor = 1.0 - (0.5 - sentiment) * 0.2  # Down to 0.9x
-        elif is_sell and sentiment > 0.55:
-            # Bullish sentiment DISAGREES with SELL - reduce confidence
-            sentiment_factor = 1.0 - (sentiment - 0.5) * 0.2  # Down to 0.9x
-        
-        # Sharp alignment boost (multiplicative)
-        alignment_factor = 1.0 + max(0, (sharp_alignment - 0.5) * 0.15)  # Up to 1.075x
-        
-        # Combine all factors into final multiplier
-        total_mult = scaled_mult * sentiment_factor * alignment_factor
-        
-        # Apply direction using multiplicative logic
+        # Calculate RL's implied probability
         if is_buy:
-            # BUY YES: We think YES is underpriced
-            # Multiply YES probability up
-            model_prob = yes_price * total_mult
+            # BUY: RL thinks YES is underpriced → true prob is HIGHER
+            p_rl = yes_price + scaled_deviation
         elif is_sell:
-            # SELL YES (buy NO): We think YES is overpriced
-            # This is equivalent to thinking NO is underpriced
-            # Divide YES probability down (or equivalently, multiply NO up)
-            model_prob = yes_price / total_mult
+            # SELL: RL thinks YES is overpriced → true prob is LOWER
+            p_rl = yes_price - scaled_deviation
         else:
-            # HOLD: No strong signal
-            model_prob = yes_price
+            # HOLD: RL agrees with market
+            p_rl = yes_price
         
-        # Clamp to valid range
-        # Tighter bounds (2%-98%) to prevent extreme positions
-        return max(0.02, min(0.98, model_prob))
+        # Clamp P_rl to valid range
+        p_rl = max(0.01, min(0.99, p_rl))
+        
+        # ================================================================
+        # WEIGHTED ENSEMBLE
+        # ================================================================
+        # Weights represent trust in each signal source
+        # Market gets highest weight (most efficient)
+        # Sentiment and RL provide alpha when they disagree
+        
+        # Base weights (sum to 1.0)
+        w_market = 0.50      # Market is generally efficient
+        w_sentiment = 0.25   # AI sentiment analysis
+        w_rl = 0.25          # DQN reinforcement learning
+        
+        # Adjust weights based on signal confidence/quality
+        # If RL has high confidence, trust it more
+        if rl_confidence > 0.5:
+            confidence_boost = (rl_confidence - 0.5) * 0.2  # Up to +10%
+            w_rl += confidence_boost
+            w_market -= confidence_boost
+        
+        # If sentiment strongly agrees with RL, boost both
+        sentiment_agrees_with_rl = (
+            (is_buy and sentiment > 0.55) or 
+            (is_sell and sentiment < 0.45)
+        )
+        if sentiment_agrees_with_rl:
+            # Shift weight from market to signals
+            agreement_boost = 0.10
+            w_market -= agreement_boost
+            w_sentiment += agreement_boost * 0.5
+            w_rl += agreement_boost * 0.5
+        
+        # If sentiment disagrees with RL, reduce both (conflicting signals)
+        sentiment_disagrees = (
+            (is_buy and sentiment < 0.45) or
+            (is_sell and sentiment > 0.55)
+        )
+        if sentiment_disagrees:
+            # Increase market weight (signals cancel out)
+            conflict_penalty = 0.10
+            w_market += conflict_penalty
+            w_sentiment -= conflict_penalty * 0.5
+            w_rl -= conflict_penalty * 0.5
+        
+        # Ensure weights are valid
+        w_market = max(0.30, min(0.70, w_market))
+        w_sentiment = max(0.10, min(0.35, w_sentiment))
+        w_rl = max(0.10, min(0.35, w_rl))
+        
+        # Normalize to sum to 1.0
+        total_weight = w_market + w_sentiment + w_rl
+        w_market /= total_weight
+        w_sentiment /= total_weight
+        w_rl /= total_weight
+        
+        # ================================================================
+        # FINAL CALCULATION
+        # ================================================================
+        model_prob = (
+            w_market * p_market +
+            w_sentiment * p_sentiment +
+            w_rl * p_rl
+        )
+        
+        # Final clamp to valid probability range
+        return max(0.01, min(0.99, model_prob))
     
     def _get_portfolio_state(self) -> Dict:
         """
