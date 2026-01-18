@@ -137,6 +137,8 @@ class PolymarketPositionSizer:
     
     async def save_config(self):
         """Save current config to database."""
+        if self.db is None:
+            return
         try:
             await self.db.user_config.update_one(
                 {"type": "position_sizing_v2"},
