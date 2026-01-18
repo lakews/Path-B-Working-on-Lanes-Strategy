@@ -2041,6 +2041,12 @@ class PaperTrader:
                     sector_exposure=sector_exposure
                 )
                 
+                # Ensure compatibility: copy 'breakdown' to 'sizing_breakdown' for UI
+                if 'breakdown' in sizing_result and 'sizing_breakdown' not in sizing_result:
+                    sizing_result['sizing_breakdown'] = sizing_result['breakdown']
+                elif 'sizing_breakdown' not in sizing_result:
+                    sizing_result['sizing_breakdown'] = {}
+                
                 # Add legacy compatibility fields
                 sizing_result['sizing_breakdown']['sizer_mode'] = 'polymarket'
                 sizing_result['sizing_breakdown']['rl_confidence'] = rl_confidence
@@ -2048,7 +2054,7 @@ class PaperTrader:
                 
                 # Log sizing decision
                 if sizing_result['should_trade']:
-                    breakdown = sizing_result.get('breakdown', {})
+                    breakdown = sizing_result.get('breakdown', sizing_result.get('sizing_breakdown', {}))
                     logger.debug(
                         f"[POLYMARKET SIZER] ${sizing_result['position_size']:.2f} | "
                         f"Edge: {breakdown.get('edge_pct', 0):.1f}% | "
@@ -2056,7 +2062,7 @@ class PaperTrader:
                         f"Oracle: {breakdown.get('oracle_mult', 1):.2f}"
                     )
                 else:
-                    breakdown = sizing_result.get('breakdown', {})
+                    breakdown = sizing_result.get('breakdown', sizing_result.get('sizing_breakdown', {}))
                     logger.debug(
                         f"[POLYMARKET SIZER] REJECTED: {breakdown.get('reject_reason', 'unknown')} - "
                         f"{breakdown.get('reject_detail', '')}"
