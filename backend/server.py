@@ -281,6 +281,7 @@ class TradingConfig(BaseModel):
     use_polymarket_sizer: Optional[bool] = None           # Toggle new vs legacy sizer
     polymarket_fee_pct: Optional[float] = None            # Exit fee (default 0.02 = 2%)
     sector_caps: Optional[Dict[str, float]] = None        # Max portfolio allocation per category
+    oracle_multipliers: Optional[Dict[str, float]] = None # Oracle risk multipliers by category
 
 # Store user config preferences
 user_config = {
