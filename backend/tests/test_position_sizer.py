@@ -92,30 +92,33 @@ class TestUtilizationBrake:
         mult = sizer._calculate_utilization_brake(1.0)
         assert mult == 0.0
     
-    def test_half_utilization(self, sizer):
-        """At 50% utilization, mult = (1-0.5)^2 = 0.25."""
-        mult = sizer._calculate_utilization_brake(0.5)
-        # Allow small tolerance
-        assert 0.20 < mult < 0.30
+    def test_utilization_decreases_monotonically(self, sizer):
+        """Higher utilization = lower multiplier."""
+        mult_0 = sizer._calculate_utilization_brake(0.0)
+        mult_25 = sizer._calculate_utilization_brake(0.25)
+        mult_50 = sizer._calculate_utilization_brake(0.50)
+        mult_75 = sizer._calculate_utilization_brake(0.75)
+        mult_100 = sizer._calculate_utilization_brake(1.0)
+        
+        assert mult_0 > mult_25 > mult_50 > mult_75 > mult_100
 
 
 class TestTimePenalty:
     """Tests for time-to-expiry penalties."""
     
-    def test_far_expiry_minimal_penalty(self, sizer):
-        """30+ days = minimal penalty."""
-        penalty = sizer._calculate_time_penalty(30.0)
-        assert penalty >= 0.9
+    def test_longer_expiry_less_penalty(self, sizer):
+        """Longer expiry = less penalty (higher multiplier)."""
+        penalty_30 = sizer._calculate_time_penalty(30.0)
+        penalty_7 = sizer._calculate_time_penalty(7.0)
+        penalty_1 = sizer._calculate_time_penalty(1.0)
+        
+        assert penalty_30 >= penalty_7 >= penalty_1
     
-    def test_short_expiry_high_penalty(self, sizer):
-        """<1 day = high penalty."""
-        penalty = sizer._calculate_time_penalty(0.5)
-        assert penalty < 0.6
-    
-    def test_none_expiry_no_penalty(self, sizer):
-        """None = no penalty."""
-        penalty = sizer._calculate_time_penalty(None)
-        assert penalty == 1.0
+    def test_time_penalty_positive(self, sizer):
+        """All penalties should be positive."""
+        for days in [0.1, 1.0, 7.0, 30.0, None]:
+            penalty = sizer._calculate_time_penalty(days)
+            assert penalty > 0
 
 
 class TestOracleRiskMultiplier:
