@@ -2277,32 +2277,65 @@ async def stop_paper_trading(
 
 
 async def save_session_analytics(positions, status):
-    """Save session-level analytics for historical comparison."""
+    """Save session-level analytics for historical comparison.
+    
+    Uses unrealized P&L from open positions as "simulated realized" P&L
+    since positions are closed at session stop.
+    """
     trades = status.get('trades', [])
+    
+    # Calculate simulated closure P&L for positions
+    total_simulated_pnl = 0.0
+    total_wins = 0
+    total_positions = 0
     
     # Combine positions and trades for analysis
     all_items = []
     for p in positions:
         if p.get('sizing_breakdown'):
+            # Use unrealized P&L as simulated realized P&L
+            simulated_pnl = p.get('unrealized_pnl', 0)
+            simulated_pnl_pct = p.get('unrealized_pnl_pct', 0)
+            
+            total_simulated_pnl += simulated_pnl
+            total_positions += 1
+            if simulated_pnl > 0:
+                total_wins += 1
+            
             all_items.append({
                 'type': 'position',
                 'sizing_breakdown': p.get('sizing_breakdown', {}),
                 'category': p.get('sizing_breakdown', {}).get('category', 'unknown'),
-                'pnl': p.get('unrealized_pnl', 0),
-                'pnl_pct': p.get('unrealized_pnl_pct', 0)
+                'pnl': simulated_pnl,
+                'pnl_pct': simulated_pnl_pct,
+                'entry_price': p.get('entry_price', 0),
+                'current_price': p.get('current_price', 0),
+                'size': p.get('size', 0),
+                'side': p.get('side', 'YES')
             })
     
+    # Also include any closed trades from the session
     for t in trades:
         if t.get('sizing_breakdown'):
+            trade_pnl = t.get('pnl', 0)
+            total_simulated_pnl += trade_pnl
+            total_positions += 1
+            if trade_pnl > 0:
+                total_wins += 1
+                
             all_items.append({
                 'type': 'trade',
                 'sizing_breakdown': t.get('sizing_breakdown', {}),
                 'category': t.get('sizing_breakdown', {}).get('category', 'unknown'),
-                'pnl': t.get('pnl', 0),
+                'pnl': trade_pnl,
                 'pnl_pct': t.get('return_pct', 0)
             })
     
     if not all_items:
+        return
+    
+    # Calculate simulated win rate
+    simulated_win_rate = (total_wins / total_positions * 100) if total_positions > 0 else 0
         return
     
     # Calculate analytics
