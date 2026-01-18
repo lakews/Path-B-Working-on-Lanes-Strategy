@@ -2021,6 +2021,7 @@ class PaperTrader:
                 # Calculate model probability from signals
                 # The RL action direction is critical - it tells us which side the model favors
                 sentiment = signals.get('sentiment', 0.5)
+                logger.info(f"[MODEL_PROB] yes_price={yes_price:.3f}, sentiment={sentiment:.3f}, rl_action={rl_action}, rl_conf={rl_confidence:.3f}")
                 model_probability = self._calculate_model_probability(
                     sentiment=sentiment,
                     sharp_alignment=signals.get('sharp_alignment', 0.5),
@@ -2028,6 +2029,7 @@ class PaperTrader:
                     yes_price=yes_price,
                     rl_action=rl_action
                 )
+                logger.info(f"[MODEL_PROB] -> model_probability={model_probability:.3f} (edge={model_probability - yes_price:.3f})")
                 
                 # Call the new Polymarket sizer
                 sizing_result = self.polymarket_sizer.calculate_position_size(
