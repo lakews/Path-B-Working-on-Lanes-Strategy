@@ -440,6 +440,172 @@ const Configuration = () => {
         </div>
       )}
 
+      {/* Position Sizer Tab - NEW */}
+      {activeTab === 'sizer' && (
+        <div className="space-y-6">
+          {/* Sizer Mode Toggle */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="rounded-xl bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                    <Scale className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-semibold">Position Sizer Mode</h3>
+                    <p className="text-xs text-white/50">Dynamic vs Simple sizing</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setConfig({...config, use_polymarket_sizer: !config.use_polymarket_sizer})}
+                  data-testid="sizer-mode-toggle"
+                  className={`relative w-16 h-8 rounded-full transition-colors ${config.use_polymarket_sizer ? 'bg-cyan-500' : 'bg-white/20'}`}
+                >
+                  <div className={`absolute w-6 h-6 bg-white rounded-full top-1 transition-transform ${config.use_polymarket_sizer ? 'translate-x-9' : 'translate-x-1'}`} />
+                </button>
+              </div>
+              <div className={`p-4 rounded-lg ${config.use_polymarket_sizer ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-gray-500/10 border border-gray-500/20'}`}>
+                <p className="text-sm font-semibold text-white mb-2">{config.use_polymarket_sizer ? '🚀 Dynamic Sizer (Recommended)' : '📏 Simple Sizer (Legacy)'}</p>
+                <p className="text-xs text-white/60">
+                  {config.use_polymarket_sizer 
+                    ? 'Uses Binary Kelly, Utilization Brake, Oracle Risk, Time Penalty, Correlation Dampening, and Sector Caps.'
+                    : 'Fixed position sizing based on max_position_size_pct without adaptive factors.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Fee Configuration */}
+            <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <Percent className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Polymarket Fee</h3>
+                  <p className="text-xs text-white/50">Exit fee for effective price calculation</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <input 
+                  type="range" 
+                  value={(config.polymarket_fee_pct || 0.02) * 100} 
+                  onChange={(e) => setConfig({...config, polymarket_fee_pct: parseFloat(e.target.value) / 100})} 
+                  className="flex-1 h-2 bg-white/10 rounded-lg" 
+                  min="0" max="5" step="0.5" 
+                />
+                <span className="text-white font-bold text-xl w-16 text-right">{((config.polymarket_fee_pct || 0.02) * 100).toFixed(1)}%</span>
+              </div>
+              <p className="text-xs text-white/40 mt-2">Effective Price = Ask + (Ask × Fee%). Default: 2%</p>
+            </div>
+          </div>
+
+          {/* Oracle Risk Multipliers */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Oracle Risk Multipliers</h3>
+                  <p className="text-xs text-white/50">Size reduction by market category (higher = less risk)</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setConfig({...config, oracle_multipliers: null})}
+                className="px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition text-xs"
+              >
+                Reset to Defaults
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {Object.entries(oracleMultipliersDefault).map(([category, defaultVal]) => {
+                const currentVal = config.oracle_multipliers?.[category] ?? defaultVal;
+                const isModified = config.oracle_multipliers?.[category] !== undefined;
+                const riskColor = currentVal >= 0.9 ? 'emerald' : currentVal >= 0.7 ? 'yellow' : currentVal >= 0.5 ? 'orange' : 'red';
+                
+                return (
+                  <div key={category} className={`p-3 rounded-lg ${isModified ? 'bg-purple-500/10 border border-purple-500/30' : 'bg-white/5 border border-white/10'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-white/60 capitalize">{category.replace('_', ' ')}</span>
+                      <span className={`text-xs font-mono text-${riskColor}-400`}>×{currentVal.toFixed(2)}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={currentVal * 100} 
+                      onChange={(e) => {
+                        const newVal = parseFloat(e.target.value) / 100;
+                        setConfig(prev => ({
+                          ...prev,
+                          oracle_multipliers: {
+                            ...(prev.oracle_multipliers || oracleMultipliersDefault),
+                            [category]: newVal
+                          }
+                        }));
+                      }}
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="10" max="100" step="5" 
+                    />
+                    <div className="flex justify-between mt-1">
+                      <span className="text-[9px] text-white/30">Risky</span>
+                      <span className="text-[9px] text-white/30">Safe</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
+              <p className="text-xs text-white/50">
+                <strong className="text-white/80">How it works:</strong> Lower multipliers (0.4-0.6) heavily reduce position sizes for ambiguous markets like conflict/social. 
+                Higher multipliers (0.9-1.0) allow full sizing for clear-cut markets like sports/crypto with oracle-resolvable outcomes.
+              </p>
+            </div>
+          </div>
+
+          {/* Sector Caps */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Sector Caps</h3>
+                <p className="text-xs text-white/50">Maximum portfolio allocation per category</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {Object.entries(config.sector_caps || {}).map(([sector, cap]) => (
+                <div key={sector} className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-white/60 capitalize">{sector}</span>
+                    <span className="text-xs font-mono text-blue-400">{(cap * 100).toFixed(0)}%</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    value={(cap || 0.15) * 100} 
+                    onChange={(e) => {
+                      const newVal = parseFloat(e.target.value) / 100;
+                      setConfig(prev => ({
+                        ...prev,
+                        sector_caps: {
+                          ...prev.sector_caps,
+                          [sector]: newVal
+                        }
+                      }));
+                    }}
+                    className="w-full h-1.5 bg-white/10 rounded-lg" 
+                    min="5" max="50" step="5" 
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Market Selection Tab */}
       {activeTab === 'markets' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
