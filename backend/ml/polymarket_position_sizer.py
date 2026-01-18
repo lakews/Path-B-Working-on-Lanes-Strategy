@@ -270,6 +270,8 @@ class PolymarketPositionSizer:
         sector_cap = self._calculate_sector_cap(equity, market_category, sector_exposure)
         size_after_sector = min(size_before_sector, sector_cap)
         
+        logger.info(f"[SIZER CAPS] adj={kelly_adjusted:.2f}, liq_cap={liquidity_cap:.2f}, sector_cap={sector_cap:.2f}, before_sec={size_before_sector:.2f}, after_sec={size_after_sector:.2f}")
+        
         # =================================================================
         # STEP 12: Apply Hard Limits
         # =================================================================
