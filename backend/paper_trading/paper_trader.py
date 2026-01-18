@@ -2118,7 +2118,8 @@ class PaperTrader:
         sentiment: float,
         sharp_alignment: float,
         rl_confidence: float,
-        yes_price: float
+        yes_price: float,
+        rl_action: str = 'HOLD'
     ) -> float:
         """
         Calculate model probability for position sizing.
@@ -2127,45 +2128,63 @@ class PaperTrader:
         represents our belief that YES will win, which may differ from the
         market price (creating our edge).
         
-        For the Polymarket sizer to work, we need the model_probability to
-        differ from the ask_price by enough to create edge.
+        **KEY INSIGHT**: The RL action (BUY/SELL) is the primary directional signal.
+        - BUY actions indicate the model thinks YES is underpriced
+        - SELL actions indicate the model thinks YES is overpriced (NO underpriced)
         
-        Key insight: The old system traded when RL confidence was high.
-        We translate that into probability divergence from market price.
+        The magnitude of the adjustment is scaled by:
+        - RL confidence (higher = larger adjustment)
+        - Action strength (LARGE > MEDIUM > SMALL)
+        - Sentiment agreement (amplifies if aligned with RL action)
         """
-        # Base: Current market price as starting point
-        base_prob = yes_price
+        # Parse RL action for direction and strength
+        rl_action = rl_action.upper() if rl_action else 'HOLD'
         
-        # Sentiment provides directional signal
-        # sentiment > 0.55 → bullish → model thinks YES more likely than market
-        # sentiment < 0.45 → bearish → model thinks NO more likely than market
-        sentiment_delta = sentiment - 0.5  # -0.5 to +0.5
+        is_buy = 'BUY' in rl_action
+        is_sell = 'SELL' in rl_action
         
-        # Scale sentiment to create meaningful edge
-        # A sentiment of 0.7 (strong bullish) should create ~10% edge above market
-        # A sentiment of 0.3 (strong bearish) should create ~10% edge below market  
-        sentiment_adj = sentiment_delta * 0.20  # Max ±10% adjustment
-        
-        # Sharp alignment amplifies conviction
-        # High alignment means our signals agree with sharp money
-        alignment_boost = max(0, (sharp_alignment - 0.5) * 0.10)  # 0 to +5%
-        
-        # RL confidence determines how much we trust our signals
-        # High confidence → apply full signal adjustment
-        # Low confidence → reduce signal adjustment
-        rl_weight = min(rl_confidence * 1.5, 1.0)  # Scale up, cap at 1.0
-        
-        # Combine adjustments
-        # The total adjustment creates our edge over the market
-        total_adj = (sentiment_adj + alignment_boost) * rl_weight
-        
-        # Apply adjustment based on sentiment direction
-        if sentiment_delta > 0:
-            # Bullish: we think YES is underpriced
-            model_prob = base_prob + abs(total_adj)
+        # Determine action strength multiplier
+        if 'LARGE' in rl_action:
+            strength_mult = 1.0
+        elif 'MEDIUM' in rl_action:
+            strength_mult = 0.7
+        elif 'SMALL' in rl_action:
+            strength_mult = 0.4
         else:
-            # Bearish: we think YES is overpriced (NO is underpriced)
-            model_prob = base_prob - abs(total_adj)
+            strength_mult = 0.2  # HOLD or unknown
+        
+        # Base adjustment from RL action (primary signal)
+        # A BUY_MEDIUM with 0.2 confidence should create ~4% edge adjustment
+        base_adj = 0.20 * strength_mult  # Max 20% adjustment for LARGE
+        
+        # Scale by RL confidence (0-1)
+        # But don't require high confidence - even 0.15 should create some adjustment
+        conf_scale = max(rl_confidence, 0.3)  # Floor at 0.3 to avoid zero edge
+        
+        # Sentiment agreement bonus
+        # If sentiment agrees with RL direction, boost the adjustment
+        sentiment_agreement = 0.0
+        if is_buy and sentiment > 0.55:
+            sentiment_agreement = (sentiment - 0.5) * 0.15  # Up to +7.5%
+        elif is_sell and sentiment < 0.45:
+            sentiment_agreement = (0.5 - sentiment) * 0.15  # Up to +7.5%
+        
+        # Sharp alignment boost
+        alignment_boost = max(0, (sharp_alignment - 0.5) * 0.05)  # Up to +2.5%
+        
+        # Calculate total adjustment
+        total_adj = (base_adj * conf_scale) + sentiment_agreement + alignment_boost
+        
+        # Apply direction
+        if is_buy:
+            # BUY: We think YES is underpriced, increase probability
+            model_prob = yes_price + total_adj
+        elif is_sell:
+            # SELL: We think YES is overpriced, decrease probability  
+            model_prob = yes_price - total_adj
+        else:
+            # HOLD: No strong signal, stay close to market
+            model_prob = yes_price
         
         # Clamp to valid range
         return max(0.05, min(0.95, model_prob))
