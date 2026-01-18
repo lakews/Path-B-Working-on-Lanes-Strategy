@@ -194,9 +194,10 @@ class TestNoTradeResult:
         assert result['should_trade'] == False
     
     def test_no_trade_has_breakdown(self, sizer):
-        """No-trade result has sizing_breakdown."""
+        """No-trade result has breakdown with rejection info."""
         result = sizer._no_trade_result("test_reason", "test_detail")
-        assert 'sizing_breakdown' in result
+        assert 'breakdown' in result
+        assert result['breakdown']['reject_reason'] == "test_reason"
 
 
 class TestFullSizingPipeline:
