@@ -13,10 +13,11 @@ from typing import List, Optional, Dict
 
 logger = logging.getLogger(__name__)
 
-# Oracle/Resolution Risk Ambiguity Matrix
+# Oracle/Resolution Risk Ambiguity Matrix - DEFAULT VALUES
 # Higher multiplier = lower risk (more reliable resolution)
 # Lower multiplier = higher risk (subjective/ambiguous resolution)
-AMBIGUITY_MATRIX = {
+# These can be overridden via configuration
+DEFAULT_AMBIGUITY_MATRIX = {
     # Trustless / API-resolvable (1.0x - no discount)
     'sports': 1.0,       # Official APIs, box scores - zero ambiguity
     'crypto': 1.0,       # Chainlink/Pyth oracles, Binance close - binary
@@ -45,6 +46,37 @@ AMBIGUITY_MATRIX = {
     # Unknown/Other
     'unknown': 0.60,     # Conservative default
 }
+
+# Runtime configurable matrix (will be populated from DB)
+AMBIGUITY_MATRIX = DEFAULT_AMBIGUITY_MATRIX.copy()
+
+
+def update_ambiguity_matrix(custom_matrix: Dict[str, float]) -> None:
+    """
+    Update the ambiguity matrix with custom values from configuration.
+    Only updates keys that exist in the default matrix.
+    
+    Args:
+        custom_matrix: Dict of category -> multiplier overrides
+    """
+    global AMBIGUITY_MATRIX
+    AMBIGUITY_MATRIX = DEFAULT_AMBIGUITY_MATRIX.copy()
+    if custom_matrix:
+        for key, value in custom_matrix.items():
+            if key in DEFAULT_AMBIGUITY_MATRIX:
+                # Clamp to valid range 0.1 - 1.0
+                AMBIGUITY_MATRIX[key] = max(0.1, min(1.0, float(value)))
+                logger.info(f"Updated oracle multiplier: {key} = {AMBIGUITY_MATRIX[key]}")
+
+
+def get_ambiguity_matrix() -> Dict[str, float]:
+    """Get current ambiguity matrix (for API/UI)."""
+    return AMBIGUITY_MATRIX.copy()
+
+
+def get_default_ambiguity_matrix() -> Dict[str, float]:
+    """Get default ambiguity matrix (for reset)."""
+    return DEFAULT_AMBIGUITY_MATRIX.copy()
 
 # Keyword patterns for regex classification
 CATEGORY_PATTERNS = {
