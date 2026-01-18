@@ -141,6 +141,13 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - ×0.95: Official economic data (Fed rates)
   - ×1.00: Sports markets with clear binary outcomes
 
+- ✅ **FEATURE: Sizing Analytics Dashboard** (`/app/frontend/src/pages/PaperTrading.js`)
+  - **Avg Edge by Category**: Shows average edge % for each market category
+  - **Win Rate by Oracle Risk**: 3 tiers (High ≥0.9, Medium 0.6-0.9, Low <0.6)
+  - **Sizing Efficiency**: Actual vs Kelly Base ratio with visual bar
+  - **P&L by Category**: Color-coded badges showing total P&L per category
+  - Analyzes both open positions and closed trades
+
 - ✅ **Test Session Results** (38 trades):
   - Strategies: Alpha (26), Arbitrage (12)
   - Asset Classes: Entertainment (14), Politics (10), Sports (8), Science (3), Finance (2), Crypto (1)
