@@ -655,13 +655,77 @@ const Configuration = () => {
       {/* Exit Parameters Tab */}
       {activeTab === 'exits' && (
         <div className="space-y-6">
-          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+          {/* Exit Mode Toggle - Dynamic vs Simple */}
+          <div className="rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Exit Mode</h3>
+                  <p className="text-xs text-white/50">Choose between time-aware dynamic exits or simple fixed thresholds</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${!useDynamicExit ? 'text-white' : 'text-white/40'}`}>Simple</span>
+                <button
+                  onClick={toggleExitMode}
+                  className={`relative w-14 h-7 rounded-full transition-colors ${useDynamicExit ? 'bg-cyan-500' : 'bg-gray-600'}`}
+                >
+                  <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${useDynamicExit ? 'translate-x-8' : 'translate-x-1'}`} />
+                </button>
+                <span className={`text-sm ${useDynamicExit ? 'text-cyan-400' : 'text-white/40'}`}>Dynamic</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Dynamic Mode Info */}
+              <div className={`rounded-lg p-4 border ${useDynamicExit ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/5 border-white/10 opacity-50'}`}>
+                <h4 className="text-sm font-medium text-white mb-2 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-cyan-400" /> Dynamic (Time-Aware)
+                </h4>
+                <ul className="text-xs text-white/60 space-y-1">
+                  <li>• TP = 10% of max possible gain (0.5%-50%)</li>
+                  <li>• SL scales with price extremeness (-10% to -30%)</li>
+                  <li>• ≤3d: Hold to resolution, no TP/SL</li>
+                  <li>• 4-7d: Hold with SL protection</li>
+                  <li>• 8-30d: Active TP/SL management</li>
+                  <li>• &gt;30d: Quick trade, exit in 24h</li>
+                </ul>
+              </div>
+              
+              {/* Simple Mode Info */}
+              <div className={`rounded-lg p-4 border ${!useDynamicExit ? 'bg-gray-500/10 border-gray-500/30' : 'bg-white/5 border-white/10 opacity-50'}`}>
+                <h4 className="text-sm font-medium text-white mb-2 flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-gray-400" /> Simple (Configurable)
+                </h4>
+                <ul className="text-xs text-white/60 space-y-1">
+                  <li>• Fixed TP/SL per strategy (configured below)</li>
+                  <li>• Same thresholds regardless of price or expiry</li>
+                  <li>• Simple to understand and predict</li>
+                  <li>• Manual control over exit points</li>
+                </ul>
+              </div>
+            </div>
+            
+            {useDynamicExit && (
+              <div className="mt-4 p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                <p className="text-xs text-cyan-300 text-center">
+                  ⚡ Dynamic mode active - Exit parameters below are used as fallback only
+                </p>
+              </div>
+            )}
+          </div>
+          
+          {/* Strategy Exit Parameters (Simple Mode Config) */}
+          <div className={`rounded-xl bg-white/5 border border-white/10 p-6 ${useDynamicExit ? 'opacity-60' : ''}`}>
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-500 to-orange-600 flex items-center justify-center">
                 <Target className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-white font-semibold">Strategy Exit Parameters</h3>
+                <h3 className="text-white font-semibold">Strategy Exit Parameters {useDynamicExit && <span className="text-xs text-white/40">(Fallback)</span>}</h3>
                 <p className="text-xs text-white/50">Configure Take Profit, Stop Loss, and Max Hold Time per strategy</p>
               </div>
             </div>
