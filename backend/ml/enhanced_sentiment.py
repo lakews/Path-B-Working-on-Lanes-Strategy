@@ -172,9 +172,10 @@ class CrossMarketCorrelation:
 class EnhancedSentimentAnalyzer:
     """
     Ultimate sentiment analyzer combining:
-    1. LLM analysis (GPT-5.2 + Gemini)
+    1. LLM analysis (GPT-4o-mini via Emergent)
     2. Cross-market correlation
-    3. Smart caching to minimize API costs
+    3. Polymarket-native sentiment (order flow, volume momentum, whale signals)
+    4. Smart caching to minimize API costs
     """
     
     def __init__(self):
@@ -183,6 +184,15 @@ class EnhancedSentimentAnalyzer:
         self.correlation_tracker = CrossMarketCorrelation()
         self.llm_analyzer = None
         self._init_llm()
+        
+        # Initialize Polymarket sentiment extractor
+        try:
+            from ml.polymarket_sentiment import get_polymarket_sentiment_extractor
+            self.polymarket_sentiment = get_polymarket_sentiment_extractor()
+            logger.info("Polymarket sentiment extractor initialized")
+        except Exception as e:
+            logger.warning(f"Could not initialize Polymarket sentiment: {e}")
+            self.polymarket_sentiment = None
         
         # Rate limiting for LLM calls
         self.last_llm_call = datetime.now(timezone.utc)
