@@ -393,6 +393,174 @@ class TestEdgeCases:
             assert result['position_size'] < 5000  # Less than 50% of equity
 
 
+class TestModelProbabilityEnsemble:
+    """
+    Tests for the weighted average ensemble probability calculation.
+    
+    This is CRITICAL - validates the fix for the multiplicative probability bug
+    that could produce probabilities > 100%.
+    """
+    
+    @pytest.fixture
+    def paper_trader_mock(self):
+        """Create a minimal PaperTrader instance for testing probability calculation."""
+        from paper_trading.paper_trader import PaperTrader
+        pt = PaperTrader.__new__(PaperTrader)
+        return pt
+    
+    def test_probability_never_exceeds_one(self, paper_trader_mock):
+        """CRITICAL: Model probability must NEVER exceed 0.99 regardless of inputs."""
+        pt = paper_trader_mock
+        
+        # Extreme bullish case - all signals at maximum
+        result = pt._calculate_model_probability(
+            sentiment=0.99,
+            sharp_alignment=0.99,
+            rl_confidence=0.99,
+            yes_price=0.99,
+            rl_action='BUY_LARGE'
+        )
+        
+        assert result <= 0.99, f"Probability {result} exceeds 0.99 - CRITICAL BUG!"
+        assert result >= 0.01, f"Probability {result} below 0.01"
+    
+    def test_probability_never_below_minimum(self, paper_trader_mock):
+        """Model probability must never go below 0.01."""
+        pt = paper_trader_mock
+        
+        # Extreme bearish case - all signals at minimum
+        result = pt._calculate_model_probability(
+            sentiment=0.01,
+            sharp_alignment=0.01,
+            rl_confidence=0.99,
+            yes_price=0.01,
+            rl_action='SELL_LARGE'
+        )
+        
+        assert result >= 0.01, f"Probability {result} below 0.01 - CRITICAL BUG!"
+        assert result <= 0.99, f"Probability {result} exceeds 0.99"
+    
+    def test_hold_action_returns_near_market(self, paper_trader_mock):
+        """HOLD action with neutral sentiment should return close to market price."""
+        pt = paper_trader_mock
+        
+        market_price = 0.55
+        result = pt._calculate_model_probability(
+            sentiment=0.50,
+            sharp_alignment=0.50,
+            rl_confidence=0.30,
+            yes_price=market_price,
+            rl_action='HOLD'
+        )
+        
+        # Should be within 10% of market price (weighted average effect)
+        assert abs(result - market_price) < 0.10, f"HOLD result {result} too far from market {market_price}"
+    
+    def test_buy_signal_increases_probability(self, paper_trader_mock):
+        """BUY signal with bullish sentiment should increase probability above market."""
+        pt = paper_trader_mock
+        
+        market_price = 0.50
+        result = pt._calculate_model_probability(
+            sentiment=0.70,      # Bullish
+            sharp_alignment=0.80,
+            rl_confidence=0.70,
+            yes_price=market_price,
+            rl_action='BUY_MEDIUM'
+        )
+        
+        # Model should believe true probability is higher than market
+        assert result > market_price, f"BUY signal result {result} not above market {market_price}"
+    
+    def test_sell_signal_decreases_probability(self, paper_trader_mock):
+        """SELL signal with bearish sentiment should decrease probability below market."""
+        pt = paper_trader_mock
+        
+        market_price = 0.50
+        result = pt._calculate_model_probability(
+            sentiment=0.30,      # Bearish
+            sharp_alignment=0.30,
+            rl_confidence=0.70,
+            yes_price=market_price,
+            rl_action='SELL_MEDIUM'
+        )
+        
+        # Model should believe true probability is lower than market
+        assert result < market_price, f"SELL signal result {result} not below market {market_price}"
+    
+    def test_high_market_price_stays_bounded(self, paper_trader_mock):
+        """
+        High market price (90%) with bullish signals should NOT exceed 100%.
+        
+        This is the specific bug case: 90% * 1.12 = 100.8% in multiplicative model.
+        The weighted ensemble should keep it bounded.
+        """
+        pt = paper_trader_mock
+        
+        result = pt._calculate_model_probability(
+            sentiment=0.90,
+            sharp_alignment=0.85,
+            rl_confidence=0.80,
+            yes_price=0.90,       # 90% market price
+            rl_action='BUY_LARGE'
+        )
+        
+        assert result <= 0.99, f"High market + bullish signals = {result} > 0.99 - MULTIPLICATIVE BUG!"
+        assert result >= 0.85, f"Result {result} unreasonably low for bullish case"
+    
+    def test_low_market_price_stays_bounded(self, paper_trader_mock):
+        """Low market price (10%) with bearish signals should NOT go below 0%."""
+        pt = paper_trader_mock
+        
+        result = pt._calculate_model_probability(
+            sentiment=0.10,
+            sharp_alignment=0.10,
+            rl_confidence=0.80,
+            yes_price=0.10,       # 10% market price (longshot)
+            rl_action='SELL_LARGE'
+        )
+        
+        assert result >= 0.01, f"Low market + bearish signals = {result} < 0.01 - MULTIPLICATIVE BUG!"
+        assert result <= 0.15, f"Result {result} unreasonably high for bearish longshot"
+    
+    def test_conflicting_signals_favor_market(self, paper_trader_mock):
+        """When RL and sentiment conflict, result should stay closer to market."""
+        pt = paper_trader_mock
+        
+        market_price = 0.50
+        
+        # Sentiment says bearish, RL says buy - conflicting!
+        result = pt._calculate_model_probability(
+            sentiment=0.25,       # Bearish
+            sharp_alignment=0.50,
+            rl_confidence=0.60,
+            yes_price=market_price,
+            rl_action='BUY_MEDIUM'
+        )
+        
+        # Result should be close to market due to signal conflict
+        assert abs(result - market_price) < 0.15, f"Conflicting signals: {result} too far from market {market_price}"
+    
+    def test_agreeing_signals_deviate_from_market(self, paper_trader_mock):
+        """When RL and sentiment agree, result should deviate more from market."""
+        pt = paper_trader_mock
+        
+        market_price = 0.50
+        
+        # Both sentiment and RL bullish
+        result = pt._calculate_model_probability(
+            sentiment=0.75,       # Bullish
+            sharp_alignment=0.80,
+            rl_confidence=0.75,
+            yes_price=market_price,
+            rl_action='BUY_MEDIUM'
+        )
+        
+        # Result should deviate significantly from market
+        deviation = abs(result - market_price)
+        assert deviation > 0.08, f"Agreeing signals: deviation {deviation} too small"
+
+
 # Run tests
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '--tb=short'])
