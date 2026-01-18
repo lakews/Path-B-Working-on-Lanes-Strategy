@@ -364,6 +364,21 @@ class PaperTrader:
                 if "bearish_sentiment_threshold" in user_config:
                     self.bearish_sentiment_threshold = float(user_config["bearish_sentiment_threshold"])
                 
+                # Load NEW Polymarket sizer configuration
+                if "use_polymarket_sizer" in user_config:
+                    self.use_polymarket_sizer = bool(user_config["use_polymarket_sizer"])
+                if "polymarket_fee_pct" in user_config:
+                    self.polymarket_fee_pct = float(user_config["polymarket_fee_pct"])
+                if "sector_caps" in user_config:
+                    self.sector_caps.update(user_config["sector_caps"])
+                
+                # Update polymarket sizer config if enabled
+                if hasattr(self, 'polymarket_sizer') and self.polymarket_sizer:
+                    self.polymarket_sizer.config['polymarket_fee_pct'] = self.polymarket_fee_pct
+                    self.polymarket_sizer.config['sector_caps'].update(self.sector_caps)
+                    self.polymarket_sizer.config['kelly_multiplier'] = self.kelly_fraction
+                    self.polymarket_sizer.config['min_bet_floor'] = self.min_position_size
+                
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
                 self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
