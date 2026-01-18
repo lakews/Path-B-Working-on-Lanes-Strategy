@@ -78,9 +78,19 @@ class PaperTrader:
             logger.warning(f"Could not initialize enhanced sentiment: {e}")
             self.enhanced_sentiment = None
         
-        # Import adaptive position sizer
-        from ml.adaptive_position_sizer import get_position_sizer
-        self.position_sizer = get_position_sizer()
+        # Import position sizers - NEW polymarket-optimized sizer as primary
+        from ml.polymarket_position_sizer import get_polymarket_position_sizer
+        from ml.adaptive_position_sizer import get_position_sizer as get_legacy_position_sizer
+        from ml.portfolio_manager import PortfolioManager
+        
+        # NEW: Polymarket-optimized position sizer (Binary Kelly, Utilization Brake, etc.)
+        self.polymarket_sizer = get_polymarket_position_sizer()
+        
+        # Legacy sizer kept for fallback and RL learning
+        self.position_sizer = get_legacy_position_sizer()
+        
+        # Portfolio manager tracks equity, utilization, sector exposure
+        self.portfolio_manager = PortfolioManager()
         
         self.running = False
         self.session_id = str(uuid.uuid4())[:8]
