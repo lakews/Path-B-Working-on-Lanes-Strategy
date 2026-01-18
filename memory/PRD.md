@@ -97,6 +97,13 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - ✅ **FEATURE: Comprehensive Sizing Breakdown UI** (`/app/frontend/src/pages/PaperTrading.js`)
   - **SizingBreakdownModal**: Full breakdown modal showing:
     - Edge Calculation (Model Probability - Effective Price = Trade Edge)
+    - **NEW: Probability Model Diagnostics Panel**
+      - Component probabilities (P_market, P_sentiment, P_rl)
+      - Visual weight distribution bar (Market 40-60%, Sentiment 25-30%, RL 25-30%)
+      - Weighted contributions breakdown with progress bars
+      - RL details (action, confidence, deviation)
+      - Signal agreement status (ALIGNED, CONFLICT, NEUTRAL)
+      - Formula display: P_final = w_m×P_m + w_s×P_s + w_rl×P_rl → clamp(0.01, 0.99)
     - Binary Kelly Criterion (raw fraction + 0.25× Kelly Base)
     - Size Multipliers Waterfall with visual progress bars
       - Utilization Brake (portfolio deployment %)
