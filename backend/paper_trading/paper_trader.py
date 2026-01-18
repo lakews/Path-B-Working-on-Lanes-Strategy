@@ -1922,28 +1922,116 @@ class PaperTrader:
         
         return np.clip(base_reward, -2.0, 2.0)  # Clip to reasonable range
     
-    def _calculate_position_size(self, rl_confidence: float, signals: Dict, market_data: Dict = None, strategy: str = None, asset_class: str = None, rl_action: str = 'HOLD') -> Dict:
+    def _calculate_position_size(self, rl_confidence: float, signals: Dict, market_data: Dict = None, strategy: str = None, asset_class: str = None, rl_action: str = 'HOLD', order_book_asks: List[Dict] = None, market_question: str = '', market_tags: List[str] = None, market_age_hours: float = None, days_to_expiry: float = None) -> Dict:
         """
-        Calculate position size using ADAPTIVE position sizing.
+        Calculate position size using either NEW Polymarket-optimized or legacy adaptive sizing.
         
-        Uses multiple factors:
-        - Liquidity (volume, outstanding contracts)
-        - Kelly criterion with learned parameters
-        - RL confidence
-        - Volatility regime
-        - Asset class and strategy risk profiles
+        NEW Polymarket Sizer (when use_polymarket_sizer=True):
+        - Binary Kelly Criterion (fee-adjusted)
+        - Utilization Brake (1-utilization)^1.5
+        - Edge-Retention Liquidity Clamp
+        - Oracle/Ambiguity Risk Matrix
+        - Time/Duration Penalty
+        - Correlation Dampener
+        - Sector Caps
+        
+        Legacy Sizer (when use_polymarket_sizer=False):
+        - Standard Kelly with learned parameters
+        - Volume/liquidity multipliers
+        - RL confidence scaling
+        - Asset class risk profiles
         
         Returns dict with position_size and full breakdown.
         """
-        # Use adaptive position sizer
         market_data = market_data or {}
         strategy = strategy or self.enabled_strategies[0] if self.enabled_strategies else 'arbitrage'
         asset_class = asset_class or 'finance'
+        order_book_asks = order_book_asks or []
+        market_tags = market_tags or []
         
+        # ====================================================================
+        # NEW: Polymarket-optimized Position Sizing
+        # ====================================================================
+        if self.use_polymarket_sizer and hasattr(self, 'polymarket_sizer'):
+            try:
+                # Calculate portfolio state
+                portfolio_state = self._get_portfolio_state()
+                equity = portfolio_state.get('equity', self.current_capital)
+                deployed = portfolio_state.get('deployed_capital', 0)
+                sector_exposure = portfolio_state.get('sector_exposure', {})
+                
+                # Get open positions for correlation check
+                open_positions_list = [
+                    {
+                        'category': p.get('asset_class', p.get('category', 'unknown')),
+                        'tags': p.get('tags', []),
+                    }
+                    for p in self.paper_positions.values()
+                ]
+                
+                # Get ask price from market data
+                yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+                
+                # Calculate model probability from signals (sentiment as proxy)
+                # In production, this would come from a proper probability model
+                sentiment = signals.get('sentiment', 0.5)
+                model_probability = self._calculate_model_probability(
+                    sentiment=sentiment,
+                    sharp_alignment=signals.get('sharp_alignment', 0.5),
+                    rl_confidence=rl_confidence,
+                    yes_price=yes_price
+                )
+                
+                # Call the new Polymarket sizer
+                sizing_result = self.polymarket_sizer.calculate_position_size(
+                    equity=equity,
+                    deployed_capital=deployed,
+                    model_probability=model_probability,
+                    ask_price=yes_price,
+                    order_book_asks=order_book_asks,
+                    days_to_expiry=days_to_expiry,
+                    market_category=asset_class,
+                    market_age_hours=market_age_hours,
+                    market_question=market_question,
+                    market_tags=market_tags,
+                    open_positions=open_positions_list,
+                    sector_exposure=sector_exposure
+                )
+                
+                # Add legacy compatibility fields
+                sizing_result['sizing_breakdown']['sizer_mode'] = 'polymarket'
+                sizing_result['sizing_breakdown']['rl_confidence'] = rl_confidence
+                sizing_result['sizing_breakdown']['model_probability'] = model_probability
+                
+                # Log sizing decision
+                if sizing_result['should_trade']:
+                    breakdown = sizing_result.get('breakdown', {})
+                    logger.debug(
+                        f"[POLYMARKET SIZER] ${sizing_result['position_size']:.2f} | "
+                        f"Edge: {breakdown.get('edge_pct', 0):.1f}% | "
+                        f"Util: {breakdown.get('utilization', 0):.1%} | "
+                        f"Oracle: {breakdown.get('oracle_mult', 1):.2f}"
+                    )
+                else:
+                    breakdown = sizing_result.get('breakdown', {})
+                    logger.debug(
+                        f"[POLYMARKET SIZER] REJECTED: {breakdown.get('reject_reason', 'unknown')} - "
+                        f"{breakdown.get('reject_detail', '')}"
+                    )
+                
+                return sizing_result
+                
+            except Exception as e:
+                logger.warning(f"Polymarket sizer error, falling back to legacy: {e}")
+                # Fall through to legacy sizer
+        
+        # ====================================================================
+        # LEGACY: Adaptive Position Sizing (backwards compatibility)
+        # ====================================================================
         # Inject user config thresholds into market_data for position sizer to use
         market_data_with_config = {
             **market_data,
-            '_min_volume_threshold': self.min_volume_24h,  # User-configured threshold
+            '_min_volume_threshold': self.min_volume_24h,
             '_min_liquidity_threshold': self.min_liquidity,
             '_max_liquidity_threshold': self.max_liquidity,
         }
@@ -1958,16 +2046,106 @@ class PaperTrader:
             rl_action=rl_action,
             rl_confidence=rl_confidence,
             kelly_fraction=self.kelly_fraction,
-            kelly_enabled=self.kelly_enabled  # Pass kelly_enabled toggle from user config
+            kelly_enabled=self.kelly_enabled
         )
+        
+        # Add mode indicator
+        sizing_result['sizing_breakdown']['sizer_mode'] = 'legacy'
         
         # Log sizing decision for analysis
         if sizing_result['should_trade']:
-            logger.debug(f"Position sizing: ${sizing_result['position_size']:.2f} | "
+            logger.debug(f"[LEGACY SIZER] ${sizing_result['position_size']:.2f} | "
                         f"Liquidity: {sizing_result['sizing_breakdown']['liquidity_multiplier']:.2f} | "
                         f"RL: {sizing_result['sizing_breakdown']['rl_confidence_multiplier']:.2f}")
         
         return sizing_result
+    
+    def _calculate_model_probability(
+        self,
+        sentiment: float,
+        sharp_alignment: float,
+        rl_confidence: float,
+        yes_price: float
+    ) -> float:
+        """
+        Calculate model probability for position sizing.
+        
+        This is a simplified probability model based on available signals.
+        In production, this would be replaced with a proper ML model.
+        
+        The probability represents our belief that YES will win.
+        """
+        # Base: Current market price as starting point
+        base_prob = yes_price
+        
+        # Sentiment adjustment: Strong sentiment suggests directional move
+        # sentiment > 0.5 → bullish → increase prob
+        # sentiment < 0.5 → bearish → decrease prob
+        sentiment_adj = (sentiment - 0.5) * 0.10  # Max ±5% adjustment
+        
+        # Sharp alignment: When sharps and market agree, more confidence
+        # High alignment → our signals are reliable
+        confidence_adj = (sharp_alignment - 0.5) * 0.05  # Max ±2.5% adjustment
+        
+        # RL confidence: Higher confidence → trust signals more
+        rl_weight = min(rl_confidence, 0.5)  # Cap at 0.5
+        
+        # Combine adjustments
+        model_prob = base_prob + (sentiment_adj + confidence_adj) * rl_weight * 2
+        
+        # Clamp to valid range
+        return max(0.01, min(0.99, model_prob))
+    
+    def _get_portfolio_state(self) -> Dict:
+        """
+        Calculate current portfolio state for position sizing.
+        
+        Returns:
+            Dict with equity, deployed_capital, sector_exposure, etc.
+        """
+        # Calculate cash balance
+        positions_cost_basis = sum(p.get('size', 0) for p in self.paper_positions.values())
+        cash_balance = self.current_capital - positions_cost_basis + self.total_pnl
+        
+        # Use portfolio manager
+        if hasattr(self, 'portfolio_manager'):
+            # Build positions list for portfolio manager
+            positions_list = []
+            for market_id, pos in self.paper_positions.items():
+                positions_list.append({
+                    'market_id': market_id,
+                    'side': pos.get('side', 'YES'),
+                    'size': pos.get('size', 0),
+                    'entry_price': pos.get('entry_price', 0.5),
+                    'current_price': pos.get('current_price', pos.get('entry_price', 0.5)),
+                    'category': pos.get('asset_class', pos.get('category', 'unknown')),
+                })
+            
+            state = self.portfolio_manager.calculate_portfolio_state(
+                cash_balance=cash_balance,
+                open_positions=positions_list
+            )
+            return state
+        
+        # Fallback: Simple calculation
+        return {
+            'equity': self.current_capital + self.unrealized_pnl,
+            'cash_balance': cash_balance,
+            'deployed_capital': positions_cost_basis,
+            'utilization': positions_cost_basis / max(self.current_capital, 1),
+            'sector_exposure': self._calculate_simple_sector_exposure(),
+        }
+    
+    def _calculate_simple_sector_exposure(self) -> Dict[str, float]:
+        """Calculate sector exposure without portfolio manager."""
+        exposure = {}
+        for pos in self.paper_positions.values():
+            category = pos.get('asset_class', pos.get('category', 'unknown'))
+            if category:
+                category = category.lower()
+            size = pos.get('size', 0)
+            exposure[category] = exposure.get(category, 0) + size
+        return exposure
     
     def _calculate_position_size_legacy(self, rl_confidence: float, signals: Dict) -> float:
         """Legacy position sizing for backward compatibility"""
