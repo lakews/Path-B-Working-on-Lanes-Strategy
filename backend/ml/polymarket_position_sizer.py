@@ -421,8 +421,11 @@ class PolymarketPositionSizer:
         - High edge (20%) → can eat 4 cents of book → bigger positions
         - Low edge (2%) → can only eat 0.4 cents → forced small positions
         """
+        logger.info(f"[LIQ CAP] Input: edge={edge:.4f}, ask={ask_price:.4f}, order_book={type(order_book_asks)}, len={len(order_book_asks) if order_book_asks else 0}")
+        
         if not order_book_asks or edge <= 0:
             # No order book data - use conservative default
+            logger.info(f"[LIQ CAP] Returning default 1000.0 (no order book)")
             return 1000.0  # $1K default cap
         
         retention_pct = self.config['edge_retention_pct']
@@ -439,6 +442,8 @@ class PolymarketPositionSizer:
                 liquidity_cap += order_size
             else:
                 break  # Order book is sorted, stop when price exceeds max
+        
+        logger.info(f"[LIQ CAP] Computed: max_fill={max_fill_price:.4f}, cap={liquidity_cap:.2f}")
         
         # Convert shares to USD if needed (Polymarket uses shares)
         # Assume order book size is in USD for now
