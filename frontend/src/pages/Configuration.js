@@ -117,6 +117,11 @@ const Configuration = () => {
       const response = await axios.get(`${API}/config`);
       const savedConfig = response.data;
       
+      // Store default oracle multipliers
+      if (savedConfig.oracle_multipliers_default) {
+        setOracleMultipliersDefault(savedConfig.oracle_multipliers_default);
+      }
+      
       // Merge saved config with current state - DB is source of truth
       setConfig(prev => ({
         ...prev,
@@ -143,6 +148,11 @@ const Configuration = () => {
         min_liquidity_for_full_size: savedConfig.min_liquidity_for_full_size ?? prev.min_liquidity_for_full_size,
         alerts_enabled: savedConfig.alerts_enabled ?? prev.alerts_enabled,
         alert_volume_threshold: savedConfig.alert_volume_threshold ?? prev.alert_volume_threshold,
+        // Position Sizer fields
+        use_polymarket_sizer: savedConfig.use_polymarket_sizer ?? prev.use_polymarket_sizer,
+        polymarket_fee_pct: savedConfig.polymarket_fee_pct ?? prev.polymarket_fee_pct,
+        sector_caps: savedConfig.sector_caps ?? prev.sector_caps,
+        oracle_multipliers: savedConfig.oracle_multipliers ?? prev.oracle_multipliers,
       }));
       setLoading(false);
     } catch (e) { 
