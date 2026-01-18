@@ -2065,7 +2065,7 @@ class PaperTrader:
                     equity=equity,
                     deployed_capital=deployed,
                     model_probability=model_probability,
-                    ask_price=yes_price,
+                    ask_price=sizer_ask_price,  # Use transformed ask for NO bets
                     order_book_asks=order_book_asks,
                     days_to_expiry=days_to_expiry,
                     market_category=asset_class,
@@ -2075,6 +2075,9 @@ class PaperTrader:
                     open_positions=open_positions_list,
                     sector_exposure=sector_exposure
                 )
+                
+                # Store the side we calculated for later use
+                sizing_result['_sizing_side'] = sizing_side
                 
                 # Ensure compatibility: copy 'breakdown' to 'sizing_breakdown' for UI
                 if 'breakdown' in sizing_result and 'sizing_breakdown' not in sizing_result:
