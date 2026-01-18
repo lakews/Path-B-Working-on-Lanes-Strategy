@@ -21,7 +21,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 import sys
 sys.path.insert(0, '/app/backend')
 from ml.polymarket_position_sizer import PolymarketPositionSizer
-from ml.market_classifier import classify_market, get_oracle_multiplier, AMBIGUITY_MATRIX
+from ml.market_classifier import classify_market, get_oracle_risk_multiplier, AMBIGUITY_MATRIX
 
 
 @pytest.fixture
