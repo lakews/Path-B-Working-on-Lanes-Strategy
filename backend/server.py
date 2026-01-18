@@ -2255,9 +2255,11 @@ async def stop_paper_trading(
         
         # Save session analytics for historical tracking
         try:
+            logger.info(f"Saving session analytics for session {status.get('session_id')}")
             await save_session_analytics(paper_trader, status)
+            logger.info(f"Successfully saved session analytics")
         except Exception as analytics_err:
-            logger.error(f"Error saving session analytics: {analytics_err}")
+            logger.error(f"Error saving session analytics: {analytics_err}", exc_info=True)
         
         return {
             "message": "Paper trading stopped",
