@@ -900,6 +900,10 @@ const PaperTrading = () => {
   const [sessionTradesModal, setSessionTradesModal] = useState({ isOpen: false, session: null, trades: [] });
   const [sentimentModal, setSentimentModal] = useState({ isOpen: false, trade: null });
   
+  // Exit mode state (Dynamic vs Simple)
+  const [useDynamicExit, setUseDynamicExit] = useState(true);
+  const [dynamicExitConfig, setDynamicExitConfig] = useState(null);
+  
   // Sorting state for trades table
   const [tradeSort, setTradeSort] = useState({ key: 'timestamp', direction: 'desc' });
 
