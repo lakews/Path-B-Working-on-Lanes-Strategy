@@ -1841,7 +1841,13 @@ const PaperTrading = () => {
           <div className="rounded-xl bg-white/5 border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><Layers className="w-5 h-5 text-orange-400" />Open Positions ({positions.length})</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-80 overflow-y-auto">
-              {positions.length > 0 ? positions.map((pos, idx) => <PositionCard key={idx} position={pos} />) : <p className="text-white/40 text-center py-8 col-span-full">No open positions</p>}
+              {positions.length > 0 ? positions.map((pos, idx) => (
+                <PositionCard 
+                  key={idx} 
+                  position={pos} 
+                  onViewSizing={(p) => setSizingModal({ isOpen: true, position: p })}
+                />
+              )) : <p className="text-white/40 text-center py-8 col-span-full">No open positions</p>}
             </div>
           </div>
 
