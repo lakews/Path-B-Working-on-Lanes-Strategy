@@ -234,6 +234,7 @@ class PolymarketPositionSizer:
         # =================================================================
         # STEP 5: Edge-Retention Liquidity Cap
         # =================================================================
+        logger.debug(f"[SIZER] order_book_asks type={type(order_book_asks)}, len={len(order_book_asks) if order_book_asks else 0}")
         liquidity_cap = self._calculate_liquidity_cap(edge, ask_price, order_book_asks)
         
         # =================================================================
