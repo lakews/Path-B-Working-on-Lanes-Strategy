@@ -1,127 +1,102 @@
 <analysis>**original_problem_statement:**
 The user wants to build APEX TRADER, a complete, production-ready, end-to-end AI-driven prediction market trading engine based on a provided Technical Requirements Document (TRD).
 
-**PRODUCT REQUIREMENTS:**
--   **System:** A full-stack application (FastAPI backend, React frontend) for high-frequency algorithmic trading on Polymarket.
--   **Core Functionality:** The system must implement a multi-layer architecture including data ingestion, an AI/ML decision layer, a trade execution engine, and a monitoring/risk management layer.
--   **AI/ML Models:** The system must include modules for Volatility Prediction, Sentiment Fusion, Bayesian Outlier Detection, Sharp Trader Detection, a Kelly-Sharpe Optimizer, and an RL-based adaptive strategy. This has now been upgraded to a Deep Q-Network (DQN) with Prioritized Experience Replay.
--   **Trading Strategies:** Must implement Delta-Neutral Market Making, Volatility Exploitation, Alpha-Directional, and Multi-Market Arbitrage.
--   **Performance:** Target latency of <100ms for execution and <50ms for ML inference.
--   **Risk Management:** Implement Kelly Criterion for position sizing and a configurable maximum drawdown limit (Circuit Breaker).
--   **Features:** A comprehensive backtesting engine, a live/backtest/stopped mode switcher, and a frontend dashboard for monitoring, analytics, and configuration.
--   **Deployment:** The application should be deployed to AWS.
+**LATEST PRODUCT REQUIREMENTS:**
+-   **Overhaul Position Sizing:** The user has mandated a complete rewrite of the position sizing engine. The existing methodology (Standard Kelly, ATR-style volatility scaling) is incorrect for binary prediction markets.
+-   **New Sizing Framework:** The new framework must be specifically designed for prediction markets and include:
+    1.  **Binary Kelly Criterion:** Calculate edge based on .
+    2.  **Liquidity Clamp:** Position size must be a hard-capped by available order book depth and daily volume, not a soft multiplier. This replaces ATR scaling.
+    3.  **Time/Duration Penalty:** A formula must be added to penalize long-duration bets to account for capital lock-up and opportunity cost.
+    4.  **Oracle/Resolution Risk Penalty:** A multiplier must be added to reduce size for markets with subjective or ambiguous resolution criteria.
+-   **UI for Dynamic Positioning:** A UI must be built to reflect the new dynamic sizing logic and allow switching between the new dynamic mode and the old simple configurable settings.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a sophisticated, feature-rich algorithmic trading bot for Polymarket. This session focused on a major upgrade to the AI engine and fixing a critical bug that was severely limiting trade volume.
+The application is a sophisticated algorithmic trading bot for Polymarket. This session focused on implementing a highly advanced, time-aware dynamic exit strategy and then defining a major architectural overhaul for the position sizing engine.
 
 Key achievements:
--   **Deep Q-Network (DQN) Implementation:** The original Q-table Reinforcement Learning engine was completely replaced with a modern DQN featuring Prioritized Experience Replay for more advanced and efficient learning. This includes a new API endpoint to switch between DQN and the old Q-table for comparison.
--   **Critical Circuit Breaker Fix:** The root cause of very low trade volume (10-11 trades per session) was identified and fixed. A bug in the drawdown calculation was causing the circuit breaker to trigger incorrectly by treating deployed capital as a loss. With the fix, the bot now correctly executes many more trades (50-80+ per session).
--   **Capital Tracking Fix:** A related bug that allowed available capital to display as negative was fixed by implementing a proper capital check before trade execution.
--   **Enhanced UI:**
-    -   The RL Learning tab was updated to display detailed statistics for the new DQN model.
-    -   A dedicated Asset Class Equity card was added to the main dashboard.
-    -   A prominent, animated banner was added to clearly indicate when the circuit breaker is triggered.
--   **Position Sizing Improvement:** The  calculation was changed from a direct product to a geometric mean to be less punitive, allowing for larger position sizes under favorable conditions.
+-   **Dynamic Time-Aware Exit Framework:** A complete dynamic exit strategy (Option 4) was implemented. It calculates Take Profit (TP) and Stop Loss (SL) based on the position's entry price, max possible gain, and time-to-expiry. This includes different modes like Hold to Resolution, Active Management, and Quick Trade depending on the days to expiry.
+-   **Dynamic Exit UI:** A comprehensive UI was built to support the new exit framework. This includes a toggle switch in the Settings page, a compact status badge on the Live Trading page, and detailed progress bars and status indicators (e.g., 'ACTIVE', 'QUICK') on each position card.
+-   **Initial Bug Fixes:** The session began by fixing a critical JSX syntax error in  that was preventing the frontend from rendering. The agent also implemented user-approved changes to the Alpha strategy price thresholds and the Delta Neutral price range.
+-   **Documentation:** A new, comprehensive  file was created, detailing the entire system flow from data ingestion to trade execution.
+-   **New Sizing Framework Defined:** The agent worked with the user to analyze and define a completely new, more accurate position sizing framework specifically for prediction markets, which is the next major task.
 
 **Last working item**:
--   **Last item agent was working:** Redesigning the Live Session tab on the  page to make the circuit breaker indicator more compact and to add a flashing animation when it's activated, as per the user's request for better UI/UX.
--   **Status:** IN PROGRESS
+-   **Last item agent was working:** The agent was processing the user's request for a complete overhaul of the position sizing logic. The user provided a detailed framework to replace the existing ATR-based system with one optimized for prediction markets (Binary Kelly, Liquidity Clamping, Time Penalty). The agent summarized the required changes and was awaiting confirmation to begin implementation.
+-   **Status:** NOT STARTED
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** screenshot tool
+-   **Which testing method agent to use?** both
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Verify the redesigned Paper Trading UI (P0)**
--   **Issue 2: Balance trade distribution across strategies (P1)**
--   **Issue 3: Position sizes may still not reach the configured max cap (P2)**
--   **Issue 4: Delta Neutral strategy is capturing zero trades (P2)**
+-   **Issue 1: Implement the new Prediction Market Position Sizing Framework (P0)**
+-   **Issue 2: Balance trade distribution across strategies (P2)**
+-   **Issue 3: Delta Neutral strategy is capturing zero trades (P2)**
 
 Issues Detail:
--   **Issue 1: Verify the redesigned Paper Trading UI**
-    -   **Attempted fixes:** The agent has refactored the JSX in  to create a new, more compact layout for the live session stats, including a smaller, animated circuit breaker indicator. The old, larger banner was removed.
+-   **Issue 1: Implement the new Prediction Market Position Sizing Framework**
+    -   **Attempted fixes:** None. This is a new, major architectural change. The user has provided the full logic and pseudocode.
     -   **Next debug checklist**:
-        1.  Take a screenshot of the  page.
-        2.  Verify the new layout is visually correct and that the stats (Capital, Deployed, Trades, etc.) are displayed properly.
-        3.  Manually trigger the circuit breaker (e.g., by setting  to a very low value like 0.01 in ) to confirm the new indicator flashes red as intended.
-    -   **Why fix this issue and what will be achieved with the fix?** To fulfill the user's request for a cleaner, more professional UI design on the main monitoring page.
-    -   **Status:** IN PROGRESS
+        1.  Completely rewrite  to implement the new  function provided by the user.
+        2.  Remove all ATR-style inverse volatility logic.
+        3.  Replace standard Kelly with Binary Kelly.
+        4.  Implement Liquidity Clamping as a hard cap.
+        5.  Implement the Time/Duration Penalty and Oracle Risk multipliers.
+        6.  Update  to pass the necessary data (e.g., ) to the new sizing function.
+        7.  Create a new UI to display the breakdown of this new sizing logic on the frontend.
+    -   **Why fix this issue and what will be achieved with the fix?** The current sizing logic is conceptually flawed for prediction markets. This change is critical for the bot's profitability and risk management, making it fundamentally more robust.
+    -   **Status:** NOT STARTED
     -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** frontend
+    -   **Should Test frontend/backend/both after fix?** both
     -   **Blocked on other issue:** None
 
 -   **Issue 2: Balance trade distribution across strategies**
-    -   **Attempted fixes:** The agent implemented and then reverted (per user request) a change to the strategy selection order. The current order (Alpha Extreme -> Arbitrage -> Delta Neutral -> etc.) causes the Alpha strategy to dominate because most markets have extreme prices. The user wants to see a simulation before deciding on a fix. A simulation was provided showing that changing the price thresholds (Option 1) is the most effective way to increase Arbitrage trades.
+    -   **Attempted fixes:** The agent changed the Alpha strategy threshold from / to /, which successfully increased the number of Arbitrage trades. However, Delta Neutral and Volatility strategies still capture very few trades.
     -   **Next debug checklist**:
-        1.  Await user decision based on the simulation provided.
-        2.  If approved, implement Option 1: In , change the extreme price threshold in the  function from / to /.
-    -   **Why fix this issue and what will be achieved with the fix?** To ensure the bot utilizes its full range of strategies, rather than relying almost exclusively on the Alpha Directional strategy.
-    -   **Status:** BLOCKED
-    -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** backend
-    -   **Blocked on other issue:** User decision pending.
-
--   **Issue 3: Position sizes may still not reach the configured max cap**
-    -   **Attempted fixes:** The agent implemented a geometric mean for  in , which was a significant improvement. However, the original issue from the previous handoff still stands as a point of observation.
-    -   **Next debug checklist**:
-        1.  After a trading session with sufficient trades, analyze the  for closed trades in the database.
-        2.  Check the  against the  for trades where market conditions were optimal (low volatility, high liquidity, strong signal).
-        3.  If sizes are still too small, consider further tuning the multipliers in .
-    -   **Why fix this issue and what will be achieved with the fix?** To ensure the bot can fully capitalize on high-conviction opportunities by using the entire configured risk budget.
+        1.  Analyze trade distribution after the new position sizing logic is implemented, as it will fundamentally change which trades are taken.
+        2.  Consider further adjustments to strategy price ranges or logic if distribution is still skewed.
+    -   **Why fix this issue and what will be achieved with the fix?** To ensure the bot utilizes its full range of strategies, rather than relying almost exclusively on Alpha and Arbitrage.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** backend
-    -   **Blocked on other issue:** None
+    -   **Blocked on other issue:** Issue 1
 
--   **Issue 4: Delta Neutral strategy is capturing zero trades**
-    -   **Attempted fixes:** The agent raised the volatility threshold to 6%. Reordering strategies did not help. The core problem remains that very few markets simultaneously meet the mid-price (35-65%) and low-volatility (<6%) conditions.
+-   **Issue 3: Delta Neutral strategy is capturing zero trades**
+    -   **Attempted fixes:** The price range was widened to 40%-70%. This did not result in any trades during testing. The core issue is likely a combination of strict entry conditions and capital being exhausted by other strategies first.
     -   **Next debug checklist**:
-        1.  Analyze a large sample of live market data to see if the 35-65% price range is a realistic target for Polymarket.
-        2.  Consider making the price range for Delta Neutral configurable on the UI, similar to other thresholds.
-    -   **Why fix this issue and what will be achieved with the fix?** To enable one of the core trading strategies, which is designed to perform in specific market conditions that are currently being missed.
+        1.  Re-evaluate after the new sizing logic is in place.
+        2.  Consider adding a dedicated capital allocation or priority for this strategy.
+    -   **Why fix this issue and what will be achieved with the fix?** To enable one of the core trading strategies.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** backend
-    -   **Blocked on other issue:** None
+    -   **Blocked on other issue:** Issue 1
 
 **In progress Task List**:
--   **Task 1: Complete and test the redesign of the Paper Trading Live Session UI (P0)**
-    -   **Where to resume:** The code has been written in . The next step is to start the services and take a screenshot to verify the new layout and the animated circuit breaker indicator.
-    -   **What will be achieved with this?** A more compact, professional, and informative UI for monitoring live trading sessions.
-    -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** frontend
+-   **Task 1: Refactor  for Prediction Markets (P0)**
+    -   **Where to resume:** Begin by editing  and replacing the existing logic with the user-provided framework for .
+    -   **What will be achieved with this?** A correct, robust, and more profitable position sizing engine tailored specifically for the unique characteristics of Polymarket.
+    -   **Status:** NOT STARTED
+    -   **Should Test frontend/backend/both after fix?** both
     -   **Blocked on something:** None
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **(P2) Revisit Circuit Breaker force-close:** The user decided against force-closing all positions when the circuit breaker is hit, but wanted to revisit this decision later. Now that the breaker is working correctly, this is a relevant discussion.
+    -   (P1) Update the frontend () to display the breakdown of the new position sizing logic (Binary Kelly, Liquidity Clamp, etc.).
+    -   (P2) Revisit Circuit Breaker force-close logic, as it may be relevant again with the new risk models.
 -   **Future Tasks:**
-    -   **(P3) AWS Deployment:** Address deployment blockers by removing or replacing heavy ML dependencies (, usage: transformers <command> [<args>]
-
-positional arguments:
-  {chat,convert,download,env,run,serve,add-new-model-like,add-fast-image-processor}
-                        transformers command helpers
-    convert             CLI tool to run convert model from original author
-                        checkpoints to Transformers PyTorch checkpoints.
-    run                 Run a pipeline through the CLI
-
-options:
-  -h, --help            show this help message and exit).  is now required for the DQN.
-    -   **(P3) Adaptive Sentiment Thresholds:** Implement a performance tracker that auto-adjusts the bullish/bearish sentiment thresholds based on win rates.
-    -   **(Low Priority):** Fix non-blocking ESLint warnings in the frontend.
+    -   (P3) AWS Deployment (Still blocked by heavy ML dependencies).
+    -   (P3) Adaptive Sentiment Thresholds based on win rates.
+    -   (Low Priority) Fix non-blocking ESLint warnings in the frontend.
 
 **Completed work in this session**
--   **AI/ML Major Upgrade:** Replaced the Q-table RL engine with a Deep Q-Network (DQN) and Prioritized Experience Replay (, ).
--   **Critical Bug Fix (Low Trade Volume):** Diagnosed and fixed the circuit breaker, which was incorrectly calculating drawdown and prematurely halting all new trades ().
--   **Critical Bug Fix (Capital Tracking):** Fixed capital calculations to prevent negative balances and ensure trades do not exceed available funds ().
--   **UI Feature:** Added a detailed DQN statistics view to the RL Learning tab ().
--   **UI Feature:** Added a prominent, animated circuit breaker alert banner to the main trading dashboard ().
--   **UI Feature:** Added an Asset Class Equity card to the dashboard ().
--   **Backend Tuning:** Improved position sizing by using a geometric mean for risk factors ().
--   **Backend Feature:** Added an API endpoint () to switch between DQN and Q-table implementations.
--   **User Support:** Provided detailed analysis and explanations for user questions regarding Kelly criterion, strategy selection, and trade volume issues.
+-   **Major Feature (Dynamic Exits):** Implemented a complete, time-aware dynamic exit framework that calculates TP/SL based on entry price and time-to-expiry ().
+-   **Major Feature (Dynamic Exit UI):** Built the corresponding frontend UI with configuration toggles, status badges, and detailed per-position progress bars (, ).
+-   **Documentation:** Created a comprehensive system architecture document at .
+-   **Bug Fix:** Resolved a critical JSX syntax error in  that broke the frontend.
+-   **Tuning:** Adjusted the Alpha strategy price thresholds to /, successfully increasing trade distribution to the Arbitrage strategy.
+-   **Analysis & Design:** Worked with the user to define a new, correct position sizing architecture for prediction markets, which is the next major task.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1:** Heavy ML Dependencies (, usage: transformers <command> [<args>]
@@ -134,67 +109,68 @@ positional arguments:
     run                 Run a pipeline through the CLI
 
 options:
-  -h, --help            show this help message and exit) are still present and will block deployment.  is now a required dependency for the DQN.
+  -h, --help            show this help message and exit, ) remain and will block future deployment efforts.
 -   **Issue 2:** Non-blocking ESLint warnings persist in the frontend browser console.
 
 **Known issue recurrence from previous fork**
--   None.
+-   None identified in this session.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Deep Q-Network (DQN):** A deep learning model that approximates the Q-value function, allowing the RL agent to generalize from states to actions more effectively than a simple Q-table. The implementation uses PyTorch.
--   **Prioritized Experience Replay:** A technique used with the DQN to learn more efficiently by replaying important or surprising transitions more frequently.
--   **Corrected Drawdown Calculation:** The circuit breaker's core logic was fixed to calculate drawdown based on , preventing it from triggering falsely when positions are opened.
+-   **Binary Kelly Criterion:** A new core concept. A Kelly formula variant specifically for binary (0/1) outcomes, using model edge over market price instead of average win/loss.
+-   **Liquidity Clamping:** A new core concept. Position sizing is hard-capped by available order book depth, replacing ATR-style volatility scaling.
+-   **Time/Duration Penalty:** A new core concept. A discount factor applied to position size to penalize long-duration bets and account for capital lock-up opportunity cost.
+-   **Oracle/Resolution Risk:** A new core concept. A risk multiplier applied to penalize trades on markets with subjective or ambiguous resolution criteria.
+-   **Time-Aware Dynamic Exits:** A newly implemented framework where exit parameters (TP/SL, max hold time) change dynamically based on both the entry price *and* the time remaining until market expiry.
 
 **key DB schema**
 -   No changes made to the database schema in this session.
 
 **changes in tech stack**
--   **PyTorch ()** is now a critical backend dependency for the new DQN implementation. It was likely already installed, but its importance has been elevated.
+-   None.
 
 **All files of reference**
--   : The core engine file, heavily modified to fix the circuit breaker, capital tracking, and add extensive debug logging.
--   : Rewritten to integrate the new DQN model.
--   : New file containing the DQN model, replay buffer, and associated logic.
--   : Modified to use a geometric mean for risk calculation.
+-   : Analyzed and now slated for a complete rewrite based on the user's new framework.
+-   : The core engine, heavily modified to implement the time-aware dynamic exit framework.
 -   : Modified to add the  endpoint.
--   : Heavily modified for the new DQN UI, circuit breaker alerts, and the latest layout redesign.
+-   : Heavily modified to add the UI for the dynamic exit framework, including new position card details and a header toggle.
+-   : Modified to host the primary configuration UI for the new exit mode toggle.
+-   : A new, important documentation file outlining the entire system.
 
 **Areas that need refactoring**:
--   The strategy selection logic in  in  is complex and has been a recurring point of confusion and tuning. It could benefit from being simplified or refactored into a more explicit state machine or rule engine.
+-    requires a complete rewrite as its core logic has been identified as incorrect for prediction markets.
 
 **key api endpoints**
--   : New endpoint to switch the RL engine between 'DQN' and 'Q-table' modes.
--   : The response of this endpoint was corrected to show accurate , , and .
+-   : (New) Sets the paper trading exit strategy to dynamic or simple.
+-   : (Modified) The response now includes the  boolean flag indicating the current mode.
 
 **Critical Info for New Agent**
--   **The low trade volume issue is solved.** The root cause was a bug in the circuit breaker, not the RL agent or strategy logic. The bot now opens many more trades.
--   **The user is currently focused on UI/UX.** The immediate next step is to test the latest redesign of the  page.
--   **Strategy distribution is an open question.** The user reverted changes that balanced the strategies. The agent provided a simulation showing how to increase Arbitrage trades, but the user has not yet approved the change. This is a key tuning parameter to discuss with the user.
--   **The bot now uses a DQN.** This is a major upgrade. Be aware of the new  file and the updated logic in . The  dependency is now essential.
+-   **The user has mandated a complete rewrite of the position sizing engine.** This is the highest priority task (P0). The current logic in  is conceptually wrong for prediction markets. You must implement the new framework provided by the user in their last few messages, which includes Binary Kelly, Liquidity Clamping, a Time Penalty, and Oracle Risk.
+-   **ATR/Volatility scaling is incorrect and must be removed.** The user was clear that inverse volatility scaling is the opposite of what's needed for prediction markets.
+-   A sophisticated **time-aware dynamic exit framework** was just implemented and is working. Be aware of this logic in  as it interacts with the positions created by the sizing engine.
+-   The UI for the exit framework is complete and split across  (main config) and  (compact toggle and status display). The next frontend task will be to build a similar display for the *new sizing* logic breakdown.
 
 **documents and test reports created in this job**
--   
 -   
 -    (updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks why only 11 trades are being captured. **Status: Completed** (Agent diagnosed the issue as a critical bug in the circuit breaker).
-2.  **User:** Asks for a clear UI indication when the circuit breaker is triggered and why it broke with only 11 trades. **Status: Completed** (Agent identified the bug, fixed it, and added a UI banner).
-3.  **User:** Requests to improve the design of the paper trader live session, make the circuit breaker box smaller, and have it flash when activated. **Status: In Progress** (Agent wrote the code for the redesign).
-4.  **User:** Asks to reverse the last changes made to strategy ordering (Fix 1 & 2). **Status: Completed** (Agent reverted the code).
-5.  **User:** Asks for a simulation of trade captures across all 4 strategy-tuning options before making a decision. **Status: Completed** (Agent provided a detailed simulation and recommendation).
-6.  **User:** Still notes that only 11 trades are being captured, redirecting focus to the core bug. **Status: Completed** (This led to the discovery of the circuit breaker issue).
-7.  **User:** Asks why Arbitrage strategy is not getting any trades. **Status: Completed** (Agent provided a detailed analysis and recommendations).
-8.  **User:** Approves implementing Fix 1 and 2 for strategy distribution. **Status: Completed & Reverted** (Agent implemented the fixes, then reverted them at the user's next request).
-9.  **User:** Asks if RL is preventing a lot of trades. **Status: Completed** (Agent proved that RL was not the bottleneck).
-10. **User:** Asks why only 10 Alpha trades were captured at extremely low prices. **Status: Completed** (Agent explained the market characteristics and diagnosed the one position per market rule as a factor).
+1.  **User:** Asks why the bot only enters trades at extreme prices even after widening the Alpha range. **Status: Completed** (Agent explained it's due to market distribution, capital exhaustion on high-volume markets, and RL confidence).
+2.  **User:** Proposes making exit parameters dynamic based on max possible gain. **Status: Completed** (Agent provided a detailed proposal with 4 options).
+3.  **User:** Asks for a full framework for Option 4 (Hybrid Dynamic TP/SL) with examples. **Status: Completed** (Agent provided a comprehensive breakdown with code and tables).
+4.  **User:** Approves implementing Option 4. **Status: Completed** (Agent implemented the full backend and frontend for the time-aware dynamic exit framework).
+5.  **User:** Points out a flaw in the dynamic logic for NO positions at extreme prices (TP can be higher than max possible gain). **Status: Completed** (Agent confirmed the flaw and explained the root cause).
+6.  **User:** Asks if time-to-expiry should be a variable in the logic. **Status: Completed** (Agent agreed and provided an enhanced framework incorporating time-to-expiry for both entry filtering and exit strategy).
+7.  **User:** Approves implementing the new time-aware framework and asks for a UI to toggle between dynamic and simple modes. **Status: Completed** (Agent implemented the backend logic and the full UI).
+8.  **User:** Suggests a better layout for the UI toggle (main config in Settings, compact toggle in Live Session). **Status: Completed** (Agent refactored the UI to match this superior layout).
+9.  **User:** Asks for a full system architecture document. **Status: Completed** (Agent analyzed the code and created ).
+10. **User:** Provides a comprehensive, fundamental correction to the entire position sizing methodology, explaining why ATR/Standard Kelly is wrong for prediction markets and providing a new, correct framework (Binary Kelly, Liquidity Clamp, Time Penalty). **Status: Pending Implementation**.
 
 **Project Health Check:**
--   **Broken:** None. The critical circuit breaker and capital tracking bugs have been resolved.
--   **Mocked:** Finnhub and SendGrid integrations remain present but require user API keys.
+-   **Broken:** The core position sizing logic in  is now considered conceptually flawed and must be rewritten.
+-   **Mocked:** Finnhub and SendGrid integrations are present but inactive, requiring user API keys.
 -   **Deployment Blocker:** Heavy ML dependencies (, usage: transformers <command> [<args>]
 
 positional arguments:
@@ -205,18 +181,18 @@ positional arguments:
     run                 Run a pipeline through the CLI
 
 options:
-  -h, --help            show this help message and exit).  is now also a required dependency.
+  -h, --help            show this help message and exit, ) prevent easy deployment.
 
 **3rd Party Integrations**
 -   **Polymarket:** Integrated with the live Gamma API.
 -   **OpenAI GPT-4o-mini:** Integrated via  for sentiment analysis. Uses Emergent LLM Key.
--   **Finnhub:** Infrastructure in place for news/social sentiment, but requires a user-provided API key.
--   **SendGrid:** Infrastructure in place for email alerts, but requires a user-provided API key.
+-   **Finnhub:** Infrastructure in place, requires User API Key.
+-   **SendGrid:** Infrastructure in place, requires User API Key.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES. Used successfully after implementing the DQN and after fixing the Asset Class Equity feature.
+-   **Testing agent used after significant changes:** NO. Agent self-tested UI changes with screenshots. The new backend logic has not been tested by a testing agent.
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** Test cases were added to  to verify the new DQN functionality.
+-   **Test files created:** None.
 -   **Known regressions:** None.
 
 **Credentials to test flow:**
@@ -224,4 +200,4 @@ options:
 -   **Password:** 
 
 **What agent forgot to execute**
--   The agent successfully followed all user directives. The pending items from the start of the session (like tuning strategy distribution) were correctly deprioritized to address the critical, blocking bug with the circuit breaker, and are now captured in the pending issue list.</analysis>
+-   The agent successfully followed all user directives. The current session concluded after defining the next major architectural refactor with the user. Nothing was forgotten; the next step is to implement the user's new position sizing framework.</analysis>
