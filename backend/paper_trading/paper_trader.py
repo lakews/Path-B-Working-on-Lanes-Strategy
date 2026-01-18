@@ -401,6 +401,8 @@ class PaperTrader:
                 logger.info(f"  Delta-Neutral Price Range: {self.delta_neutral_price_min}-{self.delta_neutral_price_max}")
                 logger.info(f"  Sentiment Side Thresholds: Bullish>{self.bullish_sentiment_threshold}, Bearish<{self.bearish_sentiment_threshold}")
                 logger.info(f"  Exit Params: TP={self.exit_params_by_strategy.get('delta_neutral', {}).get('take_profit', 0):.0%} (Delta-Neutral)")
+                logger.info(f"  Position Sizer: {'POLYMARKET (NEW)' if self.use_polymarket_sizer else 'LEGACY'}")
+                logger.info(f"  Polymarket Fee: {self.polymarket_fee_pct*100:.1f}%")
                 logger.info("=" * 60)
             else:
                 logger.warning("No user config found in DB - using defaults")
