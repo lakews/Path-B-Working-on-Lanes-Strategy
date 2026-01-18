@@ -208,6 +208,7 @@ class PolymarketPositionSizer:
         # STEP 2: Calculate Edge
         # =================================================================
         edge = model_probability - effective_price
+        logger.info(f"[SIZER CALC] edge={edge:.4f} = model_prob={model_probability:.4f} - eff_price={effective_price:.4f}")
         
         # No edge = no trade
         if edge <= 0:
