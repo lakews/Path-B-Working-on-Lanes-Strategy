@@ -170,6 +170,29 @@ class PaperTrader:
             'skip_no_extreme_far_expiry': True, # Skip NO at extreme low YES if >90 days
         }
         
+        # ============================================
+        # POSITION SIZING MODE CONFIGURATION
+        # ============================================
+        # When True: Use NEW Polymarket-optimized sizer (Binary Kelly, Utilization Brake, etc.)
+        # When False: Use legacy adaptive sizer (for backwards compatibility)
+        self.use_polymarket_sizer = True  # Toggle between new and legacy sizer
+        
+        # Polymarket fee (configurable)
+        self.polymarket_fee_pct = 0.02  # 2% exit fee
+        
+        # Sector caps (configurable) - max portfolio allocation per category
+        self.sector_caps = {
+            'crypto': 0.20,       # 20% max in crypto
+            'politics': 0.25,     # 25% max in politics
+            'sports': 0.30,       # 30% max in sports
+            'finance': 0.20,      # 20% max in finance
+            'entertainment': 0.15,
+            'science': 0.15,
+            'conflict': 0.10,     # 10% max in war/conflict
+            'social': 0.10,       # 10% max in social/tweets
+            'unknown': 0.15,
+        }
+        
         # Current capital starts at initial (will be set properly after config load)
         self.current_capital = self.initial_capital
         
