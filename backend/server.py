@@ -2261,6 +2261,79 @@ async def get_paper_positions():
     
     return {"positions": paper_trader.get_positions()}
 
+@api_router.get("/paper/exit-mode")
+async def get_paper_exit_mode():
+    """Get current exit mode (dynamic or simple)"""
+    global paper_trader
+    
+    if not paper_trader:
+        return {
+            "use_dynamic_exit": True,
+            "message": "No active session - showing default"
+        }
+    
+    return {
+        "use_dynamic_exit": paper_trader.use_dynamic_exit,
+        "dynamic_exit_config": paper_trader.dynamic_exit_config,
+        "time_entry_config": paper_trader.time_entry_config,
+        "simple_exit_params": paper_trader.exit_params_by_strategy
+    }
+
+@api_router.post("/paper/exit-mode")
+async def set_paper_exit_mode(use_dynamic: bool = True):
+    """Toggle between dynamic and simple exit mode"""
+    global paper_trader
+    
+    if not paper_trader:
+        return {"error": "No active paper trading session"}
+    
+    paper_trader.use_dynamic_exit = use_dynamic
+    mode_name = "Dynamic (Time-Aware)" if use_dynamic else "Simple (Configurable)"
+    logger.info(f"Exit mode changed to: {mode_name}")
+    
+    return {
+        "success": True,
+        "use_dynamic_exit": paper_trader.use_dynamic_exit,
+        "message": f"Exit mode set to: {mode_name}"
+    }
+
+@api_router.post("/paper/dynamic-config")
+async def update_dynamic_exit_config(
+    tp_capture_pct: float = None,
+    tp_min: float = None,
+    tp_max: float = None,
+    sl_base: float = None,
+    sl_extreme: float = None
+):
+    """Update dynamic exit configuration parameters"""
+    global paper_trader
+    
+    if not paper_trader:
+        return {"error": "No active paper trading session"}
+    
+    updates = {}
+    if tp_capture_pct is not None:
+        paper_trader.dynamic_exit_config['tp_capture_pct'] = tp_capture_pct
+        updates['tp_capture_pct'] = tp_capture_pct
+    if tp_min is not None:
+        paper_trader.dynamic_exit_config['tp_min'] = tp_min
+        updates['tp_min'] = tp_min
+    if tp_max is not None:
+        paper_trader.dynamic_exit_config['tp_max'] = tp_max
+        updates['tp_max'] = tp_max
+    if sl_base is not None:
+        paper_trader.dynamic_exit_config['sl_base'] = sl_base
+        updates['sl_base'] = sl_base
+    if sl_extreme is not None:
+        paper_trader.dynamic_exit_config['sl_extreme'] = sl_extreme
+        updates['sl_extreme'] = sl_extreme
+    
+    return {
+        "success": True,
+        "updates": updates,
+        "current_config": paper_trader.dynamic_exit_config
+    }
+
 @api_router.get("/paper/trades")
 async def get_paper_trades(limit: int = 50):
     """Get paper trading trade history - from live session or database"""
