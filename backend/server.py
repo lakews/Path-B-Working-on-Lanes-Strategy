@@ -1274,6 +1274,10 @@ async def update_config(config_update: TradingConfig):
             db_update["polymarket_fee_pct"] = config_update.polymarket_fee_pct
         if config_update.sector_caps is not None:
             db_update["sector_caps"] = config_update.sector_caps
+        if config_update.oracle_multipliers is not None:
+            db_update["oracle_multipliers"] = config_update.oracle_multipliers
+            # Also update the runtime matrix
+            update_ambiguity_matrix(config_update.oracle_multipliers)
         
         # Store ALL config in database for persistence (not just strategies/asset classes)
         db = get_db()
