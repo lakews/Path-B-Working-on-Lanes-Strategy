@@ -1934,6 +1934,103 @@ async def get_trending_topics(limit: int = 10):
             content={"message": f"Failed to get trending topics: {str(e)}"}
         )
 
+
+@api_router.get("/sentiment/enhanced/{market_id}")
+async def get_enhanced_sentiment(market_id: str):
+    """
+    Get enhanced sentiment analysis for a market including:
+    - Polymarket-native signals (order flow, volume momentum, whale activity)
+    - LLM sentiment
+    - Cross-market correlation
+    - Sentiment momentum (1h/6h/24h changes)
+    """
+    try:
+        from ml.enhanced_sentiment import get_enhanced_sentiment_analyzer
+        from data.polymarket_api import PolymarketAPI
+        
+        analyzer = get_enhanced_sentiment_analyzer()
+        if not analyzer:
+            return JSONResponse(status_code=503, content={"error": "Sentiment analyzer not available"})
+        
+        # Fetch market data
+        async with PolymarketAPI() as api:
+            market_data = await api.get_market(market_id)
+            
+            if not market_data:
+                return JSONResponse(status_code=404, content={"error": "Market not found"})
+            
+            # Get trades and order book for full analysis
+            token_ids = market_data.get('clobTokenIds', market_data.get('tokens', []))
+            trades = []
+            order_book = {}
+            
+            if token_ids and len(token_ids) > 0:
+                trades = await api.get_trades(token_ids[0], limit=50)
+                order_book = await api.get_order_book(token_ids[0])
+        
+        # Run enhanced analysis
+        result = await analyzer.analyze(market_data, trades=trades, order_book=order_book)
+        
+        return {
+            "market_id": market_id,
+            "question": market_data.get('question', ''),
+            "current_price": market_data.get('yes_price', 0.5),
+            "sentiment": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in enhanced sentiment: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@api_router.get("/sentiment/momentum/{market_id}")
+async def get_sentiment_momentum(market_id: str):
+    """
+    Get sentiment momentum for a market (how sentiment is changing over time).
+    
+    Returns changes over 1h, 6h, and 24h windows.
+    """
+    try:
+        from ml.polymarket_sentiment import get_polymarket_sentiment_extractor
+        
+        extractor = get_polymarket_sentiment_extractor()
+        summary = extractor.get_market_sentiment_summary(market_id)
+        
+        return {
+            "market_id": market_id,
+            **summary
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting sentiment momentum: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@api_router.get("/realtime/status")
+async def get_realtime_status():
+    """
+    Get real-time data feed status including WebSocket connection stats.
+    """
+    try:
+        from data.polymarket_websocket import get_websocket_manager
+        
+        ws_manager = get_websocket_manager()
+        stats = ws_manager.get_stats()
+        
+        return {
+            "websocket": stats,
+            "status": "connected" if stats.get('connected') else "disconnected",
+            "data_freshness": {
+                "last_message": stats.get('last_message'),
+                "messages_received": stats.get('messages_received', 0),
+                "subscribed_markets": stats.get('subscribed_tokens', 0),
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting realtime status: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 # =============================================
 # WHALE/SHARP TRACKER ENDPOINTS
 # =============================================
