@@ -1504,6 +1504,13 @@ const PaperTrading = () => {
         trade={sentimentModal.trade}
         onClose={() => setSentimentModal({ isOpen: false, trade: null })}
       />
+      
+      {/* Sizing Breakdown Modal */}
+      <SizingBreakdownModal
+        isOpen={sizingModal.isOpen}
+        position={sizingModal.position}
+        onClose={() => setSizingModal({ isOpen: false, position: null })}
+      />
 
       {/* Header */}
       <div className="rounded-xl bg-slate-900/50 border border-white/10 overflow-hidden">
