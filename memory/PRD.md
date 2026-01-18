@@ -67,8 +67,12 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Supports position value calculation for YES and NO sides
 
 - ✅ **NEW: Model Probability Calculator** (`/app/backend/paper_trading/paper_trader.py`)
-  - `_calculate_model_probability()`: Converts RL signals to probability estimate
-  - Uses RL action direction (BUY/SELL) as primary signal
+  - `_calculate_model_probability()`: **Weighted Average Ensemble** (mathematically sound)
+    - Formula: `P_final = w_market × P_market + w_sentiment × P_sentiment + w_rl × P_rl`
+    - Base weights: Market 50%, Sentiment 25%, RL 25% (dynamically adjusted)
+    - Weight adjustments based on signal agreement/conflict and RL confidence
+    - **Output always clamped to [0.01, 0.99]** - prevents impossible probabilities
+  - Converts RL action direction (BUY/SELL) + confidence into implied probability
   - Incorporates sentiment, sharp alignment, and RL confidence
   - Automatically selects YES or NO side based on edge calculation
 
