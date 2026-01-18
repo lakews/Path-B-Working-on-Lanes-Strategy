@@ -2373,7 +2373,7 @@ async def save_session_analytics(positions, status):
         'category_stats': category_stats,
         'oracle_stats': oracle_stats,
         'sizing_efficiency': avg_efficiency,
-        'sizer_mode': 'polymarket' if trader.use_polymarket_sizer else 'legacy'
+        'sizer_mode': status.get('sizer_mode', 'polymarket')
     }
     
     await db.paper_trading_analytics.insert_one(session_record)
