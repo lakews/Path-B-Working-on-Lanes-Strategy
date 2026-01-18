@@ -2252,6 +2252,13 @@ async def stop_paper_trading(
         trading_mode = "stopped"
         
         status = paper_trader.get_status()
+        
+        # Save session analytics for historical tracking
+        try:
+            await save_session_analytics(paper_trader, status)
+        except Exception as analytics_err:
+            logger.error(f"Error saving session analytics: {analytics_err}")
+        
         return {
             "message": "Paper trading stopped",
             "final_status": status
@@ -2262,6 +2269,187 @@ async def stop_paper_trading(
             status_code=500,
             content={"message": f"Failed to stop paper trading: {str(e)}"}
         )
+
+
+async def save_session_analytics(trader, status):
+    """Save session-level analytics for historical comparison."""
+    positions = trader.get_positions()
+    trades = status.get('trades', [])
+    
+    # Combine positions and trades for analysis
+    all_items = []
+    for p in positions:
+        if p.get('sizing_breakdown'):
+            all_items.append({
+                'type': 'position',
+                'sizing_breakdown': p.get('sizing_breakdown', {}),
+                'category': p.get('sizing_breakdown', {}).get('category', 'unknown'),
+                'pnl': p.get('unrealized_pnl', 0),
+                'pnl_pct': p.get('unrealized_pnl_pct', 0)
+            })
+    
+    for t in trades:
+        if t.get('sizing_breakdown'):
+            all_items.append({
+                'type': 'trade',
+                'sizing_breakdown': t.get('sizing_breakdown', {}),
+                'category': t.get('sizing_breakdown', {}).get('category', 'unknown'),
+                'pnl': t.get('pnl', 0),
+                'pnl_pct': t.get('return_pct', 0)
+            })
+    
+    if not all_items:
+        return
+    
+    # Calculate analytics
+    analytics = {
+        'by_category': {},
+        'by_oracle_range': {'high': [], 'medium': [], 'low': []},
+        'sizing_efficiency': []
+    }
+    
+    for item in all_items:
+        breakdown = item.get('sizing_breakdown', {})
+        category = breakdown.get('category', item.get('category', 'unknown'))
+        edge = breakdown.get('edge', 0)
+        oracle_mult = breakdown.get('oracle_mult', 1)
+        kelly_base = breakdown.get('kelly_base', 0)
+        final_size = breakdown.get('final_size', 0)
+        pnl = item.get('pnl', 0)
+        
+        # By Category
+        if category not in analytics['by_category']:
+            analytics['by_category'][category] = {'count': 0, 'total_edge': 0, 'total_pnl': 0, 'wins': 0}
+        analytics['by_category'][category]['count'] += 1
+        analytics['by_category'][category]['total_edge'] += edge
+        analytics['by_category'][category]['total_pnl'] += pnl
+        if pnl > 0:
+            analytics['by_category'][category]['wins'] += 1
+        
+        # By Oracle Range
+        range_key = 'high' if oracle_mult >= 0.9 else 'medium' if oracle_mult >= 0.6 else 'low'
+        analytics['by_oracle_range'][range_key].append({'pnl': pnl})
+        
+        # Sizing Efficiency
+        if kelly_base > 0:
+            analytics['sizing_efficiency'].append(final_size / kelly_base)
+    
+    # Calculate summary metrics
+    category_stats = {}
+    for cat, data in analytics['by_category'].items():
+        category_stats[cat] = {
+            'count': data['count'],
+            'avg_edge': (data['total_edge'] / data['count'] * 100) if data['count'] > 0 else 0,
+            'total_pnl': data['total_pnl'],
+            'win_rate': (data['wins'] / data['count'] * 100) if data['count'] > 0 else 0
+        }
+    
+    oracle_stats = {}
+    for tier in ['high', 'medium', 'low']:
+        items = analytics['by_oracle_range'][tier]
+        oracle_stats[tier] = {
+            'count': len(items),
+            'total_pnl': sum(x['pnl'] for x in items),
+            'win_rate': (len([x for x in items if x['pnl'] > 0]) / len(items) * 100) if items else 0
+        }
+    
+    avg_efficiency = (sum(analytics['sizing_efficiency']) / len(analytics['sizing_efficiency'])) if analytics['sizing_efficiency'] else 1.0
+    
+    # Save to database
+    db = get_db()
+    session_record = {
+        'session_id': status.get('session_id', 'unknown'),
+        'timestamp': datetime.now(timezone.utc),
+        'duration_seconds': status.get('duration_seconds', 0),
+        'total_trades': status.get('total_trades', 0),
+        'total_pnl': status.get('total_pnl', 0),
+        'win_rate': status.get('win_rate', 0),
+        'initial_capital': status.get('initial_capital', 0),
+        'final_capital': status.get('current_capital', 0),
+        'category_stats': category_stats,
+        'oracle_stats': oracle_stats,
+        'sizing_efficiency': avg_efficiency,
+        'sizer_mode': 'polymarket' if trader.use_polymarket_sizer else 'legacy'
+    }
+    
+    await db.paper_trading_analytics.insert_one(session_record)
+    logger.info(f"Saved session analytics for {status.get('session_id')}")
+
+
+@api_router.get("/paper/analytics/history")
+async def get_analytics_history(limit: int = 20):
+    """Get historical session analytics for comparison charts."""
+    try:
+        db = get_db()
+        cursor = db.paper_trading_analytics.find(
+            {},
+            {'_id': 0}
+        ).sort('timestamp', -1).limit(limit)
+        
+        sessions = await cursor.to_list(length=limit)
+        
+        # Reverse to get chronological order for charts
+        sessions.reverse()
+        
+        # Process for chart-friendly format
+        chart_data = {
+            'sessions': [],
+            'efficiency_trend': [],
+            'oracle_win_rates': {'high': [], 'medium': [], 'low': []},
+            'category_trends': {}
+        }
+        
+        for i, session in enumerate(sessions):
+            timestamp = session.get('timestamp', datetime.now(timezone.utc))
+            if isinstance(timestamp, datetime):
+                label = timestamp.strftime('%m/%d %H:%M')
+            else:
+                label = f"Session {i+1}"
+            
+            chart_data['sessions'].append({
+                'session_id': session.get('session_id', ''),
+                'label': label,
+                'total_trades': session.get('total_trades', 0),
+                'total_pnl': session.get('total_pnl', 0),
+                'win_rate': session.get('win_rate', 0),
+                'sizer_mode': session.get('sizer_mode', 'unknown')
+            })
+            
+            # Efficiency trend
+            chart_data['efficiency_trend'].append({
+                'label': label,
+                'efficiency': session.get('sizing_efficiency', 1) * 100
+            })
+            
+            # Oracle win rates
+            oracle_stats = session.get('oracle_stats', {})
+            for tier in ['high', 'medium', 'low']:
+                tier_data = oracle_stats.get(tier, {})
+                chart_data['oracle_win_rates'][tier].append({
+                    'label': label,
+                    'win_rate': tier_data.get('win_rate', 0),
+                    'count': tier_data.get('count', 0)
+                })
+            
+            # Category trends
+            category_stats = session.get('category_stats', {})
+            for cat, stats in category_stats.items():
+                if cat not in chart_data['category_trends']:
+                    chart_data['category_trends'][cat] = []
+                chart_data['category_trends'][cat].append({
+                    'label': label,
+                    'avg_edge': stats.get('avg_edge', 0),
+                    'win_rate': stats.get('win_rate', 0),
+                    'pnl': stats.get('total_pnl', 0)
+                })
+        
+        return {
+            'sessions_count': len(sessions),
+            'chart_data': chart_data
+        }
+    except Exception as e:
+        logger.error(f"Error getting analytics history: {e}")
+        return {'sessions_count': 0, 'chart_data': {}, 'error': str(e)}
 
 @api_router.get("/paper/status")
 async def get_paper_trading_status():
