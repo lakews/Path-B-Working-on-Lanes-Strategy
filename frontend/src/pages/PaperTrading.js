@@ -1065,6 +1065,29 @@ const PaperTrading = () => {
     finally { setLoading(false); }
   };
 
+  // Toggle exit mode (Dynamic vs Simple)
+  const toggleExitMode = async () => {
+    try {
+      const newMode = !useDynamicExit;
+      const response = await axios.post(`${API}/paper/exit-mode?use_dynamic=${newMode}`, {}, AUTH_CONFIG);
+      setUseDynamicExit(newMode);
+      toast.success(response.data?.message || `Exit mode: ${newMode ? 'Dynamic' : 'Simple'}`);
+    } catch (e) { 
+      toast.error('Failed to toggle exit mode'); 
+    }
+  };
+
+  // Fetch exit mode config
+  const fetchExitModeConfig = async () => {
+    try {
+      const response = await axios.get(`${API}/paper/exit-mode`, AUTH_CONFIG);
+      setUseDynamicExit(response.data?.use_dynamic_exit ?? true);
+      setDynamicExitConfig(response.data?.dynamic_exit_config);
+    } catch (e) { 
+      console.error('Failed to fetch exit mode config'); 
+    }
+  };
+
   // Reset handlers
   const handleResetLiveSession = () => {
     setConfirmModal({
