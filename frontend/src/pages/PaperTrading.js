@@ -466,6 +466,145 @@ const SizingBreakdownModal = ({ isOpen, position, onClose }) => {
                 </div>
               </div>
               
+              {/* Probability Model Diagnostics Panel - NEW */}
+              {breakdown.probability_diagnostics && (
+                <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 rounded-xl p-4">
+                  <h4 className="text-sm font-semibold text-indigo-400 mb-3 flex items-center gap-2">
+                    <Brain className="w-4 h-4" /> Probability Model Diagnostics
+                    <span className="text-[10px] px-2 py-0.5 bg-indigo-500/20 rounded-full text-indigo-300 ml-auto">
+                      WEIGHTED ENSEMBLE
+                    </span>
+                  </h4>
+                  
+                  {/* Component Probabilities */}
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="bg-white/5 rounded-lg p-3 text-center">
+                      <p className="text-[10px] text-white/50 uppercase tracking-wider">P<sub>market</sub></p>
+                      <p className="text-xl font-bold text-blue-400">
+                        {((breakdown.probability_diagnostics.components?.p_market || 0) * 100).toFixed(1)}%
+                      </p>
+                      <p className="text-[10px] text-white/30">Market price</p>
+                    </div>
+                    <div className="bg-white/5 rounded-lg p-3 text-center">
+                      <p className="text-[10px] text-white/50 uppercase tracking-wider">P<sub>sentiment</sub></p>
+                      <p className="text-xl font-bold text-amber-400">
+                        {((breakdown.probability_diagnostics.components?.p_sentiment || 0) * 100).toFixed(1)}%
+                      </p>
+                      <p className="text-[10px] text-white/30">AI sentiment</p>
+                    </div>
+                    <div className="bg-white/5 rounded-lg p-3 text-center">
+                      <p className="text-[10px] text-white/50 uppercase tracking-wider">P<sub>RL</sub></p>
+                      <p className="text-xl font-bold text-green-400">
+                        {((breakdown.probability_diagnostics.components?.p_rl || 0) * 100).toFixed(1)}%
+                      </p>
+                      <p className="text-[10px] text-white/30">DQN implied</p>
+                    </div>
+                  </div>
+                  
+                  {/* Weights Visualization */}
+                  <div className="mb-4">
+                    <p className="text-[10px] text-white/50 uppercase tracking-wider mb-2">Signal Weights (sum to 1.0)</p>
+                    <div className="flex h-6 rounded-full overflow-hidden bg-white/5">
+                      <div 
+                        className="bg-blue-500 flex items-center justify-center text-[10px] text-white font-bold"
+                        style={{ width: `${(breakdown.probability_diagnostics.weights?.w_market || 0.5) * 100}%` }}
+                      >
+                        {((breakdown.probability_diagnostics.weights?.w_market || 0.5) * 100).toFixed(0)}%
+                      </div>
+                      <div 
+                        className="bg-amber-500 flex items-center justify-center text-[10px] text-white font-bold"
+                        style={{ width: `${(breakdown.probability_diagnostics.weights?.w_sentiment || 0.25) * 100}%` }}
+                      >
+                        {((breakdown.probability_diagnostics.weights?.w_sentiment || 0.25) * 100).toFixed(0)}%
+                      </div>
+                      <div 
+                        className="bg-green-500 flex items-center justify-center text-[10px] text-white font-bold"
+                        style={{ width: `${(breakdown.probability_diagnostics.weights?.w_rl || 0.25) * 100}%` }}
+                      >
+                        {((breakdown.probability_diagnostics.weights?.w_rl || 0.25) * 100).toFixed(0)}%
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-white/40 mt-1">
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500 rounded-full"></span>Market</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 bg-amber-500 rounded-full"></span>Sentiment</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-500 rounded-full"></span>RL</span>
+                    </div>
+                  </div>
+                  
+                  {/* Contribution Breakdown */}
+                  <div className="bg-white/5 rounded-lg p-3 mb-3">
+                    <p className="text-[10px] text-white/50 uppercase tracking-wider mb-2">Weighted Contributions</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-blue-400">w×P<sub>market</sub></span>
+                        <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-blue-500"
+                            style={{ width: `${Math.min(100, (breakdown.probability_diagnostics.contributions?.market_contribution || 0) * 100 * 2)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-white/80">{((breakdown.probability_diagnostics.contributions?.market_contribution || 0) * 100).toFixed(2)}%</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-amber-400">w×P<sub>sent</sub></span>
+                        <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-amber-500"
+                            style={{ width: `${Math.min(100, (breakdown.probability_diagnostics.contributions?.sentiment_contribution || 0) * 100 * 2)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-white/80">{((breakdown.probability_diagnostics.contributions?.sentiment_contribution || 0) * 100).toFixed(2)}%</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-green-400">w×P<sub>RL</sub></span>
+                        <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-green-500"
+                            style={{ width: `${Math.min(100, (breakdown.probability_diagnostics.contributions?.rl_contribution || 0) * 100 * 2)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-white/80">{((breakdown.probability_diagnostics.contributions?.rl_contribution || 0) * 100).toFixed(2)}%</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                        <span className="text-xs text-indigo-400 font-semibold">P<sub>final</sub> = Σ</span>
+                        <span className="text-lg font-bold text-indigo-400">{((breakdown.probability_diagnostics.final_probability || 0) * 100).toFixed(2)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* RL Details */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/5 rounded-lg p-2">
+                      <p className="text-[10px] text-white/50">RL Action</p>
+                      <p className={`text-sm font-bold ${breakdown.probability_diagnostics.rl_details?.direction === 'bullish' ? 'text-green-400' : breakdown.probability_diagnostics.rl_details?.direction === 'bearish' ? 'text-red-400' : 'text-white/60'}`}>
+                        {breakdown.probability_diagnostics.rl_details?.action || 'HOLD'}
+                      </p>
+                      <p className="text-[10px] text-white/30">
+                        Deviation: {breakdown.probability_diagnostics.rl_details?.deviation ? `±${(breakdown.probability_diagnostics.rl_details.deviation * 100).toFixed(1)}%` : '0%'}
+                      </p>
+                    </div>
+                    <div className="bg-white/5 rounded-lg p-2">
+                      <p className="text-[10px] text-white/50">Signal Agreement</p>
+                      <p className={`text-sm font-bold ${breakdown.probability_diagnostics.signal_agreement?.sentiment_agrees_rl ? 'text-green-400' : breakdown.probability_diagnostics.signal_agreement?.sentiment_disagrees_rl ? 'text-red-400' : 'text-white/60'}`}>
+                        {breakdown.probability_diagnostics.signal_agreement?.sentiment_agrees_rl ? '✓ ALIGNED' : 
+                         breakdown.probability_diagnostics.signal_agreement?.sentiment_disagrees_rl ? '✗ CONFLICT' : '— NEUTRAL'}
+                      </p>
+                      <p className="text-[10px] text-white/30">
+                        {breakdown.probability_diagnostics.signal_agreement?.sentiment_agrees_rl ? 'Market weight reduced' : 
+                         breakdown.probability_diagnostics.signal_agreement?.sentiment_disagrees_rl ? 'Market weight boosted' : 'Weights balanced'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Formula */}
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    <p className="text-[10px] text-white/30 font-mono text-center">
+                      P<sub>final</sub> = w<sub>m</sub>×P<sub>m</sub> + w<sub>s</sub>×P<sub>s</sub> + w<sub>rl</sub>×P<sub>rl</sub> → clamp(0.01, 0.99)
+                    </p>
+                  </div>
+                </div>
+              )}
+              
               {/* Kelly Base */}
               <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
                 <h4 className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-2">
