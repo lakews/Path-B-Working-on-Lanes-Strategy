@@ -148,6 +148,15 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - **P&L by Category**: Color-coded badges showing total P&L per category
   - Analyzes both open positions and closed trades
 
+- ✅ **FEATURE: Historical Analytics Charts** (`/app/frontend/src/pages/PaperTrading.js` + `/app/backend/server.py`)
+  - **Backend**: Session analytics saved to `paper_trading_analytics` collection on stop
+  - **API**: `GET /api/paper/analytics/history` returns chart-friendly data
+  - **Frontend Charts**:
+    - **Sizing Efficiency Trend**: Area chart showing % of Kelly used over sessions
+    - **Win Rate by Oracle**: Line chart with 3 series (High/Medium/Low trust)
+    - **Session P&L**: Bar chart with green/red bars per session
+  - **Summary Stats**: Avg Efficiency, Best Session P&L, Total Trades
+
 - ✅ **Test Session Results** (38 trades):
   - Strategies: Alpha (26), Arbitrage (12)
   - Asset Classes: Entertainment (14), Politics (10), Sports (8), Science (3), Finance (2), Crypto (1)
