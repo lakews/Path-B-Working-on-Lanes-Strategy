@@ -1952,12 +1952,21 @@ async def get_enhanced_sentiment(market_id: str):
         if not analyzer:
             return JSONResponse(status_code=503, content={"error": "Sentiment analyzer not available"})
         
-        # Fetch market data
+        # Fetch market data - try multiple methods
         async with PolymarketAPI() as api:
+            # First try direct lookup
             market_data = await api.get_market(market_id)
             
+            # If not found, search in active markets
             if not market_data:
-                return JSONResponse(status_code=404, content={"error": "Market not found"})
+                markets = await api.get_markets(limit=200)
+                for m in markets:
+                    if m.get('id') == market_id or m.get('condition_id') == market_id:
+                        market_data = m
+                        break
+            
+            if not market_data:
+                return JSONResponse(status_code=404, content={"error": f"Market {market_id[:20]}... not found"})
             
             # Get trades and order book for full analysis
             token_ids = market_data.get('clobTokenIds', market_data.get('tokens', []))
@@ -1965,8 +1974,14 @@ async def get_enhanced_sentiment(market_id: str):
             order_book = {}
             
             if token_ids and len(token_ids) > 0:
-                trades = await api.get_trades(token_ids[0], limit=50)
-                order_book = await api.get_order_book(token_ids[0])
+                try:
+                    trades = await api.get_trades(token_ids[0], limit=50)
+                except:
+                    pass
+                try:
+                    order_book = await api.get_order_book(token_ids[0])
+                except:
+                    pass
         
         # Run enhanced analysis
         result = await analyzer.analyze(market_data, trades=trades, order_book=order_book)
@@ -1980,6 +1995,8 @@ async def get_enhanced_sentiment(market_id: str):
         
     except Exception as e:
         logger.error(f"Error in enhanced sentiment: {e}")
+        import traceback
+        traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
