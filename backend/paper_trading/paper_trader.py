@@ -830,6 +830,43 @@ class PaperTrader:
             # Get expiry-adjusted size multiplier
             expiry_size_mult = strategy_expiry.get('size_multiplier', 1.0)
             
+            # Extract metadata for NEW Polymarket sizer
+            market_question = market_data.get('question', '')
+            market_tags = market_data.get('tags', [])
+            days_to_expiry = expiry_info.get('days_to_expiry')
+            
+            # Calculate market age in hours (if created_at available)
+            market_age_hours = None
+            created_at = market_data.get('created_at') or market_data.get('createdAt')
+            if created_at:
+                try:
+                    if isinstance(created_at, str):
+                        created_dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    elif isinstance(created_at, (int, float)):
+                        created_dt = datetime.fromtimestamp(created_at, tz=timezone.utc)
+                    else:
+                        created_dt = None
+                    if created_dt:
+                        market_age_hours = (datetime.now(timezone.utc) - created_dt).total_seconds() / 3600
+                except Exception:
+                    pass
+            
+            # Fetch order book for liquidity clamp (if Polymarket sizer enabled)
+            # Note: This is optional - the sizer works without it but is more accurate with it
+            order_book_asks = []
+            if self.use_polymarket_sizer:
+                try:
+                    # Get token ID from market data
+                    token_ids = market_data.get('clobTokenIds', market_data.get('tokens', []))
+                    if token_ids and isinstance(token_ids, list) and len(token_ids) > 0:
+                        # Import and use the API to fetch order book
+                        from data.polymarket_api import PolymarketAPI
+                        async with PolymarketAPI() as api:
+                            order_book = await api.get_order_book(token_ids[0])
+                            order_book_asks = order_book.get('asks', [])
+                except Exception as e:
+                    logger.debug(f"Could not fetch order book: {e}")
+            
             # ADAPTIVE POSITION SIZING - considers liquidity, volume, Kelly, RL confidence
             # Uses self.kelly_fraction and self.kelly_enabled from user config
             sizing_result = self._calculate_position_size(
@@ -838,7 +875,13 @@ class PaperTrader:
                 market_data=market_data,
                 strategy=strategy,
                 asset_class=asset_class,
-                rl_action=rl_action
+                rl_action=rl_action,
+                # NEW parameters for Polymarket sizer
+                order_book_asks=order_book_asks,
+                market_question=market_question,
+                market_tags=market_tags,
+                market_age_hours=market_age_hours,
+                days_to_expiry=days_to_expiry
             )
             
             # Check if we should trade (liquidity/size requirements met)
