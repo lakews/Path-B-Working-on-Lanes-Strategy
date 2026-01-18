@@ -16,7 +16,8 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Dynamic Exit Params**: ✅ TP = 10% of max gain (capped 0.5%-50%), SL scales with extremeness (-10% to -30%)
 - **Circuit Breaker**: ✅ Fixed - Correctly calculates drawdown including deployed capital
 - **DQN Engine**: ✅ Working - Deep Q-Network with Prioritized Experience Replay
-- **Position Sizing**: ✅ **NEW** Polymarket-Optimized Position Sizer (Binary Kelly, Utilization Brake, Oracle Risk, etc.)
+- **Position Sizing**: ✅ Polymarket-Optimized Position Sizer with full UI breakdown
+- **Sizing Breakdown UI**: ✅ **NEW** Comprehensive modal showing Kelly, Multipliers, and Caps
 - **Strategy Distribution**: ✅ Alpha threshold: <25% or >75%, Delta Neutral: 40%-70%
 - **Time-to-Expiry**: ✅ Strategy adjustments and UI indicators based on expiry
 - **Market Alerts**: ✅ Real-time alerts with configurable volume threshold
