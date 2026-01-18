@@ -2397,19 +2397,20 @@ async def save_session_analytics(positions, status):
         'session_id': status.get('session_id', 'unknown'),
         'timestamp': datetime.now(timezone.utc),
         'duration_seconds': status.get('duration_seconds', 0),
-        'total_trades': status.get('total_trades', 0),
-        'total_pnl': status.get('total_pnl', 0),
-        'win_rate': status.get('win_rate', 0),
+        'total_trades': total_positions,  # Use actual position count
+        'total_pnl': total_simulated_pnl,  # Use simulated P&L
+        'win_rate': simulated_win_rate,    # Use simulated win rate
         'initial_capital': status.get('initial_capital', 0),
-        'final_capital': status.get('current_capital', 0),
+        'final_capital': status.get('current_capital', 0) + total_simulated_pnl,  # Adjusted final
         'category_stats': category_stats,
         'oracle_stats': oracle_stats,
         'sizing_efficiency': avg_efficiency,
-        'sizer_mode': status.get('sizer_mode', 'polymarket')
+        'sizer_mode': status.get('sizer_mode', 'polymarket'),
+        'simulated_closure': True  # Flag indicating P&L is simulated
     }
     
     await db.paper_trading_analytics.insert_one(session_record)
-    logger.info(f"Saved session analytics for {status.get('session_id')}")
+    logger.info(f"Saved session analytics for {status.get('session_id')} - Simulated P&L: ${total_simulated_pnl:.2f}, Win Rate: {simulated_win_rate:.1f}%")
 
 
 @api_router.get("/paper/analytics/history")
