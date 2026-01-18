@@ -1345,13 +1345,11 @@ class PaperTrader:
     
     async def _evaluate_exit(self, market_id: str, market_data: Dict):
         """
-        Evaluate existing paper position for exit using DYNAMIC TP/SL (Option 4 Framework).
+        Evaluate existing paper position for exit.
         
-        Dynamic exit params are calculated based on:
-        - Entry price and side (determines max possible gain)
-        - Extremeness (how far from 50% the entry was)
-        - TP = 10% of max possible gain, capped between 0.5% and 50%
-        - SL = -10% at mid-range, scaling to -30% at extreme prices
+        Supports two modes (controlled by self.use_dynamic_exit):
+        1. DYNAMIC MODE: Time-aware TP/SL based on max gain, expiry, and price zone
+        2. SIMPLE MODE: Configurable TP/SL from exit_params_by_strategy
         """
         try:
             position = self.paper_positions.get(market_id)
@@ -1368,32 +1366,46 @@ class PaperTrader:
             # UPDATE position's current_price for UI display
             position['current_price'] = current_price
             
-            # ============================================
-            # DYNAMIC EXIT PARAMETERS (Option 4 Framework)
-            # ============================================
-            dynamic_params = self._get_dynamic_exit_params(side, entry_price)
-            take_profit_threshold = dynamic_params['take_profit']
-            stop_loss_threshold = dynamic_params['stop_loss']
-            max_hours = dynamic_params['max_hours']
-            zone = dynamic_params['zone']
-            max_gain_possible = dynamic_params['max_gain_possible']
-            extremeness = dynamic_params['extremeness']
+            # Get time to expiry
+            expiry_info = self._calculate_time_to_expiry(market_data)
+            days_to_expiry = expiry_info.get('days_to_expiry')
+            hours_to_expiry = expiry_info.get('hours_to_expiry')
             
-            # Store dynamic params in position for UI display
+            # ============================================
+            # GET EXIT PARAMETERS (Dynamic or Simple mode)
+            # ============================================
+            if self.use_dynamic_exit:
+                # DYNAMIC MODE: Time-aware exit params
+                exit_params = self._get_dynamic_exit_params(side, entry_price, days_to_expiry)
+            else:
+                # SIMPLE MODE: Configurable exit params
+                exit_params = self._get_simple_exit_params(strategy, asset_class)
+            
+            take_profit_threshold = exit_params['take_profit']
+            stop_loss_threshold = exit_params['stop_loss']
+            max_hours = exit_params['max_hours']
+            zone = exit_params.get('zone', 'unknown')
+            exit_mode = exit_params.get('exit_mode', 'standard')
+            max_gain_possible = exit_params.get('max_gain_possible')
+            extremeness = exit_params.get('extremeness')
+            
+            # Store exit params in position for UI display
             position['dynamic_exit_params'] = {
                 'tp': take_profit_threshold,
                 'sl': stop_loss_threshold,
                 'max_hours': max_hours,
                 'zone': zone,
+                'exit_mode': exit_mode,
                 'max_gain': max_gain_possible,
-                'extremeness': extremeness
+                'extremeness': extremeness,
+                'days_to_expiry': days_to_expiry,
+                'is_dynamic': self.use_dynamic_exit
             }
             
             # ============================================
             # CALCULATE UNREALIZED P&L
             # ============================================
             if side == 'YES':
-                # YES position: bought YES shares at entry_price, now worth current_price
                 if entry_price > 0:
                     shares = size / entry_price
                     current_value = shares * current_price
@@ -1403,7 +1415,6 @@ class PaperTrader:
                     pnl_pct = 0
                     unrealized_pnl = 0
             else:
-                # NO position: bought NO shares at (1 - entry_price), now worth (1 - current_price)
                 no_entry_price = 1 - entry_price
                 no_current_price = 1 - current_price
                 if no_entry_price > 0:
