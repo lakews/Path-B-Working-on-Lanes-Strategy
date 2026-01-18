@@ -127,7 +127,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - `get_default_ambiguity_matrix()`: For UI reset button
 
 - ✅ **TESTS: Position Sizer Unit Tests** (`/app/backend/tests/test_position_sizer.py`)
-  - **28 passing tests** covering:
+  - **37 passing tests** covering:
     - Binary Kelly Criterion (positive/zero/negative edge)
     - Effective Price with fee
     - Utilization Brake (monotonic decrease)
@@ -137,6 +137,12 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
     - No-trade result structure
     - Full sizing pipeline integration
     - Edge cases (zero equity, extreme edge)
+    - **NEW: Model Probability Ensemble (9 tests)**
+      - Probability bounds verification (never >0.99 or <0.01)
+      - HOLD action returns near market price
+      - BUY/SELL signals correctly shift probability
+      - High market price stays bounded (fixes multiplicative bug)
+      - Conflicting/agreeing signals weight adjustment
 
 - ✅ **Verified Oracle Risk Multiplier Distribution**:
   - ×0.40: Highly subjective (Iran strikes, ceasefires, Supreme Leader)
