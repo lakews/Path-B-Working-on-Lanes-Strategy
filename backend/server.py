@@ -1117,6 +1117,9 @@ async def get_config():
                 "social": 0.10,
                 "unknown": 0.15,
             },
+            # Oracle Risk Multipliers (configurable)
+            "oracle_multipliers": saved_config.get("oracle_multipliers", None) if saved_config else None,
+            "oracle_multipliers_default": get_default_ambiguity_matrix(),
         }
     except Exception as e:
         logger.error(f"Error getting config: {e}")
