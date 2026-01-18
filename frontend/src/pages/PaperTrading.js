@@ -1261,6 +1261,23 @@ const PaperTrading = () => {
               {wsConnected ? <Wifi className="w-3 h-3 text-emerald-400" /> : <WifiOff className="w-3 h-3 text-rose-400" />}
               <span className={`text-[10px] font-mono ${wsConnected ? 'text-emerald-400' : 'text-rose-400'}`}>{wsConnected ? 'LIVE' : 'POLL'}</span>
             </div>
+            
+            {/* Compact Exit Mode Toggle */}
+            <button 
+              onClick={toggleExitMode}
+              disabled={!running}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded transition-all ${
+                useDynamicExit 
+                  ? 'bg-cyan-500/20 border border-cyan-500/30 hover:bg-cyan-500/30' 
+                  : 'bg-gray-500/20 border border-gray-500/30 hover:bg-gray-500/30'
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
+              title={useDynamicExit ? 'Dynamic: Time-aware TP/SL' : 'Simple: Fixed TP/SL per strategy'}
+            >
+              {useDynamicExit ? <Sparkles className="w-3 h-3 text-cyan-400" /> : <Target className="w-3 h-3 text-gray-400" />}
+              <span className={`text-[10px] font-medium ${useDynamicExit ? 'text-cyan-400' : 'text-gray-400'}`}>
+                {useDynamicExit ? 'DYNAMIC' : 'SIMPLE'}
+              </span>
+            </button>
           </div>
           
           <div className="flex items-center gap-3">
