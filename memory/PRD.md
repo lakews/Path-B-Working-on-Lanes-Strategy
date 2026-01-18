@@ -80,7 +80,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Detailed sizing breakdown in position data for UI display
 
 - ✅ **NEW: Configuration API Updates** (`/app/backend/server.py`)
-  - `GET /api/config` returns new fields: `use_polymarket_sizer`, `polymarket_fee_pct`, `sector_caps`
+  - `GET /api/config` returns new fields: `use_polymarket_sizer`, `polymarket_fee_pct`, `sector_caps`, `oracle_multipliers`, `oracle_multipliers_default`
   - `POST /api/config/update` saves new configuration to database
 
 - ✅ **Verified Working**: 26 trades executed with Polymarket sizer
@@ -88,7 +88,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Edge percentages: 4.49% - 11.67%
   - Position sizes: $52 - $207 (appropriate for $10K capital)
 
-### January 18, 2026 - Session 32 (Sizing Breakdown UI)
+### January 18, 2026 - Session 32 (Complete Sizer UI & Tests)
 
 - ✅ **FEATURE: Comprehensive Sizing Breakdown UI** (`/app/frontend/src/pages/PaperTrading.js`)
   - **SizingBreakdownModal**: Full breakdown modal showing:
@@ -105,6 +105,34 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - **PositionCard Enhancement**: Compact sizing preview showing:
     - EDGE %, KELLY $, ORACLE ×, FINAL $
     - "Details" button to open full breakdown modal
+
+- ✅ **FEATURE: Position Sizer Configuration Tab** (`/app/frontend/src/pages/Configuration.js`)
+  - **Dynamic/Simple Mode Toggle**: Switch between new engine and legacy
+  - **Polymarket Fee**: Slider for exit fee (0-5%, default 2%)
+  - **Oracle Risk Multipliers**: 12 category sliders with visual indicators
+    - Sports/Crypto = ×1.00 (low risk, oracle-resolvable)
+    - Conflict/War = ×0.40 (high risk, vague definitions)
+    - Social = ×0.50 (linguistic ambiguity)
+  - **Sector Caps**: Per-category portfolio allocation limits
+  - **Reset to Defaults** button
+
+- ✅ **FEATURE: Configurable Oracle Multipliers** (`/app/backend/ml/market_classifier.py`)
+  - `DEFAULT_AMBIGUITY_MATRIX`: Hardcoded defaults
+  - `AMBIGUITY_MATRIX`: Runtime-configurable copy
+  - `update_ambiguity_matrix()`: Update from API/config
+  - `get_default_ambiguity_matrix()`: For UI reset button
+
+- ✅ **TESTS: Position Sizer Unit Tests** (`/app/backend/tests/test_position_sizer.py`)
+  - **28 passing tests** covering:
+    - Binary Kelly Criterion (positive/zero/negative edge)
+    - Effective Price with fee
+    - Utilization Brake (monotonic decrease)
+    - Time Penalty (positive, bounded)
+    - Oracle Risk Multipliers (all categories)
+    - Market Classifier functions
+    - No-trade result structure
+    - Full sizing pipeline integration
+    - Edge cases (zero equity, extreme edge)
 
 - ✅ **Verified Oracle Risk Multiplier Distribution**:
   - ×0.40: Highly subjective (Iran strikes, ceasefires, Supreme Leader)
