@@ -88,6 +88,37 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Edge percentages: 4.49% - 11.67%
   - Position sizes: $52 - $207 (appropriate for $10K capital)
 
+### January 18, 2026 - Session 32 (Sizing Breakdown UI)
+
+- ✅ **FEATURE: Comprehensive Sizing Breakdown UI** (`/app/frontend/src/pages/PaperTrading.js`)
+  - **SizingBreakdownModal**: Full breakdown modal showing:
+    - Edge Calculation (Model Probability - Effective Price = Trade Edge)
+    - Binary Kelly Criterion (raw fraction + 0.25× Kelly Base)
+    - Size Multipliers Waterfall with visual progress bars
+      - Utilization Brake (portfolio deployment %)
+      - Time/Duration Penalty (days to expiry)
+      - Oracle/Ambiguity Risk (market subjectivity)
+      - Correlation Dampener (overlapping positions)
+    - Size Caps (Liquidity, Sector, Max Position)
+    - Final Position Size with % reduction from Kelly base
+    - Portfolio Context (Equity, Deployed)
+  - **PositionCard Enhancement**: Compact sizing preview showing:
+    - EDGE %, KELLY $, ORACLE ×, FINAL $
+    - "Details" button to open full breakdown modal
+
+- ✅ **Verified Oracle Risk Multiplier Distribution**:
+  - ×0.40: Highly subjective (Iran strikes, ceasefires, Supreme Leader)
+  - ×0.60: Moderately subjective
+  - ×0.75: Political nominations
+  - ×0.95: Official economic data (Fed rates)
+  - ×1.00: Sports markets with clear binary outcomes
+
+- ✅ **Test Session Results** (38 trades):
+  - Strategies: Alpha (26), Arbitrage (12)
+  - Asset Classes: Entertainment (14), Politics (10), Sports (8), Science (3), Finance (2), Crypto (1)
+  - Edge range: 0.65% to 6.69%
+  - Position sizes: $12 to $226
+
 ### January 18, 2026 - Session 30 (Time-Aware Dynamic Exit Framework)
 
 - ✅ **FEATURE: Time-Aware Dynamic Exit Mode** (`/app/backend/paper_trading/paper_trader.py`)
