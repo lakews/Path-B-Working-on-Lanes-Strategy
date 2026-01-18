@@ -2055,9 +2055,13 @@ class PaperTrader:
                     sizer_ask_price = 1 - yes_price
                     sizing_side = 'NO'
                 else:
-                    # No positive edge on either side
-                    track_skip("no_edge_either_side")
-                    return
+                    # No positive edge on either side - return proper no-trade result
+                    return {
+                        'should_trade': False,
+                        'position_size': 0,
+                        'breakdown': {'reject_reason': 'no_edge_either_side', 'reject_detail': f'yes_edge={yes_edge:.4f}, no_edge={no_edge:.4f}'},
+                        'sizing_breakdown': {'sizer_mode': 'polymarket', 'reject_reason': 'no_edge_either_side'}
+                    }
                 
                 logger.info(f"[MODEL_PROB] yes_price={yes_price:.3f}, raw_prob={raw_model_prob:.3f}, yes_edge={yes_edge:.3f}, no_edge={no_edge:.3f}, sizing_side={sizing_side}")
                 
