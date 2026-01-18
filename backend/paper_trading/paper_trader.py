@@ -2021,15 +2021,44 @@ class PaperTrader:
                 # Calculate model probability from signals
                 # The RL action direction is critical - it tells us which side the model favors
                 sentiment = signals.get('sentiment', 0.5)
-                logger.info(f"[MODEL_PROB] yes_price={yes_price:.3f}, sentiment={sentiment:.3f}, rl_action={rl_action}, rl_conf={rl_confidence:.3f}")
-                model_probability = self._calculate_model_probability(
+                
+                # Calculate raw model probability (probability YES wins)
+                raw_model_prob = self._calculate_model_probability(
                     sentiment=sentiment,
                     sharp_alignment=signals.get('sharp_alignment', 0.5),
                     rl_confidence=rl_confidence,
                     yes_price=yes_price,
                     rl_action=rl_action
                 )
-                logger.info(f"[MODEL_PROB] -> model_probability={model_probability:.3f} (edge={model_probability - yes_price:.3f})")
+                
+                # Determine which side to bet on based on where we see edge
+                # BUY/YES: edge when model_prob > effective_yes_price
+                # SELL/NO: edge when (1-model_prob) > effective_no_price
+                effective_yes_price = yes_price + self.polymarket_fee_pct
+                effective_no_price = (1 - yes_price) + self.polymarket_fee_pct
+                
+                yes_edge = raw_model_prob - effective_yes_price
+                no_edge = (1 - raw_model_prob) - effective_no_price
+                
+                # Choose the side with positive edge
+                if yes_edge > no_edge and yes_edge > 0:
+                    # Bet on YES
+                    model_probability = raw_model_prob
+                    sizer_ask_price = yes_price
+                    sizing_side = 'YES'
+                elif no_edge > yes_edge and no_edge > 0:
+                    # Bet on NO - transform to sizer's perspective
+                    # Sizer expects: model_prob > ask_price for positive edge
+                    # For NO: pass (1-model_prob) as "probability" and (1-yes_price) as "ask"
+                    model_probability = 1 - raw_model_prob
+                    sizer_ask_price = 1 - yes_price
+                    sizing_side = 'NO'
+                else:
+                    # No positive edge on either side
+                    track_skip("no_edge_either_side")
+                    return
+                
+                logger.info(f"[MODEL_PROB] yes_price={yes_price:.3f}, raw_prob={raw_model_prob:.3f}, yes_edge={yes_edge:.3f}, no_edge={no_edge:.3f}, sizing_side={sizing_side}")
                 
                 # Call the new Polymarket sizer
                 sizing_result = self.polymarket_sizer.calculate_position_size(
