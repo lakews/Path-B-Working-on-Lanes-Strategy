@@ -164,6 +164,19 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Edge range: 0.65% to 6.69%
   - Position sizes: $12 to $226
 
+### January 18, 2026 - Session 33 (Longshot Probability Fix)
+
+- ✅ **BUGFIX: Multiplicative Probability Adjustment for Extreme Prices**
+  - **Problem**: Model used additive adjustment for all prices, causing:
+    - 0.9% longshot + 5% adjustment = 5.9% model prob (6.5x overestimate!)
+    - Created fake "edge" of 5-7% on longshots → large YES bets → losses
+  - **Solution**: Use multiplicative adjustment for prices <10% or >90%:
+    - 0.9% longshot × 1.5 multiplier = 1.35% model prob (50% more likely - reasonable)
+  - **File Changed**: `/app/backend/paper_trading/paper_trader.py` - `_calculate_model_probability()`
+  - **Before**: Edge on 0.9% longshot was +6.43% (WRONG)
+  - **After**: Edge on 0.9% longshot is +1.08% (CORRECT)
+  - **Result**: No more oversized YES bets on sub-10% candidates
+
 ### January 18, 2026 - Session 30 (Time-Aware Dynamic Exit Framework)
 
 - ✅ **FEATURE: Time-Aware Dynamic Exit Mode** (`/app/backend/paper_trading/paper_trader.py`)
