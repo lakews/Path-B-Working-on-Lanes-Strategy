@@ -1997,6 +1997,8 @@ class PaperTrader:
         # ====================================================================
         if self.use_polymarket_sizer and hasattr(self, 'polymarket_sizer'):
             try:
+                logger.info(f"[SIZER] Using Polymarket sizer for entry evaluation")
+                
                 # Calculate portfolio state
                 portfolio_state = self._get_portfolio_state()
                 equity = portfolio_state.get('equity', self.current_capital)
