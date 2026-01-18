@@ -22,6 +22,9 @@ from ml.rl_engine import RLAdaptiveEngine
 from ml.social_sentiment import social_sentiment_analyzer
 from ml.whale_tracker import whale_tracker
 from ml.strategy_tuner import strategy_tuner
+from ml.market_classifier import (
+    get_ambiguity_matrix, get_default_ambiguity_matrix, update_ambiguity_matrix
+)
 from auth import (
     create_access_token, authenticate_user, get_current_user, get_current_user_optional,
     create_user, init_default_admin, Token, UserCreate, UserLogin, UserResponse,
