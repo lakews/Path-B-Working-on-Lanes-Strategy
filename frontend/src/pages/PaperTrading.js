@@ -370,9 +370,271 @@ const AssetClassEquityCard = ({ equityData, initialCapital = 10000 }) => {
 };
 
 // Position Card Component with Expiry Indicator
-const PositionCard = ({ position }) => {
+// Sizing Breakdown Modal - Shows detailed position sizing calculation
+const SizingBreakdownModal = ({ isOpen, position, onClose }) => {
+  if (!isOpen || !position) return null;
+  
+  const breakdown = position.sizing_breakdown || {};
+  const hasSizerData = breakdown.kelly_base !== undefined;
+  
+  // Format multiplier impact
+  const formatMultiplier = (value, label) => {
+    if (value === undefined || value === null) return null;
+    const impact = value < 1 ? 'reduces' : value > 1 ? 'increases' : 'no change';
+    const color = value < 0.7 ? 'text-red-400' : value < 0.9 ? 'text-amber-400' : value <= 1.1 ? 'text-green-400' : 'text-cyan-400';
+    return { value, label, impact, color };
+  };
+  
+  // Calculate waterfall values
+  const kellyBase = breakdown.kelly_base || 0;
+  const afterUtil = kellyBase * (breakdown.utilization_mult || 1);
+  const afterTime = afterUtil * (breakdown.time_penalty || 1);
+  const afterOracle = afterTime * (breakdown.oracle_mult || 1);
+  const afterCorr = afterOracle * (breakdown.correlation_mult || 1);
+  const finalSize = breakdown.final_size || position.size || 0;
+  
+  // Multiplier data for visualization
+  const multipliers = [
+    formatMultiplier(breakdown.utilization_mult, 'Utilization Brake'),
+    formatMultiplier(breakdown.time_penalty, 'Time Penalty'),
+    formatMultiplier(breakdown.oracle_mult, 'Oracle Risk'),
+    formatMultiplier(breakdown.correlation_mult, 'Correlation'),
+  ].filter(Boolean);
+  
+  // Caps data
+  const caps = [
+    { label: 'Liquidity Cap', value: breakdown.liquidity_cap, applied: breakdown.kelly_adjusted > breakdown.liquidity_cap },
+    { label: 'Sector Cap', value: breakdown.sector_cap, applied: breakdown.size_before_sector > breakdown.sector_cap },
+    { label: 'Max Position', value: breakdown.max_single_position, applied: breakdown.size_after_sector > breakdown.max_single_position },
+  ];
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-slate-900 border border-white/20 rounded-xl max-w-3xl w-full mx-4 shadow-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+              <Scale className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Position Sizing Breakdown</h3>
+              <p className="text-xs text-white/50">Polymarket Dynamic Sizer v2.0</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white">✕</button>
+        </div>
+        
+        <div className="flex-1 overflow-auto p-4 space-y-5">
+          {/* Market Info */}
+          <div className="bg-white/5 rounded-lg p-3">
+            <p className="text-white/80 text-sm font-medium">{position.market_question}</p>
+            <div className="flex gap-4 mt-2 text-xs">
+              <span className="text-white/50">Side: <span className={position.side === 'YES' ? 'text-green-400' : 'text-red-400'}>{position.side}</span></span>
+              <span className="text-white/50">Strategy: <span className="text-white/80">{position.strategy}</span></span>
+              <span className="text-white/50">Category: <span className="text-cyan-400 capitalize">{breakdown.category || 'unknown'}</span></span>
+            </div>
+          </div>
+          
+          {!hasSizerData ? (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 text-center">
+              <p className="text-amber-400">Sizing breakdown not available for this position (legacy mode)</p>
+            </div>
+          ) : (
+            <>
+              {/* Edge Calculation Box */}
+              <div className="bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-emerald-400 mb-3 flex items-center gap-2">
+                  <Target className="w-4 h-4" /> Edge Calculation
+                </h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">Model Probability</p>
+                    <p className="text-2xl font-bold text-cyan-400">{((breakdown.model_probability || 0) * 100).toFixed(1)}%</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">Effective Price</p>
+                    <p className="text-2xl font-bold text-amber-400">{((breakdown.effective_price || 0) * 100).toFixed(2)}%</p>
+                    <p className="text-[10px] text-white/30">Ask: {((breakdown.ask_price || 0) * 100).toFixed(2)}% + 2% fee</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">Trade Edge</p>
+                    <p className={`text-2xl font-bold ${(breakdown.edge || 0) > 0.03 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      +{((breakdown.edge || 0) * 100).toFixed(2)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Kelly Base */}
+              <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-2">
+                  <Percent className="w-4 h-4" /> Binary Kelly Criterion
+                </h4>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-white/50">Kelly Fraction (raw)</p>
+                    <p className="text-lg font-bold text-white">{((breakdown.kelly_fraction || 0) * 100).toFixed(2)}%</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-white/50">Kelly Base (0.25× multiplier)</p>
+                    <p className="text-2xl font-bold text-purple-400">${(breakdown.kelly_base || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-white/30 mt-2">Formula: edge / (1 - effective_price) × equity × 0.25</p>
+              </div>
+              
+              {/* Multipliers Waterfall */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-cyan-400" /> Size Multipliers (Waterfall)
+                </h4>
+                
+                {/* Visual waterfall */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <span className="text-sm text-white">Kelly Base</span>
+                    <span className="text-lg font-bold text-purple-400">${kellyBase.toFixed(2)}</span>
+                  </div>
+                  
+                  {/* Utilization */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/60">Utilization Brake</span>
+                        <span className={`text-xs font-mono ${(breakdown.utilization_mult || 1) < 0.5 ? 'text-red-400' : 'text-green-400'}`}>
+                          ×{(breakdown.utilization_mult || 1).toFixed(3)}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden mt-1">
+                        <div 
+                          className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500"
+                          style={{ width: `${(breakdown.utilization_mult || 1) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-white/30 mt-1">Portfolio: {((breakdown.utilization || 0) * 100).toFixed(1)}% deployed → ${afterUtil.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Time Penalty */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/60">Time/Duration Penalty</span>
+                        <span className={`text-xs font-mono ${(breakdown.time_penalty || 1) < 0.7 ? 'text-amber-400' : 'text-green-400'}`}>
+                          ×{(breakdown.time_penalty || 1).toFixed(3)}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden mt-1">
+                        <div 
+                          className="h-full bg-gradient-to-r from-amber-500 to-green-500"
+                          style={{ width: `${(breakdown.time_penalty || 1) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-white/30 mt-1">{(breakdown.days_to_expiry || 0).toFixed(1)} days to expiry → ${afterTime.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Oracle Risk */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/60">Oracle/Ambiguity Risk</span>
+                        <span className={`text-xs font-mono ${(breakdown.oracle_mult || 1) < 0.6 ? 'text-red-400' : (breakdown.oracle_mult || 1) < 0.8 ? 'text-amber-400' : 'text-green-400'}`}>
+                          ×{(breakdown.oracle_mult || 1).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden mt-1">
+                        <div 
+                          className={`h-full ${(breakdown.oracle_mult || 1) < 0.5 ? 'bg-red-500' : (breakdown.oracle_mult || 1) < 0.8 ? 'bg-amber-500' : 'bg-green-500'}`}
+                          style={{ width: `${(breakdown.oracle_mult || 1) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-white/30 mt-1">{breakdown.category_reasoning || 'Standard risk'} → ${afterOracle.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Correlation */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/60">Correlation Dampener</span>
+                        <span className={`text-xs font-mono ${(breakdown.correlation_mult || 1) < 0.5 ? 'text-amber-400' : 'text-green-400'}`}>
+                          ×{(breakdown.correlation_mult || 1).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden mt-1">
+                        <div 
+                          className="h-full bg-cyan-500"
+                          style={{ width: `${(breakdown.correlation_mult || 1) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-white/30 mt-1">{breakdown.n_correlated_positions || 0} correlated positions → ${afterCorr.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                    <span className="text-sm text-white font-medium">Adjusted Size</span>
+                    <span className="text-lg font-bold text-cyan-400">${(breakdown.kelly_adjusted || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Caps Applied */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-amber-400" /> Size Caps
+                </h4>
+                <div className="grid grid-cols-3 gap-3">
+                  {caps.map((cap, idx) => (
+                    <div key={idx} className={`rounded-lg p-3 text-center ${cap.applied ? 'bg-amber-500/20 border border-amber-500/30' : 'bg-white/5'}`}>
+                      <p className="text-[10px] text-white/50 uppercase tracking-wider">{cap.label}</p>
+                      <p className={`text-lg font-bold ${cap.applied ? 'text-amber-400' : 'text-white/60'}`}>
+                        ${(cap.value || 0).toFixed(0)}
+                      </p>
+                      {cap.applied && <p className="text-[10px] text-amber-400">APPLIED</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Final Result */}
+              <div className="bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-500/40 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-white/50">FINAL POSITION SIZE</p>
+                    <p className="text-3xl font-black text-cyan-400">${finalSize.toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-white/50">Portfolio Context</p>
+                    <p className="text-sm text-white/70">Equity: ${(breakdown.equity || 0).toFixed(0)}</p>
+                    <p className="text-sm text-white/70">Deployed: ${(breakdown.deployed || 0).toFixed(0)}</p>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+                  <span className="text-white/40">
+                    Size reduction: {kellyBase > 0 ? ((1 - finalSize / kellyBase) * 100).toFixed(0) : 0}% from Kelly base
+                  </span>
+                  <span className={`px-2 py-0.5 rounded ${breakdown.sizer_mode === 'polymarket' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                    {breakdown.sizer_mode === 'polymarket' ? 'DYNAMIC SIZER' : 'LEGACY'}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PositionCard = ({ position, onViewSizing }) => {
   const pnlPct = position.unrealized_pnl_pct || 0;
   const isProfit = pnlPct >= 0;
+  
+  // Extract sizing breakdown for quick view
+  const breakdown = position.sizing_breakdown || {};
+  const hasSizerData = breakdown.kelly_base !== undefined;
   
   // Extract expiry info
   const expiryInfo = position.expiry_info || {};
@@ -458,6 +720,44 @@ const PositionCard = ({ position }) => {
           )}
         </div>
       </div>
+      
+      {/* Compact Sizing Breakdown - NEW */}
+      {hasSizerData && (
+        <div className="mb-3 p-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-lg border border-cyan-500/20">
+          <div className="flex items-center justify-between text-[10px] mb-1">
+            <span className="text-white/50">SIZING ENGINE</span>
+            <button 
+              onClick={() => onViewSizing && onViewSizing(position)}
+              className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+              data-testid="view-sizing-btn"
+            >
+              <Eye className="w-3 h-3" /> Details
+            </button>
+          </div>
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div>
+              <p className="text-[9px] text-white/40">EDGE</p>
+              <p className={`text-xs font-bold ${(breakdown.edge || 0) > 0.03 ? 'text-green-400' : 'text-yellow-400'}`}>
+                +{((breakdown.edge || 0) * 100).toFixed(1)}%
+              </p>
+            </div>
+            <div>
+              <p className="text-[9px] text-white/40">KELLY</p>
+              <p className="text-xs font-bold text-purple-400">${(breakdown.kelly_base || 0).toFixed(0)}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-white/40">ORACLE</p>
+              <p className={`text-xs font-bold ${(breakdown.oracle_mult || 1) < 0.6 ? 'text-red-400' : 'text-green-400'}`}>
+                ×{(breakdown.oracle_mult || 1).toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[9px] text-white/40">FINAL</p>
+              <p className="text-xs font-bold text-cyan-400">${(breakdown.final_size || position.size || 0).toFixed(0)}</p>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Dynamic Exit Progress Bars */}
       {isDynamic && (tp !== null || sl !== null) && (
