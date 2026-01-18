@@ -1092,6 +1092,30 @@ async def get_config():
             # Sentiment-based side selection thresholds
             "bullish_sentiment_threshold": saved_config.get("bullish_sentiment_threshold", 0.55) if saved_config else 0.55,
             "bearish_sentiment_threshold": saved_config.get("bearish_sentiment_threshold", 0.45) if saved_config else 0.45,
+            # NEW: Polymarket Position Sizer Configuration
+            "use_polymarket_sizer": saved_config.get("use_polymarket_sizer", True) if saved_config else True,
+            "polymarket_fee_pct": saved_config.get("polymarket_fee_pct", 0.02) if saved_config else 0.02,
+            "sector_caps": saved_config.get("sector_caps", {
+                "crypto": 0.20,
+                "politics": 0.25,
+                "sports": 0.30,
+                "finance": 0.20,
+                "entertainment": 0.15,
+                "science": 0.15,
+                "conflict": 0.10,
+                "social": 0.10,
+                "unknown": 0.15,
+            }) if saved_config else {
+                "crypto": 0.20,
+                "politics": 0.25,
+                "sports": 0.30,
+                "finance": 0.20,
+                "entertainment": 0.15,
+                "science": 0.15,
+                "conflict": 0.10,
+                "social": 0.10,
+                "unknown": 0.15,
+            },
         }
     except Exception as e:
         logger.error(f"Error getting config: {e}")
