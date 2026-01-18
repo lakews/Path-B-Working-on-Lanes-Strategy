@@ -70,9 +70,30 @@ const Configuration = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('trading');
+  const [useDynamicExit, setUseDynamicExit] = useState(true);
 
 
-  useEffect(() => { fetchConfig(); fetchStatus(); }, []);
+  useEffect(() => { fetchConfig(); fetchStatus(); fetchExitMode(); }, []);
+  
+  // Fetch exit mode from API
+  const fetchExitMode = async () => {
+    try {
+      const response = await axios.get(`${API}/paper/exit-mode`);
+      setUseDynamicExit(response.data?.use_dynamic_exit ?? true);
+    } catch (e) { console.error('Error fetching exit mode:', e); }
+  };
+  
+  // Toggle exit mode
+  const toggleExitMode = async () => {
+    try {
+      const newMode = !useDynamicExit;
+      const response = await axios.post(`${API}/paper/exit-mode?use_dynamic=${newMode}`);
+      setUseDynamicExit(newMode);
+      toast.success(response.data?.message || `Exit mode: ${newMode ? 'Dynamic' : 'Simple'}`);
+    } catch (e) { 
+      toast.error('Failed to toggle exit mode. Start a paper trading session first.'); 
+    }
+  };
 
   const fetchStatus = async () => {
     try {
