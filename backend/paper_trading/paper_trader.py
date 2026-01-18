@@ -2119,31 +2119,52 @@ class PaperTrader:
         """
         Calculate model probability for position sizing.
         
-        This is a simplified probability model based on available signals.
-        In production, this would be replaced with a proper ML model.
+        This converts available signals into a probability estimate that
+        represents our belief that YES will win, which may differ from the
+        market price (creating our edge).
         
-        The probability represents our belief that YES will win.
+        For the Polymarket sizer to work, we need the model_probability to
+        differ from the ask_price by enough to create edge.
+        
+        Key insight: The old system traded when RL confidence was high.
+        We translate that into probability divergence from market price.
         """
         # Base: Current market price as starting point
         base_prob = yes_price
         
-        # Sentiment adjustment: Strong sentiment suggests directional move
-        # sentiment > 0.5 → bullish → increase prob
-        # sentiment < 0.5 → bearish → decrease prob
-        sentiment_adj = (sentiment - 0.5) * 0.10  # Max ±5% adjustment
+        # Sentiment provides directional signal
+        # sentiment > 0.55 → bullish → model thinks YES more likely than market
+        # sentiment < 0.45 → bearish → model thinks NO more likely than market
+        sentiment_delta = sentiment - 0.5  # -0.5 to +0.5
         
-        # Sharp alignment: When sharps and market agree, more confidence
-        # High alignment → our signals are reliable
-        confidence_adj = (sharp_alignment - 0.5) * 0.05  # Max ±2.5% adjustment
+        # Scale sentiment to create meaningful edge
+        # A sentiment of 0.7 (strong bullish) should create ~10% edge above market
+        # A sentiment of 0.3 (strong bearish) should create ~10% edge below market  
+        sentiment_adj = sentiment_delta * 0.20  # Max ±10% adjustment
         
-        # RL confidence: Higher confidence → trust signals more
-        rl_weight = min(rl_confidence, 0.5)  # Cap at 0.5
+        # Sharp alignment amplifies conviction
+        # High alignment means our signals agree with sharp money
+        alignment_boost = max(0, (sharp_alignment - 0.5) * 0.10)  # 0 to +5%
+        
+        # RL confidence determines how much we trust our signals
+        # High confidence → apply full signal adjustment
+        # Low confidence → reduce signal adjustment
+        rl_weight = min(rl_confidence * 1.5, 1.0)  # Scale up, cap at 1.0
         
         # Combine adjustments
-        model_prob = base_prob + (sentiment_adj + confidence_adj) * rl_weight * 2
+        # The total adjustment creates our edge over the market
+        total_adj = (sentiment_adj + alignment_boost) * rl_weight
+        
+        # Apply adjustment based on sentiment direction
+        if sentiment_delta > 0:
+            # Bullish: we think YES is underpriced
+            model_prob = base_prob + abs(total_adj)
+        else:
+            # Bearish: we think YES is overpriced (NO is underpriced)
+            model_prob = base_prob - abs(total_adj)
         
         # Clamp to valid range
-        return max(0.01, min(0.99, model_prob))
+        return max(0.05, min(0.95, model_prob))
     
     def _get_portfolio_state(self) -> Dict:
         """
