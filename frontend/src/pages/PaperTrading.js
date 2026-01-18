@@ -854,6 +854,227 @@ const SizingAnalyticsDashboard = ({ positions, trades }) => {
   );
 };
 
+// Historical Analytics Chart Component
+const HistoricalAnalyticsChart = () => {
+  const [historyData, setHistoryData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeChart, setActiveChart] = useState('efficiency');
+  
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+  
+  const fetchHistory = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API}/paper/analytics/history?limit=20`);
+      setHistoryData(response.data);
+    } catch (error) {
+      console.error('Error fetching analytics history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  if (loading) {
+    return (
+      <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <LineChartIcon className="w-5 h-5 text-cyan-400" />Historical Analytics
+        </h3>
+        <div className="flex items-center justify-center py-8">
+          <RefreshCw className="w-6 h-6 text-white/40 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+  
+  const chartData = historyData?.chart_data || {};
+  const sessionsCount = historyData?.sessions_count || 0;
+  
+  if (sessionsCount === 0) {
+    return (
+      <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <LineChartIcon className="w-5 h-5 text-cyan-400" />Historical Analytics
+        </h3>
+        <p className="text-white/40 text-center py-4">
+          No historical data yet. Complete a few trading sessions to see trends over time.
+        </p>
+      </div>
+    );
+  }
+  
+  // Prepare efficiency data
+  const efficiencyData = chartData.efficiency_trend || [];
+  
+  // Prepare oracle win rate data (combined)
+  const oracleData = (chartData.oracle_win_rates?.high || []).map((item, idx) => ({
+    label: item.label,
+    'High Trust': item.win_rate,
+    'Medium': chartData.oracle_win_rates?.medium?.[idx]?.win_rate || 0,
+    'Low Trust': chartData.oracle_win_rates?.low?.[idx]?.win_rate || 0,
+  }));
+  
+  // Session overview data
+  const sessionData = (chartData.sessions || []).map(s => ({
+    label: s.label,
+    pnl: s.total_pnl,
+    trades: s.total_trades,
+    winRate: s.win_rate
+  }));
+  
+  return (
+    <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <LineChartIcon className="w-5 h-5 text-cyan-400" />Historical Analytics
+          <span className="text-xs text-white/40 ml-2">({sessionsCount} sessions)</span>
+        </h3>
+        <button 
+          onClick={fetchHistory}
+          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
+      
+      {/* Chart Type Tabs */}
+      <div className="flex gap-2 mb-4">
+        {[
+          { id: 'efficiency', label: 'Sizing Efficiency', icon: Scale },
+          { id: 'oracle', label: 'Win Rate by Oracle', icon: AlertTriangle },
+          { id: 'sessions', label: 'Session P&L', icon: TrendingUp }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveChart(tab.id)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              activeChart === tab.id 
+                ? 'bg-cyan-500 text-white' 
+                : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <tab.icon className="w-3 h-3" />{tab.label}
+          </button>
+        ))}
+      </div>
+      
+      {/* Sizing Efficiency Chart */}
+      {activeChart === 'efficiency' && (
+        <div>
+          <p className="text-xs text-white/50 mb-3">
+            Shows what % of Kelly-calculated size was actually used (lower = more conservative caps applied)
+          </p>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={efficiencyData}>
+              <defs>
+                <linearGradient id="efficiencyGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+              <XAxis dataKey="label" tick={{ fill: '#ffffff60', fontSize: 10 }} />
+              <YAxis tick={{ fill: '#ffffff60', fontSize: 10 }} domain={[0, 100]} unit="%" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #ffffff20', borderRadius: '8px' }}
+                labelStyle={{ color: '#ffffff' }}
+                formatter={(value) => [`${value.toFixed(1)}%`, 'Efficiency']}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="efficiency" 
+                stroke="#8b5cf6" 
+                strokeWidth={2}
+                fill="url(#efficiencyGradient)" 
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      
+      {/* Oracle Win Rate Chart */}
+      {activeChart === 'oracle' && (
+        <div>
+          <p className="text-xs text-white/50 mb-3">
+            Win rates by oracle trust level: High (≥0.9), Medium (0.6-0.9), Low (&lt;0.6)
+          </p>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={oracleData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+              <XAxis dataKey="label" tick={{ fill: '#ffffff60', fontSize: 10 }} />
+              <YAxis tick={{ fill: '#ffffff60', fontSize: 10 }} domain={[0, 100]} unit="%" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #ffffff20', borderRadius: '8px' }}
+                labelStyle={{ color: '#ffffff' }}
+                formatter={(value) => [`${value.toFixed(1)}%`]}
+              />
+              <Legend wrapperStyle={{ fontSize: '10px' }} />
+              <Line type="monotone" dataKey="High Trust" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="Medium" stroke="#eab308" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="Low Trust" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      
+      {/* Session P&L Chart */}
+      {activeChart === 'sessions' && (
+        <div>
+          <p className="text-xs text-white/50 mb-3">
+            Total P&L and trade count per session
+          </p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={sessionData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+              <XAxis dataKey="label" tick={{ fill: '#ffffff60', fontSize: 10 }} />
+              <YAxis tick={{ fill: '#ffffff60', fontSize: 10 }} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #ffffff20', borderRadius: '8px' }}
+                labelStyle={{ color: '#ffffff' }}
+                formatter={(value, name) => [
+                  name === 'pnl' ? `$${value.toFixed(2)}` : value,
+                  name === 'pnl' ? 'P&L' : name === 'trades' ? 'Trades' : 'Win Rate'
+                ]}
+              />
+              <Bar dataKey="pnl" name="P&L">
+                {sessionData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#22c55e' : '#ef4444'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      
+      {/* Summary Stats */}
+      <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-3 gap-4">
+        <div className="text-center">
+          <p className="text-xs text-white/40">Avg Efficiency</p>
+          <p className="text-lg font-bold text-purple-400">
+            {efficiencyData.length > 0 
+              ? (efficiencyData.reduce((s, d) => s + d.efficiency, 0) / efficiencyData.length).toFixed(0)
+              : 0}%
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-white/40">Best Session P&L</p>
+          <p className="text-lg font-bold text-green-400">
+            ${sessionData.length > 0 ? Math.max(...sessionData.map(s => s.pnl)).toFixed(2) : '0.00'}
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-white/40">Total Trades</p>
+          <p className="text-lg font-bold text-cyan-400">
+            {sessionData.reduce((s, d) => s + d.trades, 0)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PositionCard = ({ position, onViewSizing }) => {
   const pnlPct = position.unrealized_pnl_pct || 0;
   const isProfit = pnlPct >= 0;
