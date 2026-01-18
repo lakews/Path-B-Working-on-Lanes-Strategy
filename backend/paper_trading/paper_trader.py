@@ -2055,16 +2055,16 @@ class PaperTrader:
                 # Log sizing decision
                 if sizing_result['should_trade']:
                     breakdown = sizing_result.get('breakdown', sizing_result.get('sizing_breakdown', {}))
-                    logger.debug(
-                        f"[POLYMARKET SIZER] ${sizing_result['position_size']:.2f} | "
+                    logger.info(
+                        f"[POLYMARKET SIZER] ACCEPT ${sizing_result['position_size']:.2f} | "
                         f"Edge: {breakdown.get('edge_pct', 0):.1f}% | "
                         f"Util: {breakdown.get('utilization', 0):.1%} | "
                         f"Oracle: {breakdown.get('oracle_mult', 1):.2f}"
                     )
                 else:
                     breakdown = sizing_result.get('breakdown', sizing_result.get('sizing_breakdown', {}))
-                    logger.debug(
-                        f"[POLYMARKET SIZER] REJECTED: {breakdown.get('reject_reason', 'unknown')} - "
+                    logger.info(
+                        f"[POLYMARKET SIZER] REJECT: {breakdown.get('reject_reason', 'unknown')} - "
                         f"{breakdown.get('reject_detail', '')}"
                     )
                 
