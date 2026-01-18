@@ -1031,7 +1031,7 @@ const PaperTrading = () => {
   };
 
   useEffect(() => {
-    fetchData(); fetchSessions(); fetchRlStats(); fetchOptimizerParams(); fetchAiStats(); fetchCumulativeStats();
+    fetchData(); fetchSessions(); fetchRlStats(); fetchOptimizerParams(); fetchAiStats(); fetchCumulativeStats(); fetchExitModeConfig();
     const pollingInterval = wsConnected ? 10000 : 5000;
     const interval = setInterval(() => {
       fetchData(); fetchCumulativeStats(); fetchSavedConfig();
