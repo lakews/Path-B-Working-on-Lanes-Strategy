@@ -681,6 +681,7 @@ SENTIMENT
 GET  /api/sentiment/enhanced/{market_id}    Full sentiment analysis
 GET  /api/sentiment/momentum/{market_id}    Sentiment momentum (1h/6h/24h)
 GET  /api/sentiment/github/{market_id}      GitHub analysis (crypto only)
+GET  /api/sentiment/llm/stats               NEW: Smart LLM cache statistics
 
 MARKETS
 ───────
@@ -700,6 +701,6 @@ GET  /api/analytics                  Real-time analytics
 
 ---
 
-*Document Version: 2.0*
-*Generated: January 2026*
+*Document Version: 2.1*
+*Updated: January 2026 - Added Hybrid Smart-Cache LLM Module*
 *File: /app/docs/SYSTEM_ARCHITECTURE.md*
