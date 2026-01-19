@@ -2271,10 +2271,10 @@ class PaperTrader:
         # ================================================================
         p_sentiment = sentiment
         
-        # Neutral band: 0.40-0.60 contributes ZERO
-        NEUTRAL_LOW = 0.40
-        NEUTRAL_HIGH = 0.60
-        SENTIMENT_WEIGHT = 0.25
+        # Neutral band: 0.45-0.55 contributes ZERO (narrowed from 0.40-0.60)
+        NEUTRAL_LOW = 0.45
+        NEUTRAL_HIGH = 0.55
+        SENTIMENT_WEIGHT = 0.40  # Boosted from 0.25
         
         is_sentiment_neutral = NEUTRAL_LOW <= p_sentiment <= NEUTRAL_HIGH
         
