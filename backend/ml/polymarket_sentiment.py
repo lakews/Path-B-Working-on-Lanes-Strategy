@@ -457,18 +457,90 @@ class PolymarketSentimentExtractor:
             logger.debug(f"Price velocity error: {e}")
             return {'valid': False, 'score': 0.5, 'details': {'error': str(e)}}
     
-    def _calculate_whale_signal(self, market_id: str, trades: List[Dict] = None) -> Dict:
+    def _calculate_whale_signal(self, market_id: str, trades: List[Dict] = None, order_book: Dict = None) -> Dict:
         """
-        Detect and analyze large trades (whale activity).
+        Detect and analyze large orders (whale activity).
         
-        Whale buys = bullish signal
-        Whale sells = bearish signal
+        Primary: From order book large orders (always available)
+        Secondary: From trades if available
+        
+        Large buy orders = bullish signal
+        Large sell orders = bearish signal
         """
+        # Try order book first - look for large orders
+        if order_book:
+            try:
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
+                
+                if bids and asks:
+                    whale_threshold = self.config['whale_threshold_usd']
+                    large_threshold = self.config['large_trade_threshold']
+                    
+                    # Find large bid orders (whale buys)
+                    large_bids = 0
+                    whale_bids = 0
+                    for bid in bids[:20]:
+                        size = float(bid.get('size', 0))
+                        price = float(bid.get('price', 0.5))
+                        value = size * price
+                        if value >= whale_threshold:
+                            whale_bids += value
+                        elif value >= large_threshold:
+                            large_bids += value
+                    
+                    # Find large ask orders (whale sells)
+                    large_asks = 0
+                    whale_asks = 0
+                    for ask in asks[:20]:
+                        size = float(ask.get('size', 0))
+                        price = float(ask.get('price', 0.5))
+                        value = size * price
+                        if value >= whale_threshold:
+                            whale_asks += value
+                        elif value >= large_threshold:
+                            large_asks += value
+                    
+                    total_whale = whale_bids + whale_asks
+                    total_large = large_bids + large_asks
+                    
+                    # Calculate signal
+                    if total_whale > 0:
+                        whale_ratio = whale_bids / total_whale
+                        whale_signal = 0.5 + (whale_ratio - 0.5) * 0.4
+                    else:
+                        whale_signal = 0.5
+                    
+                    if total_large > 0:
+                        large_ratio = large_bids / total_large
+                        large_signal = 0.5 + (large_ratio - 0.5) * 0.2
+                    else:
+                        large_signal = 0.5
+                    
+                    combined = whale_signal * 0.7 + large_signal * 0.3
+                    
+                    return {
+                        'valid': True,
+                        'score': round(max(0.3, min(0.7, combined)), 4),
+                        'source': 'order_book_whales',
+                        'details': {
+                            'whale_bids': round(whale_bids, 2),
+                            'whale_asks': round(whale_asks, 2),
+                            'large_bids': round(large_bids, 2),
+                            'large_asks': round(large_asks, 2),
+                            'whale_ratio': round(whale_bids / total_whale, 4) if total_whale > 0 else 0.5,
+                            'interpretation': 'bullish' if whale_bids > whale_asks else ('bearish' if whale_asks > whale_bids else 'neutral')
+                        }
+                    }
+            except Exception as e:
+                logger.debug(f"Order book whale analysis error: {e}")
+        
+        # Fallback to trades
         if not trades:
             trades = self._trade_history.get(market_id, [])[-50:]
         
         if not trades:
-            return {'valid': False, 'score': 0.5, 'details': {'reason': 'no_trades'}}
+            return {'valid': False, 'score': 0.5, 'details': {'reason': 'no_data'}}
         
         try:
             whale_threshold = self.config['whale_threshold_usd']
