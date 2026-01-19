@@ -2348,6 +2348,31 @@ class PaperTrader:
                 logger.info(f"[LONGSHOT_CAP] Capping model_prob from {model_prob:.4f} to {max_allowed:.4f} (market={p_market:.4f})")
                 model_prob = max_allowed
         
+        # ================================================================
+        # NEAR-LOCK MARKET SAFETY CHECK
+        # ================================================================
+        # For markets > 95%, cap the model's downside to prevent NO spam
+        # The model cannot predict less than (market - 2*(1-market))
+        if p_market > 0.95:
+            min_allowed = 1 - (1 - p_market) * 2.0
+            if model_prob < min_allowed:
+                logger.info(f"[NEARLOCK_CAP] Raising model_prob from {model_prob:.4f} to {min_allowed:.4f} (market={p_market:.4f})")
+                model_prob = min_allowed
+        
+        # ================================================================
+        # NORMAL MARKET DIVERGENCE CHECK
+        # ================================================================
+        # For normal markets (5-95%), if sentiment is the main driver of divergence
+        # and microstructure doesn't confirm, reduce the divergence
+        if 0.05 <= p_market <= 0.95:
+            max_divergence = 0.10  # Model can diverge max 10% from market
+            if model_prob > p_market + max_divergence:
+                logger.info(f"[DIVERGENCE_CAP] Capping model_prob from {model_prob:.4f} to {p_market + max_divergence:.4f} (market={p_market:.4f})")
+                model_prob = p_market + max_divergence
+            elif model_prob < p_market - max_divergence:
+                logger.info(f"[DIVERGENCE_CAP] Raising model_prob from {model_prob:.4f} to {p_market - max_divergence:.4f} (market={p_market:.4f})")
+                model_prob = p_market - max_divergence
+        
         # Allow very small probabilities - remove artificial floors
         final_prob = max(0.0001, min(0.9999, model_prob))
         
