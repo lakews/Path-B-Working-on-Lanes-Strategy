@@ -2,8 +2,8 @@
 Hybrid Smart-Cache LLM Sentiment Module for APEX TRADER
 
 This module implements the "Hybrid Smart-Cache" strategy for LLM sentiment analysis:
-- "Hot" Markets (High Volume): Refresh LLM opinion every 10 minutes
-- "Cold" Markets (Low Volume): Refresh LLM opinion every 60 minutes
+- "Hot" Markets (High Volume): Refresh LLM opinion more frequently (configurable)
+- "Cold" Markets (Low Volume): Refresh LLM opinion less frequently (configurable)
 - Result: 100% market coverage without 100% of the cost
 
 Architecture Position: Step 1 (Data Collection)
@@ -22,19 +22,17 @@ from config import config
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# CONFIGURATION
+# DEFAULT CONFIGURATION (Can be updated at runtime)
 # ==============================================================================
 
-# Cache TTL based on market activity
-HOT_MARKET_TTL_SECONDS = 600    # 10 minutes for high-volume markets
-COLD_MARKET_TTL_SECONDS = 3600  # 60 minutes for low-volume markets
+DEFAULT_CONFIG = {
+    'hot_market_ttl_seconds': 600,        # 10 minutes for high-volume markets
+    'cold_market_ttl_seconds': 3600,      # 60 minutes for low-volume markets
+    'hot_market_volume_threshold': 50000, # $50,000 in 24h volume
+    'llm_timeout_seconds': 10.0,
+    'estimated_cost_per_call': 0.002,     # ~$0.002 per GPT-4o-mini call
+}
 
-# Volume threshold to determine "hot" vs "cold" markets
-# Markets with 24h volume above this are considered "hot"
-HOT_MARKET_VOLUME_THRESHOLD = 50000  # $50,000 in 24h volume
-
-# LLM timeout
-LLM_TIMEOUT_SECONDS = 10.0
 
 # ==============================================================================
 # SMART CACHE IMPLEMENTATION
@@ -44,24 +42,44 @@ class SmartLLMCache:
     """
     Intelligent cache that adjusts TTL based on market activity.
     
-    Hot markets (high volume) = 10 min TTL (catch breaking news)
-    Cold markets (low volume) = 60 min TTL (save money)
+    Hot markets (high volume) = shorter TTL (catch breaking news)
+    Cold markets (low volume) = longer TTL (save money)
     """
     
     def __init__(self):
         self._cache: Dict[str, Dict] = {}
+        self._config = DEFAULT_CONFIG.copy()
         self._stats = {
             'hits': 0,
             'misses': 0,
             'hot_refreshes': 0,
-            'cold_refreshes': 0
+            'cold_refreshes': 0,
+            'hot_market_calls': 0,
+            'cold_market_calls': 0,
         }
+    
+    def update_config(self, new_config: Dict) -> Dict:
+        """Update cache configuration"""
+        for key in ['hot_market_ttl_seconds', 'cold_market_ttl_seconds', 
+                    'hot_market_volume_threshold', 'llm_timeout_seconds',
+                    'estimated_cost_per_call']:
+            if key in new_config:
+                self._config[key] = new_config[key]
+        return self._config.copy()
+    
+    def get_config(self) -> Dict:
+        """Get current configuration"""
+        return self._config.copy()
     
     def _get_ttl(self, volume_24h: float) -> int:
         """Determine TTL based on market volume"""
-        if volume_24h >= HOT_MARKET_VOLUME_THRESHOLD:
-            return HOT_MARKET_TTL_SECONDS
-        return COLD_MARKET_TTL_SECONDS
+        if volume_24h >= self._config['hot_market_volume_threshold']:
+            return self._config['hot_market_ttl_seconds']
+        return self._config['cold_market_ttl_seconds']
+    
+    def _is_hot_market(self, volume_24h: float) -> bool:
+        """Check if market qualifies as hot"""
+        return volume_24h >= self._config['hot_market_volume_threshold']
     
     def _is_expired(self, entry: Dict, volume_24h: float) -> bool:
         """Check if cache entry is expired based on current volume"""
@@ -88,7 +106,7 @@ class SmartLLMCache:
         
         if self._is_expired(entry, volume_24h):
             self._stats['misses'] += 1
-            is_hot = volume_24h >= HOT_MARKET_VOLUME_THRESHOLD
+            is_hot = self._is_hot_market(volume_24h)
             if is_hot:
                 self._stats['hot_refreshes'] += 1
             else:
@@ -98,14 +116,25 @@ class SmartLLMCache:
         self._stats['hits'] += 1
         return (entry['sentiment'], entry['confidence'])
     
-    def set(self, market_id: str, sentiment: float, confidence: float, reasoning: str = ""):
-        """Store sentiment in cache with timestamp"""
+    def set(self, market_id: str, sentiment: float, confidence: float, 
+            reasoning: str = "", volume_24h: float = 0):
+        """Store sentiment in cache with timestamp and market type"""
+        is_hot = self._is_hot_market(volume_24h)
+        
         self._cache[market_id] = {
             'sentiment': sentiment,
             'confidence': confidence,
             'reasoning': reasoning,
-            'timestamp': datetime.now(timezone.utc)
+            'timestamp': datetime.now(timezone.utc),
+            'volume_24h': volume_24h,
+            'is_hot_market': is_hot,
         }
+        
+        # Track call types
+        if is_hot:
+            self._stats['hot_market_calls'] += 1
+        else:
+            self._stats['cold_market_calls'] += 1
     
     def get_reasoning(self, market_id: str) -> str:
         """Get cached reasoning for a market"""
@@ -114,14 +143,32 @@ class SmartLLMCache:
         return ''
     
     def get_stats(self) -> Dict:
-        """Get cache performance statistics"""
+        """Get cache performance statistics with cost savings"""
         total = self._stats['hits'] + self._stats['misses']
         hit_rate = self._stats['hits'] / total if total > 0 else 0
+        
+        # Calculate cost savings
+        cost_per_call = self._config['estimated_cost_per_call']
+        api_calls_made = self._stats['hot_market_calls'] + self._stats['cold_market_calls']
+        api_calls_saved = self._stats['hits']
+        cost_saved = api_calls_saved * cost_per_call
+        cost_spent = api_calls_made * cost_per_call
+        
+        # Count hot vs cold markets in cache
+        hot_markets = sum(1 for m in self._cache.values() if m.get('is_hot_market', False))
+        cold_markets = len(self._cache) - hot_markets
+        
         return {
             **self._stats,
             'total_requests': total,
             'hit_rate': round(hit_rate, 3),
-            'cache_size': len(self._cache)
+            'cache_size': len(self._cache),
+            'hot_markets_cached': hot_markets,
+            'cold_markets_cached': cold_markets,
+            'api_calls_made': api_calls_made,
+            'api_calls_saved': api_calls_saved,
+            'estimated_cost_spent': round(cost_spent, 4),
+            'estimated_cost_saved': round(cost_saved, 4),
         }
     
     def clear_expired(self, default_volume: float = 0):
@@ -129,15 +176,32 @@ class SmartLLMCache:
         now = datetime.now(timezone.utc)
         expired = []
         for market_id, entry in self._cache.items():
-            # Use cold TTL for cleanup (conservative)
-            age = (now - entry['timestamp']).total_seconds()
-            if age > COLD_MARKET_TTL_SECONDS:
+            volume = entry.get('volume_24h', default_volume)
+            if self._is_expired(entry, volume):
                 expired.append(market_id)
         
         for market_id in expired:
             del self._cache[market_id]
         
         return len(expired)
+    
+    def get_cache_entries(self) -> Dict:
+        """Get all cache entries with metadata"""
+        now = datetime.now(timezone.utc)
+        entries = {}
+        for market_id, entry in self._cache.items():
+            age = (now - entry['timestamp']).total_seconds()
+            ttl = self._get_ttl(entry.get('volume_24h', 0))
+            entries[market_id[:16]] = {
+                'sentiment': entry['sentiment'],
+                'confidence': entry['confidence'],
+                'is_hot': entry.get('is_hot_market', False),
+                'age_seconds': round(age),
+                'ttl_seconds': ttl,
+                'expires_in': max(0, ttl - age),
+                'volume_24h': entry.get('volume_24h', 0),
+            }
+        return entries
 
 
 # ==============================================================================
@@ -203,12 +267,21 @@ RESPONSE: Return ONLY a decimal number between 0.00 and 1.00."""
             logger.warning(f"Could not initialize Smart LLM: {e}")
             return False
     
+    def update_config(self, new_config: Dict) -> Dict:
+        """Update cache configuration"""
+        return self._cache.update_config(new_config)
+    
+    def get_config(self) -> Dict:
+        """Get current configuration"""
+        return self._cache.get_config()
+    
     def _build_prompt(self, question: str, description: str, category: str, 
                       current_price: float, volume_24h: float) -> str:
         """Build context-aware analysis prompt"""
         
         # Determine market activity level for context
-        activity = "HIGH ACTIVITY" if volume_24h >= HOT_MARKET_VOLUME_THRESHOLD else "LOW ACTIVITY"
+        is_hot = self._cache._is_hot_market(volume_24h)
+        activity = "HIGH ACTIVITY" if is_hot else "LOW ACTIVITY"
         
         prompt = f"""PREDICTION MARKET ANALYSIS
 
@@ -279,7 +352,7 @@ Return ONLY a number between 0.00 and 1.00:"""
         divergence_confidence = price_diff * 0.6  # Up to 0.6 additional confidence
         
         # Volume adjustment (high volume markets are more efficient)
-        if volume_24h >= HOT_MARKET_VOLUME_THRESHOLD:
+        if self._cache._is_hot_market(volume_24h):
             # Hot market: reduce confidence in divergence (market is likely efficient)
             volume_factor = 0.7
         else:
@@ -337,11 +410,14 @@ Return ONLY a number between 0.00 and 1.00:"""
             # Build prompt
             prompt = self._build_prompt(question, description, category, current_price, volume_24h)
             
+            # Get timeout from config
+            timeout = self._cache.get_config().get('llm_timeout_seconds', 10.0)
+            
             # Call LLM with timeout
             message = UserMessage(text=prompt)
             response = await asyncio.wait_for(
                 self._gpt_chat.send_message(message),
-                timeout=LLM_TIMEOUT_SECONDS
+                timeout=timeout
             )
             
             # Extract response text
@@ -359,7 +435,7 @@ Return ONLY a number between 0.00 and 1.00:"""
             confidence = self._calculate_confidence(sentiment, current_price, volume_24h)
             
             # Cache result
-            self._cache.set(market_id, sentiment, confidence, response_text[:200])
+            self._cache.set(market_id, sentiment, confidence, response_text[:200], volume_24h)
             
             self._call_count += 1
             logger.debug(f"LLM sentiment for {market_id[:16]}: {sentiment:.2f} (conf: {confidence:.2f})")
@@ -386,12 +462,12 @@ Return ONLY a number between 0.00 and 1.00:"""
             'llm_calls': self._call_count,
             'llm_initialized': self._gpt_chat is not None,
             'init_error': self._init_error,
-            'config': {
-                'hot_market_ttl_seconds': HOT_MARKET_TTL_SECONDS,
-                'cold_market_ttl_seconds': COLD_MARKET_TTL_SECONDS,
-                'hot_market_volume_threshold': HOT_MARKET_VOLUME_THRESHOLD
-            }
+            'config': self._cache.get_config()
         }
+    
+    def get_cache_entries(self) -> Dict:
+        """Get all cache entries"""
+        return self._cache.get_cache_entries()
     
     def clear_expired_cache(self) -> int:
         """Clear expired cache entries, returns count of cleared entries"""
