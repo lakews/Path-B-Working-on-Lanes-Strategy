@@ -189,12 +189,32 @@ if trade_history_points > 20: confidence += 0.2
 
 ---
 
-### 3.3 LLM Sentiment (GPT-4o-mini)
+### 3.3 LLM Sentiment (GPT-4o-mini) - HYBRID SMART-CACHE
 
-**File:** `/app/backend/ml/enhanced_sentiment.py` (lines 421-500)
-**Weight:** Up to 25% (based on confidence)
+**File:** `/app/backend/ml/sentiment_llm.py`
+**Weight:** Up to 35% (based on confidence)
 
-Uses GPT-4o-mini via Emergent integration to analyze market questions:
+Uses GPT-4o-mini via Emergent integration with **Hybrid Smart-Cache** strategy:
+
+**Smart Cache Strategy:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    HYBRID SMART-CACHE                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  "Hot" Markets (Volume > $50,000/24h)                          │
+│  ├── Cache TTL: 10 minutes                                      │
+│  └── Reason: Catch breaking news quickly                        │
+│                                                                 │
+│  "Cold" Markets (Volume < $50,000/24h)                         │
+│  ├── Cache TTL: 60 minutes                                      │
+│  └── Reason: Save API costs on inactive markets                 │
+│                                                                 │
+│  Result: 100% market coverage without 100% of the cost          │
+│  Safety: Returns (0.5, 0.0) on errors → neutral with zero weight│
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 **Prompt Template:**
 ```
@@ -202,31 +222,46 @@ PREDICTION MARKET ANALYSIS
 
 Question: {question}
 Category: {category}
-Current Market Price: {current_price}
+Description: {description}
 
-Analyze this prediction market and estimate the TRUE probability.
+Market Data:
+- Current Price: {current_price} ({current_price*100}% implied probability)
+- 24h Volume: ${volume_24h} (HOT/COLD indicator)
+
+Task: Estimate the TRUE probability of this outcome.
+
 Consider:
-- Is the market price reasonable?
-- What factors might traders be over/under-weighting?
-- Any recent news that could shift probability?
+1. Is the market price ({current_price}) reasonable?
+2. What factors might be over/under-weighted?
+3. Any recent developments that could shift probability?
 
 Return ONLY a number between 0.00 and 1.00
 ```
 
 **Confidence Calculation:**
 ```python
-# Confidence based on disagreement with market
-price_diff = abs(llm_sentiment - current_price)
-confidence = 0.3 + (price_diff * 0.7)  # 0.3-1.0 range
+# Base confidence
+confidence = 0.3
 
-# If LLM agrees with market → low confidence (not adding value)
-# If LLM disagrees → high confidence (potential alpha)
+# Price divergence component (more divergence = potential alpha)
+price_diff = abs(llm_sentiment - market_price)
+divergence_confidence = price_diff * 0.6
+
+# Volume adjustment (hot markets are more efficient)
+if volume_24h >= 50000:  # Hot market
+    volume_factor = 0.7  # Reduce confidence in divergence
+else:  # Cold market
+    volume_factor = 1.0  # Higher confidence in divergence
+
+confidence += divergence_confidence * volume_factor
+# Final range: 0.1 - 0.9
 ```
 
-**Rate Limiting:**
-- Minimum 1 second between calls
-- Results cached for 5 minutes
-- Skipped if rate limited (returns None → 0 confidence)
+**API Endpoint:**
+```
+GET /api/sentiment/llm/stats
+Returns: cache hit/miss rates, call counts, configuration
+```
 
 ---
 
