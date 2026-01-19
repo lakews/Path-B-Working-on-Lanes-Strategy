@@ -2292,10 +2292,11 @@ class PaperTrader:
         # Without renormalization: neutral sentiment (0.5) pulls everything to 0.5
         # With renormalization: neutral sentiment is excluded, market+RL decide
         
-        # Base max weights
-        max_w_market = 0.50      # Market is generally efficient
-        max_w_sentiment = 0.25   # AI sentiment analysis  
-        max_w_rl = 0.25          # DQN reinforcement learning
+        # Base max weights - MARKET DOMINANT
+        # Reduced sentiment weight to prevent bullish bias
+        max_w_market = 0.70      # Market is generally efficient - trust it more
+        max_w_sentiment = 0.10   # AI sentiment - reduced due to bullish bias  
+        max_w_rl = 0.20          # DQN reinforcement learning
         
         # ================================================================
         # STEP 1: Determine active weights (filter out neutral signals)
@@ -2304,8 +2305,9 @@ class PaperTrader:
         # Market always participates (it's the baseline)
         w_market = max_w_market
         
-        # Sentiment: If neutral (0.45-0.55), weight = 0 (abstains from voting)
-        is_sentiment_neutral = 0.45 <= p_sentiment <= 0.55
+        # Sentiment: If near-neutral (0.40-0.60), weight = 0 (abstains from voting)
+        # Widened neutral band to exclude more "noise" sentiment
+        is_sentiment_neutral = 0.40 <= p_sentiment <= 0.60
         if is_sentiment_neutral:
             w_sentiment = 0.0
             sentiment_status = 'neutral_excluded'
