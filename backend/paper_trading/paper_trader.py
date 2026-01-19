@@ -2270,6 +2270,9 @@ class PaperTrader:
         # Clamp P_rl to valid range
         p_rl = max(0.01, min(0.99, p_rl))
         
+        # Log components for debugging
+        logger.debug(f"[PROB_COMPONENTS] p_market={p_market:.4f}, p_sentiment={p_sentiment:.4f}, p_rl={p_rl:.4f} (action={rl_action}, dev={scaled_deviation:.4f})")
+        
         # ================================================================
         # WEIGHTED ENSEMBLE WITH RENORMALIZATION
         # ================================================================
