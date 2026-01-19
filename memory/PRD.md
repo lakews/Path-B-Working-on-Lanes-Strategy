@@ -1217,12 +1217,12 @@ The RL model learns from completed backtests. To train it:
 ### P0 - Critical
 - None (all critical issues resolved)
 
-### P1 - High Priority
+### P1 - High Priority  
+- **Polymarket Momentum Auto-Seeding**: Fetch price history on startup to enable momentum signals immediately (currently takes time to build up - verified 81 markets building)
 - **Monitor Strategy Distribution**: Run longer sessions to verify Arbitrage trades increase with new 0.03/0.97 thresholds
-- **Delta Neutral Strategy Fix**: Currently capturing zero trades; consider UI-configurable price range
-- **Polymarket Momentum Auto-Seeding**: Fetch price history on startup to enable momentum signals immediately
 
 ### P2 - Medium Priority  
+- **Delta Neutral Strategy Fix**: Currently capturing zero trades; consider UI-configurable price range
 - **Position Size Max Cap**: Verify positions reach configured max under optimal conditions
 - **Circuit Breaker Force-Close**: Revisit behavior when breaker triggers
 
@@ -1232,6 +1232,12 @@ The RL model learns from completed backtests. To train it:
 - **Adaptive Sentiment Thresholds**: Auto-adjust based on win rates
 - **Dynamic Kelly Multiplier**: Adjust based on Oracle Risk
 - **ESLint Warnings**: Non-blocking frontend warnings
+
+### Verified Items (January 19, 2026)
+- ✅ **Bayesian Log-Odds Model**: Trade distribution now **72% YES / 28% NO** - healthy and balanced (previously ~99% YES bias)
+- ✅ **Polymarket Time-Based Signals**: Fully implemented (`_calculate_price_momentum`, `_calculate_volume_momentum`, `_calculate_price_velocity`) - just needs time to accumulate data points
+- ✅ **Trade History API**: Working correctly after `numpy.bool` serialization fix
+- ✅ **LLM Smart-Cache**: Working and configurable via UI
 
 ---
 
