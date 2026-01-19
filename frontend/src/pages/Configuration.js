@@ -649,6 +649,316 @@ const Configuration = () => {
         </div>
       )}
 
+      {/* LLM Cache Analytics Tab */}
+      {activeTab === 'llm' && (
+        <div className="space-y-6">
+          {/* Header with refresh button */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <Brain className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">LLM Smart-Cache Analytics</h2>
+                <p className="text-sm text-white/50">Hybrid caching based on market activity</p>
+              </div>
+            </div>
+            <button onClick={fetchLlmStats} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition">
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+          </div>
+
+          {/* How it works info box */}
+          <div className="rounded-xl bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30 p-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-white/80">
+                <p className="font-semibold text-purple-300 mb-1">Hybrid Smart-Cache Strategy</p>
+                <ul className="space-y-1 text-white/70">
+                  <li className="flex items-center gap-2">
+                    <Flame className="w-3 h-3 text-orange-400" />
+                    <span><strong className="text-orange-400">Hot Markets</strong> (high volume): Shorter cache TTL to catch breaking news</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Snowflake className="w-3 h-3 text-cyan-400" />
+                    <span><strong className="text-cyan-400">Cold Markets</strong> (low volume): Longer cache TTL to save API costs</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Shield className="w-3 h-3 text-green-400" />
+                    <span><strong className="text-green-400">Safety</strong>: Returns neutral (0.5, 0.0) on errors → zero weight in fusion</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Cache Hit Rate */}
+            <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Database className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs text-white/50">Cache Hit Rate</span>
+              </div>
+              <div className="text-2xl font-bold text-white">
+                {llmStats?.stats?.hit_rate !== undefined ? `${(llmStats.stats.hit_rate * 100).toFixed(1)}%` : '-'}
+              </div>
+              <div className="text-xs text-white/40 mt-1">
+                {llmStats?.stats?.hits || 0} hits / {llmStats?.stats?.total_requests || 0} requests
+              </div>
+            </div>
+
+            {/* Cache Size */}
+            <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Layers className="w-4 h-4 text-purple-400" />
+                <span className="text-xs text-white/50">Cache Size</span>
+              </div>
+              <div className="text-2xl font-bold text-white">
+                {llmStats?.stats?.cache_size || 0}
+              </div>
+              <div className="flex gap-2 mt-1">
+                <span className="text-xs text-orange-400">{llmStats?.stats?.hot_markets_cached || 0} hot</span>
+                <span className="text-xs text-cyan-400">{llmStats?.stats?.cold_markets_cached || 0} cold</span>
+              </div>
+            </div>
+
+            {/* Cost Spent */}
+            <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="w-4 h-4 text-red-400" />
+                <span className="text-xs text-white/50">Est. Cost Spent</span>
+              </div>
+              <div className="text-2xl font-bold text-white">
+                ${llmStats?.stats?.estimated_cost_spent?.toFixed(4) || '0.00'}
+              </div>
+              <div className="text-xs text-white/40 mt-1">
+                {llmStats?.stats?.api_calls_made || 0} API calls
+              </div>
+            </div>
+
+            {/* Cost Saved */}
+            <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-green-400" />
+                <span className="text-xs text-white/50">Est. Cost Saved</span>
+              </div>
+              <div className="text-2xl font-bold text-green-400">
+                ${llmStats?.stats?.estimated_cost_saved?.toFixed(4) || '0.00'}
+              </div>
+              <div className="text-xs text-white/40 mt-1">
+                {llmStats?.stats?.api_calls_saved || 0} calls avoided
+              </div>
+            </div>
+          </div>
+
+          {/* Configuration */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Hot Market Settings */}
+            <div className="rounded-xl bg-white/5 border border-orange-500/30 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                  <Flame className="w-5 h-5 text-orange-400" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Hot Markets</h3>
+                  <p className="text-xs text-white/50">High-volume market settings</p>
+                </div>
+              </div>
+              
+              {/* Volume Threshold */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm text-white/60 flex items-center gap-1">
+                    Volume Threshold
+                    <span className="group relative">
+                      <Info className="w-3 h-3 text-white/30 cursor-help" />
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-black/90 text-xs text-white rounded opacity-0 group-hover:opacity-100 whitespace-nowrap transition pointer-events-none">
+                        Markets above this 24h volume are "hot"
+                      </span>
+                    </span>
+                  </label>
+                  <span className="text-orange-400 font-bold">${(llmConfig.hot_market_volume_threshold || 50000).toLocaleString()}</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={llmConfig.hot_market_volume_threshold || 50000} 
+                  onChange={(e) => setLlmConfig({...llmConfig, hot_market_volume_threshold: parseInt(e.target.value)})}
+                  className="w-full h-2 bg-white/10 rounded-lg accent-orange-500" 
+                  min="10000" max="500000" step="10000" 
+                />
+                <div className="flex justify-between text-xs text-white/30 mt-1">
+                  <span>$10k</span>
+                  <span>$500k</span>
+                </div>
+              </div>
+
+              {/* Hot TTL */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm text-white/60 flex items-center gap-1">
+                    Cache TTL
+                    <span className="group relative">
+                      <Info className="w-3 h-3 text-white/30 cursor-help" />
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-black/90 text-xs text-white rounded opacity-0 group-hover:opacity-100 whitespace-nowrap transition pointer-events-none">
+                        How long to cache LLM results for hot markets
+                      </span>
+                    </span>
+                  </label>
+                  <span className="text-orange-400 font-bold">{Math.floor((llmConfig.hot_market_ttl_seconds || 600) / 60)} min</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={llmConfig.hot_market_ttl_seconds || 600} 
+                  onChange={(e) => setLlmConfig({...llmConfig, hot_market_ttl_seconds: parseInt(e.target.value)})}
+                  className="w-full h-2 bg-white/10 rounded-lg accent-orange-500" 
+                  min="60" max="1800" step="60" 
+                />
+                <div className="flex justify-between text-xs text-white/30 mt-1">
+                  <span>1 min</span>
+                  <span>30 min</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cold Market Settings */}
+            <div className="rounded-xl bg-white/5 border border-cyan-500/30 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                  <Snowflake className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Cold Markets</h3>
+                  <p className="text-xs text-white/50">Low-volume market settings</p>
+                </div>
+              </div>
+
+              {/* Cold TTL */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm text-white/60 flex items-center gap-1">
+                    Cache TTL
+                    <span className="group relative">
+                      <Info className="w-3 h-3 text-white/30 cursor-help" />
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-black/90 text-xs text-white rounded opacity-0 group-hover:opacity-100 whitespace-nowrap transition pointer-events-none">
+                        How long to cache LLM results for cold markets
+                      </span>
+                    </span>
+                  </label>
+                  <span className="text-cyan-400 font-bold">{Math.floor((llmConfig.cold_market_ttl_seconds || 3600) / 60)} min</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={llmConfig.cold_market_ttl_seconds || 3600} 
+                  onChange={(e) => setLlmConfig({...llmConfig, cold_market_ttl_seconds: parseInt(e.target.value)})}
+                  className="w-full h-2 bg-white/10 rounded-lg accent-cyan-500" 
+                  min="300" max="7200" step="300" 
+                />
+                <div className="flex justify-between text-xs text-white/30 mt-1">
+                  <span>5 min</span>
+                  <span>2 hours</span>
+                </div>
+              </div>
+
+              {/* API Timeout */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm text-white/60 flex items-center gap-1">
+                    API Timeout
+                    <span className="group relative">
+                      <Info className="w-3 h-3 text-white/30 cursor-help" />
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-black/90 text-xs text-white rounded opacity-0 group-hover:opacity-100 whitespace-nowrap transition pointer-events-none">
+                        Max wait time for LLM response
+                      </span>
+                    </span>
+                  </label>
+                  <span className="text-cyan-400 font-bold">{llmConfig.llm_timeout_seconds || 10}s</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={llmConfig.llm_timeout_seconds || 10} 
+                  onChange={(e) => setLlmConfig({...llmConfig, llm_timeout_seconds: parseFloat(e.target.value)})}
+                  className="w-full h-2 bg-white/10 rounded-lg accent-cyan-500" 
+                  min="5" max="30" step="1" 
+                />
+                <div className="flex justify-between text-xs text-white/30 mt-1">
+                  <span>5s</span>
+                  <span>30s</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <button 
+              onClick={saveLlmConfig} 
+              disabled={savingLlmConfig}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-500 hover:bg-purple-600 text-white font-semibold transition disabled:opacity-50"
+            >
+              {savingLlmConfig ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Save LLM Config
+            </button>
+          </div>
+
+          {/* Cache Entries Table */}
+          {llmStats?.cache_entries && Object.keys(llmStats.cache_entries).length > 0 && (
+            <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Database className="w-5 h-5 text-purple-400" />
+                <h3 className="text-white font-semibold">Cached Markets</h3>
+                <span className="text-xs text-white/50">({Object.keys(llmStats.cache_entries).length} entries)</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-white/50 border-b border-white/10">
+                      <th className="text-left py-2 px-2">Market ID</th>
+                      <th className="text-center py-2 px-2">Type</th>
+                      <th className="text-right py-2 px-2">Sentiment</th>
+                      <th className="text-right py-2 px-2">Confidence</th>
+                      <th className="text-right py-2 px-2">Age</th>
+                      <th className="text-right py-2 px-2">Expires In</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(llmStats.cache_entries).slice(0, 10).map(([id, entry]) => (
+                      <tr key={id} className="border-b border-white/5 hover:bg-white/5">
+                        <td className="py-2 px-2 text-white/70 font-mono text-xs">{id}...</td>
+                        <td className="py-2 px-2 text-center">
+                          {entry.is_hot ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 text-xs">
+                              <Flame className="w-3 h-3" /> Hot
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 text-xs">
+                              <Snowflake className="w-3 h-3" /> Cold
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 px-2 text-right">
+                          <span className={entry.sentiment > 0.55 ? 'text-green-400' : entry.sentiment < 0.45 ? 'text-red-400' : 'text-white/60'}>
+                            {(entry.sentiment * 100).toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-right text-white/60">{(entry.confidence * 100).toFixed(0)}%</td>
+                        <td className="py-2 px-2 text-right text-white/50">{Math.floor(entry.age_seconds / 60)}m ago</td>
+                        <td className="py-2 px-2 text-right">
+                          <span className={entry.expires_in < 60 ? 'text-red-400' : 'text-green-400'}>
+                            {Math.floor(entry.expires_in / 60)}m
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Market Selection Tab */}
       {activeTab === 'markets' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
