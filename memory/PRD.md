@@ -10,14 +10,15 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Performance**: <100ms execution latency, <50ms ML inference, 500+ trades per 10 minutes (configurable)
 - **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters, time-to-expiry awareness**
 
-## Current Status (January 18, 2026)
+## Current Status (January 19, 2026)
 - **Live Data**: ✅ Working - Uses Polymarket Gamma API for real market data
 - **Paper Trading**: ✅ Working - Dynamic TP/SL framework (Option 4) implemented
 - **Dynamic Exit Params**: ✅ TP = 10% of max gain (capped 0.5%-50%), SL scales with extremeness (-10% to -30%)
 - **Circuit Breaker**: ✅ Fixed - Correctly calculates drawdown including deployed capital
 - **DQN Engine**: ✅ Working - Deep Q-Network with Prioritized Experience Replay
 - **Position Sizing**: ✅ Polymarket-Optimized Position Sizer with full UI breakdown
-- **Sizing Breakdown UI**: ✅ **NEW** Comprehensive modal showing Kelly, Multipliers, and Caps
+- **Sizing Breakdown UI**: ✅ Comprehensive modal showing Kelly, Multipliers, and Caps
+- **LLM Sentiment**: ✅ **NEW** Hybrid Smart-Cache (Hot: 10 min, Cold: 60 min TTL)
 - **Strategy Distribution**: ✅ Alpha threshold: <25% or >75%, Delta Neutral: 40%-70%
 - **Time-to-Expiry**: ✅ Strategy adjustments and UI indicators based on expiry
 - **Market Alerts**: ✅ Real-time alerts with configurable volume threshold
