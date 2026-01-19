@@ -2611,16 +2611,18 @@ class PaperTrader:
                 logger.debug(f"Enhanced sentiment error: {e}")
             
             # ================================================================
-            # LAYER 3: EXTERNAL NEWS/SOCIAL (Finnhub - if available)
+            # LAYER 3: EXTERNAL NEWS/SOCIAL (Finnhub - DISABLED until API key)
             # ================================================================
             news_sentiment = 0.5
             social_sentiment = 0.5
-            external_confidence = 0.0
+            external_confidence = 0.0  # DISABLED - set to 0 to exclude from fusion
             news_data = {}
             
-            # Try to get news/social sentiment (non-blocking, with timeout)
-            try:
-                if hasattr(self, 'social_analyzer') and self.social_analyzer:
+            # FINNHUB DISABLED - Uncomment when API key is configured
+            # Check for Finnhub API key before trying
+            finnhub_key = os.environ.get('FINNHUB_API_KEY', '')
+            if finnhub_key and hasattr(self, 'social_analyzer') and self.social_analyzer:
+                try:
                     social_result = await asyncio.wait_for(
                         self.social_analyzer.analyze_market_sentiment(market_data),
                         timeout=2.0
@@ -2635,28 +2637,34 @@ class PaperTrader:
                         'trending_score': social_result.get('trending_score', 0),
                         'sources': social_result.get('sources', [])
                     }
-            except asyncio.TimeoutError:
-                logger.debug(f"External sentiment timeout for {market_id[:16]}")
-            except Exception as e:
-                logger.debug(f"External sentiment error: {e}")
+                except asyncio.TimeoutError:
+                    logger.debug(f"External sentiment timeout for {market_id[:16]}")
+                except Exception as e:
+                    logger.debug(f"External sentiment error: {e}")
             
             external_sentiment = (news_sentiment * 0.6 + social_sentiment * 0.4)
             
             # ================================================================
-            # FINAL SENTIMENT FUSION (5 Layers - Including Polymarket-Native)
+            # FINAL SENTIMENT FUSION (5 Layers)
+            # Uses combined_sentiment from enhanced_sentiment.py as primary
             # ================================================================
             # Get Polymarket-native sentiment from enhanced_data
             polymarket_sentiment = enhanced_data.get('polymarket_sentiment', 0.5)
             polymarket_confidence = enhanced_data.get('polymarket_confidence', 0.0)
             
-            # Calculate weights based on data availability/confidence
-            market_weight = 0.30  # Market microstructure: 30% (reduced from 40%)
-            polymarket_weight = polymarket_confidence * 0.25  # Polymarket-native: up to 25% (NEW)
-            llm_weight = llm_confidence * 0.25  # LLM: up to 25% (reduced from 30%)
-            corr_weight = correlation_strength * 0.10  # Correlation: up to 10%
-            external_weight = external_confidence * 0.10  # External: up to 10%
+            # Get GitHub sentiment if available (for crypto markets)
+            github_sentiment = enhanced_data.get('github_sentiment', 0.5)
+            github_confidence = enhanced_data.get('github_confidence', 0.0)
             
-            total_weight = market_weight + polymarket_weight + llm_weight + corr_weight + external_weight
+            # Calculate weights based on data availability/confidence
+            market_weight = 0.25  # Market microstructure: 25%
+            polymarket_weight = polymarket_confidence * 0.25  # Polymarket-native: up to 25%
+            llm_weight = llm_confidence * 0.25  # LLM: up to 25%
+            corr_weight = correlation_strength * 0.10  # Correlation: up to 10%
+            github_weight = github_confidence * 0.15  # GitHub: up to 15% (crypto only)
+            # external_weight = 0 (Finnhub disabled)
+            
+            total_weight = market_weight + polymarket_weight + llm_weight + corr_weight + github_weight
             
             if total_weight > 0:
                 raw_sentiment = (
@@ -2664,7 +2672,7 @@ class PaperTrader:
                     polymarket_sentiment * polymarket_weight +
                     llm_sentiment * llm_weight +
                     correlation_sentiment * corr_weight +
-                    external_sentiment * external_weight
+                    github_sentiment * github_weight
                 ) / total_weight
             else:
                 raw_sentiment = market_sentiment
