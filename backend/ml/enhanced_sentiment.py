@@ -356,20 +356,48 @@ If you see clear mispricing, diverge from market price."""
         sources_used.append('correlation')
         
         # ================================================================
-        # 4. COMBINE ALL SIGNALS
+        # 4. GITHUB SENTIMENT (for crypto/tech markets)
+        # ================================================================
+        github_sentiment = 0.5
+        github_confidence = 0.0
+        
+        if self.github_sentiment:
+            try:
+                github_result = await self.github_sentiment.analyze_market(market_data)
+                
+                if github_result.get('is_relevant'):
+                    github_sentiment = github_result.get('github_sentiment', 0.5)
+                    github_confidence = github_result.get('github_confidence', 0.0)
+                    
+                    result['github_sentiment'] = github_sentiment
+                    result['github_confidence'] = github_confidence
+                    result['github_signals'] = github_result.get('signals', {})
+                    result['github_repos'] = github_result.get('repos_analyzed', [])
+                    result['github_interpretation'] = github_result.get('interpretation', '')
+                    
+                    if github_confidence > 0.2:
+                        sources_used.append('github')
+                        
+            except Exception as e:
+                logger.debug(f"GitHub sentiment error: {e}")
+        
+        # ================================================================
+        # 5. COMBINE ALL SIGNALS
         # ================================================================
         # Dynamic weighting based on confidence
-        poly_weight = result.get('polymarket_confidence', 0) * 0.35   # Polymarket: 35% max
-        llm_weight = result['llm_confidence'] * 0.40                   # LLM: 40% max  
-        corr_weight = result['correlation_strength'] * 0.25            # Correlation: 25% max
+        poly_weight = result.get('polymarket_confidence', 0) * 0.30   # Polymarket: 30% max
+        llm_weight = result['llm_confidence'] * 0.35                   # LLM: 35% max  
+        corr_weight = result['correlation_strength'] * 0.15            # Correlation: 15% max
+        github_weight = github_confidence * 0.20                       # GitHub: 20% max (for crypto/tech)
         
-        total_weight = poly_weight + llm_weight + corr_weight
+        total_weight = poly_weight + llm_weight + corr_weight + github_weight
         
         if total_weight > 0:
             result['combined_sentiment'] = (
                 result.get('polymarket_sentiment', 0.5) * poly_weight +
                 result['llm_sentiment'] * llm_weight +
-                result['correlation_sentiment'] * corr_weight
+                result['correlation_sentiment'] * corr_weight +
+                github_sentiment * github_weight
             ) / total_weight
             result['combined_confidence'] = min(0.95, total_weight)
         else:
@@ -384,6 +412,7 @@ If you see clear mispricing, diverge from market price."""
             'polymarket': round(poly_weight, 3),
             'llm': round(llm_weight, 3),
             'correlation': round(corr_weight, 3),
+            'github': round(github_weight, 3),
             'total': round(total_weight, 3)
         }
         
