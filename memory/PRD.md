@@ -1,5 +1,7 @@
 # APEX TRADER - Product Requirements Document
 
+## Last Updated: January 19, 2026
+
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
 
