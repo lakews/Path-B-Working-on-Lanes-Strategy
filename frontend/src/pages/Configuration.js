@@ -80,9 +80,21 @@ const Configuration = () => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('trading');
   const [useDynamicExit, setUseDynamicExit] = useState(true);
+  
+  // LLM Cache state
+  const [llmStats, setLlmStats] = useState(null);
+  const [llmConfig, setLlmConfig] = useState({
+    hot_market_ttl_seconds: 600,
+    cold_market_ttl_seconds: 3600,
+    hot_market_volume_threshold: 50000,
+    llm_timeout_seconds: 10,
+    estimated_cost_per_call: 0.002
+  });
+  const [llmConfigInfo, setLlmConfigInfo] = useState({});
+  const [savingLlmConfig, setSavingLlmConfig] = useState(false);
 
 
-  useEffect(() => { fetchConfig(); fetchStatus(); fetchExitMode(); }, []);
+  useEffect(() => { fetchConfig(); fetchStatus(); fetchExitMode(); fetchLlmStats(); }, []);
   
   // Fetch exit mode from API
   const fetchExitMode = async () => {
