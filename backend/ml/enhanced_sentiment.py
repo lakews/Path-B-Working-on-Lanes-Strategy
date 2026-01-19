@@ -175,7 +175,8 @@ class EnhancedSentimentAnalyzer:
     1. LLM analysis (GPT-4o-mini via Emergent)
     2. Cross-market correlation
     3. Polymarket-native sentiment (order flow, volume momentum, whale signals)
-    4. Smart caching to minimize API costs
+    4. GitHub sentiment (for crypto/tech markets)
+    5. Smart caching to minimize API costs
     """
     
     def __init__(self):
@@ -193,6 +194,15 @@ class EnhancedSentimentAnalyzer:
         except Exception as e:
             logger.warning(f"Could not initialize Polymarket sentiment: {e}")
             self.polymarket_sentiment = None
+        
+        # Initialize GitHub sentiment analyzer
+        try:
+            from ml.github_sentiment import get_github_sentiment_analyzer
+            self.github_sentiment = get_github_sentiment_analyzer()
+            logger.info("GitHub sentiment analyzer initialized")
+        except Exception as e:
+            logger.warning(f"Could not initialize GitHub sentiment: {e}")
+            self.github_sentiment = None
         
         # Rate limiting for LLM calls
         self.last_llm_call = datetime.now(timezone.utc)
