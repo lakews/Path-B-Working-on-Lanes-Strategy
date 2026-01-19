@@ -2072,12 +2072,21 @@ class PaperTrader:
                 no_edge = (1 - raw_model_prob) - effective_no_price
                 
                 # Choose the side with positive edge
-                if yes_edge > no_edge and yes_edge > 0:
+                # MINIMUM EDGE REQUIREMENT: Scale with market extremeness
+                # Low-priced (YES < 10%) or high-priced (YES > 90%) markets need higher edge
+                if yes_price < 0.10:
+                    min_edge = 0.03  # 3% minimum edge for longshots
+                elif yes_price > 0.90:
+                    min_edge = 0.03  # 3% minimum edge for near-locks
+                else:
+                    min_edge = 0.02  # 2% for normal markets
+                
+                if yes_edge > no_edge and yes_edge > min_edge:
                     # Bet on YES
                     model_probability = raw_model_prob
                     sizer_ask_price = yes_price
                     sizing_side = 'YES'
-                elif no_edge > yes_edge and no_edge > 0:
+                elif no_edge > yes_edge and no_edge > min_edge:
                     # Bet on NO - transform to sizer's perspective
                     # Sizer expects: model_prob > ask_price for positive edge
                     # For NO: pass (1-model_prob) as "probability" and (1-yes_price) as "ask"
@@ -2089,11 +2098,11 @@ class PaperTrader:
                     return {
                         'should_trade': False,
                         'position_size': 0,
-                        'breakdown': {'reject_reason': 'no_edge_either_side', 'reject_detail': f'yes_edge={yes_edge:.4f}, no_edge={no_edge:.4f}'},
-                        'sizing_breakdown': {'sizer_mode': 'polymarket', 'reject_reason': 'no_edge_either_side'}
+                        'breakdown': {'reject_reason': 'insufficient_edge', 'reject_detail': f'yes_edge={yes_edge:.4f}, no_edge={no_edge:.4f}, min_edge={min_edge:.4f}'},
+                        'sizing_breakdown': {'sizer_mode': 'polymarket', 'reject_reason': 'insufficient_edge'}
                     }
                 
-                logger.info(f"[MODEL_PROB] yes_price={yes_price:.3f}, raw_prob={raw_model_prob:.3f}, yes_edge={yes_edge:.3f}, no_edge={no_edge:.3f}, sizing_side={sizing_side}")
+                logger.info(f"[MODEL_PROB] yes_price={yes_price:.3f}, raw_prob={raw_model_prob:.3f}, yes_edge={yes_edge:.3f}, no_edge={no_edge:.3f}, min_edge={min_edge:.3f}, sizing_side={sizing_side}")
                 
                 # Call the new Polymarket sizer
                 logger.info(f"[SIZER CALL] equity={equity:.2f}, deployed={deployed:.2f}, model_prob={model_probability:.4f}, ask={sizer_ask_price:.4f}, days={days_to_expiry}")
