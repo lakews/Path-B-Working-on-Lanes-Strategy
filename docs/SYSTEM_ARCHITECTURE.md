@@ -597,9 +597,13 @@
 │   │       └── _execute_paper_entry()     ◄── Position creation
 │   │
 │   ├── ml/
+│   │   ├── sentiment_llm.py              ◄── NEW: Hybrid Smart-Cache LLM
+│   │   │   ├── SmartLLMCache             ◄── Activity-based cache TTL
+│   │   │   ├── SmartLLMSentimentAnalyzer ◄── GPT-4o-mini integration
+│   │   │   └── get_llm_sentiment()       ◄── Main entry point
+│   │   │
 │   │   ├── enhanced_sentiment.py          ◄── Sentiment orchestrator
 │   │   │   ├── analyze()                  ◄── Main entry point
-│   │   │   ├── _get_llm_sentiment()       ◄── GPT-4o-mini integration
 │   │   │   └── CrossMarketCorrelation     ◄── Related markets
 │   │   │
 │   │   ├── polymarket_sentiment.py        ◄── Polymarket native signals
