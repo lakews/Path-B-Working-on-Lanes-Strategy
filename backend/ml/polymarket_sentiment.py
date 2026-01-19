@@ -173,17 +173,54 @@ class PolymarketSentimentExtractor:
                 'error': str(e)
             }
     
-    def _calculate_order_flow(self, market_id: str, trades: List[Dict] = None) -> Dict:
+    def _calculate_order_flow(self, market_id: str, trades: List[Dict] = None, order_book: Dict = None) -> Dict:
         """
-        Calculate order flow imbalance from recent trades.
+        Calculate order flow imbalance.
+        
+        Primary: From order book bid/ask depth imbalance (always available)
+        Secondary: From recent trades if available
         
         Buy pressure vs sell pressure indicates market sentiment.
         """
+        # Try order book depth imbalance first (more reliable, always available)
+        if order_book:
+            try:
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
+                
+                if bids and asks:
+                    # Calculate depth at multiple price levels
+                    bid_depth = sum(float(b.get('size', 0)) for b in bids[:10])
+                    ask_depth = sum(float(a.get('size', 0)) for a in asks[:10])
+                    total_depth = bid_depth + ask_depth
+                    
+                    if total_depth > 0:
+                        # More bids = buying pressure = bullish
+                        depth_imbalance = bid_depth / total_depth
+                        
+                        # Map to score (0.3-0.7 range)
+                        score = 0.3 + (depth_imbalance * 0.4)
+                        
+                        return {
+                            'valid': True,
+                            'score': round(score, 4),
+                            'source': 'order_book_depth',
+                            'details': {
+                                'bid_depth': round(bid_depth, 2),
+                                'ask_depth': round(ask_depth, 2),
+                                'depth_imbalance': round(depth_imbalance, 4),
+                                'interpretation': 'bullish' if depth_imbalance > 0.55 else ('bearish' if depth_imbalance < 0.45 else 'neutral')
+                            }
+                        }
+            except Exception as e:
+                logger.debug(f"Order book depth calculation error: {e}")
+        
+        # Fallback to trades if available
         if not trades:
-            trades = self._trade_history.get(market_id, [])[-100:]  # Last 100 trades
+            trades = self._trade_history.get(market_id, [])[-100:]
         
         if not trades or len(trades) < 5:
-            return {'valid': False, 'score': 0.5, 'details': {'reason': 'insufficient_trades'}}
+            return {'valid': False, 'score': 0.5, 'details': {'reason': 'insufficient_data'}}
         
         try:
             buy_volume = 0
