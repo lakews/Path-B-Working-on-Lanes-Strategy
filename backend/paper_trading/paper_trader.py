@@ -2742,7 +2742,8 @@ class PaperTrader:
             
             # Apply maturity dampening
             sentiment = raw_sentiment * maturity_weight + 0.5 * (1 - maturity_weight)
-            sentiment = max(0.05, min(0.95, sentiment))
+            # Allow full range - remove artificial floors that create bias
+            sentiment = max(0.001, min(0.999, sentiment))
             
             # Sentiment strength (conviction level)
             sentiment_strength = abs(sentiment - 0.5) * 2
