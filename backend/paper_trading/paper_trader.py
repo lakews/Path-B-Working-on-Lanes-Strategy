@@ -2705,8 +2705,10 @@ class PaperTrader:
                     'llm_confidence': round(llm_confidence, 4),
                     'correlation_sentiment': round(correlation_sentiment, 4),
                     'correlation_strength': round(correlation_strength, 4),
-                    'external_data': round(external_sentiment, 4),
-                    'external_confidence': round(external_confidence, 4),
+                    'github_sentiment': round(github_sentiment, 4),
+                    'github_confidence': round(github_confidence, 4),
+                    'external_data': 0.5,  # Finnhub disabled
+                    'external_confidence': 0.0,  # Finnhub disabled
                 },
                 'sentiment_weights': {
                     'market_weight': round(market_weight, 4),
