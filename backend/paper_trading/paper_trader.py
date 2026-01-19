@@ -2081,6 +2081,9 @@ class PaperTrader:
                 else:
                     min_edge = 0.02  # 2% for normal markets
                 
+                # Log edge calculation
+                logger.info(f"[EDGE] yes_price={yes_price:.3f}, model={raw_model_prob:.4f}, yes_edge={yes_edge:.4f}, no_edge={no_edge:.4f}, min_edge={min_edge:.2f}")
+                
                 if yes_edge > no_edge and yes_edge > min_edge:
                     # Bet on YES
                     model_probability = raw_model_prob
