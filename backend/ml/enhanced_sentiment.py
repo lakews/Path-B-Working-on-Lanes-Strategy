@@ -291,13 +291,23 @@ class EnhancedSentimentAnalyzer:
                 logger.debug(f"Polymarket sentiment error: {e}")
         
         # ================================================================
-        # 2. LLM SENTIMENT (with caching)
+        # 2. LLM SENTIMENT (HYBRID SMART-CACHE)
         # ================================================================
-        llm_result = await self._get_llm_sentiment(market_id, question, category, yes_price)
-        if llm_result:
-            result['llm_sentiment'] = llm_result['sentiment']
-            result['llm_confidence'] = llm_result['confidence']
-            result['llm_reasoning'] = llm_result.get('reasoning', '')
+        # Uses the new Smart LLM module with activity-based caching:
+        # - Hot markets (>$50k volume): 10 min cache
+        # - Cold markets (<$50k volume): 60 min cache
+        if self.smart_llm:
+            try:
+                llm_sentiment, llm_confidence = await self.smart_llm.get_sentiment(market_data)
+                result['llm_sentiment'] = llm_sentiment
+                result['llm_confidence'] = llm_confidence
+                result['llm_reasoning'] = self.smart_llm.get_cached_reasoning(market_id)
+                
+                if llm_confidence > 0:
+                    sources_used.append('llm')
+                    
+            except Exception as e:
+                logger.debug(f"Smart LLM sentiment error: {e}")
             sources_used.append('llm')
         
         # ================================================================
