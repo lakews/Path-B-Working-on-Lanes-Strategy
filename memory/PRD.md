@@ -44,6 +44,33 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 19, 2026 - Session 35 (LLM Cache UI + Polymarket Momentum)
+
+- ✅ **NEW: LLM Cache Analytics UI** (Configuration → LLM Cache tab)
+  - Real-time stats: Cache Hit Rate, Cache Size (Hot/Cold), Est. Cost Spent/Saved
+  - Hot Markets config: Volume Threshold ($10k-$500k), Cache TTL (1-30 min)
+  - Cold Markets config: Cache TTL (5 min-2 hours), API Timeout (5-30s)
+  - Info icons with tooltips explaining each setting
+  - Cached Markets table showing sentiment, confidence, age, expiry countdown
+  - Save LLM Config button with persistence
+
+- ✅ **NEW API Endpoints**:
+  - `GET /api/sentiment/llm/config` - Get cache configuration with metadata
+  - `POST /api/sentiment/llm/config` - Update cache settings
+  - `GET /api/sentiment/polymarket/history-stats` - Time-series cache stats
+
+- ✅ **IMPROVED: Polymarket Time-Series Cache** (`polymarket_sentiment.py`)
+  - `get_history_stats()` - View momentum signal readiness per market
+  - `seed_historical_data()` - Backfill price/volume history for testing
+  - Momentum signal tracking: Shows which markets have enough data
+  - Requirements: price_momentum (5+ points), price_velocity (3+ points), volume_momentum (3+ points)
+
+- ✅ **IMPROVED: Smart LLM Cache** (Dynamic configuration)
+  - All thresholds now configurable via API and UI
+  - Hot/Cold market breakdown in cache entries
+  - Cost tracking: Estimated cost spent and saved
+  - Cache entry metadata: age, TTL, expires_in countdown
+
 ### January 19, 2026 - Session 34 (Hybrid Smart-Cache LLM)
 
 - ✅ **NEW: Hybrid Smart-Cache LLM Module** (`/app/backend/ml/sentiment_llm.py`)
