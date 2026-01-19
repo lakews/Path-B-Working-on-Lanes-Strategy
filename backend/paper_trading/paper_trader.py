@@ -2311,7 +2311,7 @@ class PaperTrader:
         p_rl = max(1e-9, min(1 - 1e-9, p_rl))
         
         # RL contributes if it has a direction and confidence
-        RL_WEIGHT = 0.40  # Boosted from 0.25
+        RL_WEIGHT = 0.60  # Boosted from 0.40 to overcome 2% fee spread
         MIN_RL_CONFIDENCE = 0.15
         
         is_rl_neutral = (not is_buy and not is_sell) or rl_confidence < MIN_RL_CONFIDENCE
