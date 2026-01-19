@@ -2557,18 +2557,37 @@ class PaperTrader:
             correlation_strength = 0.0
             enhanced_data = {}
             
-            # Try to get enhanced sentiment (LLM + Correlation)
+            # Try to get enhanced sentiment (LLM + Correlation + Polymarket-native)
             try:
                 if hasattr(self, 'enhanced_sentiment') and self.enhanced_sentiment:
+                    # Get trades and order book for Polymarket-native sentiment
+                    trades = []
+                    order_book = {}
+                    token_ids = market_data.get('clobTokenIds', market_data.get('tokens', []))
+                    
+                    if token_ids and len(token_ids) > 0:
+                        try:
+                            from data.polymarket_api import PolymarketAPI
+                            async with PolymarketAPI() as api:
+                                trades = await api.get_trades(token_ids[0], limit=30)
+                                order_book = await api.get_order_book(token_ids[0])
+                        except Exception as e:
+                            logger.debug(f"Could not fetch trades/orderbook for sentiment: {e}")
+                    
                     enhanced_result = await asyncio.wait_for(
-                        self.enhanced_sentiment.analyze(market_data),
-                        timeout=3.0  # 3 second timeout
+                        self.enhanced_sentiment.analyze(market_data, trades=trades, order_book=order_book),
+                        timeout=5.0  # 5 second timeout (longer to allow API calls)
                     )
                     
                     llm_sentiment = enhanced_result.get('llm_sentiment', 0.5)
                     llm_confidence = enhanced_result.get('llm_confidence', 0.0)
                     correlation_sentiment = enhanced_result.get('correlation_sentiment', 0.5)
                     correlation_strength = enhanced_result.get('correlation_strength', 0.0)
+                    
+                    # NEW: Polymarket-native sentiment signals
+                    polymarket_sentiment = enhanced_result.get('polymarket_sentiment', 0.5)
+                    polymarket_confidence = enhanced_result.get('polymarket_confidence', 0.0)
+                    polymarket_momentum = enhanced_result.get('polymarket_momentum', {})
                     
                     enhanced_data = {
                         'llm_sentiment': llm_sentiment,
@@ -2578,7 +2597,13 @@ class PaperTrader:
                         'correlation_strength': correlation_strength,
                         'category_momentum': enhanced_result.get('category_momentum', 0.0),
                         'related_groups': enhanced_result.get('related_groups', []),
-                        'analysis_source': enhanced_result.get('analysis_source', 'none')
+                        'analysis_source': enhanced_result.get('analysis_source', 'none'),
+                        # NEW: Polymarket-native fields
+                        'polymarket_sentiment': polymarket_sentiment,
+                        'polymarket_confidence': polymarket_confidence,
+                        'polymarket_momentum': polymarket_momentum,
+                        'polymarket_signals': enhanced_result.get('polymarket_signals', {}),
+                        'polymarket_interpretation': enhanced_result.get('polymarket_interpretation', ''),
                     }
             except asyncio.TimeoutError:
                 logger.debug(f"Enhanced sentiment timeout for {market_id[:16]}")
