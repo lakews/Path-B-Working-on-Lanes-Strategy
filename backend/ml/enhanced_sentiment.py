@@ -1,6 +1,11 @@
 """
 Enhanced Sentiment Analysis with LLM + Cross-Market Correlation
 Combines multiple data sources for comprehensive market sentiment
+
+Updated: Integrated Hybrid Smart-Cache LLM Module
+- Hot markets (high volume): 10 min cache TTL
+- Cold markets (low volume): 60 min cache TTL
+- Result: 100% market coverage without 100% of the cost
 """
 import asyncio
 import logging
@@ -13,35 +18,14 @@ from config import config
 logger = logging.getLogger(__name__)
 
 
-class LLMSentimentCache:
-    """Smart caching for LLM sentiment to minimize API calls"""
-    
-    def __init__(self, ttl_seconds: int = 300):  # 5 minute default TTL
-        self.cache: Dict[str, Dict] = {}
-        self.ttl = ttl_seconds
-    
-    def get(self, market_id: str) -> Optional[Dict]:
-        """Get cached sentiment if not expired"""
-        if market_id in self.cache:
-            entry = self.cache[market_id]
-            if datetime.now(timezone.utc) - entry['timestamp'] < timedelta(seconds=self.ttl):
-                return entry['data']
-        return None
-    
-    def set(self, market_id: str, data: Dict):
-        """Cache sentiment data"""
-        self.cache[market_id] = {
-            'data': data,
-            'timestamp': datetime.now(timezone.utc)
-        }
-    
-    def clear_expired(self):
-        """Remove expired entries"""
-        now = datetime.now(timezone.utc)
-        expired = [k for k, v in self.cache.items() 
-                   if now - v['timestamp'] > timedelta(seconds=self.ttl)]
-        for k in expired:
-            del self.cache[k]
+# Import the new Smart LLM module
+try:
+    from ml.sentiment_llm import get_smart_llm_analyzer, get_llm_sentiment
+    SMART_LLM_AVAILABLE = True
+    logger.info("Smart LLM module loaded successfully")
+except ImportError as e:
+    SMART_LLM_AVAILABLE = False
+    logger.warning(f"Smart LLM module not available: {e}")
 
 
 class CrossMarketCorrelation:
