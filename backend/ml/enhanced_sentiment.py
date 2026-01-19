@@ -212,6 +212,24 @@ class EnhancedSentimentAnalyzer:
             return self.smart_llm.get_stats()
         return {'error': 'Smart LLM not initialized'}
     
+    def get_llm_config(self) -> Dict:
+        """Get Smart LLM cache configuration"""
+        if self.smart_llm:
+            return self.smart_llm.get_config()
+        return {'error': 'Smart LLM not initialized'}
+    
+    def update_llm_config(self, new_config: Dict) -> Dict:
+        """Update Smart LLM cache configuration"""
+        if self.smart_llm:
+            return self.smart_llm.update_config(new_config)
+        return {'error': 'Smart LLM not initialized'}
+    
+    def get_llm_cache_entries(self) -> Dict:
+        """Get all LLM cache entries"""
+        if self.smart_llm:
+            return self.smart_llm.get_cache_entries()
+        return {'error': 'Smart LLM not initialized'}
+    
     async def analyze(self, market_data: Dict, trades: List = None, order_book: Dict = None) -> Dict:
         """
         Comprehensive sentiment analysis combining all sources.
