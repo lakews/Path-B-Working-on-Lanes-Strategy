@@ -2028,27 +2028,159 @@ async def get_llm_stats():
     """
     Get Smart LLM cache statistics.
     
-    Returns cache hit/miss rates, call counts, and configuration.
+    Returns cache hit/miss rates, call counts, cost savings, and configuration.
     
     The Smart LLM module uses Hybrid Smart-Cache:
-    - Hot markets (>$50k volume): 10 min cache TTL
-    - Cold markets (<$50k volume): 60 min cache TTL
+    - Hot markets (high volume): shorter cache TTL (catch breaking news)
+    - Cold markets (low volume): longer cache TTL (save money)
     """
     try:
-        from ml.enhanced_sentiment import get_enhanced_sentiment_analyzer
+        from ml.sentiment_llm import get_smart_llm_analyzer
         
-        analyzer = get_enhanced_sentiment_analyzer()
-        stats = analyzer.get_llm_stats()
+        analyzer = get_smart_llm_analyzer()
+        stats = analyzer.get_stats()
+        config = stats.get('config', {})
         
         return {
             "status": "ok",
             "cache_strategy": "Hybrid Smart-Cache",
-            "description": "Hot markets (>$50k): 10 min TTL, Cold markets: 60 min TTL",
-            "stats": stats
+            "description": f"Hot markets (>${config.get('hot_market_volume_threshold', 50000):,}): {config.get('hot_market_ttl_seconds', 600)//60} min TTL, Cold markets: {config.get('cold_market_ttl_seconds', 3600)//60} min TTL",
+            "stats": stats,
+            "cache_entries": analyzer.get_cache_entries()
         }
         
     except Exception as e:
         logger.error(f"Error getting LLM stats: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@api_router.get("/sentiment/llm/config")
+async def get_llm_config():
+    """
+    Get Smart LLM cache configuration.
+    
+    Returns current cache configuration including:
+    - hot_market_ttl_seconds: Cache TTL for high-volume markets
+    - cold_market_ttl_seconds: Cache TTL for low-volume markets
+    - hot_market_volume_threshold: Volume threshold to classify markets
+    - llm_timeout_seconds: LLM API call timeout
+    - estimated_cost_per_call: Estimated cost per LLM API call
+    """
+    try:
+        from ml.sentiment_llm import get_smart_llm_analyzer
+        
+        analyzer = get_smart_llm_analyzer()
+        config = analyzer.get_config()
+        
+        return {
+            "status": "ok",
+            "config": config,
+            "config_info": {
+                "hot_market_ttl_seconds": {
+                    "value": config.get('hot_market_ttl_seconds', 600),
+                    "unit": "seconds",
+                    "description": "Cache TTL for hot (high-volume) markets. Shorter = fresher data, higher cost.",
+                    "min": 60,
+                    "max": 3600,
+                    "default": 600
+                },
+                "cold_market_ttl_seconds": {
+                    "value": config.get('cold_market_ttl_seconds', 3600),
+                    "unit": "seconds", 
+                    "description": "Cache TTL for cold (low-volume) markets. Longer = lower cost, less fresh.",
+                    "min": 300,
+                    "max": 7200,
+                    "default": 3600
+                },
+                "hot_market_volume_threshold": {
+                    "value": config.get('hot_market_volume_threshold', 50000),
+                    "unit": "USD",
+                    "description": "24h volume threshold to classify a market as 'hot'. Markets above this get shorter cache TTL.",
+                    "min": 10000,
+                    "max": 500000,
+                    "default": 50000
+                },
+                "llm_timeout_seconds": {
+                    "value": config.get('llm_timeout_seconds', 10.0),
+                    "unit": "seconds",
+                    "description": "Maximum time to wait for LLM response before timeout.",
+                    "min": 5,
+                    "max": 30,
+                    "default": 10
+                },
+                "estimated_cost_per_call": {
+                    "value": config.get('estimated_cost_per_call', 0.002),
+                    "unit": "USD",
+                    "description": "Estimated cost per LLM API call (for cost tracking).",
+                    "min": 0.0001,
+                    "max": 0.1,
+                    "default": 0.002
+                }
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting LLM config: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@api_router.post("/sentiment/llm/config")
+async def update_llm_config(config_update: Dict):
+    """
+    Update Smart LLM cache configuration.
+    
+    Accepts any of:
+    - hot_market_ttl_seconds: 60-3600
+    - cold_market_ttl_seconds: 300-7200
+    - hot_market_volume_threshold: 10000-500000
+    - llm_timeout_seconds: 5-30
+    - estimated_cost_per_call: 0.0001-0.1
+    """
+    try:
+        from ml.sentiment_llm import get_smart_llm_analyzer
+        
+        analyzer = get_smart_llm_analyzer()
+        
+        # Validate inputs
+        validated = {}
+        
+        if 'hot_market_ttl_seconds' in config_update:
+            val = int(config_update['hot_market_ttl_seconds'])
+            validated['hot_market_ttl_seconds'] = max(60, min(3600, val))
+            
+        if 'cold_market_ttl_seconds' in config_update:
+            val = int(config_update['cold_market_ttl_seconds'])
+            validated['cold_market_ttl_seconds'] = max(300, min(7200, val))
+            
+        if 'hot_market_volume_threshold' in config_update:
+            val = float(config_update['hot_market_volume_threshold'])
+            validated['hot_market_volume_threshold'] = max(10000, min(500000, val))
+            
+        if 'llm_timeout_seconds' in config_update:
+            val = float(config_update['llm_timeout_seconds'])
+            validated['llm_timeout_seconds'] = max(5, min(30, val))
+            
+        if 'estimated_cost_per_call' in config_update:
+            val = float(config_update['estimated_cost_per_call'])
+            validated['estimated_cost_per_call'] = max(0.0001, min(0.1, val))
+        
+        if not validated:
+            return JSONResponse(
+                status_code=400, 
+                content={"error": "No valid configuration parameters provided"}
+            )
+        
+        new_config = analyzer.update_config(validated)
+        
+        return {
+            "status": "ok",
+            "message": f"Updated {len(validated)} configuration parameter(s)",
+            "updated": validated,
+            "config": new_config
+        }
+        
+    except Exception as e:
+        logger.error(f"Error updating LLM config: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
