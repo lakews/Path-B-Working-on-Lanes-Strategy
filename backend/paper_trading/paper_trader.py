@@ -2057,6 +2057,11 @@ class PaperTrader:
                 )
                 raw_model_prob = model_diagnostics['final_probability']
                 
+                # Log renormalization details
+                renorm = model_diagnostics.get('renormalization', {})
+                sig_status = model_diagnostics.get('signal_status', {})
+                logger.info(f"[RENORM] active_signals={renorm.get('active_signals', 3)}, sentiment={sig_status.get('sentiment', 'unknown')}, rl={sig_status.get('rl', 'unknown')}, num={renorm.get('numerator', 0):.4f}, den={renorm.get('denominator', 1):.2f}")
+                
                 # Determine which side to bet on based on where we see edge
                 # BUY/YES: edge when model_prob > effective_yes_price
                 # SELL/NO: edge when (1-model_prob) > effective_no_price
