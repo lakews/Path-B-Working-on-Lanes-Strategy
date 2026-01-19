@@ -4,6 +4,7 @@ Simulates live trading, tracks positions, and feeds rewards to RL for continuous
 """
 import asyncio
 import logging
+import os
 import uuid
 from typing import Dict, List, Optional, Callable
 from datetime import datetime, timezone
