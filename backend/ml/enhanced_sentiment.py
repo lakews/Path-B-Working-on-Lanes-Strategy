@@ -156,19 +156,30 @@ class CrossMarketCorrelation:
 class EnhancedSentimentAnalyzer:
     """
     Ultimate sentiment analyzer combining:
-    1. LLM analysis (GPT-4o-mini via Emergent)
+    1. LLM analysis (GPT-4o-mini via Emergent) - NOW WITH SMART CACHING
     2. Cross-market correlation
     3. Polymarket-native sentiment (order flow, volume momentum, whale signals)
     4. GitHub sentiment (for crypto/tech markets)
-    5. Smart caching to minimize API costs
+    5. Hybrid Smart-Cache for cost optimization
+    
+    Smart Cache Strategy:
+    - Hot markets (high volume): 10 min cache TTL
+    - Cold markets (low volume): 60 min cache TTL
+    - Result: 100% market coverage without 100% of the cost
     """
     
     def __init__(self):
         self._db = None
-        self.llm_cache = LLMSentimentCache(ttl_seconds=300)  # 5 min cache
         self.correlation_tracker = CrossMarketCorrelation()
-        self.llm_analyzer = None
-        self._init_llm()
+        
+        # Initialize Smart LLM Analyzer (replaces old rate-limited approach)
+        self.smart_llm = None
+        if SMART_LLM_AVAILABLE:
+            try:
+                self.smart_llm = get_smart_llm_analyzer()
+                logger.info("Smart LLM Sentiment Analyzer initialized (Hybrid Smart-Cache)")
+            except Exception as e:
+                logger.warning(f"Could not initialize Smart LLM: {e}")
         
         # Initialize Polymarket sentiment extractor
         try:
@@ -187,12 +198,6 @@ class EnhancedSentimentAnalyzer:
         except Exception as e:
             logger.warning(f"Could not initialize GitHub sentiment: {e}")
             self.github_sentiment = None
-        
-        # Rate limiting for LLM calls
-        self.last_llm_call = datetime.now(timezone.utc)
-        self.min_llm_interval = 1.0  # Minimum 1 second between LLM calls
-        self.llm_calls_count = 0
-        self.max_llm_calls_per_minute = 30  # Rate limit
     
     @property
     def db(self):
@@ -201,43 +206,11 @@ class EnhancedSentimentAnalyzer:
             self._db = get_db()
         return self._db
     
-    def _init_llm(self):
-        """Initialize LLM models with error handling"""
-        try:
-            from emergentintegrations.llm.chat import LlmChat
-            
-            system_prompt = """You are an expert prediction market analyst specializing in probability assessment. Your task is to analyze prediction market questions and provide independent probability estimates.
-
-ANALYSIS FRAMEWORK:
-1. **Base Rate**: What's the historical frequency of similar events?
-2. **Current Evidence**: What recent news, data, or events are relevant?
-3. **Market Context**: Is the current price justified or mispriced?
-4. **Time Factor**: How does the deadline affect probability?
-5. **Contrarian Check**: What could the market be missing?
-
-RESPONSE FORMAT:
-Return ONLY a decimal number between 0.00 and 1.00 representing probability.
-- 0.00-0.10: Extremely unlikely (< 10% chance)
-- 0.10-0.30: Unlikely (10-30% chance)
-- 0.30-0.50: Somewhat unlikely (30-50% chance)  
-- 0.50-0.70: Somewhat likely (50-70% chance)
-- 0.70-0.90: Likely (70-90% chance)
-- 0.90-1.00: Extremely likely (> 90% chance)
-
-Be calibrated - if you're uncertain, stay closer to 0.50.
-If current price seems reasonable, return a value close to it.
-If you see clear mispricing, diverge from market price."""
-
-            self.gpt_chat = LlmChat(
-                api_key=config.EMERGENT_LLM_KEY,
-                session_id=f"apex_sentiment_{datetime.now().strftime('%Y%m%d')}",
-                system_message=system_prompt
-            ).with_model("openai", "gpt-4o-mini")
-            
-            logger.info("Enhanced sentiment LLM initialized with tuned prompt")
-        except Exception as e:
-            logger.warning(f"Could not initialize LLM sentiment: {e}")
-            self.gpt_chat = None
+    def get_llm_stats(self) -> Dict:
+        """Get Smart LLM cache statistics"""
+        if self.smart_llm:
+            return self.smart_llm.get_stats()
+        return {'error': 'Smart LLM not initialized'}
     
     async def analyze(self, market_data: Dict, trades: List = None, order_book: Dict = None) -> Dict:
         """
