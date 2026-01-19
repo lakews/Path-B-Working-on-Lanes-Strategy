@@ -88,8 +88,8 @@ class PolymarketSentimentExtractor:
             # Calculate individual signals
             signals = {}
             
-            # 1. Order Flow Imbalance
-            signals['order_flow'] = self._calculate_order_flow(market_id, trades)
+            # 1. Order Flow Imbalance (from order book depth or trades)
+            signals['order_flow'] = self._calculate_order_flow(market_id, trades, order_book)
             
             # 2. Volume Momentum (1h, 6h, 24h)
             signals['volume_momentum'] = self._calculate_volume_momentum(market_id)
@@ -100,8 +100,8 @@ class PolymarketSentimentExtractor:
             # 4. Price Velocity
             signals['price_velocity'] = self._calculate_price_velocity(market_id)
             
-            # 5. Whale Activity
-            signals['whale_signal'] = self._calculate_whale_signal(market_id, trades)
+            # 5. Whale Activity (from order book large orders if no trades)
+            signals['whale_signal'] = self._calculate_whale_signal(market_id, trades, order_book)
             
             # 6. Price Momentum (trend direction)
             signals['price_momentum'] = self._calculate_price_momentum(market_id)
