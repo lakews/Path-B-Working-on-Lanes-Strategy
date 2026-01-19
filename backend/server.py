@@ -2048,6 +2048,52 @@ async def get_realtime_status():
         logger.error(f"Error getting realtime status: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+
+@api_router.get("/sentiment/github/{market_id}")
+async def get_github_sentiment(market_id: str):
+    """
+    Get GitHub activity sentiment for a crypto/tech market.
+    
+    Analyzes commit velocity, releases, issues, and community metrics.
+    """
+    try:
+        from ml.github_sentiment import get_github_sentiment_analyzer
+        from data.polymarket_api import PolymarketAPI
+        
+        analyzer = get_github_sentiment_analyzer()
+        if not analyzer:
+            return JSONResponse(status_code=503, content={"error": "GitHub analyzer not available"})
+        
+        # Fetch market data
+        async with PolymarketAPI() as api:
+            market_data = await api.get_market(market_id)
+            
+            if not market_data:
+                markets = await api.get_markets(limit=200)
+                for m in markets:
+                    if m.get('id') == market_id:
+                        market_data = m
+                        break
+            
+            if not market_data:
+                return JSONResponse(status_code=404, content={"error": "Market not found"})
+        
+        # Analyze GitHub sentiment
+        result = await analyzer.analyze_market(market_data)
+        
+        return {
+            "market_id": market_id,
+            "question": market_data.get('question', ''),
+            "category": market_data.get('category', ''),
+            "github": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in GitHub sentiment: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 # =============================================
 # WHALE/SHARP TRACKER ENDPOINTS
 # =============================================
