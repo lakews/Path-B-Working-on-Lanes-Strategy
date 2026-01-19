@@ -2184,6 +2184,51 @@ async def update_llm_config(config_update: Dict):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+@api_router.get("/sentiment/polymarket/history-stats")
+async def get_polymarket_history_stats():
+    """
+    Get Polymarket sentiment history statistics.
+    
+    Shows how much historical data has been collected for momentum signals.
+    Time-based signals (volume_momentum, price_velocity, price_momentum) require
+    sufficient historical data points to be calculated.
+    
+    Returns:
+    - Total markets tracked
+    - Data points per market
+    - Momentum signal readiness status
+    """
+    try:
+        from ml.polymarket_sentiment import get_polymarket_sentiment_extractor
+        
+        extractor = get_polymarket_sentiment_extractor()
+        stats = extractor.get_history_stats()
+        
+        # Count ready vs building
+        ready_count = sum(1 for m in stats.get('momentum_signal_readiness', {}).values() if m.get('status') == 'ready')
+        building_count = sum(1 for m in stats.get('momentum_signal_readiness', {}).values() if m.get('status') == 'building')
+        
+        return {
+            "status": "ok",
+            "description": "Time-series cache for Polymarket momentum signals",
+            "summary": {
+                "total_markets_tracked": stats.get('total_markets_tracked', 0),
+                "momentum_ready": ready_count,
+                "momentum_building": building_count,
+            },
+            "requirements": {
+                "price_momentum": "5+ price data points",
+                "price_velocity": "3+ price data points", 
+                "volume_momentum": "3+ volume data points",
+            },
+            "stats": stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting Polymarket history stats: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 @api_router.get("/realtime/status")
 async def get_realtime_status():
     """
