@@ -104,6 +104,37 @@ const Configuration = () => {
     } catch (e) { console.error('Error fetching exit mode:', e); }
   };
   
+  // Fetch LLM cache stats and config
+  const fetchLlmStats = async () => {
+    try {
+      const [statsRes, configRes] = await Promise.all([
+        axios.get(`${API}/sentiment/llm/stats`),
+        axios.get(`${API}/sentiment/llm/config`)
+      ]);
+      setLlmStats(statsRes.data);
+      if (configRes.data?.config) {
+        setLlmConfig(configRes.data.config);
+      }
+      if (configRes.data?.config_info) {
+        setLlmConfigInfo(configRes.data.config_info);
+      }
+    } catch (e) { console.error('Error fetching LLM stats:', e); }
+  };
+  
+  // Save LLM config
+  const saveLlmConfig = async () => {
+    setSavingLlmConfig(true);
+    try {
+      const response = await axios.post(`${API}/sentiment/llm/config`, llmConfig);
+      toast.success(response.data?.message || 'LLM config saved');
+      fetchLlmStats(); // Refresh stats
+    } catch (e) { 
+      toast.error('Failed to save LLM config');
+    } finally {
+      setSavingLlmConfig(false);
+    }
+  };
+  
   // Toggle exit mode
   const toggleExitMode = async () => {
     try {
