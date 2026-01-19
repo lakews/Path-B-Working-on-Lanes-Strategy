@@ -2345,7 +2345,7 @@ class PaperTrader:
         if p_market < 0.05:
             max_allowed = p_market * 2.0
             if model_prob > max_allowed:
-                logger.debug(f"[LONGSHOT_CAP] Capping model_prob from {model_prob:.4f} to {max_allowed:.4f} (market={p_market:.4f})")
+                logger.info(f"[LONGSHOT_CAP] Capping model_prob from {model_prob:.4f} to {max_allowed:.4f} (market={p_market:.4f})")
                 model_prob = max_allowed
         
         # Allow very small probabilities - remove artificial floors
