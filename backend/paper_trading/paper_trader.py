@@ -2072,14 +2072,8 @@ class PaperTrader:
                 no_edge = (1 - raw_model_prob) - effective_no_price
                 
                 # Choose the side with positive edge
-                # MINIMUM EDGE REQUIREMENT: Scale with market extremeness
-                # Low-priced (YES < 10%) or high-priced (YES > 90%) markets need higher edge
-                if yes_price < 0.10:
-                    min_edge = 0.02  # 2% minimum edge for longshots (reduced from 3%)
-                elif yes_price > 0.90:
-                    min_edge = 0.02  # 2% minimum edge for near-locks (reduced from 3%)
-                else:
-                    min_edge = 0.015  # 1.5% for normal markets (reduced from 2%)
+                # MINIMUM EDGE: Flat 1.0% across all markets (standardized)
+                min_edge = 0.01
                 
                 # Log edge calculation
                 logger.info(f"[EDGE] yes_price={yes_price:.3f}, model={raw_model_prob:.4f}, yes_edge={yes_edge:.4f}, no_edge={no_edge:.4f}, min_edge={min_edge:.2f}")
