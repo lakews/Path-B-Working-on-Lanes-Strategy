@@ -20,7 +20,9 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **DQN Engine**: ✅ Working - Deep Q-Network with Prioritized Experience Replay
 - **Position Sizing**: ✅ Polymarket-Optimized Position Sizer with full UI breakdown
 - **Sizing Breakdown UI**: ✅ Comprehensive modal showing Kelly, Multipliers, and Caps
-- **LLM Sentiment**: ✅ **NEW** Hybrid Smart-Cache (Hot: 10 min, Cold: 60 min TTL)
+- **LLM Sentiment**: ✅ Hybrid Smart-Cache (Hot: 10 min, Cold: 60 min TTL) - Configurable via UI!
+- **LLM Cache UI**: ✅ **NEW** Full analytics panel with stats, config sliders, cached markets table
+- **Polymarket Momentum**: ✅ Time-series tracking with readiness indicators
 - **Strategy Distribution**: ✅ Alpha threshold: <25% or >75%, Delta Neutral: 40%-70%
 - **Time-to-Expiry**: ✅ Strategy adjustments and UI indicators based on expiry
 - **Market Alerts**: ✅ Real-time alerts with configurable volume threshold
