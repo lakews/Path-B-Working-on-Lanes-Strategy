@@ -2643,19 +2643,25 @@ class PaperTrader:
             external_sentiment = (news_sentiment * 0.6 + social_sentiment * 0.4)
             
             # ================================================================
-            # FINAL SENTIMENT FUSION (4 Layers)
+            # FINAL SENTIMENT FUSION (5 Layers - Including Polymarket-Native)
             # ================================================================
-            # Calculate weights based on data availability/confidence
-            market_weight = 0.40  # Market microstructure always gets 40%
-            llm_weight = llm_confidence * 0.30  # LLM gets up to 30% based on confidence
-            corr_weight = correlation_strength * 0.15  # Correlation gets up to 15%
-            external_weight = external_confidence * 0.15  # External data gets up to 15%
+            # Get Polymarket-native sentiment from enhanced_data
+            polymarket_sentiment = enhanced_data.get('polymarket_sentiment', 0.5)
+            polymarket_confidence = enhanced_data.get('polymarket_confidence', 0.0)
             
-            total_weight = market_weight + llm_weight + corr_weight + external_weight
+            # Calculate weights based on data availability/confidence
+            market_weight = 0.30  # Market microstructure: 30% (reduced from 40%)
+            polymarket_weight = polymarket_confidence * 0.25  # Polymarket-native: up to 25% (NEW)
+            llm_weight = llm_confidence * 0.25  # LLM: up to 25% (reduced from 30%)
+            corr_weight = correlation_strength * 0.10  # Correlation: up to 10%
+            external_weight = external_confidence * 0.10  # External: up to 10%
+            
+            total_weight = market_weight + polymarket_weight + llm_weight + corr_weight + external_weight
             
             if total_weight > 0:
                 raw_sentiment = (
                     market_sentiment * market_weight +
+                    polymarket_sentiment * polymarket_weight +
                     llm_sentiment * llm_weight +
                     correlation_sentiment * corr_weight +
                     external_sentiment * external_weight
