@@ -2337,8 +2337,19 @@ class PaperTrader:
             # Safety: if somehow all weights are 0, fall back to market
             model_prob = p_market
         
-        # Final clamp to valid probability range
-        final_prob = max(0.01, min(0.99, model_prob))
+        # ================================================================
+        # LONG-SHOT MARKET SAFETY CHECK
+        # ================================================================
+        # For markets < 5%, cap the model's upside to prevent YES spam
+        # The model cannot predict more than 2x the current market price
+        if p_market < 0.05:
+            max_allowed = p_market * 2.0
+            if model_prob > max_allowed:
+                logger.debug(f"[LONGSHOT_CAP] Capping model_prob from {model_prob:.4f} to {max_allowed:.4f} (market={p_market:.4f})")
+                model_prob = max_allowed
+        
+        # Allow very small probabilities - remove artificial floors
+        final_prob = max(0.0001, min(0.9999, model_prob))
         
         # Calculate effective weights after renormalization (for diagnostics)
         if denominator > 0:
