@@ -2359,20 +2359,22 @@ class PaperTrader:
         if return_diagnostics:
             return {
                 'final_probability': final_prob,
+                'fusion_method': 'bayesian_log_odds',
                 'components': {
                     'p_market': round(p_market, 4),
                     'p_sentiment': round(p_sentiment, 4),
                     'p_rl': round(p_rl, 4),
                 },
-                'raw_weights': {
-                    'w_market': round(w_market, 4),
-                    'w_sentiment': round(w_sentiment, 4),
-                    'w_rl': round(w_rl, 4),
+                'log_odds': {
+                    'base_log_odds': round(base_log_odds, 4),
+                    'sentiment_delta': round(weighted_sentiment_delta, 4),
+                    'rl_delta': round(weighted_rl_delta, 4),
+                    'total_delta': round(total_delta, 4),
+                    'final_log_odds': round(final_log_odds, 4),
                 },
-                'effective_weights': {
-                    'w_market': round(eff_w_market, 4),
-                    'w_sentiment': round(eff_w_sentiment, 4),
-                    'w_rl': round(eff_w_rl, 4),
+                'weights': {
+                    'sentiment_weight': sentiment_weight,
+                    'rl_weight': rl_weight,
                 },
                 'signal_status': {
                     'sentiment': sentiment_status,
@@ -2380,23 +2382,13 @@ class PaperTrader:
                     'sentiment_is_neutral': is_sentiment_neutral,
                     'rl_is_neutral': is_rl_neutral,
                 },
-                'renormalization': {
-                    'numerator': round(numerator, 6),
-                    'denominator': round(denominator, 4),
-                    'active_signals': sum([1 for w in [w_market, w_sentiment, w_rl] if w > 0]),
-                },
-                'contributions': {
-                    'market_contribution': round(w_market * p_market, 6),
-                    'sentiment_contribution': round(w_sentiment * p_sentiment, 6),
-                    'rl_contribution': round(w_rl * p_rl, 6),
-                },
                 'rl_details': {
                     'action': rl_action,
                     'confidence': round(rl_confidence, 4),
                     'deviation': round(scaled_deviation, 4),
                     'direction': 'bullish' if is_buy else ('bearish' if is_sell else 'neutral'),
                 },
-                'pre_clamp': round(model_prob, 4),
+                'pre_cap': round(log_odds_to_prob(final_log_odds), 4),
             }
         
         return final_prob
