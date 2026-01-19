@@ -2691,6 +2691,8 @@ class PaperTrader:
                 'sentiment_strength': round(sentiment_strength, 4),
                 'sentiment_layers': {
                     'market_microstructure': round(market_sentiment, 4),
+                    'polymarket_native': round(polymarket_sentiment, 4),
+                    'polymarket_confidence': round(polymarket_confidence, 4),
                     'llm_sentiment': round(llm_sentiment, 4),
                     'llm_confidence': round(llm_confidence, 4),
                     'correlation_sentiment': round(correlation_sentiment, 4),
@@ -2700,10 +2702,13 @@ class PaperTrader:
                 },
                 'sentiment_weights': {
                     'market_weight': round(market_weight, 4),
+                    'polymarket_weight': round(polymarket_weight, 4),
                     'llm_weight': round(llm_weight, 4),
                     'correlation_weight': round(corr_weight, 4),
                     'external_weight': round(external_weight, 4),
                 },
+                'polymarket_momentum': enhanced_data.get('polymarket_momentum', {}),
+                'polymarket_signals': enhanced_data.get('polymarket_signals', {}),
                 'sentiment_components': {
                     'price': round(price_sentiment, 4),
                     'momentum': round(momentum_sentiment, 4),
