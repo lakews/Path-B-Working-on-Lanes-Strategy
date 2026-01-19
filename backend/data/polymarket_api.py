@@ -151,11 +151,12 @@ class PolymarketAPI:
             logger.error(f"Error fetching order book: {e}")
             return {"bids": [], "asks": []}
     
-    async def get_trades(self, market_id: str, limit: int = 100) -> List[Dict[str, Any]]:
-        """Fetch recent trades"""
+    async def get_trades(self, token_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """Fetch recent trades for a token"""
         try:
             url = f"{self.clob_url}/trades"
-            params = {"market": market_id, "limit": limit}
+            # Polymarket CLOB API uses 'asset_id' for token trades
+            params = {"asset_id": token_id, "limit": limit}
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:
                     data = await response.json()
