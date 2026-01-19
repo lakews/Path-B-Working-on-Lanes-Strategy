@@ -2267,8 +2267,8 @@ class PaperTrader:
             # HOLD: RL agrees with market
             p_rl = yes_price
         
-        # Clamp P_rl to valid range
-        p_rl = max(0.01, min(0.99, p_rl))
+        # Clamp P_rl to valid range (allow very low values for long-shot markets)
+        p_rl = max(0.0001, min(0.9999, p_rl))
         
         # Log components for debugging
         logger.debug(f"[PROB_COMPONENTS] p_market={p_market:.4f}, p_sentiment={p_sentiment:.4f}, p_rl={p_rl:.4f} (action={rl_action}, dev={scaled_deviation:.4f})")
