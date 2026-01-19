@@ -2365,7 +2365,7 @@ class PaperTrader:
         # For normal markets (5-95%), if sentiment is the main driver of divergence
         # and microstructure doesn't confirm, reduce the divergence
         if 0.05 <= p_market <= 0.95:
-            max_divergence = 0.10  # Model can diverge max 10% from market
+            max_divergence = 0.05  # Model can diverge max 5% from market
             if model_prob > p_market + max_divergence:
                 logger.info(f"[DIVERGENCE_CAP] Capping model_prob from {model_prob:.4f} to {p_market + max_divergence:.4f} (market={p_market:.4f})")
                 model_prob = p_market + max_divergence
