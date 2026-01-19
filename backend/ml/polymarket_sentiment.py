@@ -784,7 +784,6 @@ class PolymarketSentimentExtractor:
         for market_id, history in self._price_history.items():
             if history:
                 oldest = datetime.fromisoformat(history[0]['timestamp'].replace('Z', '+00:00'))
-                newest = datetime.fromisoformat(history[-1]['timestamp'].replace('Z', '+00:00'))
                 age_hours = (now - oldest).total_seconds() / 3600
                 price_stats[market_id[:16]] = {
                     'count': len(history),
