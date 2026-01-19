@@ -2381,8 +2381,6 @@ class PaperTrader:
                     'deviation': round(scaled_deviation, 4),
                     'direction': 'bullish' if is_buy else ('bearish' if is_sell else 'neutral'),
                 },
-                    'sentiment_disagrees_rl': sentiment_disagrees if 'sentiment_disagrees' in dir() else False,
-                },
                 'pre_clamp': round(model_prob, 4),
             }
         
