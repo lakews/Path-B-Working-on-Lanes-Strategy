@@ -41,6 +41,35 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## What's Been Implemented
 
+### January 19, 2026 - Session 34 (Hybrid Smart-Cache LLM)
+
+- ✅ **NEW: Hybrid Smart-Cache LLM Module** (`/app/backend/ml/sentiment_llm.py`)
+  - **Smart Cache Strategy**: Activity-based cache TTL for cost optimization
+    - "Hot" Markets (Volume > $50k): 10 min cache TTL (catch breaking news)
+    - "Cold" Markets (Volume < $50k): 60 min cache TTL (save API costs)
+    - Result: 100% market coverage without 100% of the cost
+  - **SmartLLMCache**: Intelligent cache with volume-based TTL
+    - Hit/miss tracking with statistics
+    - Automatic expired entry cleanup
+  - **SmartLLMSentimentAnalyzer**: GPT-4o-mini via Emergent integration
+    - Context-aware prompts with market data
+    - Volume-adjusted confidence calculation
+    - Safe fallback: Returns (0.5, 0.0) on any error (neutral with zero weight)
+  - **New API Endpoint**: `GET /api/sentiment/llm/stats`
+    - Returns cache hit/miss rates, call counts, configuration
+    - Shows cache strategy and hot/cold market thresholds
+
+- ✅ **IMPROVED: Enhanced Sentiment Analyzer** (`/app/backend/ml/enhanced_sentiment.py`)
+  - Removed old rate-limiting code (1-second interval, 5-min static cache)
+  - Integrated new Smart LLM module for volume-aware caching
+  - Added `get_llm_stats()` method for monitoring
+  - LLM weight increased: Up to 35% (based on confidence)
+
+- ✅ **UPDATED: Documentation**
+  - `/app/docs/SENTIMENT_ANALYSIS_FRAMEWORK.md`: Added Smart-Cache section
+  - `/app/docs/SYSTEM_ARCHITECTURE.md`: Added sentiment_llm.py to file structure
+  - New API endpoint documented: `/api/sentiment/llm/stats`
+
 ### January 18, 2026 - Session 31 (Continuous Position Sizing Engine)
 
 - ✅ **NEW: Polymarket-Optimized Position Sizer** (`/app/backend/ml/polymarket_position_sizer.py`)
