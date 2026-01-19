@@ -2207,193 +2207,153 @@ class PaperTrader:
         """
         Calculate model probability using WEIGHTED ENSEMBLE approach.
         
-        Combines multiple probability estimates:
-        P_final = w1 * P_market + w2 * P_sentiment + w3 * P_rl
+        Combines multiple probability estimates using BAYESIAN LOG-ODDS FUSION.
         
-        This is statistically sound because:
-        - All inputs are probabilities (0-1)
-        - Weights sum to 1
-        - Output is naturally bounded (no >100% issues)
+        This is mathematically superior to linear weighted average because:
+        - Market price serves as the ANCHOR (Prior belief)
+        - Sentiment and RL provide DELTA updates in log-odds space
+        - Neutral signals (0.5) contribute ZERO delta (not 0.5 drag)
+        - Result naturally respects the scale of the market price
         
-        Components:
-        - P_market: Market's implied probability (yes_price)
-        - P_sentiment: AI sentiment as probability estimate
-        - P_rl: DQN's implied probability from action + confidence
+        Key Math:
+        - Log-odds of 0.5 = 0.0 (neutral)
+        - Log-odds of 0.01 = -4.6 (very unlikely)
+        - Log-odds of 0.99 = +4.6 (very likely)
         
-        The model only deviates from market when signals disagree.
+        When market=0.01 and sentiment=0.5 (neutral):
+        - Linear avg: 0.7*0.01 + 0.1*0.5 + 0.2*0.5 = 0.157 (WRONG - creates false edge)
+        - Log-odds: start=-4.6, delta=0.0, result≈0.01 (CORRECT)
         
         Args:
             return_diagnostics: If True, returns a dict with full diagnostic breakdown
         """
-        # ================================================================
-        # COMPONENT 1: Market Probability (P_market)
-        # ================================================================
-        # The market's current estimate - our baseline
-        p_market = yes_price
+        import math
         
         # ================================================================
-        # COMPONENT 2: Sentiment Probability (P_sentiment)
+        # LOG-ODDS HELPER FUNCTIONS
         # ================================================================
-        # Sentiment score (0-1) directly represents probability estimate
-        # 0.65 sentiment → model thinks 65% chance of YES
+        def prob_to_log_odds(prob):
+            """Converts probability to Log-Odds (Logit). Neutral (0.5) → 0.0"""
+            epsilon = 1e-6
+            p = max(epsilon, min(1 - epsilon, prob))
+            return math.log(p / (1 - p))
+        
+        def log_odds_to_prob(log_odds):
+            """Converts Log-Odds back to probability (Sigmoid)."""
+            # Clamp to avoid overflow
+            log_odds = max(-20, min(20, log_odds))
+            return 1.0 / (1.0 + math.exp(-log_odds))
+        
+        # ================================================================
+        # COMPONENT 1: Market Probability (ANCHOR/PRIOR)
+        # ================================================================
+        p_market = yes_price
+        base_log_odds = prob_to_log_odds(p_market)
+        
+        # ================================================================
+        # COMPONENT 2: Sentiment Score
+        # ================================================================
         p_sentiment = sentiment
         
         # ================================================================
-        # COMPONENT 3: RL Probability (P_rl)
+        # COMPONENT 3: RL Implied Probability
         # ================================================================
-        # Convert DQN action + confidence into implied probability
-        # BUY = thinks YES is underpriced → P_rl > market
-        # SELL = thinks YES is overpriced → P_rl < market
-        
         rl_action = rl_action.upper() if rl_action else 'HOLD'
         
-        # Determine direction and strength
         is_buy = 'BUY' in rl_action
         is_sell = 'SELL' in rl_action
         
-        # Action strength determines how far from market the RL thinks true prob is
+        # Action strength determines deviation from market
         if 'LARGE' in rl_action:
-            deviation = 0.20  # Thinks true prob is 20% different from market
+            deviation = 0.20
         elif 'MEDIUM' in rl_action:
-            deviation = 0.12  # 12% different
+            deviation = 0.12
         elif 'SMALL' in rl_action:
-            deviation = 0.06  # 6% different
+            deviation = 0.06
         else:
-            deviation = 0.0   # HOLD = agrees with market
+            deviation = 0.0
         
-        # Scale deviation by confidence (0-1)
-        # Low confidence = smaller deviation
         scaled_deviation = deviation * max(rl_confidence, 0.2)
         
-        # Calculate RL's implied probability
         if is_buy:
-            # BUY: RL thinks YES is underpriced → true prob is HIGHER
             p_rl = yes_price + scaled_deviation
         elif is_sell:
-            # SELL: RL thinks YES is overpriced → true prob is LOWER
             p_rl = yes_price - scaled_deviation
         else:
-            # HOLD: RL agrees with market
             p_rl = yes_price
         
-        # Clamp P_rl to valid range (allow very low values for long-shot markets)
         p_rl = max(0.0001, min(0.9999, p_rl))
         
-        # Log components for debugging
-        logger.debug(f"[PROB_COMPONENTS] p_market={p_market:.4f}, p_sentiment={p_sentiment:.4f}, p_rl={p_rl:.4f} (action={rl_action}, dev={scaled_deviation:.4f})")
-        
         # ================================================================
-        # WEIGHTED ENSEMBLE WITH RENORMALIZATION
+        # BAYESIAN LOG-ODDS FUSION
         # ================================================================
-        # Key insight: If a signal is "neutral" (0.45-0.55), it provides
-        # NO information and should be EXCLUDED from the calculation.
-        # We renormalize weights so remaining signals share the vote.
-        #
-        # Without renormalization: neutral sentiment (0.5) pulls everything to 0.5
-        # With renormalization: neutral sentiment is excluded, market+RL decide
+        # Market is the ANCHOR. Sentiment and RL provide DELTAS.
+        # Neutral (0.5) has log-odds of 0.0, so it contributes ZERO delta.
         
-        # Base max weights - MARKET DOMINANT
-        # Reduced sentiment weight to prevent bullish bias
-        max_w_market = 0.70      # Market is generally efficient - trust it more
-        max_w_sentiment = 0.10   # AI sentiment - reduced due to bullish bias  
-        max_w_rl = 0.20          # DQN reinforcement learning
+        neutral_log_odds = 0.0  # prob_to_log_odds(0.5) = 0.0
         
-        # ================================================================
-        # STEP 1: Determine active weights (filter out neutral signals)
-        # ================================================================
+        # --- Weight Configuration ---
+        sentiment_weight = 0.25  # How much sentiment can influence
+        rl_weight = 0.25         # How much RL can influence
         
-        # Market always participates (it's the baseline)
-        w_market = max_w_market
+        # --- Calculate Sentiment Delta ---
+        sentiment_log_odds = prob_to_log_odds(p_sentiment)
+        sentiment_delta = sentiment_log_odds - neutral_log_odds  # How far from neutral
         
-        # Sentiment: If near-neutral (0.40-0.60), weight = 0 (abstains from voting)
-        # Widened neutral band to exclude more "noise" sentiment
-        is_sentiment_neutral = 0.40 <= p_sentiment <= 0.60
+        # Determine if sentiment is effectively neutral (close to 0.5)
+        is_sentiment_neutral = abs(p_sentiment - 0.5) < 0.10  # Within 10% of 0.5
         if is_sentiment_neutral:
-            w_sentiment = 0.0
+            sentiment_delta = 0.0  # Force zero contribution
             sentiment_status = 'neutral_excluded'
         else:
-            w_sentiment = max_w_sentiment
             sentiment_status = 'active'
         
-        # RL: If HOLD action or very low confidence, weight = 0
+        # Scale by confidence (if available, assume 1.0 otherwise)
+        sentiment_conf = 1.0  # Could be parameterized
+        weighted_sentiment_delta = sentiment_delta * sentiment_conf * sentiment_weight
+        
+        # --- Calculate RL Delta ---
+        rl_log_odds = prob_to_log_odds(p_rl)
+        rl_delta = rl_log_odds - neutral_log_odds
+        
+        # If RL is HOLD or low confidence, exclude it
         is_rl_neutral = (not is_buy and not is_sell) or rl_confidence < 0.15
         if is_rl_neutral:
-            w_rl = 0.0
+            rl_delta = 0.0
             rl_status = 'neutral_excluded'
         else:
-            # Scale RL weight by confidence
-            w_rl = max_w_rl * min(1.0, rl_confidence / 0.5)  # Full weight at 50% confidence
             rl_status = 'active'
         
-        # ================================================================
-        # STEP 2: Calculate numerator (weighted sum of active signals)
-        # ================================================================
-        numerator = (
-            w_market * p_market +
-            w_sentiment * p_sentiment +
-            w_rl * p_rl
-        )
+        weighted_rl_delta = rl_delta * rl_confidence * rl_weight
+        
+        # --- Apply Updates to Base ---
+        total_delta = weighted_sentiment_delta + weighted_rl_delta
+        final_log_odds = base_log_odds + total_delta
+        
+        # --- Convert Back to Probability ---
+        model_prob = log_odds_to_prob(final_log_odds)
+        
+        # Log the Bayesian fusion
+        logger.debug(f"[BAYESIAN] base_lo={base_log_odds:.2f}, sent_delta={weighted_sentiment_delta:.3f}, rl_delta={weighted_rl_delta:.3f}, final_lo={final_log_odds:.2f}, prob={model_prob:.4f}")
         
         # ================================================================
-        # STEP 3: Calculate denominator (sum of active weights)
+        # SAFETY CAPS (Still needed for extreme cases)
         # ================================================================
-        denominator = w_market + w_sentiment + w_rl
-        
-        # ================================================================
-        # STEP 4: Renormalize - divide to get final probability
-        # ================================================================
-        if denominator > 0:
-            model_prob = numerator / denominator
-        else:
-            # Safety: if somehow all weights are 0, fall back to market
-            model_prob = p_market
-        
-        # ================================================================
-        # LONG-SHOT MARKET SAFETY CHECK
-        # ================================================================
-        # For markets < 5%, cap the model's upside to prevent YES spam
-        # The model cannot predict more than 2x the current market price
+        # For very low-priced markets, cap upside to 2x market
         if p_market < 0.05:
             max_allowed = p_market * 2.0
             if model_prob > max_allowed:
                 logger.info(f"[LONGSHOT_CAP] Capping model_prob from {model_prob:.4f} to {max_allowed:.4f} (market={p_market:.4f})")
                 model_prob = max_allowed
         
-        # ================================================================
-        # NEAR-LOCK MARKET SAFETY CHECK
-        # ================================================================
-        # For markets > 95%, cap the model's downside to prevent NO spam
-        # The model cannot predict less than (market - 2*(1-market))
+        # For very high-priced markets, cap downside
         if p_market > 0.95:
             min_allowed = 1 - (1 - p_market) * 2.0
             if model_prob < min_allowed:
                 logger.info(f"[NEARLOCK_CAP] Raising model_prob from {model_prob:.4f} to {min_allowed:.4f} (market={p_market:.4f})")
                 model_prob = min_allowed
         
-        # ================================================================
-        # NORMAL MARKET DIVERGENCE CHECK
-        # ================================================================
-        # For normal markets (5-95%), if sentiment is the main driver of divergence
-        # and microstructure doesn't confirm, reduce the divergence
-        if 0.05 <= p_market <= 0.95:
-            max_divergence = 0.05  # Model can diverge max 5% from market
-            if model_prob > p_market + max_divergence:
-                logger.info(f"[DIVERGENCE_CAP] Capping model_prob from {model_prob:.4f} to {p_market + max_divergence:.4f} (market={p_market:.4f})")
-                model_prob = p_market + max_divergence
-            elif model_prob < p_market - max_divergence:
-                logger.info(f"[DIVERGENCE_CAP] Raising model_prob from {model_prob:.4f} to {p_market - max_divergence:.4f} (market={p_market:.4f})")
-                model_prob = p_market - max_divergence
-        
-        # Allow very small probabilities - remove artificial floors
         final_prob = max(0.0001, min(0.9999, model_prob))
-        
-        # Calculate effective weights after renormalization (for diagnostics)
-        if denominator > 0:
-            eff_w_market = w_market / denominator
-            eff_w_sentiment = w_sentiment / denominator
-            eff_w_rl = w_rl / denominator
-        else:
-            eff_w_market, eff_w_sentiment, eff_w_rl = 1.0, 0.0, 0.0
         
         # Return diagnostics if requested
         if return_diagnostics:
