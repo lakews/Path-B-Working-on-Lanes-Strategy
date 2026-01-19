@@ -2023,6 +2023,35 @@ async def get_sentiment_momentum(market_id: str):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+@api_router.get("/sentiment/llm/stats")
+async def get_llm_stats():
+    """
+    Get Smart LLM cache statistics.
+    
+    Returns cache hit/miss rates, call counts, and configuration.
+    
+    The Smart LLM module uses Hybrid Smart-Cache:
+    - Hot markets (>$50k volume): 10 min cache TTL
+    - Cold markets (<$50k volume): 60 min cache TTL
+    """
+    try:
+        from ml.enhanced_sentiment import get_enhanced_sentiment_analyzer
+        
+        analyzer = get_enhanced_sentiment_analyzer()
+        stats = analyzer.get_llm_stats()
+        
+        return {
+            "status": "ok",
+            "cache_strategy": "Hybrid Smart-Cache",
+            "description": "Hot markets (>$50k): 10 min TTL, Cold markets: 60 min TTL",
+            "stats": stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting LLM stats: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 @api_router.get("/realtime/status")
 async def get_realtime_status():
     """
