@@ -772,6 +772,110 @@ class PolymarketSentimentExtractor:
         if len(history) > max_items:
             del history[:-max_items]
     
+    def get_history_stats(self) -> Dict:
+        """
+        Get statistics about the historical data cache.
+        
+        Returns counts of data points per market for debugging momentum signals.
+        """
+        now = datetime.now(timezone.utc)
+        
+        price_stats = {}
+        for market_id, history in self._price_history.items():
+            if history:
+                oldest = datetime.fromisoformat(history[0]['timestamp'].replace('Z', '+00:00'))
+                newest = datetime.fromisoformat(history[-1]['timestamp'].replace('Z', '+00:00'))
+                age_hours = (now - oldest).total_seconds() / 3600
+                price_stats[market_id[:16]] = {
+                    'count': len(history),
+                    'age_hours': round(age_hours, 1),
+                    'oldest': history[0]['timestamp'],
+                    'newest': history[-1]['timestamp'],
+                }
+        
+        volume_stats = {}
+        for market_id, history in self._volume_history.items():
+            if history:
+                oldest = datetime.fromisoformat(history[0]['timestamp'].replace('Z', '+00:00'))
+                age_hours = (now - oldest).total_seconds() / 3600
+                volume_stats[market_id[:16]] = {
+                    'count': len(history),
+                    'age_hours': round(age_hours, 1),
+                }
+        
+        sentiment_stats = {}
+        for market_id, history in self._sentiment_history.items():
+            if history:
+                oldest = datetime.fromisoformat(history[0]['timestamp'].replace('Z', '+00:00'))
+                age_hours = (now - oldest).total_seconds() / 3600
+                sentiment_stats[market_id[:16]] = {
+                    'count': len(history),
+                    'age_hours': round(age_hours, 1),
+                    'latest_score': round(history[-1]['score'], 4) if history else None,
+                }
+        
+        # Check momentum signal availability
+        momentum_ready = {}
+        for market_id in self._price_history.keys():
+            price_count = len(self._price_history.get(market_id, []))
+            volume_count = len(self._volume_history.get(market_id, []))
+            
+            momentum_ready[market_id[:16]] = {
+                'price_momentum': price_count >= 5,
+                'price_velocity': price_count >= 3,
+                'volume_momentum': volume_count >= 3,
+                'price_points': price_count,
+                'volume_points': volume_count,
+                'status': 'ready' if (price_count >= 5 and volume_count >= 3) else 'building'
+            }
+        
+        return {
+            'total_markets_tracked': len(self._price_history),
+            'price_history': price_stats,
+            'volume_history': volume_stats,
+            'sentiment_history': sentiment_stats,
+            'momentum_signal_readiness': momentum_ready,
+            'config': self.config,
+        }
+    
+    def seed_historical_data(self, market_id: str, prices: List[float], volumes: List[float] = None, interval_minutes: int = 5):
+        """
+        Seed historical data for a market to enable immediate momentum calculations.
+        
+        Useful for backfilling data from external sources or testing.
+        
+        Args:
+            market_id: Market identifier
+            prices: List of historical prices (oldest first)
+            volumes: Optional list of historical volumes (same order)
+            interval_minutes: Minutes between each data point
+        """
+        now = datetime.now(timezone.utc)
+        
+        # Create timestamps going backwards from now
+        for i, price in enumerate(prices):
+            timestamp = now - timedelta(minutes=interval_minutes * (len(prices) - i - 1))
+            self._price_history[market_id].append({
+                'timestamp': timestamp.isoformat(),
+                'price': price,
+                'seeded': True
+            })
+        
+        if volumes:
+            for i, volume in enumerate(volumes):
+                timestamp = now - timedelta(minutes=interval_minutes * (len(volumes) - i - 1))
+                self._volume_history[market_id].append({
+                    'timestamp': timestamp.isoformat(),
+                    'volume': volume,
+                    'seeded': True
+                })
+        
+        self._trim_history(self._price_history[market_id])
+        if volumes:
+            self._trim_history(self._volume_history[market_id])
+        
+        logger.info(f"Seeded {len(prices)} price points for {market_id[:16]}")
+    
     def get_market_sentiment_summary(self, market_id: str) -> Dict:
         """Get a summary of current sentiment state for a market."""
         history = self._sentiment_history.get(market_id, [])
