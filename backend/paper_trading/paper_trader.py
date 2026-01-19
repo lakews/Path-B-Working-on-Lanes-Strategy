@@ -2266,70 +2266,79 @@ class PaperTrader:
         p_rl = max(0.01, min(0.99, p_rl))
         
         # ================================================================
-        # WEIGHTED ENSEMBLE
+        # WEIGHTED ENSEMBLE WITH RENORMALIZATION
         # ================================================================
-        # Weights represent trust in each signal source
-        # Market gets highest weight (most efficient)
-        # Sentiment and RL provide alpha when they disagree
+        # Key insight: If a signal is "neutral" (0.45-0.55), it provides
+        # NO information and should be EXCLUDED from the calculation.
+        # We renormalize weights so remaining signals share the vote.
+        #
+        # Without renormalization: neutral sentiment (0.5) pulls everything to 0.5
+        # With renormalization: neutral sentiment is excluded, market+RL decide
         
-        # Base weights (sum to 1.0)
-        w_market = 0.50      # Market is generally efficient
-        w_sentiment = 0.25   # AI sentiment analysis
-        w_rl = 0.25          # DQN reinforcement learning
-        
-        # Adjust weights based on signal confidence/quality
-        # If RL has high confidence, trust it more
-        if rl_confidence > 0.5:
-            confidence_boost = (rl_confidence - 0.5) * 0.2  # Up to +10%
-            w_rl += confidence_boost
-            w_market -= confidence_boost
-        
-        # If sentiment strongly agrees with RL, boost both
-        sentiment_agrees_with_rl = (
-            (is_buy and sentiment > 0.55) or 
-            (is_sell and sentiment < 0.45)
-        )
-        if sentiment_agrees_with_rl:
-            # Shift weight from market to signals
-            agreement_boost = 0.10
-            w_market -= agreement_boost
-            w_sentiment += agreement_boost * 0.5
-            w_rl += agreement_boost * 0.5
-        
-        # If sentiment disagrees with RL, reduce both (conflicting signals)
-        sentiment_disagrees = (
-            (is_buy and sentiment < 0.45) or
-            (is_sell and sentiment > 0.55)
-        )
-        if sentiment_disagrees:
-            # Increase market weight (signals cancel out)
-            conflict_penalty = 0.10
-            w_market += conflict_penalty
-            w_sentiment -= conflict_penalty * 0.5
-            w_rl -= conflict_penalty * 0.5
-        
-        # Ensure weights are valid
-        w_market = max(0.30, min(0.70, w_market))
-        w_sentiment = max(0.10, min(0.35, w_sentiment))
-        w_rl = max(0.10, min(0.35, w_rl))
-        
-        # Normalize to sum to 1.0
-        total_weight = w_market + w_sentiment + w_rl
-        w_market /= total_weight
-        w_sentiment /= total_weight
-        w_rl /= total_weight
+        # Base max weights
+        max_w_market = 0.50      # Market is generally efficient
+        max_w_sentiment = 0.25   # AI sentiment analysis  
+        max_w_rl = 0.25          # DQN reinforcement learning
         
         # ================================================================
-        # FINAL CALCULATION
+        # STEP 1: Determine active weights (filter out neutral signals)
         # ================================================================
-        model_prob = (
+        
+        # Market always participates (it's the baseline)
+        w_market = max_w_market
+        
+        # Sentiment: If neutral (0.45-0.55), weight = 0 (abstains from voting)
+        is_sentiment_neutral = 0.45 <= p_sentiment <= 0.55
+        if is_sentiment_neutral:
+            w_sentiment = 0.0
+            sentiment_status = 'neutral_excluded'
+        else:
+            w_sentiment = max_w_sentiment
+            sentiment_status = 'active'
+        
+        # RL: If HOLD action or very low confidence, weight = 0
+        is_rl_neutral = (not is_buy and not is_sell) or rl_confidence < 0.15
+        if is_rl_neutral:
+            w_rl = 0.0
+            rl_status = 'neutral_excluded'
+        else:
+            # Scale RL weight by confidence
+            w_rl = max_w_rl * min(1.0, rl_confidence / 0.5)  # Full weight at 50% confidence
+            rl_status = 'active'
+        
+        # ================================================================
+        # STEP 2: Calculate numerator (weighted sum of active signals)
+        # ================================================================
+        numerator = (
             w_market * p_market +
             w_sentiment * p_sentiment +
             w_rl * p_rl
         )
         
+        # ================================================================
+        # STEP 3: Calculate denominator (sum of active weights)
+        # ================================================================
+        denominator = w_market + w_sentiment + w_rl
+        
+        # ================================================================
+        # STEP 4: Renormalize - divide to get final probability
+        # ================================================================
+        if denominator > 0:
+            model_prob = numerator / denominator
+        else:
+            # Safety: if somehow all weights are 0, fall back to market
+            model_prob = p_market
+        
         # Final clamp to valid probability range
         final_prob = max(0.01, min(0.99, model_prob))
+        
+        # Calculate effective weights after renormalization (for diagnostics)
+        if denominator > 0:
+            eff_w_market = w_market / denominator
+            eff_w_sentiment = w_sentiment / denominator
+            eff_w_rl = w_rl / denominator
+        else:
+            eff_w_market, eff_w_sentiment, eff_w_rl = 1.0, 0.0, 0.0
         
         # Return diagnostics if requested
         if return_diagnostics:
@@ -2340,15 +2349,31 @@ class PaperTrader:
                     'p_sentiment': round(p_sentiment, 4),
                     'p_rl': round(p_rl, 4),
                 },
-                'weights': {
+                'raw_weights': {
                     'w_market': round(w_market, 4),
                     'w_sentiment': round(w_sentiment, 4),
                     'w_rl': round(w_rl, 4),
                 },
+                'effective_weights': {
+                    'w_market': round(eff_w_market, 4),
+                    'w_sentiment': round(eff_w_sentiment, 4),
+                    'w_rl': round(eff_w_rl, 4),
+                },
+                'signal_status': {
+                    'sentiment': sentiment_status,
+                    'rl': rl_status,
+                    'sentiment_is_neutral': is_sentiment_neutral,
+                    'rl_is_neutral': is_rl_neutral,
+                },
+                'renormalization': {
+                    'numerator': round(numerator, 6),
+                    'denominator': round(denominator, 4),
+                    'active_signals': sum([1 for w in [w_market, w_sentiment, w_rl] if w > 0]),
+                },
                 'contributions': {
-                    'market_contribution': round(w_market * p_market, 4),
-                    'sentiment_contribution': round(w_sentiment * p_sentiment, 4),
-                    'rl_contribution': round(w_rl * p_rl, 4),
+                    'market_contribution': round(w_market * p_market, 6),
+                    'sentiment_contribution': round(w_sentiment * p_sentiment, 6),
+                    'rl_contribution': round(w_rl * p_rl, 6),
                 },
                 'rl_details': {
                     'action': rl_action,
@@ -2356,8 +2381,6 @@ class PaperTrader:
                     'deviation': round(scaled_deviation, 4),
                     'direction': 'bullish' if is_buy else ('bearish' if is_sell else 'neutral'),
                 },
-                'signal_agreement': {
-                    'sentiment_agrees_rl': sentiment_agrees_with_rl if 'sentiment_agrees_with_rl' in dir() else False,
                     'sentiment_disagrees_rl': sentiment_disagrees if 'sentiment_disagrees' in dir() else False,
                 },
                 'pre_clamp': round(model_prob, 4),
