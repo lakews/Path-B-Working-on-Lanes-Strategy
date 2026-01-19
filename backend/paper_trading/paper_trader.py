@@ -2208,58 +2208,87 @@ class PaperTrader:
         return_diagnostics: bool = False
     ) -> float:
         """
-        Calculate model probability using WEIGHTED ENSEMBLE approach.
+        Calculate model probability using BAYESIAN LOG-ODDS FUSION.
         
-        Combines multiple probability estimates using BAYESIAN LOG-ODDS FUSION.
+        This method uses the market price as the ANCHOR (prior belief) and applies
+        Bayesian updates from sentiment and RL signals in log-odds space.
         
-        This is mathematically superior to linear weighted average because:
-        - Market price serves as the ANCHOR (Prior belief)
-        - Sentiment and RL provide DELTA updates in log-odds space
-        - Neutral signals (0.5) contribute ZERO delta (not 0.5 drag)
+        Key Properties:
+        - Market price is the anchor - model starts from market's estimate
+        - Neutral signals (0.5) contribute ZERO delta (no drag toward 0.5)
         - Result naturally respects the scale of the market price
+        - No artificial floors or ceilings that create false edge
         
-        Key Math:
-        - Log-odds of 0.5 = 0.0 (neutral)
-        - Log-odds of 0.01 = -4.6 (very unlikely)
-        - Log-odds of 0.99 = +4.6 (very likely)
+        Math:
+        - Log-odds(0.5) = 0.0 (neutral)
+        - Log-odds(0.01) = -4.6 (very unlikely)
+        - Log-odds(0.99) = +4.6 (very likely)
         
-        When market=0.01 and sentiment=0.5 (neutral):
-        - Linear avg: 0.7*0.01 + 0.1*0.5 + 0.2*0.5 = 0.157 (WRONG - creates false edge)
-        - Log-odds: start=-4.6, delta=0.0, result≈0.01 (CORRECT)
+        Example (Neutral Case Verification):
+        - market=0.01, sentiment=0.5, rl=HOLD
+        - base_log_odds = -4.6
+        - sentiment_delta = 0.0 (neutral excluded)
+        - rl_delta = 0.0 (HOLD excluded)
+        - final_log_odds = -4.6
+        - final_prob = 0.01 ✓
         
         Args:
-            return_diagnostics: If True, returns a dict with full diagnostic breakdown
+            sentiment: Combined sentiment score (0-1)
+            sharp_alignment: Sharp money alignment (unused in Bayesian)
+            rl_confidence: RL model confidence (0-1)
+            yes_price: Current YES price (market's implied probability)
+            rl_action: RL action (BUY_SMALL, SELL_MEDIUM, HOLD, etc.)
+            return_diagnostics: If True, returns diagnostic dict instead of float
+            
+        Returns:
+            float: Bayesian model probability, or dict if return_diagnostics=True
         """
         import math
         
         # ================================================================
         # LOG-ODDS HELPER FUNCTIONS
         # ================================================================
-        def prob_to_log_odds(prob):
-            """Converts probability to Log-Odds (Logit). Neutral (0.5) → 0.0"""
-            epsilon = 1e-6
+        def prob_to_log_odds(prob: float) -> float:
+            """Convert probability to log-odds. Neutral (0.5) → 0.0"""
+            epsilon = 1e-9
             p = max(epsilon, min(1 - epsilon, prob))
             return math.log(p / (1 - p))
         
-        def log_odds_to_prob(log_odds):
-            """Converts Log-Odds back to probability (Sigmoid)."""
+        def log_odds_to_prob(log_odds: float) -> float:
+            """Convert log-odds to probability (sigmoid)."""
             # Clamp to avoid overflow
-            log_odds = max(-20, min(20, log_odds))
-            return 1.0 / (1.0 + math.exp(-log_odds))
+            lo = max(-30, min(30, log_odds))
+            return 1.0 / (1.0 + math.exp(-lo))
         
         # ================================================================
-        # COMPONENT 1: Market Probability (ANCHOR/PRIOR)
+        # STEP 1: ANCHOR - Market Price as Prior
         # ================================================================
         p_market = yes_price
         base_log_odds = prob_to_log_odds(p_market)
         
         # ================================================================
-        # COMPONENT 2: Sentiment Score
+        # STEP 2: SENTIMENT DELTA
         # ================================================================
         p_sentiment = sentiment
         
+        # Neutral band: 0.40-0.60 contributes ZERO
+        NEUTRAL_LOW = 0.40
+        NEUTRAL_HIGH = 0.60
+        SENTIMENT_WEIGHT = 0.25
+        
+        is_sentiment_neutral = NEUTRAL_LOW <= p_sentiment <= NEUTRAL_HIGH
+        
+        if is_sentiment_neutral:
+            weighted_sentiment_delta = 0.0
+            sentiment_status = 'neutral_excluded'
+        else:
+            sentiment_log_odds = prob_to_log_odds(p_sentiment)
+            sentiment_delta = sentiment_log_odds  # Already relative to neutral (0.0)
+            weighted_sentiment_delta = sentiment_delta * SENTIMENT_WEIGHT
+            sentiment_status = 'active'
+        
         # ================================================================
-        # COMPONENT 3: RL Implied Probability
+        # STEP 3: RL DELTA
         # ================================================================
         rl_action = rl_action.upper() if rl_action else 'HOLD'
         
@@ -2276,97 +2305,61 @@ class PaperTrader:
         else:
             deviation = 0.0
         
-        scaled_deviation = deviation * max(rl_confidence, 0.2)
-        
+        # Calculate RL's implied probability
         if is_buy:
-            p_rl = yes_price + scaled_deviation
+            p_rl = yes_price + deviation * max(rl_confidence, 0.2)
         elif is_sell:
-            p_rl = yes_price - scaled_deviation
+            p_rl = yes_price - deviation * max(rl_confidence, 0.2)
         else:
             p_rl = yes_price
         
-        p_rl = max(0.0001, min(0.9999, p_rl))
+        # Clamp to valid probability
+        p_rl = max(1e-9, min(1 - 1e-9, p_rl))
         
-        # ================================================================
-        # BAYESIAN LOG-ODDS FUSION
-        # ================================================================
-        # Market is the ANCHOR. Sentiment and RL provide DELTAS.
-        # Neutral (0.5) has log-odds of 0.0, so it contributes ZERO delta.
+        # RL contributes if it has a direction and confidence
+        RL_WEIGHT = 0.25
+        MIN_RL_CONFIDENCE = 0.15
         
-        neutral_log_odds = 0.0  # prob_to_log_odds(0.5) = 0.0
+        is_rl_neutral = (not is_buy and not is_sell) or rl_confidence < MIN_RL_CONFIDENCE
         
-        # --- Weight Configuration ---
-        sentiment_weight = 0.25  # How much sentiment can influence
-        rl_weight = 0.25         # How much RL can influence
-        
-        # --- Calculate Sentiment Delta ---
-        sentiment_log_odds = prob_to_log_odds(p_sentiment)
-        sentiment_delta = sentiment_log_odds - neutral_log_odds  # How far from neutral
-        
-        # Determine if sentiment is effectively neutral (close to 0.5)
-        is_sentiment_neutral = abs(p_sentiment - 0.5) < 0.10  # Within 10% of 0.5
-        if is_sentiment_neutral:
-            sentiment_delta = 0.0  # Force zero contribution
-            sentiment_status = 'neutral_excluded'
-        else:
-            sentiment_status = 'active'
-        
-        # Scale by confidence (if available, assume 1.0 otherwise)
-        sentiment_conf = 1.0  # Could be parameterized
-        weighted_sentiment_delta = sentiment_delta * sentiment_conf * sentiment_weight
-        
-        # --- Calculate RL Delta ---
-        rl_log_odds = prob_to_log_odds(p_rl)
-        rl_delta = rl_log_odds - neutral_log_odds
-        
-        # If RL is HOLD or low confidence, exclude it
-        is_rl_neutral = (not is_buy and not is_sell) or rl_confidence < 0.15
         if is_rl_neutral:
-            rl_delta = 0.0
+            weighted_rl_delta = 0.0
             rl_status = 'neutral_excluded'
         else:
+            rl_log_odds = prob_to_log_odds(p_rl)
+            # RL delta is relative to market, not absolute neutral
+            # This ensures SELL on 0.01 market doesn't create huge negative delta
+            market_log_odds = prob_to_log_odds(yes_price)
+            rl_delta = rl_log_odds - market_log_odds
+            weighted_rl_delta = rl_delta * rl_confidence * RL_WEIGHT
             rl_status = 'active'
         
-        weighted_rl_delta = rl_delta * rl_confidence * rl_weight
-        
-        # --- Apply Updates to Base ---
+        # ================================================================
+        # STEP 4: BAYESIAN UPDATE
+        # ================================================================
         total_delta = weighted_sentiment_delta + weighted_rl_delta
         final_log_odds = base_log_odds + total_delta
         
-        # --- Convert Back to Probability ---
-        model_prob = log_odds_to_prob(final_log_odds)
+        # ================================================================
+        # STEP 5: CONVERT BACK TO PROBABILITY
+        # ================================================================
+        # NO ARTIFICIAL CAPS - let the math speak
+        bayesian_final_prob = log_odds_to_prob(final_log_odds)
         
-        # Log the Bayesian fusion
-        logger.debug(f"[BAYESIAN] base_lo={base_log_odds:.2f}, sent_delta={weighted_sentiment_delta:.3f}, rl_delta={weighted_rl_delta:.3f}, final_lo={final_log_odds:.2f}, prob={model_prob:.4f}")
+        # Log for debugging
+        logger.debug(f"[BAYESIAN_PURE] base_lo={base_log_odds:.3f}, sent_delta={weighted_sentiment_delta:.4f}, rl_delta={weighted_rl_delta:.4f}, final_lo={final_log_odds:.3f}, prob={bayesian_final_prob:.6f}")
         
         # ================================================================
-        # SAFETY CAPS (Still needed for extreme cases)
+        # RETURN
         # ================================================================
-        # For very low-priced markets, cap upside to 2x market
-        if p_market < 0.05:
-            max_allowed = p_market * 2.0
-            if model_prob > max_allowed:
-                logger.info(f"[LONGSHOT_CAP] Capping model_prob from {model_prob:.4f} to {max_allowed:.4f} (market={p_market:.4f})")
-                model_prob = max_allowed
-        
-        # For very high-priced markets, cap downside
-        if p_market > 0.95:
-            min_allowed = 1 - (1 - p_market) * 2.0
-            if model_prob < min_allowed:
-                logger.info(f"[NEARLOCK_CAP] Raising model_prob from {model_prob:.4f} to {min_allowed:.4f} (market={p_market:.4f})")
-                model_prob = min_allowed
-        
-        final_prob = max(0.0001, min(0.9999, model_prob))
-        
-        # Return diagnostics if requested
         if return_diagnostics:
             return {
-                'final_probability': final_prob,
-                'fusion_method': 'bayesian_log_odds',
+                'final_probability': bayesian_final_prob,
+                'fusion_method': 'bayesian_log_odds_pure',
                 'components': {
-                    'p_market': round(p_market, 4),
+                    'p_market': round(p_market, 6),
                     'p_sentiment': round(p_sentiment, 4),
-                    'p_rl': round(p_rl, 4),
+                    'p_rl': round(p_rl, 6),
                 },
                 'log_odds': {
                     'base_log_odds': round(base_log_odds, 4),
@@ -2376,8 +2369,8 @@ class PaperTrader:
                     'final_log_odds': round(final_log_odds, 4),
                 },
                 'weights': {
-                    'sentiment_weight': sentiment_weight,
-                    'rl_weight': rl_weight,
+                    'sentiment_weight': SENTIMENT_WEIGHT,
+                    'rl_weight': RL_WEIGHT,
                 },
                 'signal_status': {
                     'sentiment': sentiment_status,
@@ -2388,13 +2381,12 @@ class PaperTrader:
                 'rl_details': {
                     'action': rl_action,
                     'confidence': round(rl_confidence, 4),
-                    'deviation': round(scaled_deviation, 4),
+                    'deviation': round(deviation, 4),
                     'direction': 'bullish' if is_buy else ('bearish' if is_sell else 'neutral'),
                 },
-                'pre_cap': round(log_odds_to_prob(final_log_odds), 4),
             }
         
-        return final_prob
+        return bayesian_final_prob
     
     def _get_portfolio_state(self) -> Dict:
         """
