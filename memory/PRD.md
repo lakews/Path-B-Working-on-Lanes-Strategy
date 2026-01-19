@@ -1212,7 +1212,7 @@ The RL model learns from completed backtests. To train it:
 3. As more backtests complete, Training Iterations increase and Q-Table populates
 4. Current status: 29 iterations trained, model is "Active"
 
-## Prioritized Backlog (Updated January 17, 2026)
+## Prioritized Backlog (Updated January 19, 2026)
 
 ### P0 - Critical
 - None (all critical issues resolved)
@@ -1220,14 +1220,17 @@ The RL model learns from completed backtests. To train it:
 ### P1 - High Priority
 - **Monitor Strategy Distribution**: Run longer sessions to verify Arbitrage trades increase with new 0.03/0.97 thresholds
 - **Delta Neutral Strategy Fix**: Currently capturing zero trades; consider UI-configurable price range
+- **Polymarket Momentum Auto-Seeding**: Fetch price history on startup to enable momentum signals immediately
 
 ### P2 - Medium Priority  
 - **Position Size Max Cap**: Verify positions reach configured max under optimal conditions
 - **Circuit Breaker Force-Close**: Revisit behavior when breaker triggers
 
 ### P3 - Low Priority / Blocked
-- **AWS Deployment**: Blocked by ML dependencies (tensorflow, transformers, torch)
+- **AWS Deployment - ML Cleanup**: Remove unused dependencies (TensorFlow, Keras, Transformers = 1.5GB savings). See `/app/docs/ML_DEPENDENCIES_AUDIT.md`
+- **AWS Deployment - PyTorch Replacement**: Replace DQN with numpy-only lightweight RL to remove final 435MB dependency
 - **Adaptive Sentiment Thresholds**: Auto-adjust based on win rates
+- **Dynamic Kelly Multiplier**: Adjust based on Oracle Risk
 - **ESLint Warnings**: Non-blocking frontend warnings
 
 ---
