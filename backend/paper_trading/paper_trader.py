@@ -3314,9 +3314,9 @@ class PaperTrader:
         return float(np.mean(((data - mean) / std) ** 4) - 3)
     
     def get_positions(self) -> List[Dict]:
-        """Get current open paper positions"""
-        return list(self.paper_positions.values())
+        """Get current open paper positions (sanitized for JSON)"""
+        return [sanitize_for_json(pos) for pos in self.paper_positions.values()]
     
     def get_trade_history(self, limit: int = 50) -> List[Dict]:
-        """Get recent trade history"""
-        return self.trade_history[-limit:]
+        """Get recent trade history (sanitized for JSON)"""
+        return [sanitize_for_json(trade) for trade in self.trade_history[-limit:]]
