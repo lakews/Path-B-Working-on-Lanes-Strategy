@@ -2713,7 +2713,8 @@ class PaperTrader:
                     'polymarket_weight': round(polymarket_weight, 4),
                     'llm_weight': round(llm_weight, 4),
                     'correlation_weight': round(corr_weight, 4),
-                    'external_weight': round(external_weight, 4),
+                    'github_weight': round(github_weight, 4),
+                    'external_weight': 0.0,  # Finnhub disabled
                 },
                 'polymarket_momentum': enhanced_data.get('polymarket_momentum', {}),
                 'polymarket_signals': enhanced_data.get('polymarket_signals', {}),
