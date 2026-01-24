@@ -2,121 +2,101 @@
 The user wants to build APEX TRADER, a complete, production-ready, end-to-end AI-driven prediction market trading engine.
 
 The scope of this session was to:
-1.  Implement a user-provided Hybrid Smart-Cache guide to optimize LLM API calls.
-2.  Build a UI to configure and monitor this new caching system.
-3.  Fix a critical bug where the trade history page was blank due to a server error.
-4.  Diagnose and fix the root cause of the bot's systemic bias, where it almost exclusively placed YES trades. This evolved into a complete refactoring of the core probability model to use a Bayesian Log-Odds approach.
-5.  Tune the parameters of the new Bayesian model to ensure it was not too conservative and could actively trade.
+1.  Fix an issue where a single large position exceeded the user's configured maximum position size limit.
+2.  Refactor the entire capital management system to base all position sizing and return calculations on deployed capital rather than total equity.
+3.  Address several architectural gaps identified by the user, including implementing event-level exposure caps and maker-vs-taker order execution logic.
+4.  Make the new event caps configurable through both the backend API and the frontend UI.
+5.  Diagnose and fix issues with the Reinforcement Learning (RL) system, where stats were not being captured and the Force Train button was perpetually disabled.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack trading bot (React + FastAPI).
--   The core probability model has been completely refactored from a linear weighted average to a **Bayesian Log-Odds fusion model**. This was a critical fix to eliminate a systemic YES-bias in trade decisions.
--   A new **Hybrid Smart-Cache** for the LLM sentiment module exists in . This system intelligently caches LLM responses based on market volume to reduce API costs.
--   The UI on the  page features a new **LLM Cache analytics panel**, allowing the user to view real-time cache statistics (hit rate, costs) and configure caching parameters (TTLs, volume thresholds).
--   The backend API endpoints for trade history () and open positions () are now functional after fixing a critical  JSON serialization error.
--   A comprehensive audit of heavy ML dependencies has been performed and documented in .
--   The parameters for the new Bayesian model (signal weights, neutral zone, edge threshold) have been tuned to encourage more trading activity.
+A full-stack trading application (React + FastAPI) with a Bayesian Log-Odds fusion model at its core.
+
+-   **Capital Management Overhaul:** All position sizing, risk calculations (Sharpe ratio, drawdown), and performance metrics (% returns) across the entire application (, , , ) have been refactored to use the user-configured **deployed capital** as the base, not total equity.
+-   **Configurable Risk Caps:**
+    -   **Event Caps:** A new system limits exposure to correlated markets (e.g., multiple markets on the same event). This is now fully configurable via the API and a new UI panel on the  page.
+    -   **Sector Caps & Max Position Size:** These are correctly loaded from user configuration and are now applied to the deployed capital base.
+-   **Maker-Taker Execution Logic:** A simulated maker-vs-taker execution engine () has been integrated into the paper trader. It attempts to place maker orders to capture spread and falls back to taker orders based on edge and urgency. Trade logs now include execution details like  and .
+-   **RL System Fixes:**
+    -   The frontend UI for RL training has been fixed. The Force Train button is now enabled based on the replay buffer size ( experiences) rather than trader status. It also clearly displays the buffer's progress.
+    -   A critical crash in the DQN model loading mechanism has been resolved by making it compatible with PyTorch 2.6 and adding graceful error handling, allowing the model to load successfully.
+-   **Architectural Analysis:** The agent has created detailed analyses of the system's architecture and model behavior, saving them to the  directory for future reference.
 
 **Last working item**:
--   **Last item agent was working:** Implementing user-directed optimizations for the new Bayesian Log-Odds fusion model to increase trading volume. This involved:
-    1.  Narrowing the neutral dead-zone for sentiment signals from  to .
-    2.  Increasing the weights for sentiment and RL signals from  to .
-    3.  Standardizing the minimum edge requirement to a flat .
--   **Status:** IN PROGRESS
--   **Agent Testing Done:** Y
+-   **Last item agent was working:** The agent was conducting a comprehensive stability investigation of the Reinforcement Learning (RL) system. A test script for the  failed.
+-   **Status:** BLOCKED
+-   **Agent Testing Done:** N
 -   **Which testing method agent to use?** backend testing agent
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Verify Bayesian Model Parameter Optimization (P0)**
--   **Issue 2: Incomplete Polymarket Native Signals (P1)**
--   **Issue 3: Balance trade distribution across strategies (P2)**
--   **Issue 4: Delta Neutral strategy is capturing zero trades (P2)**
+-   **Issue 1: RL Engine Stability Investigation (P0)**
+-   **Issue 2: 100% NO Trade Bias in Bayesian Model (P1)**
+-   **Issue 3: WebSocket Integration is Incomplete (P2)**
 
 Issues Detail:
--   **Issue 1: Verify Bayesian Model Parameter Optimization**
-    -   **Attempted fixes:** The agent successfully implemented the parameter changes in . Initial log checks show that  trades are now passing the edge threshold, which was the goal.
+-   **Issue 1: RL Engine Stability Investigation**
+    -   **Attempted fixes:** The agent wrote a standalone python script to test the  initialization (), which failed with a . The agent correctly diagnosed that this was because the test was run outside the application's context and lacked a database connection.
     -   **Next debug checklist**:
-        1.  Let the paper trader run for 5-10 minutes to gather a sufficient sample of trades.
-        2.  Execute a  command to the  endpoint to fetch the recent trade history.
-        3.  Analyze the distribution of 'YES' vs 'NO' trades. The goal is a healthy, balanced distribution, not 100% NO or a return to 100% YES.
-        4.  If the distribution is still heavily skewed or trade volume is too low, consider fine-tuning the  and  in  within .
-    -   **Why fix this issue and what will be achieved with the fix?** To ensure the bot is actively and intelligently trading on both sides of the market, which is critical for profitability and validates the new Bayesian model.
+        1.  Create a proper integration test for the RL Engine that can be run within the application's context (e.g., a pytest file or a dedicated API endpoint for testing).
+        2.  The test should initialize the .
+        3.  Simulate a few closed trades to generate rewards.
+        4.  Verify that experiences are added to the replay buffer.
+        5.  Trigger  and confirm that training iterations increase and the model saves without errors.
+    -   **Why fix this issue and what will be achieved with the fix?** To ensure the entire RL feedback loop is stable and functional, which is critical for the bot's long-term adaptive learning.
     -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** backend
     -   **Blocked on other issue:** None
 
--   **Issue 2: Incomplete Polymarket Native Signals**
-    -   **Attempted fixes:** The agent added a time-series cache structure to  but did not complete the implementation of the momentum/velocity calculation logic.
+-   **Issue 2: 100% NO Trade Bias in Bayesian Model**
+    -   **Attempted fixes:** No code changes were made. The agent diagnosed that the combination of a slightly bearish LLM sentiment baseline and high signal weights (0.6) was amplifying bearish signals, causing the model to almost exclusively place NO trades. A set of detailed suggestions for fixing this has been saved to .
     -   **Next debug checklist**:
-        1.  Re-examine .
-        2.  Implement the logic inside , , and  methods.
-        3.  These methods should query the in-memory  and  to calculate changes over various time windows.
-    -   **Why fix this issue and what will be achieved with the fix?** To make all 6 Polymarket-native signals fully functional, providing a richer, more reactive sentiment score for better trading decisions.
+        1.  Review the suggestions in .
+        2.  Implement the recommended solution (e.g., Sentiment Baseline Correction or Relative Sentiment).
+        3.  Run the paper trader and observe the trade distribution over 10-20 trades.
+        4.  Verify that the distribution of YES/NO trades is more balanced.
+    -   **Why fix this issue and what will be achieved with the fix?** The bot is currently unable to profit from bullish opportunities. Fixing this is essential for market adaptability and profitability.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** Y (The bot previously had a YES-bias, now has a NO-bias).
+    -   **Should Test frontend/backend/both after fix?** backend
+    -   **Blocked on other issue:** None
+
+-   **Issue 3: WebSocket Integration is Incomplete**
+    -   **Attempted fixes:** A complete  that uses the  manager was created in .
+    -   **Next debug checklist**:
+        1.  Modify the main  in .
+        2.  Instead of calling the REST API to fetch all markets on each loop, initialize and use the  to get real-time price updates.
+        3.  The loop should now process an event-driven queue of price changes from the WebSocket service rather than polling.
+    -   **Why fix this issue and what will be achieved with the fix?** To significantly reduce latency, avoid API rate limits, and enable faster reactions to market movements, moving closer to a high-frequency trading (HFT) architecture.
     -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** backend
     -   **Blocked on other issue:** None
-
--   **Issue 3: Balance trade distribution across strategies**
-    -   **Status:** NOT STARTED
-    -   **Details:** On hold, as per previous sessions.
-
--   **Issue 4: Delta Neutral strategy is capturing zero trades**
-    -   **Status:** NOT STARTED
-    -   **Details:** On hold, as per previous sessions.
 
 **In progress Task List**:
--   **Task 1: Complete Polymarket Time-Based Signals**
-    -   **Where to resume:** .
-    -   **What will be achieved with this?** Fully functional time-based sentiment signals (price/volume momentum and velocity).
-    -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** backend
-    -   **Blocked on something:** None.
+-   None.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **(P2)** Investigate and fix why the Delta Neutral strategy is capturing zero trades.
-    -   **(P2)** Investigate and balance trade distribution across all available strategies.
+    -   **(P1)** Pre-populate the RL replay buffer from historical trades to enable immediate training on startup (Suggestion #4 from RL discussion).
+    -   **(P2)** Implement Ensemble Kelly logic to better manage risk across correlated events, as standard Kelly is still in use.
 -   **Future Tasks:**
-    -   **(P3) AWS Deployment - ML Cleanup:** Remove unused heavy ML dependencies (, , usage: transformers <command> [<args>]
-
-positional arguments:
-  {chat,convert,download,env,run,serve,add-new-model-like,add-fast-image-processor}
-                        transformers command helpers
-    convert             CLI tool to run convert model from original author
-                        checkpoints to Transformers PyTorch checkpoints.
-    run                 Run a pipeline through the CLI
-
-options:
-  -h, --help            show this help message and exit) as identified in .
-    -   **(P3) AWS Deployment - PyTorch Replacement:** Replace the PyTorch-based DQN engine with a lightweight alternative to fully unblock cloud deployment.
+    -   **(P3)** AWS Deployment - ML Cleanup: Remove unused heavy ML dependencies.
+    -   **(P3)** AWS Deployment - PyTorch Replacement: Replace the PyTorch-based DQN engine.
     -   **(P3)** Make the Kelly Multiplier dynamic based on Oracle Risk.
-    -   **(P3)** Implement adaptive sentiment thresholds based on win rates.
+    -   **(P3)** Implement entry-based RL learning (Suggestion #3 from RL discussion).
     -   (Low Priority) Add a Live Sentiment Dashboard to the UI.
-    -   (Low Priority) Fix non-blocking ESLint warnings in the frontend.
+    -   (Low Priority) Add real-time capital utilization display to the UI (Suggestion #5 from caps discussion).
+    -   (Low Priority) Fix non-blocking ESLint warnings.
 
 **Completed work in this session**
--   **Critical Bug Fix: YES Trade Bias (DONE):** Replaced the entire linear weighted probability model with a **Bayesian Log-Odds fusion model** in  () to eliminate systemic bullish bias. This was a major and successful refactor.
--   **Critical Bug Fix: Trade History API (DONE):** Fixed a  (numpy.bool serialization) that caused the  and  endpoints to return a 500 error. A  helper was added in .
--   **Feature: LLM Hybrid Smart-Cache (DONE):** Implemented a new intelligent caching system for LLM API calls in , based on market activity.
--   **Feature: Cache Analytics UI (DONE):** Created a new LLM Cache tab on the  page () to display cache stats and allow user configuration of TTLs and volume thresholds.
--   **Task: Bayesian Model Parameter Optimization (DONE):** Tuned the new Bayesian model by narrowing the neutral zone, increasing signal weights, and standardizing the minimum edge, which successfully started generating  trades.
--   **Task: ML Dependencies Audit (DONE):** Audited , identified ~1.5GB of unused libraries (, usage: transformers <command> [<args>]
-
-positional arguments:
-  {chat,convert,download,env,run,serve,add-new-model-like,add-fast-image-processor}
-                        transformers command helpers
-    convert             CLI tool to run convert model from original author
-                        checkpoints to Transformers PyTorch checkpoints.
-    run                 Run a pipeline through the CLI
-
-options:
-  -h, --help            show this help message and exit), saved findings to , and added cleanup tasks to the backlog.
--   **Task: Documentation Updates (DONE):** Updated , , and  to reflect the new architecture and features.
+-   **Capital Management Refactor (DONE):** Overhauled the entire application to base position sizing and return calculations on **deployed capital** instead of total equity. This affected , , , , and .
+-   **Configurable Event Caps (DONE):** Implemented an event-level exposure cap to limit risk on correlated markets and made it fully configurable via the API () and a new UI panel in .
+-   **Maker-Taker Execution Logic (DONE):** Integrated a simulated maker-vs-taker order execution engine () into the paper trader to model more realistic trade execution and P&L.
+-   **RL Training UI Fix (DONE):** Fixed the Force Train button in  to be enabled based on replay buffer size and added UI elements to show buffer status, making the training process transparent to the user.
+-   **RL Model Loading Fix (DONE):** Resolved a critical crash when loading the DQN model in  by making it compatible with PyTorch 2.6 and adding graceful error handling to prevent startup failures.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Heavy ML Dependencies**
@@ -130,24 +110,14 @@ positional arguments:
     run                 Run a pipeline through the CLI
 
 options:
-  -h, --help            show this help message and exit,  are in . An audit confirmed  and usage: transformers <command> [<args>]
-
-positional arguments:
-  {chat,convert,download,env,run,serve,add-new-model-like,add-fast-image-processor}
-                        transformers command helpers
-    convert             CLI tool to run convert model from original author
-                        checkpoints to Transformers PyTorch checkpoints.
-    run                 Run a pipeline through the CLI
-
-options:
-  -h, --help            show this help message and exit are unused.  is used only for the DQN engine. See .
+  -h, --help            show this help message and exit,  are in .
     -   **Why to solve this issue and what will be achieved with this?** Unblocks cloud deployment and reduces resource usage.
     -   **Should Test frontend/backend/both after fix:** backend
     -   **Is recurring issue?** Y
 -   **Issue 2: Frontend ESLint Warnings**
     -   **Debug checklist**: Run yarn run v1.22.22
-info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command. in the frontend directory to see non-blocking warnings.
-    -   **Why to solve this issue and what will be achieved with this?** Improves code quality and maintainability.
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command. in the frontend directory.
+    -   **Why to solve this issue and what will be achieved with this?** Improves code quality.
     -   **Should Test frontend/backend/both after fix:** frontend
     -   **Is recurring issue?** Y
 
@@ -158,60 +128,70 @@ info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this comm
 
 
 **Key Technical Concepts**
--   **Bayesian Log-Odds Fusion:** The core probability model was refactored to use a log-odds (logit) approach. The market price acts as the prior (anchor), with sentiment and RL signals providing updates (deltas) in log-odds space. This prevents neutral signals from skewing probabilities and is the new source of truth for .
--   **Hybrid Smart-Cache:** An intelligent caching strategy for the LLM sentiment module. It uses different cache Time-To-Live (TTL) settings for hot (high volume) and cold (low volume) markets, which is configurable via the UI to balance API costs and data freshness.
+-   **Deployed Capital vs. Total Equity:** A fundamental shift in capital management. All sizing and return calculations are now based on the portion of capital the user has allocated for deployment (e.g., 80% of 0,000), not the total 0,000.
+-   **Event-Level Exposure Cap:** A risk management layer that uses Jaccard similarity on market questions to identify and cap exposure to correlated events.
+-   **Maker-vs-Taker Execution Simulation:** A simulated execution model that attempts to place passive (maker) orders to earn spread and only becomes aggressive (taker) when the profit edge justifies paying the spread.
+-   **Graceful Model Loading:** The DQN model loader now handles corrupted or incompatible model files by logging a warning and resetting to a fresh state instead of crashing the application.
 
 **key DB schema**
--   No changes in this session.
+-   No changes. The  collection in MongoDB now stores an  document.
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   : The most critical file, containing the new Bayesian probability model, trade logic, and serialization bug fix.
--   : The new LLM smart-cache module.
--   : Contains the UI for the new LLM cache analytics and configuration panel.
--   : Contains new API endpoints for LLM cache management.
--   : New documentation detailing the ML dependency audit results.
--   : Updated with all new features and backlog items.
+-   : Core of the new sizing logic.
+-   : Integrates all new sizing and execution logic.
+-   : New module for maker-taker simulation.
+-   : New, but un-integrated, WebSocket service.
+-   : Contains the new UI for Event Caps.
+-   : Contains the fixed UI for RL training.
+-   : Contains the fixed model loading logic.
+-   : Contains the plan to fix the NO-trade bias.
 
 **Areas that need refactoring**:
--   None identified in this session.
+-   The main trading loop in  needs to be refactored to use the new event-driven  instead of its current REST API polling mechanism.
 
 **key api endpoints**
--   : (NEW) Gets statistics about the LLM smart cache (hits, misses, etc.).
--   : (NEW) Gets the current LLM cache configuration.
--   : (NEW) Updates the LLM cache configuration.
--   : (NEW) Gets statistics for the Polymarket time-series cache.
--   : (FIXED) Now correctly returns trade history.
--   : (FIXED) Now correctly returns open positions.
+-   : Response now includes the  object.
+-   : Request body can now include the  object to update them.
 
 **Critical Info for New Agent**
--   Your first priority is to **verify the Bayesian model's performance** (Issue #1). The parameters were just changed to increase trade volume. You need to let the bot run for a few minutes and then check the  endpoint to see if the trade distribution is healthy and balanced (not 100% YES or 100% NO).
--   The core probability logic is now a **Bayesian Log-Odds fusion** in  (). All previous logic (linear averaging, safety caps) has been removed. Trust this new mathematical foundation. The primary challenge has shifted from fixing a YES bias to tuning the new model for optimal performance.
--   After verifying the model's trading volume, the next priority is to complete the implementation of the Polymarket momentum signals (Issue #2) in .
+1.  **Top Priority: Fix Trade Bias.** The bot currently has a 100% NO trade bias. Your first major task should be to implement the suggestions from  to restore balanced trading.
+2.  **Continue RL Stability Testing.** The last agent was blocked trying to test the RL Engine. You need to devise and execute a proper integration test for it within the app's context to ensure stability.
+3.  **Integrate WebSockets.** The foundation for WebSocket integration is built () but is not yet used by the paper trader. Integrating this is the next major architectural improvement.
+4.  **Deployed Capital is King.** Remember that all sizing and return calculations have been refactored to use **deployed capital**. Any future modifications to these systems must respect this new standard.
 
 **documents and test reports created in this job**
 -   
--    (Updated)
--    (Updated)
--    (Updated)
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Requested an audit of ML dependencies without making changes.
-2.  **User:** Asked to save the audit results to a doc and add ML cleanup to the backlog.
-3.  **User:** Reported that the trade history is not showing anything.
-4.  **User:** Reported that nearly all trades are yes - why.
-5.  **User:** Provided a guide for a renormalization fix for the YES bias.
-6.  **User:** Provided a more detailed guide to find and remove safety floor bugs in the math.
-7.  **User:** Provided a critical directive to **completely refactor the probability model to use a Bayesian Log-Odds approach**.
-8.  **User:** Asked for an explanation of the complete weighting system from sentiment to edge calculation.
-9.  **User:** Provided a final directive to **optimize the parameters** of the new Bayesian model (narrow neutral zone, boost weights, lower min edge) to increase trade volume.
-10. **Agent:** Implemented the parameter optimizations and was observing the logs, noting that  trades were now successfully being triggered.
+1.  **User:** Asked for an explanation and suggestions regarding hardcoded capital values in . (COMPLETED)
+2.  **User:** Instructed agent to implement Option A to fix the  issue. (COMPLETED)
+3.  **User:** Asked for a deeper investigation and comprehensive testing of capital usage consistency. (COMPLETED)
+4.  **User:** Asked for an explanation of the 100% NO trade bias and suggestions. (COMPLETED)
+5.  **User:** Instructed agent to save the bias-fix suggestions for later. (COMPLETED)
+6.  **User:** Asked agent to analyze the implementation status of a list of architectural improvements. (COMPLETED)
+7.  **User:** Instructed agent to implement the three main architectural gaps (WebSocket integration, Event Caps, Maker Logic). (COMPLETED - except WebSocket integration)
+8.  **User:** Asked for a deep check on the implementation of the three gaps. (COMPLETED)
+9.  **User:** Asked for an explanation of the  log message. (COMPLETED)
+10. **User:** Asked about the interaction between sector/event caps and how they are configured, requesting suggestions. (COMPLETED)
+11. **User:** Asked which suggestion for cap configuration the agent recommends. (COMPLETED)
+12. **User:** Instructed agent to implement suggestions 1+2 (make event caps configurable via API/UI). (COMPLETED)
+13. **User:** Asked for an explanation of why RL stats are not captured and the force train button is off. (COMPLETED)
+14. **User:** Asked which suggestion for the RL system the agent recommends. (COMPLETED)
+15. **User:** Instructed agent to implement suggestions #1, #5, and #2 for the RL system. (COMPLETED)
+16. **User:** Asked for a deeper investigation to ensure full stability of the RL system. (IN PROGRESS)
 
 **Project Health Check:**
--   **Broken:** None. The critical trade history and model bias bugs have been fixed.
--   **Mocked:** Finnhub integration remains disabled in the code.
+-   **Broken:**
+    -   The core trading model exhibits a severe 100% NO trade bias, making it unprofitable.
+    -   The stability of the RL engine is under investigation following a failed test.
+-   **Mocked:**
+    -   Finnhub integration remains disabled.
+    -   Maker-vs-Taker order logic is a simulation within the paper trader, not a live exchange interaction.
 -   **Deployment Blocker:** Heavy ML dependencies (, , usage: transformers <command> [<args>]
 
 positional arguments:
@@ -222,24 +202,24 @@ positional arguments:
     run                 Run a pipeline through the CLI
 
 options:
-  -h, --help            show this help message and exit) are still in , preventing cost-effective cloud deployment. An audit has been done and a plan is in the backlog.
+  -h, --help            show this help message and exit) are still in .
 
 **3rd Party Integrations**
--   **OpenAI GPT-4o-mini:** Integrated for LLM sentiment via . Now uses the new Hybrid Smart-Cache. Uses Emergent LLM Key.
--   **GitHub:** Integrated for crypto market sentiment. Requires User API Key ( in ).
--   **Polymarket:** Live Gamma and CLOB REST APIs for market data. Uses public access.
+-   **OpenAI GPT-4o-mini:** Used for LLM sentiment. Uses Emergent LLM Key.
+-   **GitHub:** Used for crypto market sentiment. Requires User API Key ().
+-   **Polymarket:** Live Gamma and CLOB REST APIs for market data. Public access.
 -   **Finnhub:** Infrastructure in place but disabled. Requires User API Key.
 -   **SendGrid:** Infrastructure in place. Requires User API Key.
 
 **Testing status**
--   **Testing agent used after significant changes:** NO
+-   **Testing agent used after significant changes:** YES, for the deployed capital refactor.
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** None in this session.
--   **Known regressions:** None.
+-   **Test files created:** , ,  (this one failed).
+-   **Known regressions:** The trading model has regressed from a balanced state to a 100% NO-trade bias.
 
 **Credentials to test flow:**
 -   **Username:** 
 -   **Password:** 
 
 **What agent forgot to execute**
--   Nothing was explicitly forgotten. The agent correctly prioritized fixing the critical model bias and trade history bugs over the lower-priority task of completing the Polymarket momentum signals.</analysis>
+-   The agent created the  for WebSocket integration but did not complete the task by integrating it into the 's main trading loop. This is a key pending architectural improvement.</analysis>
