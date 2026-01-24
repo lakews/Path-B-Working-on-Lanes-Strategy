@@ -1113,8 +1113,10 @@ class BacktestEngine:
             
             win_rate = winning_trades / total_trades if total_trades > 0 else 0
             
-            # Calculate returns
-            total_return_pct = ((self.current_capital - self.initial_capital) / self.initial_capital) * 100
+            # Calculate returns based on deployed capital (what was actually at risk)
+            total_return_pct = ((self.current_capital - self.initial_capital) / self.deployed_capital) * 100
+            # Also track return on total capital for reference
+            total_return_pct_on_total = ((self.current_capital - self.initial_capital) / self.initial_capital) * 100
             
             # Risk metrics
             pnls = [t.get("pnl", 0) for t in sell_trades]
@@ -1123,14 +1125,14 @@ class BacktestEngine:
                 avg_loss = np.mean([p for p in pnls if p < 0]) if any(p < 0 for p in pnls) else 0
                 profit_factor = abs(sum(p for p in pnls if p > 0) / sum(p for p in pnls if p < 0)) if any(p < 0 for p in pnls) else 0
                 
-                # Sharpe ratio
-                returns = np.array(pnls) / self.initial_capital
+                # Sharpe ratio - based on deployed capital
+                returns = np.array(pnls) / self.deployed_capital
                 sharpe = np.mean(returns) / np.std(returns) * np.sqrt(252) if np.std(returns) > 0 else 0
                 
-                # Max drawdown
+                # Max drawdown - relative to deployed capital
                 cumulative = np.cumsum(pnls)
                 peak = np.maximum.accumulate(cumulative)
-                drawdown = (peak - cumulative) / (peak + self.initial_capital)
+                drawdown = (peak - cumulative) / (peak + self.deployed_capital)
                 max_drawdown = np.max(drawdown) if len(drawdown) > 0 else 0
             else:
                 avg_win = avg_loss = profit_factor = sharpe = max_drawdown = 0
