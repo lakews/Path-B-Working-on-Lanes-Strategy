@@ -1928,6 +1928,9 @@ class PaperTrader:
             
             self.paper_positions[market_id] = position
             
+            # PERSIST: Save position to database for survival across restarts
+            await self._save_position_to_db(market_id, position)
+            
             # Only deduct from capital if we have enough
             if self.current_capital >= size:
                 self.current_capital -= size
