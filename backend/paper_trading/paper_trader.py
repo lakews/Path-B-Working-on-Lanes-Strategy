@@ -3315,12 +3315,46 @@ class PaperTrader:
             logger.debug(f"Error updating cumulative stats: {e}")
     
     async def _close_all_positions(self):
-        """Close all open paper positions"""
+        """Close all open paper positions at current market prices"""
         markets = await self._get_active_markets()
-        market_data_map = {m['id']: m for m in markets}
+        
+        # Build lookup map using both 'id' and 'condition_id' since markets use different identifiers
+        market_data_map = {}
+        for m in markets:
+            if m.get('id'):
+                market_data_map[m['id']] = m
+            if m.get('condition_id'):
+                market_data_map[m['condition_id']] = m
         
         for market_id in list(self.paper_positions.keys()):
-            market_data = market_data_map.get(market_id, {'yes_price': 0.5})
+            position = self.paper_positions[market_id]
+            market_data = market_data_map.get(market_id)
+            
+            if not market_data:
+                # Market not found in fresh fetch - use position's last known price
+                # This prevents unrealistic P&L from default 0.5 price
+                logger.warning(f"[CLOSE_ALL] Market {market_id[:16]} not in fresh fetch - using last known price")
+                
+                # Reconstruct market data from position's current_price if available
+                # current_price stores the actual price for the side (YES or NO)
+                current_price = position.get('current_price')
+                if current_price and position.get('side') == 'NO':
+                    # Convert NO price back to YES price for internal use
+                    yes_price = 1 - current_price
+                elif current_price:
+                    yes_price = current_price
+                else:
+                    # Last resort: use entry price (no P&L change)
+                    yes_entry = position.get('yes_entry_price', position.get('entry_price', 0.5))
+                    yes_price = yes_entry
+                    logger.warning(f"[CLOSE_ALL] Using entry price {yes_price:.4f} as exit - no price change")
+                
+                market_data = {
+                    'yes_price': yes_price,
+                    'id': market_id,
+                    'question': position.get('market_question', 'Unknown')
+                }
+            
             await self._execute_paper_exit(market_id, market_data, "session_end")
     
     async def _save_session_results(self):
