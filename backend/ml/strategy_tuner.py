@@ -303,16 +303,11 @@ class StrategyTuner:
             returns = [t['pnl_pct'] for t in trades]
             sharpe = np.mean(returns) / np.std(returns) * np.sqrt(252) if np.std(returns) > 0 else 0
             
-            # Calculate max drawdown
+            # Calculate max drawdown (use deployed_capital instead of hardcoded 1000)
             cumulative = np.cumsum([t['pnl'] for t in trades])
             peak = np.maximum.accumulate(cumulative)
-            drawdown = (peak - cumulative) / (peak + 1000)  # +1000 to avoid division by zero
+            drawdown = (peak - cumulative) / (peak + deployed_capital)  # Avoid division by zero
             max_drawdown = np.max(drawdown) if len(drawdown) > 0 else 0
-            
-            # Use deployed capital (what's at risk) for return calculations
-            # Default to 8000 (80% of 10000) if not available
-            from config import config
-            deployed_capital = getattr(config, 'DEPLOYED_CAPITAL', 8000)
             
             return {
                 'total_pnl': float(total_pnl),
