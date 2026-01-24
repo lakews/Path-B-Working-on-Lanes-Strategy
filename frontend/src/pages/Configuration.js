@@ -662,6 +662,123 @@ const Configuration = () => {
               ))}
             </div>
           </div>
+
+          {/* Event Caps */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                  <Layers className="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Event Caps</h3>
+                  <p className="text-xs text-white/50">Limit exposure to correlated markets (same event)</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setConfig(prev => ({
+                  ...prev,
+                  event_caps: { ...eventCapsDefault }
+                }))}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-xs transition"
+                title="Reset to defaults"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Reset
+              </button>
+            </div>
+            
+            {/* Info box explaining event caps */}
+            <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-3 mb-4">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-white/70">
+                  <p className="mb-1">Event caps prevent over-concentration in correlated markets.</p>
+                  <p className="text-white/50">Example: "Bitcoin $100k" and "Bitcoin $150k" are the same event - exposure is combined.</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Max Event Exposure */}
+              <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <span className="text-sm text-white/80 font-medium">Max Per Event</span>
+                    <p className="text-xs text-white/40 mt-0.5">Maximum exposure to correlated markets</p>
+                  </div>
+                  <span className="text-lg font-mono text-purple-400">
+                    {((config.event_caps?.max_event_exposure_pct || 0.15) * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.event_caps?.max_event_exposure_pct || 0.15) * 100} 
+                  onChange={(e) => {
+                    const newVal = parseFloat(e.target.value) / 100;
+                    setConfig(prev => ({
+                      ...prev,
+                      event_caps: {
+                        ...prev.event_caps,
+                        max_event_exposure_pct: newVal
+                      }
+                    }));
+                  }}
+                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer" 
+                  min="5" max="30" step="1" 
+                />
+                <div className="flex justify-between text-xs text-white/30 mt-1">
+                  <span>5%</span>
+                  <span>Conservative</span>
+                  <span>30%</span>
+                </div>
+              </div>
+              
+              {/* Similarity Threshold */}
+              <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <span className="text-sm text-white/80 font-medium">Similarity Threshold</span>
+                    <p className="text-xs text-white/40 mt-0.5">Word overlap % to group as same event</p>
+                  </div>
+                  <span className="text-lg font-mono text-purple-400">
+                    {((config.event_caps?.similarity_threshold || 0.60) * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.event_caps?.similarity_threshold || 0.60) * 100} 
+                  onChange={(e) => {
+                    const newVal = parseFloat(e.target.value) / 100;
+                    setConfig(prev => ({
+                      ...prev,
+                      event_caps: {
+                        ...prev.event_caps,
+                        similarity_threshold: newVal
+                      }
+                    }));
+                  }}
+                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer" 
+                  min="40" max="80" step="5" 
+                />
+                <div className="flex justify-between text-xs text-white/30 mt-1">
+                  <span>40%</span>
+                  <span>Broad matching</span>
+                  <span>80%</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Current settings summary */}
+            <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/5">
+              <div className="flex items-center gap-2 text-xs text-white/50">
+                <Target className="w-3 h-3" />
+                <span>
+                  Markets with &gt;{((config.event_caps?.similarity_threshold || 0.60) * 100).toFixed(0)}% question similarity share a combined {((config.event_caps?.max_event_exposure_pct || 0.15) * 100).toFixed(0)}% exposure limit
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
