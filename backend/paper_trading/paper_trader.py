@@ -3357,64 +3357,92 @@ class PaperTrader:
             logger.error(f"Error in session learning: {e}")
     
     async def _get_active_markets(self) -> List[Dict]:
-        """Get active markets from Gamma API with configurable filters"""
+        """
+        Get active markets with configurable filters.
+        
+        Uses WebSocket service for real-time data when available,
+        falls back to REST API polling when WebSocket is unavailable.
+        """
         try:
-            # Always fetch fresh from Gamma API for high-frequency trading
-            logger.info(f"Fetching markets (min_liquidity: ${self.min_liquidity}, min_volume: ${self.min_volume_24h})")
+            live_markets = []
+            data_source = "REST"
             
-            from data.polymarket_api import PolymarketAPI
-            async with PolymarketAPI() as api:
-                live_markets = await api.get_markets(limit=200)  # Fetch more markets
+            # Try WebSocket service first for faster, real-time data
+            if self.use_websocket_data and self.realtime_market_service:
+                try:
+                    ws_markets = self.realtime_market_service.get_markets(limit=200)
+                    if ws_markets and len(ws_markets) > 10:
+                        live_markets = ws_markets
+                        data_source = "WebSocket"
+                        
+                        # Get stats for logging
+                        ws_stats = self.realtime_market_service.get_stats()
+                        if self._cycle_count % 50 == 1:  # Log every 50 cycles
+                            logger.info(f"📡 WebSocket data: {ws_stats.get('ws_updates', 0)} updates, "
+                                       f"{ws_stats.get('prices_cached', 0)} prices cached")
+                except Exception as e:
+                    logger.warning(f"WebSocket fetch failed: {e} - falling back to REST")
+            
+            # Fall back to REST API if WebSocket data not available
+            if not live_markets:
+                from data.polymarket_api import PolymarketAPI
+                async with PolymarketAPI() as api:
+                    live_markets = await api.get_markets(limit=200)
+                    data_source = "REST"
+            
+            if not live_markets:
+                logger.warning(f"No markets returned from {data_source}")
+                return []
+            
+            # Filter markets by liquidity, volume, and spread
+            filtered_markets = []
+            for m in live_markets:
+                liquidity = float(m.get('liquidity', 0) or 0)
+                volume_24h = float(m.get('volume_24h', 0) or 0)
+                spread = float(m.get('spread', 1) or 1)
                 
-                if not live_markets:
-                    logger.warning("No markets returned from Gamma API")
-                    return []
+                # Apply filters
+                if liquidity < self.min_liquidity:
+                    continue
+                if volume_24h < self.min_volume_24h:
+                    continue
+                if spread > self.max_spread:
+                    continue
                 
-                # Filter markets by liquidity, volume, and spread
-                filtered_markets = []
-                for m in live_markets:
-                    liquidity = float(m.get('liquidity', 0) or 0)
-                    volume_24h = float(m.get('volume_24h', 0) or 0)
-                    spread = float(m.get('spread', 1) or 1)
-                    
-                    # Apply filters
-                    if liquidity < self.min_liquidity:
-                        continue
-                    if volume_24h < self.min_volume_24h:
-                        continue
-                    if spread > self.max_spread:
-                        continue
-                    
-                    filtered_markets.append(m)
-                
-                logger.info(f"Filtered to {len(filtered_markets)} tradeable markets (from {len(live_markets)} total)")
-                
-                # Cache top markets in DB for analytics
-                if filtered_markets:
-                    for m in filtered_markets[:100]:
-                        market_doc = {
-                            "condition_id": m.get('condition_id') or m.get('id'),
-                            "id": m.get('id'),
-                            "question": m.get('question', ''),
-                            "category": m.get('category', 'unknown'),
-                            "yes_price": float(m.get('yes_price', 0.5) or 0.5),
-                            "no_price": float(m.get('no_price', 0.5) or 0.5),
-                            "liquidity": float(m.get('liquidity', 0) or 0),
-                            "volume": float(m.get('volume', 0) or 0),
-                            "volume_24h": float(m.get('volume_24h', 0) or 0),
-                            "spread": float(m.get('spread', 0) or 0),
-                            "end_date": m.get('end_date'),
-                            "active": m.get('active', True),
-                            "last_update": datetime.now(timezone.utc).isoformat()
-                        }
-                        await self.db.markets.update_one(
-                            {"condition_id": market_doc['condition_id']},
-                            {"$set": market_doc},
-                            upsert=True
-                        )
-                
-                return filtered_markets
-                
+                filtered_markets.append(m)
+            
+            # Log less frequently to reduce noise
+            if self._cycle_count % 20 == 1:
+                logger.info(f"[{data_source}] Filtered {len(filtered_markets)}/{len(live_markets)} markets "
+                           f"(liq>${self.min_liquidity}, vol>${self.min_volume_24h})")
+            
+            # Cache top markets in DB for analytics (less frequently)
+            if filtered_markets and self._cycle_count % 100 == 1:
+                for m in filtered_markets[:100]:
+                    market_doc = {
+                        "condition_id": m.get('condition_id') or m.get('id'),
+                        "id": m.get('id'),
+                        "question": m.get('question', ''),
+                        "category": m.get('category', 'unknown'),
+                        "yes_price": float(m.get('yes_price', 0.5) or 0.5),
+                        "no_price": float(m.get('no_price', 0.5) or 0.5),
+                        "liquidity": float(m.get('liquidity', 0) or 0),
+                        "volume": float(m.get('volume', 0) or 0),
+                        "volume_24h": float(m.get('volume_24h', 0) or 0),
+                        "spread": float(m.get('spread', 0) or 0),
+                        "end_date": m.get('end_date'),
+                        "active": m.get('active', True),
+                        "data_source": data_source,
+                        "last_update": datetime.now(timezone.utc).isoformat()
+                    }
+                    await self.db.markets.update_one(
+                        {"condition_id": market_doc['condition_id']},
+                        {"$set": market_doc},
+                        upsert=True
+                    )
+            
+            return filtered_markets
+            
         except Exception as e:
             logger.error(f"Error getting markets: {e}")
             import traceback
