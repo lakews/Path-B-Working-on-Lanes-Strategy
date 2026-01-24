@@ -2165,9 +2165,21 @@ class PaperTrader:
                 sizing_used=position.get('sizing_breakdown', {})
             )
             
+            # For display purposes, store the actual price of the side being traded
+            # (not the YES price which is confusing for NO positions)
+            if side == 'YES':
+                display_entry_price = entry_price  # YES entry price
+                display_exit_price = current_price  # YES exit price
+            else:
+                display_entry_price = 1 - entry_price  # NO entry price
+                display_exit_price = 1 - current_price  # NO exit price
+            
             closed_trade = {
                 **position,
-                "exit_price": current_price,
+                "entry_price": display_entry_price,  # Actual price for the side traded
+                "exit_price": display_exit_price,    # Actual price for the side traded
+                "yes_entry_price": entry_price,      # Keep YES prices for reference
+                "yes_exit_price": current_price,
                 "exit_time": exit_time.isoformat(),
                 "exit_reason": exit_reason,
                 "pnl": pnl,
@@ -2186,8 +2198,10 @@ class PaperTrader:
                 "market_question": position.get('market_question', ''),
                 "side": side,
                 "size": size,
-                "entry_price": entry_price,
-                "exit_price": current_price,
+                "entry_price": display_entry_price,  # Actual price for the side traded
+                "exit_price": display_exit_price,    # Actual price for the side traded
+                "yes_entry_price": entry_price,      # Keep YES prices for reference
+                "yes_exit_price": current_price,
                 "pnl": pnl,
                 "pnl_pct": pnl_pct,
                 "hold_time_seconds": hold_time_seconds,
