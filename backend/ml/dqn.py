@@ -430,7 +430,10 @@ class DQNAgent:
     def load(self, filepath: str = "/app/backend/ml/dqn_model.pt"):
         """Load model checkpoint"""
         try:
-            checkpoint = torch.load(filepath, map_location=device)
+            # PyTorch 2.6+ changed default to weights_only=True
+            # We need weights_only=False for our checkpoints that contain numpy arrays
+            # This is safe since we're loading our own model files
+            checkpoint = torch.load(filepath, map_location=device, weights_only=False)
             self.policy_net.load_state_dict(checkpoint['policy_net_state_dict'])
             self.target_net.load_state_dict(checkpoint['target_net_state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -438,8 +441,10 @@ class DQNAgent:
             self.training_iterations = checkpoint['training_iterations']
             self.episode_rewards = checkpoint.get('episode_rewards', [])
             self.losses = checkpoint.get('losses', [])
-            logger.info(f"DQN model loaded from {filepath}")
+            logger.info(f"DQN model loaded from {filepath} (iterations: {self.training_iterations})")
         except FileNotFoundError:
             logger.info("No saved DQN model found, using fresh initialization")
         except Exception as e:
-            logger.error(f"Error loading DQN model: {e}")
+            logger.warning(f"Could not load DQN model ({e}), starting fresh")
+            # Reset to fresh state instead of failing
+            self._reset_to_fresh_state()
