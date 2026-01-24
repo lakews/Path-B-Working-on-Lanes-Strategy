@@ -64,6 +64,20 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - **Files Modified**: `/app/backend/data/polymarket_websocket.py`
   - Test report: `/app/test_reports/iteration_27.json`
 
+- ✅ **BUG FIX: Trade Price Display for NO Positions**
+  - **Problem**: NO trades showed confusing prices (YES price displayed, not NO price), making P&L seem unrealistic
+  - **Example**: NO position showed entry 0.49, exit 0.0065 with +94% P&L (confusing!)
+  - **Root Cause**: System stored YES prices for both YES and NO positions
+  - **Solution**:
+    1. Added `yes_entry_price` field to track internal YES price for calculations
+    2. `entry_price` and `exit_price` now show the actual price for the side traded:
+       - YES: Shows YES price (no change)
+       - NO: Shows NO price (1 - YES price)
+    3. Updated position monitoring, exit execution, and trade logging
+  - **Result**: NO trade now shows Entry: 0.51, Exit: 0.71, P&L: +$179 (+135%)
+    - NO price went UP (0.51 -> 0.71), so profit makes sense ✅
+  - **Files Modified**: `/app/backend/paper_trading/paper_trader.py`
+
 ### January 24, 2026 - Session 28 (Continued)
 
 - ✅ **CRITICAL FIX: Position Persistence & Stop Loss**
