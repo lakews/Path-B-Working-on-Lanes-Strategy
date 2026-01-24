@@ -1289,6 +1289,8 @@ async def update_config(config_update: TradingConfig):
             db_update["oracle_multipliers"] = config_update.oracle_multipliers
             # Also update the runtime matrix
             update_ambiguity_matrix(config_update.oracle_multipliers)
+        if config_update.event_caps is not None:
+            db_update["event_caps"] = config_update.event_caps
         
         # Store ALL config in database for persistence (not just strategies/asset classes)
         db = get_db()
