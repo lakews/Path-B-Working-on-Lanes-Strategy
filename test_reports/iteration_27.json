@@ -1,0 +1,157 @@
+{
+  "summary": "Iteration 27: WebSocket Integration Verification - All 27 tests passed. Verified WebSocket connects to Polymarket CLOB API, message parsing handles array/object formats, RealTimeMarketService returns markets with 'websocket' price_source, paper trader uses WebSocket data with REST fallback.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "WebSocket",
+        "issue": "Occasional 'INVALID OPERATION' messages during startup (expected per agent context - from old format before fix)",
+        "priority": "LOW"
+      },
+      {
+        "endpoint": "WebSocket",
+        "issue": "ws_updates counter shows 0 in some sessions - may indicate price updates not being received from Polymarket WS",
+        "priority": "MEDIUM"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration27_websocket_verification.py",
+    "/app/test_reports/pytest/pytest_results_iteration27.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "WebSocket subscription format correctly uses {'type': 'market', 'assets_ids': [...]} per Polymarket docs",
+    "_handle_message() correctly handles both array and object message formats",
+    "_handle_price_change() and _handle_book_message() properly parse Polymarket's price_change and book events",
+    "RealTimeMarketService.get_markets() correctly sets price_source to 'websocket' when WS data available",
+    "Paper trader start() initializes WebSocket service with try/catch fallback to REST",
+    "Paper trader _get_active_markets() tries WebSocket first, falls back to REST API"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration27_websocket_verification.py"
+  ],
+  "success_rate": {
+    "backend": "100% (27/27 tests passed)"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "WebSocket integration verified. Key components: PolymarketWebSocket (data/polymarket_websocket.py), RealTimeMarketService (services/realtime_market_service.py), PaperTrader WebSocket integration (paper_trading/paper_trader.py). WebSocket connects successfully, subscribes to markets in batches, and disconnects cleanly. The 'INVALID OPERATION' message is expected during startup.",
+  "verified_features": {
+    "WebSocket connects to Polymarket CLOB API": {
+      "status": "VERIFIED",
+      "evidence": "Logs show 'Polymarket WebSocket connected successfully' and 'WebSocket connected - ready for real-time data'"
+    },
+    "WebSocket subscription format": {
+      "status": "VERIFIED",
+      "evidence": "Code uses {'type': 'market', 'assets_ids': [...]} format per Polymarket docs"
+    },
+    "WebSocket message parsing - array format": {
+      "status": "VERIFIED",
+      "evidence": "test_handle_message_array_format passed - _handle_message() iterates over array items"
+    },
+    "WebSocket message parsing - object format": {
+      "status": "VERIFIED",
+      "evidence": "test_handle_message_object_format passed - _handle_message() processes single objects"
+    },
+    "WebSocket price_change event handling": {
+      "status": "VERIFIED",
+      "evidence": "test_handle_price_change_event passed - _handle_price_change() parses price_changes array"
+    },
+    "WebSocket book message handling": {
+      "status": "VERIFIED",
+      "evidence": "test_handle_book_message passed - _handle_book_message() calculates mid price from bids/asks"
+    },
+    "RealTimeMarketService price_source field": {
+      "status": "VERIFIED",
+      "evidence": "test_get_markets_returns_price_source passed - returns 'websocket' when WS data available, 'rest_cache' otherwise"
+    },
+    "Paper trader WebSocket initialization": {
+      "status": "VERIFIED",
+      "evidence": "Logs show '✅ WebSocket market service started - using real-time data'"
+    },
+    "Paper trader WebSocket fallback": {
+      "status": "VERIFIED",
+      "evidence": "Code has try/catch with 'use_websocket_data = False' fallback in start() method"
+    },
+    "Paper trader WebSocket cleanup": {
+      "status": "VERIFIED",
+      "evidence": "Logs show 'WebSocket market service stopped' and 'Polymarket WebSocket disconnected'"
+    },
+    "WebSocket batch subscription": {
+      "status": "VERIFIED",
+      "evidence": "Logs show 'Subscribed to 100 markets in batches'"
+    }
+  },
+  "test_details": {
+    "TestBackendHealth": {
+      "test_health_endpoint": "PASSED",
+      "test_status_endpoint": "PASSED"
+    },
+    "TestWebSocketModuleStructure": {
+      "test_polymarket_websocket_module_exists": "PASSED",
+      "test_websocket_url_is_correct": "PASSED - wss://ws-subscriptions-clob.polymarket.com/ws/market",
+      "test_websocket_has_required_methods": "PASSED",
+      "test_websocket_manager_has_required_methods": "PASSED"
+    },
+    "TestWebSocketMessageParsing": {
+      "test_handle_message_array_format": "PASSED",
+      "test_handle_message_object_format": "PASSED",
+      "test_handle_price_change_event": "PASSED",
+      "test_handle_book_message": "PASSED"
+    },
+    "TestRealTimeMarketService": {
+      "test_realtime_market_service_module_exists": "PASSED",
+      "test_realtime_service_has_required_methods": "PASSED",
+      "test_get_markets_returns_price_source": "PASSED",
+      "test_get_stats_returns_websocket_info": "PASSED"
+    },
+    "TestPaperTraderWebSocketIntegration": {
+      "test_paper_trader_has_websocket_attributes": "PASSED",
+      "test_paper_trader_start_method_has_websocket_init": "PASSED",
+      "test_paper_trader_get_active_markets_uses_websocket": "PASSED",
+      "test_paper_trader_stop_method_stops_websocket": "PASSED"
+    },
+    "TestWebSocketSubscriptionFormat": {
+      "test_subscription_format_is_correct": "PASSED",
+      "test_batch_subscription_format": "PASSED"
+    },
+    "TestWebSocketConnectionAPI": {
+      "test_paper_status_shows_websocket_info": "PASSED",
+      "test_status_endpoint_shows_websocket_stats": "PASSED"
+    },
+    "TestWebSocketLiveConnection": {
+      "test_websocket_can_connect": "PASSED",
+      "test_websocket_subscription_and_receive": "PASSED"
+    },
+    "TestWebSocketFallbackBehavior": {
+      "test_paper_trader_fallback_logic_exists": "PASSED",
+      "test_paper_trader_handles_websocket_failure": "PASSED"
+    },
+    "TestWebSocketStatsAPI": {
+      "test_realtime_stats_endpoint": "PASSED"
+    }
+  },
+  "live_test_results": {
+    "paper_trading_session": {
+      "session_id": "b6f20674",
+      "duration_seconds": 95,
+      "total_trades": 5,
+      "total_pnl": "$101.21",
+      "win_rate": "20%",
+      "websocket_connected": true,
+      "markets_subscribed": 100,
+      "markets_cached": 200
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  }
+}
