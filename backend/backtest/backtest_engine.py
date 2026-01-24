@@ -966,9 +966,19 @@ class BacktestEngine:
                                stop_loss: float, price_change: float = 0,
                                spread: float = 0) -> Optional[str]:
         """Check if position should be closed with adaptive exit logic"""
-        entry_price = position["entry_price"]
+        entry_price = position["entry_price"]  # YES price at entry
         strategy = position.get("strategy", "unknown")
-        pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+        side = position.get("side", "YES")  # Default to YES for backwards compatibility
+        
+        # Calculate P&L % correctly based on side
+        # For YES positions: profit when YES price goes UP
+        # For NO positions: profit when YES price goes DOWN (NO price goes UP)
+        if side == 'YES':
+            pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+        else:  # NO position
+            no_entry = 1 - entry_price
+            no_current = 1 - current_price
+            pnl_pct = (no_current - no_entry) / no_entry if no_entry > 0 else 0
         
         # Get tuned parameters for this strategy
         params = self._get_strategy_params(strategy)
