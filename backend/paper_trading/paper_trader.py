@@ -3205,8 +3205,12 @@ class PaperTrader:
             "total_pnl": self.total_pnl,  # Realized P&L (closed trades)
             "unrealized_pnl": self.unrealized_pnl,  # Unrealized P&L (open positions)
             "combined_pnl": combined_pnl,  # Total = Realized + Unrealized
-            "total_pnl_pct": (self.total_pnl / self.initial_capital) * 100,
-            "combined_pnl_pct": (combined_pnl / self.initial_capital) * 100,
+            # Return percentages based on deployed capital (what was actually risked)
+            "total_pnl_pct": (self.total_pnl / self.deployed_capital) * 100 if self.deployed_capital > 0 else 0,
+            "combined_pnl_pct": (combined_pnl / self.deployed_capital) * 100 if self.deployed_capital > 0 else 0,
+            # Also show returns based on total capital for reference
+            "total_pnl_pct_on_total": (self.total_pnl / self.initial_capital) * 100,
+            "combined_pnl_pct_on_total": (combined_pnl / self.initial_capital) * 100,
             "total_trades": self.total_trades,
             "winning_trades": self.winning_trades,
             "win_rate": win_rate,
