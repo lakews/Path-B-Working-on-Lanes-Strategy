@@ -45,6 +45,25 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - **File Modified**: `/app/backend/paper_trading/paper_trader.py`
   - Test report: `/app/test_reports/iteration_26.json`
 
+- ✅ **COMPREHENSIVE FIX: WebSocket Protocol & Message Handling**
+  - **Problem**: WebSocket was connecting but subscriptions failed with "INVALID OPERATION"
+  - **Root Cause**: Subscription format was incorrect per Polymarket CLOB API docs
+  - **Solution**:
+    1. Fixed subscription format from `{'type': 'subscribe', 'channel': 'market', 'market': id}` to `{'type': 'market', 'assets_ids': [id1, id2, ...]}`
+    2. Added batch subscription support (50 tokens per batch)
+    3. Fixed message handler to process both array and object formats from Polymarket
+    4. Added `_handle_price_change()` for price_change events with price_changes array
+    5. Added `_handle_book_message()` for book events with bids/asks/last_trade_price
+    6. Manager now connects before starting listener (fixes race condition)
+  - **Verification Results** (27 tests passed):
+    - WebSocket connects successfully
+    - 100 markets subscribed in batches
+    - 466+ price updates received in 15 seconds
+    - Markets correctly show `price_source: 'websocket'`
+    - Fallback to REST working when WS unavailable
+  - **Files Modified**: `/app/backend/data/polymarket_websocket.py`
+  - Test report: `/app/test_reports/iteration_27.json`
+
 ### January 24, 2026 - Session 28 (Continued)
 
 - ✅ **CRITICAL FIX: Position Persistence & Stop Loss**
