@@ -234,6 +234,9 @@ class PaperTrader:
         self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
         self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
         
+        # Session timing
+        self.session_start_time = None  # Set when session starts
+        
         # Paper positions tracking
         self.paper_positions: Dict[str, Dict] = {}
         self.closed_trades: List[Dict] = []
