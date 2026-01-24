@@ -448,3 +448,22 @@ class DQNAgent:
             logger.warning(f"Could not load DQN model ({e}), starting fresh")
             # Reset to fresh state instead of failing
             self._reset_to_fresh_state()
+
+    def _reset_to_fresh_state(self):
+        """Reset DQN to fresh initialized state"""
+        self.epsilon = 1.0
+        self.training_iterations = 0
+        self.episode_rewards = []
+        self.losses = []
+        # Reinitialize networks with fresh weights
+        self.policy_net.apply(self._init_weights)
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+        logger.info("DQN reset to fresh state")
+    
+    def _init_weights(self, m):
+        """Initialize network weights"""
+        if isinstance(m, nn.Linear):
+            nn.init.xavier_uniform_(m.weight)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+
