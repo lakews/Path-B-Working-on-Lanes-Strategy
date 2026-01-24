@@ -261,11 +261,11 @@ class MakerOrderExecutor:
             fill_price = best_ask
             # Simulate slippage based on size
             slippage = min(self.config['max_taker_slippage'], size / 50000)
-            fill_price += slippage
+            fill_price = min(0.999, fill_price + slippage)  # Cap at 99.9%
         else:
             fill_price = best_bid
             slippage = min(self.config['max_taker_slippage'], size / 50000)
-            fill_price -= slippage
+            fill_price = max(0.001, fill_price - slippage)  # Floor at 0.1%
         
         # Spread paid = we're taking liquidity, so we pay the spread
         spread_paid = spread * 0.5  # We pay half the spread
