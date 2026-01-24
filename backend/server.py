@@ -3104,11 +3104,13 @@ async def get_session_trades(session_id: str):
                 "market_id": trade.get("market_id"),
                 "market_question": trade.get("market_question", "Unknown"),
                 "strategy": trade.get("strategy"),
+                "asset_class": trade.get("asset_class"),
                 "side": trade.get("side"),
                 "entry_price": trade.get("entry_price", 0),
-                "exit_price": trade.get("price", 0),
+                "exit_price": trade.get("exit_price", 0),  # Fixed: was "price"
                 "size": trade.get("size", 0),
                 "pnl": trade.get("pnl", 0),
+                "pnl_pct": trade.get("pnl_pct", 0),  # Added: was missing
                 "hold_time_seconds": trade.get("hold_time_seconds", 0),
                 "exit_reason": trade.get("exit_reason", "unknown"),
                 "timestamp": trade.get("timestamp")
