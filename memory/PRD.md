@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 24, 2026
+## Last Updated: January 25, 2026
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -12,7 +12,38 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Performance**: <100ms execution latency, <50ms ML inference, 500+ trades per 10 minutes (configurable)
 - **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters, time-to-expiry awareness**
 
-## Current Status (January 24, 2026)
+## Current Status (January 25, 2026)
+
+### January 25, 2026 - Session 29
+
+- ✅ **BUG FIX: Backtest P&L Calculation for NO Trades**
+  - **Problem**: Backtest engine only calculated P&L correctly for YES positions; NO positions had incorrect P&L
+  - **Root Cause**: Formula `(current_price - entry_price) / entry_price` doesn't work for NO positions
+  - **Solution**:
+    1. Added `_determine_trade_side()` method - determines YES/NO based on sentiment (>0.55→YES, <0.45→NO) and price (>0.65→NO, <0.35→YES)
+    2. Updated `_open_position()` to track `side` field and calculate `entry_price_effective`
+    3. Fixed `_check_exit_conditions()` to use correct formula based on side:
+       - YES: `pnl_pct = (current_price - entry_price) / entry_price`
+       - NO: `pnl_pct = (no_current - no_entry) / no_entry` where `no_price = 1 - yes_price`
+    4. Fixed `_close_position()` to calculate exit value based on side:
+       - YES: `exit_value = shares * exit_price`
+       - NO: `exit_value = shares * (1 - exit_price)`
+  - **File Modified**: `/app/backend/backtest/backtest_engine.py`
+  - Test report: `/app/test_reports/iteration_26.json`
+
+- ✅ **FEATURE: WebSocket Integration for Paper Trader**
+  - **Problem**: Paper trader used REST API polling for market data, causing latency and potential rate limiting
+  - **Solution**:
+    1. Added `RealTimeMarketService` initialization in paper trader's `start()` method
+    2. Updated `_get_active_markets()` to use WebSocket cached data when available
+    3. Implemented automatic fallback to REST API if WebSocket service fails
+    4. Added cleanup in `stop()` method to properly shut down WebSocket service
+  - **Benefits**:
+    - Sub-100ms latency for price updates (vs ~500ms for REST)
+    - Reduced API rate limit concerns
+    - More accurate real-time position monitoring
+  - **File Modified**: `/app/backend/paper_trading/paper_trader.py`
+  - Test report: `/app/test_reports/iteration_26.json`
 
 ### January 24, 2026 - Session 28 (Continued)
 
