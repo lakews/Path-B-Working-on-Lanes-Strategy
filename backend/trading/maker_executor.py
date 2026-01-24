@@ -8,6 +8,58 @@ Implements a "maker-first" execution strategy for prediction markets:
 
 In paper trading, this simulates the fill probability and spread capture.
 For live trading, this would use actual CLOB API limit orders.
+
+================================================================================
+IMPORTANT: CHANGES REQUIRED FOR REAL/LIVE TRADING
+================================================================================
+
+Before transitioning from paper trading to real trading, the following critical
+changes MUST be implemented:
+
+1. ORDERBOOK REQUIREMENT:
+   - Current: Falls back to estimated spread when orderbook unavailable
+   - Required: REJECT trades if orderbook is unavailable
+   - Reason: Cannot execute real trades without knowing actual market liquidity
+   
+   Change this:
+       else:
+           estimated_spread = 0.02
+           best_bid = max(0.001, current_yes_price - (estimated_spread / 2))
+           best_ask = min(0.999, current_yes_price + (estimated_spread / 2))
+   
+   To this:
+       else:
+           logger.error("No orderbook - CANNOT execute real trade")
+           return ExecutionResult(
+               order_type=OrderType.TAKER,
+               fill_status=FillStatus.UNFILLED,
+               fill_price=0,
+               fill_size=0,
+               reason="no_orderbook_data"
+           )
+
+2. FRESH ORDERBOOK DATA:
+   - Always fetch fresh orderbook data immediately before each trade
+   - Add retry logic (2-3 attempts) for failed orderbook fetches
+   - Implement orderbook staleness check (reject if > 1 second old)
+
+3. REAL CLOB API INTEGRATION:
+   - Replace simulated fills with actual Polymarket CLOB API calls
+   - Implement proper order placement, monitoring, and cancellation
+   - Handle partial fills correctly
+   - Implement proper slippage protection (max slippage parameter)
+
+4. POSITION VERIFICATION:
+   - After each trade, verify position was actually opened/closed
+   - Reconcile local state with on-chain/CLOB state
+   - Implement position sync on startup
+
+5. ERROR HANDLING:
+   - Add circuit breaker for repeated API failures
+   - Implement graceful degradation (stop trading, don't crash)
+   - Log all trade attempts for audit trail
+
+================================================================================
 """
 
 import logging
