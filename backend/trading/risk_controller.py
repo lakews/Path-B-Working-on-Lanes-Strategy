@@ -260,7 +260,8 @@ class RiskController:
             
             returns = []
             for i in range(1, len(docs)):
-                ret = (docs[i]['total_pnl'] - docs[i-1]['total_pnl']) / config.INITIAL_CAPITAL
+                # Calculate returns based on deployed capital (what's actually at risk)
+                ret = (docs[i]['total_pnl'] - docs[i-1]['total_pnl']) / config.DEPLOYED_CAPITAL
                 returns.append(ret)
             
             if len(returns) < 2:
