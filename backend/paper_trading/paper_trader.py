@@ -509,6 +509,17 @@ class PaperTrader:
         # Load RL model
         await self.rl_engine.load_model()
         
+        # Initialize real-time market service (WebSocket)
+        if self.use_websocket_data:
+            try:
+                self.realtime_market_service = get_realtime_market_service()
+                await self.realtime_market_service.start()
+                logger.info("✅ WebSocket market service started - using real-time data")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not start WebSocket service: {e} - falling back to REST polling")
+                self.use_websocket_data = False
+                self.realtime_market_service = None
+        
         # Initialize session in DB
         await self._init_session()
         
@@ -549,6 +560,14 @@ class PaperTrader:
             await self._close_all_positions()
         
         self.running = False
+        
+        # Stop WebSocket service
+        if self.realtime_market_service:
+            try:
+                await self.realtime_market_service.stop()
+                logger.info("WebSocket market service stopped")
+            except Exception as e:
+                logger.warning(f"Error stopping WebSocket service: {e}")
         
         # Clean up persisted positions (all should be closed now)
         await self._cleanup_persisted_positions()
