@@ -539,20 +539,25 @@ class PolymarketPositionSizer:
     
     def _calculate_sector_cap(
         self,
-        equity: float,
+        sizing_base: float,
         category: str,
         sector_exposure: Dict[str, float]
     ) -> float:
         """
         Calculate remaining sector cap.
         
-        Each sector has a max allocation (e.g., 20% crypto).
+        Args:
+            sizing_base: Max deployable capital (from user config)
+            category: Market category
+            sector_exposure: Current exposure per category
+        
         Returns remaining room in that sector.
+        Each sector has a max allocation (e.g., 20% crypto) of the sizing_base.
         """
         sector_caps = self.config['sector_caps']
         cap_pct = sector_caps.get(category, sector_caps.get('unknown', 0.15))
         
-        max_sector_usd = equity * cap_pct
+        max_sector_usd = sizing_base * cap_pct
         current_exposure = sector_exposure.get(category, 0.0)
         
         remaining = max_sector_usd - current_exposure
