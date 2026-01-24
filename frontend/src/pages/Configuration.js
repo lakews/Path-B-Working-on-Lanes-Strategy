@@ -72,9 +72,18 @@ const Configuration = () => {
       crypto: 0.20, politics: 0.25, sports: 0.30, finance: 0.20,
       entertainment: 0.15, science: 0.15, conflict: 0.10, social: 0.10, unknown: 0.15
     },
-    oracle_multipliers: null
+    oracle_multipliers: null,
+    // Event Caps
+    event_caps: {
+      max_event_exposure_pct: 0.15,
+      similarity_threshold: 0.60
+    }
   });
   const [oracleMultipliersDefault, setOracleMultipliersDefault] = useState({});
+  const [eventCapsDefault, setEventCapsDefault] = useState({
+    max_event_exposure_pct: 0.15,
+    similarity_threshold: 0.60
+  });
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
