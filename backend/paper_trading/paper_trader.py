@@ -400,12 +400,23 @@ class PaperTrader:
                 if "sector_caps" in user_config:
                     self.sector_caps.update(user_config["sector_caps"])
                 
+                # Load event caps configuration
+                if "event_caps" in user_config:
+                    self.event_caps = user_config["event_caps"]
+                else:
+                    self.event_caps = {
+                        "max_event_exposure_pct": 0.15,
+                        "similarity_threshold": 0.60,
+                    }
+                
                 # Update polymarket sizer config if enabled
                 if hasattr(self, 'polymarket_sizer') and self.polymarket_sizer:
                     self.polymarket_sizer.config['polymarket_fee_pct'] = self.polymarket_fee_pct
                     self.polymarket_sizer.config['sector_caps'].update(self.sector_caps)
                     self.polymarket_sizer.config['kelly_multiplier'] = self.kelly_fraction
                     self.polymarket_sizer.config['min_bet_floor'] = self.min_position_size
+                    # Update event caps in sizer
+                    self.polymarket_sizer.event_config.update(self.event_caps)
                 
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
@@ -418,6 +429,7 @@ class PaperTrader:
                 logger.info(f"  Capital Deployment: {self.capital_deployment_pct}% = ${self.deployed_capital:,.2f}")
                 logger.info(f"  Max Position: {self.max_position_size_pct}% of deployed = ${self.max_position_size:,.2f}")
                 logger.info(f"  Kelly: {self.kelly_fraction} (bounds: {self.min_kelly_fraction}-{self.max_kelly_fraction}) | Enabled: {self.kelly_enabled}")
+                logger.info(f"  Event Caps: max={self.event_caps.get('max_event_exposure_pct', 0.15):.0%}, similarity={self.event_caps.get('similarity_threshold', 0.60):.0%}")
                 logger.info(f"  Position Sizing: Min ${self.min_position_size:.0f}, Full Size @ ${self.min_liquidity_for_full_size:,.0f} vol")
                 logger.info(f"  Max Drawdown: {self.max_drawdown_pct}%")
                 logger.info(f"  Trades/10min: {self.trades_per_10min} | Interval: {self.trade_interval:.2f}s")
