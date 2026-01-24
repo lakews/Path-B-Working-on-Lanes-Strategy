@@ -1919,6 +1919,12 @@ class PaperTrader:
             # Calculate dynamic exit params for this entry
             dynamic_exit = self._get_dynamic_exit_params(side, actual_entry_price)
             
+            # Calculate display entry price (actual price for the side being traded)
+            if side == 'YES':
+                display_entry_price = actual_entry_price
+            else:
+                display_entry_price = 1 - actual_entry_price  # NO price = 1 - YES price
+            
             position = {
                 "position_id": str(uuid.uuid4()),
                 "market_id": market_id,
@@ -1926,7 +1932,8 @@ class PaperTrader:
                 "asset_class": asset_class,
                 "side": side,
                 "size": size,
-                "entry_price": actual_entry_price,  # Use actual fill price
+                "entry_price": display_entry_price,  # Display price for the side traded
+                "yes_entry_price": actual_entry_price,  # Keep YES price for internal calculations
                 "entry_time": datetime.now(timezone.utc).isoformat(),
                 "strategy": strategy,
                 "rl_action": rl_action,
@@ -1943,8 +1950,8 @@ class PaperTrader:
                 # Risk tracking for reward shaping
                 "entry_volatility": signals.get('volatility', 0.05),
                 "max_drawdown_pct": 0.0,  # Will be updated during position monitoring
-                "min_price_seen": actual_entry_price,  # Track worst price for drawdown
-                "max_price_seen": actual_entry_price,  # Track best price
+                "min_price_seen": actual_entry_price,  # Track worst price for drawdown (YES price)
+                "max_price_seen": actual_entry_price,  # Track best price (YES price)
                 # Store expiry info for UI display
                 "expiry_info": {
                     "hours_to_expiry": expiry_info.get('hours_to_expiry'),
