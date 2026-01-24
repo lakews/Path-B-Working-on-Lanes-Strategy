@@ -281,34 +281,57 @@ class PolymarketWebSocket:
         """Process incoming WebSocket message."""
         try:
             data = json.loads(raw_message)
-            msg_type = data.get('type', data.get('event', 'unknown'))
             
-            if msg_type in ['price_change', 'tick', 'price']:
-                await self._handle_price_update(data)
-                
-            elif msg_type in ['trade', 'fill']:
-                await self._handle_trade(data)
-                
-            elif msg_type in ['book', 'order_book', 'book_snapshot']:
-                await self._handle_order_book(data)
-                
-            elif msg_type in ['book_delta', 'book_update']:
-                await self._handle_order_book_delta(data)
-                
-            elif msg_type == 'subscribed':
-                logger.debug(f"Subscription confirmed: {data}")
-                
-            elif msg_type == 'error':
-                logger.error(f"WebSocket error: {data}")
-                await self._emit('error', data)
-                
+            # Handle array messages (Polymarket sends arrays of price updates)
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict):
+                        await self._process_single_message(item)
+            elif isinstance(data, dict):
+                await self._process_single_message(data)
             else:
-                logger.debug(f"Unknown message type: {msg_type}")
+                logger.warning(f"Unexpected message format: {type(data)}")
                 
         except json.JSONDecodeError:
             logger.warning(f"Invalid JSON message: {raw_message[:100]}")
         except Exception as e:
             logger.error(f"Error handling message: {e}")
+    
+    async def _process_single_message(self, data: Dict):
+        """Process a single message object."""
+        # Polymarket CLOB messages have event_type field
+        msg_type = data.get('event_type', data.get('type', data.get('event', 'unknown')))
+        
+        if msg_type in ['price_change', 'tick', 'price']:
+            await self._handle_price_update(data)
+            
+        elif msg_type in ['trade', 'fill', 'TRADE']:
+            await self._handle_trade(data)
+            
+        elif msg_type in ['book', 'order_book', 'book_snapshot']:
+            await self._handle_order_book(data)
+            
+        elif msg_type in ['book_delta', 'book_update']:
+            await self._handle_order_book_delta(data)
+            
+        elif msg_type == 'subscribed':
+            logger.debug(f"Subscription confirmed: {data}")
+            
+        elif msg_type == 'error':
+            logger.error(f"WebSocket error: {data}")
+            await self._emit('error', data)
+            
+        elif msg_type == 'unknown' and 'market' in data:
+            # Polymarket sends market updates without explicit type
+            # Check if it has price data
+            if 'price' in data or 'yes_price' in data or 'outcome_price' in data:
+                await self._handle_price_update(data)
+            elif 'bids' in data or 'asks' in data:
+                await self._handle_order_book(data)
+            else:
+                logger.debug(f"Unrecognized market message: {list(data.keys())[:5]}")
+        else:
+            logger.debug(f"Unknown message type: {msg_type}")
     
     async def _handle_price_update(self, data: Dict):
         """Handle price update message."""
