@@ -507,12 +507,13 @@ class PaperTrader:
         # Initialize session in DB
         await self._init_session()
         
-        # Run trading loops
+        # Run trading loops (including emergency stop loss task)
         await asyncio.gather(
             self._trading_loop(),
             self._position_monitoring_loop(),
             self._learning_loop(),
-            self._continuous_mode_handler()
+            self._continuous_mode_handler(),
+            self._emergency_stoploss_task()  # Safety net for stop losses
         )
     
     async def stop(self, graceful: bool = False):
