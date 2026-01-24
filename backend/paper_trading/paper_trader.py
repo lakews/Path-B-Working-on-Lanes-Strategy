@@ -3366,6 +3366,7 @@ class PaperTrader:
         try:
             live_markets = []
             data_source = "REST"
+            cycle_count = getattr(self, '_cycle_count', 0)
             
             # Try WebSocket service first for faster, real-time data
             if self.use_websocket_data and self.realtime_market_service:
@@ -3377,7 +3378,7 @@ class PaperTrader:
                         
                         # Get stats for logging
                         ws_stats = self.realtime_market_service.get_stats()
-                        if self._cycle_count % 50 == 1:  # Log every 50 cycles
+                        if cycle_count % 50 == 1:  # Log every 50 cycles
                             logger.info(f"📡 WebSocket data: {ws_stats.get('ws_updates', 0)} updates, "
                                        f"{ws_stats.get('prices_cached', 0)} prices cached")
                 except Exception as e:
@@ -3412,12 +3413,12 @@ class PaperTrader:
                 filtered_markets.append(m)
             
             # Log less frequently to reduce noise
-            if self._cycle_count % 20 == 1:
+            if cycle_count % 20 == 1:
                 logger.info(f"[{data_source}] Filtered {len(filtered_markets)}/{len(live_markets)} markets "
                            f"(liq>${self.min_liquidity}, vol>${self.min_volume_24h})")
             
             # Cache top markets in DB for analytics (less frequently)
-            if filtered_markets and self._cycle_count % 100 == 1:
+            if filtered_markets and cycle_count % 100 == 1:
                 for m in filtered_markets[:100]:
                     market_doc = {
                         "condition_id": m.get('condition_id') or m.get('id'),
