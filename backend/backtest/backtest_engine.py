@@ -868,19 +868,59 @@ class BacktestEngine:
         
         return strategies[0]
     
+    def _determine_trade_side(self, market_id: str, current_price: float, strategy: str) -> str:
+        """
+        Determine whether to trade YES or NO based on sentiment and strategy.
+        
+        Logic mirrors paper_trader behavior:
+        - Sentiment > 0.55 → YES (bullish)
+        - Sentiment < 0.45 → NO (bearish)
+        - Neutral → defaults based on price (NO if price > 0.5, YES if price < 0.5)
+        """
+        # Get sentiment from cache
+        sentiment_data = self.sentiment_cache.get(market_id, {})
+        sentiment_score = sentiment_data.get('overall_sentiment', 0.5)
+        
+        # Alpha-directional uses sentiment direction
+        if strategy == 'alpha_directional':
+            if sentiment_score > 0.55:
+                return 'YES'
+            elif sentiment_score < 0.45:
+                return 'NO'
+        
+        # Delta-neutral and other strategies: trade against extreme prices
+        # (Bet NO when YES price is high, bet YES when YES price is low)
+        if current_price > 0.65:
+            return 'NO'
+        elif current_price < 0.35:
+            return 'YES'
+        
+        # Default: NO (matches current paper trader bias towards NO)
+        return 'NO'
+
     async def _open_position(self, market_id: str, price: float, strategy: str, 
                             category: str, timestamp: str, profit_target: float,
-                            stop_loss: float, size_mult: float) -> Dict:
+                            stop_loss: float, size_mult: float, side: str = None) -> Dict:
         """Open a new position with adaptive sizing based on deployed capital"""
+        # Determine side if not provided
+        if side is None:
+            side = self._determine_trade_side(market_id, price, strategy)
+        
         # Use deployed capital (from config) as the sizing base
         available_capital = min(self.current_capital, self.deployed_capital) * self.capital_deployment_pct
         base_size = available_capital * self.max_position_size_pct  # Max position size from config
         position_size = base_size * size_mult
         
-        shares = position_size / price if price > 0 else 0
+        # Calculate shares based on side
+        if side == 'YES':
+            entry_price = price
+        else:  # NO
+            entry_price = 1 - price  # NO price = 1 - YES price
+        
+        shares = position_size / entry_price if entry_price > 0 else 0
         if shares < 1:
             shares = 1
-            position_size = shares * price
+            position_size = shares * entry_price
         
         self.current_capital -= position_size
         
@@ -888,7 +928,9 @@ class BacktestEngine:
             "market_id": market_id,
             "strategy": strategy,
             "category": category,
-            "entry_price": price,
+            "entry_price": price,  # Store YES price for consistency
+            "entry_price_effective": entry_price,  # The actual price we entered at
+            "side": side,
             "shares": shares,
             "cost": position_size,
             "profit_target": profit_target,
@@ -906,15 +948,15 @@ class BacktestEngine:
             "market_id": market_id,
             "strategy": strategy,
             "category": category,
-            "side": "BUY",
-            "price": price,
+            "side": f"BUY_{side}",  # BUY_YES or BUY_NO
+            "price": entry_price,
             "shares": shares,
             "cost": position_size,
             "timestamp": timestamp
         }
         self.trades.append(trade)
         
-        logger.debug(f"Opened {strategy} position on {market_id[:8]} @ ${price:.3f}")
+        logger.debug(f"Opened {strategy} {side} position on {market_id[:8]} @ ${entry_price:.3f}")
         
         return position
     
