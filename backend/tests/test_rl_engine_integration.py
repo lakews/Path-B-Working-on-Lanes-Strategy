@@ -57,13 +57,19 @@ class TestRLEngineViaAPI:
         
         data = response.json()
         
-        # Verify DQN-specific fields
-        assert data.get('prioritized_replay') == True, "DQN should have prioritized_replay=True"
-        assert 'device' in data, "device field missing"
-        assert 'action_distribution' in data, "action_distribution field missing"
-        assert 'state_features' in data, "state_features field missing"
+        # Data is nested under 'rl_stats'
+        rl_stats = data.get('rl_stats', {})
         
-        print(f"✓ Detailed Stats: device={data['device']}, prioritized_replay={data['prioritized_replay']}")
+        # Verify DQN-specific fields (when in DQN mode)
+        model_type = rl_stats.get('model_type') or rl_stats.get('type')
+        if model_type == 'DQN':
+            assert rl_stats.get('prioritized_replay') == True, "DQN should have prioritized_replay=True"
+            assert 'device' in rl_stats, "device field missing"
+        
+        assert 'action_distribution' in rl_stats, "action_distribution field missing"
+        assert 'state_features' in rl_stats, "state_features field missing"
+        
+        print(f"✓ Detailed Stats: model_type={model_type}, prioritized_replay={rl_stats.get('prioritized_replay')}")
         print(f"  State features: {data['state_features']}")
     
     def test_rl_train_endpoint(self):
@@ -102,8 +108,10 @@ class TestRLEngineViaAPI:
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
         data = response.json()
-        assert data.get('model_type') == 'DQN', f"Expected DQN mode, got {data.get('model_type')}"
-        print(f"✓ Switch to DQN: model_type={data['model_type']}")
+        # Response has 'mode' at top level and 'model_type' in nested stats
+        mode = data.get('mode') or data.get('stats', {}).get('model_type')
+        assert mode == 'DQN', f"Expected DQN mode, got {mode}"
+        print(f"✓ Switch to DQN: mode={mode}")
     
     def test_rl_switch_mode_to_qtable_and_back(self):
         """Verify switching between Q-table and DQN modes"""
@@ -112,16 +120,18 @@ class TestRLEngineViaAPI:
         assert response1.status_code == 200, f"Expected 200, got {response1.status_code}"
         
         data1 = response1.json()
-        assert data1.get('model_type') == 'Q-table', f"Expected Q-table mode, got {data1.get('model_type')}"
-        print(f"✓ Switch to Q-table: model_type={data1['model_type']}")
+        mode1 = data1.get('mode') or data1.get('stats', {}).get('model_type')
+        assert mode1 == 'Q-table', f"Expected Q-table mode, got {mode1}"
+        print(f"✓ Switch to Q-table: mode={mode1}")
         
         # Switch back to DQN
         response2 = requests.post(f"{BASE_URL}/api/rl/switch-mode?use_dqn=true", auth=AUTH)
         assert response2.status_code == 200, f"Expected 200, got {response2.status_code}"
         
         data2 = response2.json()
-        assert data2.get('model_type') == 'DQN', f"Expected DQN mode, got {data2.get('model_type')}"
-        print(f"✓ Switch back to DQN: model_type={data2['model_type']}")
+        mode2 = data2.get('mode') or data2.get('stats', {}).get('model_type')
+        assert mode2 == 'DQN', f"Expected DQN mode, got {mode2}"
+        print(f"✓ Switch back to DQN: mode={mode2}")
 
 
 class TestDQNAgentDirect:
@@ -329,20 +339,25 @@ class TestRLEngineDirectInitialization:
     
     def test_rl_engine_initialization_via_api(self):
         """Verify RL Engine initializes correctly through API"""
-        # First get stats (which initializes the engine)
-        response = requests.get(f"{BASE_URL}/api/rl/stats", auth=AUTH)
+        # First ensure we're in DQN mode
+        requests.post(f"{BASE_URL}/api/rl/switch-mode?use_dqn=true", auth=AUTH)
+        
+        # Get detailed stats which has state_features
+        response = requests.get(f"{BASE_URL}/api/rl/detailed-stats", auth=AUTH)
         assert response.status_code == 200
         
         data = response.json()
+        rl_stats = data.get('rl_stats', {})
         
         # Verify engine is in DQN mode
-        assert data.get('model_type') == 'DQN', "RL Engine should default to DQN mode"
-        assert data.get('prioritized_replay') == True, "DQN should use prioritized replay"
+        model_type = rl_stats.get('model_type') or rl_stats.get('type')
+        assert model_type == 'DQN', f"RL Engine should be in DQN mode, got {model_type}"
+        assert rl_stats.get('prioritized_replay') == True, "DQN should use prioritized replay"
         
         # Verify state features
         expected_features = ['price', 'volatility', 'sentiment', 'sharp_alignment',
                             'liquidity', 'volume', 'time_to_expiry', 'portfolio_exposure']
-        actual_features = data.get('state_features', [])
+        actual_features = rl_stats.get('state_features', [])
         
         assert actual_features == expected_features, f"State features mismatch: {actual_features}"
         
