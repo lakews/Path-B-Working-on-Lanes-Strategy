@@ -567,12 +567,13 @@ class PaperTrader:
     
     async def _init_session(self):
         """Initialize paper trading session in database"""
+        self.session_start_time = datetime.now(timezone.utc)
         session_doc = {
             "session_id": self.session_id,
             "type": "paper_trading",
             "continuous_mode": self.continuous_mode,
             "initial_capital": self.initial_capital,
-            "start_time": datetime.now(timezone.utc).isoformat(),
+            "start_time": self.session_start_time.isoformat(),
             "status": "running",
             "trades": [],
             "positions": []
