@@ -69,6 +69,12 @@ DEFAULT_CONFIG = {
     },
 }
 
+# Event cap configuration
+EVENT_CAP_CONFIG = {
+    'max_event_exposure_pct': 0.15,  # Max 15% of deployed capital per event
+    'similarity_threshold': 0.7,     # Questions with >70% word overlap are same event
+}
+
 
 class PolymarketPositionSizer:
     """
@@ -87,12 +93,14 @@ class PolymarketPositionSizer:
     5. Apply Correlation Dampener (overlapping positions)
     6. Clamp to Liquidity Cap (order book depth)
     7. Clamp to Sector Cap (max allocation per category)
-    8. Apply Min Bet Floor (skip if < $5)
+    8. Clamp to Event Cap (max allocation per correlated event)
+    9. Apply Min Bet Floor (skip if < $5)
     """
     
     def __init__(self, config: Optional[Dict] = None):
         self.config = {**DEFAULT_CONFIG, **(config or {})}
-        self._version = "v2.0_edge_logging"  # Version indicator
+        self.event_config = {**EVENT_CAP_CONFIG}
+        self._version = "v2.1_event_cap"  # Version indicator
         logger.info(f"[SIZER] Initialized PolymarketPositionSizer {self._version}")
         
         # Try to get DB, but don't fail if not available
