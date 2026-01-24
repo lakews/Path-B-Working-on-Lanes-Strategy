@@ -16,6 +16,7 @@ from ml.volatility_predictor import VolatilityPredictor
 from ml.signal_fusion import SignalFusionEngine
 from ml.social_sentiment import SocialSentimentAnalyzer
 from ml.enhanced_sentiment import get_enhanced_sentiment_analyzer
+from trading.maker_executor import get_maker_executor, MakerOrderExecutor
 from config import config
 import numpy as np
 
