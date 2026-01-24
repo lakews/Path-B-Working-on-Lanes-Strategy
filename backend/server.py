@@ -1885,6 +1885,30 @@ async def load_rl_model():
             content={"message": f"Failed to load RL model: {str(e)}"}
         )
 
+@api_router.post("/rl/load-historical")
+async def load_historical_experiences():
+    """Load historical trading experiences into RL replay buffer"""
+    global rl_engine
+    
+    try:
+        if not rl_engine:
+            rl_engine = RLAdaptiveEngine()
+        
+        loaded_count = await rl_engine.load_historical_experiences()
+        stats = await rl_engine.get_training_stats()
+        
+        return {
+            "message": f"Loaded {loaded_count} historical experiences",
+            "loaded_count": loaded_count,
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Error loading historical experiences: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to load historical experiences: {str(e)}"}
+        )
+
 @api_router.post("/rl/switch-mode")
 async def switch_rl_mode(use_dqn: bool = True):
     """Switch between DQN and Q-table modes"""
