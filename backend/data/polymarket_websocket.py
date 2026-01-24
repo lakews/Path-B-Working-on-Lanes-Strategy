@@ -117,11 +117,11 @@ class PolymarketWebSocket:
             return
         
         try:
-            # Polymarket subscription message format
+            # Polymarket CLOB WebSocket subscription format
+            # See: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
             subscribe_msg = {
-                "type": "subscribe",
-                "channel": "market",
-                "market": token_id,
+                "type": "market",
+                "assets_ids": [token_id],
             }
             
             await self.ws.send(json.dumps(subscribe_msg))
@@ -133,10 +133,40 @@ class PolymarketWebSocket:
             logger.error(f"Failed to subscribe to market {token_id}: {e}")
     
     async def subscribe_markets(self, token_ids: List[str]):
-        """Subscribe to multiple markets."""
-        for token_id in token_ids:
-            await self.subscribe_market(token_id)
-            await asyncio.sleep(0.1)  # Rate limit subscriptions
+        """Subscribe to multiple markets efficiently (batch subscription)."""
+        if not token_ids:
+            return
+            
+        if not self.connected or not self.ws:
+            logger.warning("Cannot subscribe to markets - not connected")
+            return
+        
+        try:
+            # Batch subscribe - Polymarket supports multiple assets_ids in one message
+            new_tokens = [t for t in token_ids if t not in self._subscribed_tokens]
+            
+            if not new_tokens:
+                return
+            
+            # Subscribe in batches of 50 to avoid message size limits
+            batch_size = 50
+            for i in range(0, len(new_tokens), batch_size):
+                batch = new_tokens[i:i + batch_size]
+                subscribe_msg = {
+                    "type": "market",
+                    "assets_ids": batch,
+                }
+                
+                await self.ws.send(json.dumps(subscribe_msg))
+                self._subscribed_tokens.update(batch)
+                
+                if i + batch_size < len(new_tokens):
+                    await asyncio.sleep(0.1)  # Small delay between batches
+            
+            logger.info(f"Subscribed to {len(new_tokens)} markets in batches")
+            
+        except Exception as e:
+            logger.error(f"Failed to batch subscribe: {e}")
     
     async def unsubscribe_market(self, token_id: str):
         """Unsubscribe from a market."""
