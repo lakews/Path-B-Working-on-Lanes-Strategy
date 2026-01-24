@@ -3003,9 +3003,11 @@ class PaperTrader:
                 "end_time": datetime.now(timezone.utc).isoformat(),
                 "status": "completed",
                 "initial_capital": self.initial_capital,
+                "deployed_capital_limit": self.deployed_capital,  # Max allowed deployment from config
                 "final_capital": self.current_capital,
                 "total_pnl": self.total_pnl,
-                "total_pnl_pct": (self.total_pnl / self.initial_capital) * 100,
+                "total_pnl_pct": (self.total_pnl / self.deployed_capital) * 100 if self.deployed_capital > 0 else 0,  # Return on deployed capital
+                "total_pnl_pct_on_total": (self.total_pnl / self.initial_capital) * 100,  # Return on total capital (for reference)
                 "total_trades": self.total_trades,
                 "winning_trades": self.winning_trades,
                 "win_rate": win_rate,
