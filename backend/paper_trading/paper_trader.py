@@ -579,6 +579,184 @@ class PaperTrader:
             "positions": []
         }
         await self.db.paper_trading_sessions.insert_one(session_doc)
+        
+        # Load any existing open positions for this session (in case of restart)
+        await self._load_positions_from_db()
+    
+    # =========================================================================
+    # POSITION PERSISTENCE METHODS
+    # =========================================================================
+    
+    async def _save_position_to_db(self, market_id: str, position: Dict):
+        """Save position to database for persistence across restarts"""
+        try:
+            position_doc = {
+                **position,
+                "market_id": market_id,
+                "session_id": self.session_id,
+                "last_updated": datetime.now(timezone.utc).isoformat()
+            }
+            await self.db.paper_positions_live.update_one(
+                {"market_id": market_id, "session_id": self.session_id},
+                {"$set": position_doc},
+                upsert=True
+            )
+            logger.debug(f"[PERSIST] Saved position {market_id[:16]}... to DB")
+        except Exception as e:
+            logger.error(f"[PERSIST] Error saving position to DB: {e}")
+    
+    async def _delete_position_from_db(self, market_id: str):
+        """Remove closed position from database"""
+        try:
+            result = await self.db.paper_positions_live.delete_one({
+                "market_id": market_id,
+                "session_id": self.session_id
+            })
+            if result.deleted_count > 0:
+                logger.debug(f"[PERSIST] Deleted position {market_id[:16]}... from DB")
+        except Exception as e:
+            logger.error(f"[PERSIST] Error deleting position from DB: {e}")
+    
+    async def _load_positions_from_db(self):
+        """Load open positions from database on startup/restart"""
+        try:
+            positions = await self.db.paper_positions_live.find({
+                "session_id": self.session_id
+            }).to_list(None)
+            
+            if positions:
+                logger.info(f"[PERSIST] Loading {len(positions)} open positions from database")
+                for pos in positions:
+                    market_id = pos.get("market_id")
+                    if market_id:
+                        # Remove MongoDB _id field
+                        pos.pop("_id", None)
+                        self.paper_positions[market_id] = pos
+                        logger.info(f"[PERSIST] Restored position: {pos.get('market_question', market_id)[:40]}... @ {pos.get('entry_price', 0):.4f}")
+                
+                logger.info(f"[PERSIST] Successfully restored {len(self.paper_positions)} positions")
+            else:
+                logger.info("[PERSIST] No existing positions to restore")
+                
+        except Exception as e:
+            logger.error(f"[PERSIST] Error loading positions from DB: {e}")
+    
+    async def _reconstruct_positions_from_trades(self):
+        """
+        Fallback: Reconstruct positions from trade history if paper_positions_live is empty.
+        Finds entry trades without matching exit trades.
+        """
+        try:
+            # Get all entry trades for this session
+            entries = await self.db.paper_trades.find({
+                "session_id": self.session_id,
+                "type": "entry"
+            }).to_list(None)
+            
+            # Get all exit trades for this session
+            exits = await self.db.paper_trades.find({
+                "session_id": self.session_id,
+                "type": "exit"
+            }).to_list(None)
+            
+            # Find closed market IDs
+            closed_markets = set(e.get("market_id") for e in exits)
+            
+            # Reconstruct open positions
+            reconstructed = 0
+            for entry in entries:
+                market_id = entry.get("market_id")
+                if market_id and market_id not in closed_markets and market_id not in self.paper_positions:
+                    position = {
+                        "market_id": market_id,
+                        "market_question": entry.get("market_question", "Unknown"),
+                        "entry_price": entry.get("entry_price", 0.5),
+                        "side": entry.get("side", "NO"),
+                        "size": entry.get("size", 0),
+                        "shares": entry.get("shares", 0),
+                        "strategy": entry.get("strategy", "unknown"),
+                        "asset_class": entry.get("asset_class", "other"),
+                        "entry_timestamp": entry.get("timestamp"),
+                        "reconstructed": True  # Flag to indicate this was reconstructed
+                    }
+                    self.paper_positions[market_id] = position
+                    await self._save_position_to_db(market_id, position)
+                    reconstructed += 1
+                    logger.info(f"[RECONSTRUCT] Restored: {position.get('market_question', '')[:40]}...")
+            
+            if reconstructed > 0:
+                logger.warning(f"[RECONSTRUCT] Reconstructed {reconstructed} positions from trade history")
+            
+            return reconstructed
+            
+        except Exception as e:
+            logger.error(f"[RECONSTRUCT] Error reconstructing positions: {e}")
+            return 0
+    
+    # =========================================================================
+    # EMERGENCY STOP LOSS BACKGROUND TASK
+    # =========================================================================
+    
+    async def _emergency_stoploss_task(self):
+        """
+        Background task that checks ALL positions for emergency stop loss.
+        This is a safety net that runs independently of the main trading loop.
+        Triggers at -50% loss regardless of strategy settings.
+        """
+        EMERGENCY_SL_THRESHOLD = -0.50  # -50% emergency stop
+        CHECK_INTERVAL = 30  # Check every 30 seconds
+        
+        logger.info(f"[EMERGENCY SL] Background task started (threshold: {EMERGENCY_SL_THRESHOLD:.0%}, interval: {CHECK_INTERVAL}s)")
+        
+        while self.running:
+            try:
+                await asyncio.sleep(CHECK_INTERVAL)
+                
+                if not self.paper_positions:
+                    continue
+                
+                # Get current prices for all positions
+                markets = await self._get_active_markets()
+                market_prices = {m.get('id'): m for m in markets}
+                
+                positions_to_close = []
+                
+                for market_id, position in list(self.paper_positions.items()):
+                    market_data = market_prices.get(market_id)
+                    if not market_data:
+                        continue
+                    
+                    current_price = float(market_data.get('yes_price', 0.5) or 0.5)
+                    entry_price = position.get('entry_price', 0.5)
+                    side = position.get('side', 'NO')
+                    size = position.get('size', 0)
+                    
+                    # Calculate P&L %
+                    if side == 'YES':
+                        pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+                    else:  # NO position
+                        no_entry = 1 - entry_price
+                        no_current = 1 - current_price
+                        pnl_pct = (no_current - no_entry) / no_entry if no_entry > 0 else 0
+                    
+                    # Check for emergency stop loss
+                    if pnl_pct <= EMERGENCY_SL_THRESHOLD:
+                        logger.warning(f"🚨 [EMERGENCY SL] {position.get('market_question', market_id)[:40]}... at {pnl_pct:.1%} (threshold: {EMERGENCY_SL_THRESHOLD:.0%})")
+                        positions_to_close.append((market_id, market_data, pnl_pct))
+                
+                # Close positions that hit emergency stop loss
+                for market_id, market_data, pnl_pct in positions_to_close:
+                    try:
+                        await self._execute_paper_exit(market_id, market_data, f"emergency_sl_{pnl_pct:.0%}")
+                        logger.warning(f"🚨 [EMERGENCY SL] CLOSED position at {pnl_pct:.1%} loss")
+                    except Exception as e:
+                        logger.error(f"[EMERGENCY SL] Error closing position: {e}")
+                
+            except Exception as e:
+                logger.error(f"[EMERGENCY SL] Error in background task: {e}")
+                await asyncio.sleep(5)
+        
+        logger.info("[EMERGENCY SL] Background task stopped")
     
     async def _trading_loop(self):
         """Main paper trading loop - evaluates markets and executes paper trades"""
