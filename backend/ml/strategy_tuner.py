@@ -224,6 +224,10 @@ class StrategyTuner:
         Test a parameter set by running a simplified backtest
         """
         try:
+            # Get deployed capital from config (single source of truth)
+            from config import config
+            deployed_capital = getattr(config, 'DEPLOYED_CAPITAL', 8000)
+            
             # Get historical data
             market_data = await self._get_test_data(start_date, end_date)
             
@@ -231,8 +235,9 @@ class StrategyTuner:
                 return None
             
             # Simulate trades with these parameters
+            # Use deployed capital to match real trading conditions
             trades = []
-            capital = 1000
+            capital = deployed_capital
             positions = {}
             
             for market_id, timeseries in market_data.items():
