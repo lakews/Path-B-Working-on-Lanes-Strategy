@@ -174,6 +174,11 @@ const Configuration = () => {
         setOracleMultipliersDefault(savedConfig.oracle_multipliers_default);
       }
       
+      // Store default event caps
+      if (savedConfig.event_caps_default) {
+        setEventCapsDefault(savedConfig.event_caps_default);
+      }
+      
       // Merge saved config with current state - DB is source of truth
       setConfig(prev => ({
         ...prev,
@@ -205,6 +210,8 @@ const Configuration = () => {
         polymarket_fee_pct: savedConfig.polymarket_fee_pct ?? prev.polymarket_fee_pct,
         sector_caps: savedConfig.sector_caps ?? prev.sector_caps,
         oracle_multipliers: savedConfig.oracle_multipliers ?? prev.oracle_multipliers,
+        // Event Caps
+        event_caps: savedConfig.event_caps ?? prev.event_caps,
       }));
       setLoading(false);
     } catch (e) { 
