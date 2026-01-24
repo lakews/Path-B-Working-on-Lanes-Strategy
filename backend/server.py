@@ -3601,8 +3601,18 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Cleanup on shutdown"""
-    global trading_bot, historical_collector, ws_manager
+    """Cleanup on shutdown - save all running sessions"""
+    global trading_bot, historical_collector, ws_manager, paper_trader
+    
+    # CRITICAL: Save paper trading session on shutdown
+    if paper_trader and paper_trader.running:
+        logger.info("Shutdown: Saving paper trading session...")
+        try:
+            await paper_trader.stop(graceful=False)  # Force close positions and save
+            logger.info("Shutdown: Paper trading session saved successfully")
+        except Exception as e:
+            logger.error(f"Shutdown: Error saving paper trading session: {e}")
+    
     if trading_bot and trading_bot.running:
         await trading_bot.stop()
     if historical_collector and historical_collector.price_history_running:
