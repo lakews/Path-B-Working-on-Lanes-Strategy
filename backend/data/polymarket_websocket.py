@@ -451,7 +451,17 @@ class PolymarketWebSocketManager:
         # Start listener in background
         self._listener_task = asyncio.create_task(self.ws_client.listen())
         
-        logger.info("PolymarketWebSocketManager started")
+        # Wait for connection to be established (with timeout)
+        max_wait = 10  # seconds
+        waited = 0
+        while not self.ws_client.connected and waited < max_wait:
+            await asyncio.sleep(0.5)
+            waited += 0.5
+        
+        if self.ws_client.connected:
+            logger.info("PolymarketWebSocketManager started - WebSocket connected")
+        else:
+            logger.warning("PolymarketWebSocketManager started - WebSocket connection pending (will retry in background)")
     
     async def stop(self):
         """Stop the WebSocket manager."""
