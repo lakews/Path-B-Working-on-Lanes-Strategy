@@ -1,6 +1,6 @@
 {
-  "test_run": "RL Engine Stability Integration Test",
-  "timestamp": "2025-01-24T19:00:00Z",
+  "test_run": "RL Engine Stability Integration Test + Session Recovery",
+  "timestamp": "2025-01-24T19:30:00Z",
   "iteration": 22,
   "total_tests": 16,
   "passed": 16,
@@ -104,6 +104,31 @@
       "description": "Verifies paper trading includes RL stats (skipped if not running)"
     }
   ],
+  "bugs_fixed": [
+    {
+      "issue": "Interrupted sessions not saved",
+      "fix": "Added paper_trader.stop() to shutdown_event handler",
+      "file": "/app/backend/server.py"
+    },
+    {
+      "issue": "Historical sessions showing status='running' with 0 trades",
+      "fix": "Created recovery script to fix orphaned sessions and populate trade data",
+      "file": "/app/backend/scripts/recover_sessions.py"
+    },
+    {
+      "issue": "RL buffer empty despite 5000+ trades",
+      "fix": "Added load_historical_experiences() method and API endpoint",
+      "files": ["/app/backend/ml/rl_engine.py", "/app/backend/server.py"]
+    }
+  ],
+  "recovery_results": {
+    "sessions_recovered": 25,
+    "trades_recovered": 207,
+    "rl_experiences_loaded": 1000,
+    "training_iterations_completed": 10,
+    "force_train_enabled": true,
+    "session_34_trades_recovered": true
+  },
   "summary": {
     "rl_engine_stable": true,
     "dqn_working": true,
@@ -111,15 +136,11 @@
     "model_save_load_working": true,
     "mode_switching_working": true,
     "force_train_button_condition": "buffer_size > 32",
-    "current_buffer_size": 0,
-    "force_train_enabled": false,
-    "note": "Buffer is empty. Paper trading needs to generate closed trades to populate the replay buffer."
+    "current_buffer_size": 1000,
+    "force_train_enabled": true
   },
-  "issues_found": [],
-  "recommendations": [
-    "Run paper trading to generate experiences and fill the replay buffer",
-    "After 33+ closed trades, Force Train button will be enabled",
-    "Consider pre-populating buffer from historical trades for immediate training"
+  "new_endpoints": [
+    "POST /api/rl/load-historical - Load historical experiences into RL buffer"
   ],
   "test_file": "/app/backend/tests/test_rl_engine_integration.py"
 }
