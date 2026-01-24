@@ -209,8 +209,8 @@ const Positions = () => {
           bVal = (b.shares || 0) * (b.current_price || 0);
           break;
         case 'pnlPct':
-          aVal = a.avg_price > 0 ? ((a.current_price - a.avg_price) / a.avg_price * 100) : 0;
-          bVal = b.avg_price > 0 ? ((b.current_price - b.avg_price) / b.avg_price * 100) : 0;
+          aVal = (a.unrealized_pnl_pct || 0) * 100;  // Use API value
+          bVal = (b.unrealized_pnl_pct || 0) * 100;
           break;
         case 'time':
           aVal = new Date(a.opened_at).getTime();
