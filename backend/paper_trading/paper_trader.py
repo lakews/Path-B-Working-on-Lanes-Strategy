@@ -3282,6 +3282,8 @@ class PaperTrader:
         return {
             "session_id": self.session_id,
             "running": self.running,
+            "start_time": self.session_start_time.isoformat() if self.session_start_time else None,
+            "duration_seconds": duration_seconds,
             "initial_capital": self.initial_capital,
             "current_capital": self.current_capital,
             "peak_capital": self.peak_capital,  # Highest capital reached
