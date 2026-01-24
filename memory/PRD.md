@@ -1180,6 +1180,20 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Backlog
 
+### P0 - CRITICAL (Before Live Trading)
+
+- [ ] **Maker Executor Real Trading Changes** - `/app/backend/trading/maker_executor.py`
+  - **MUST be done before transitioning from paper to real trading**
+  - See detailed requirements in file header comments
+  - Key changes:
+    1. **Reject trades if orderbook unavailable** (currently falls back to estimated spread)
+    2. **Always fetch fresh orderbook** immediately before each trade (add retry logic)
+    3. **Implement orderbook staleness check** (reject if > 1 second old)
+    4. **Replace simulated fills** with actual Polymarket CLOB API calls
+    5. **Position verification** - verify trades actually executed, reconcile with on-chain state
+    6. **Circuit breaker** for repeated API failures
+    7. **Audit logging** for all trade attempts
+
 ### P1 - High Priority
 - [x] ~~**Wire AI Signals into Trading Logic**~~ - COMPLETED (Jan 14, 2026)
 - [x] ~~**Refine Trading Strategies for Profitability**~~ - COMPLETED (Delta-Neutral fixed, AI integration)
