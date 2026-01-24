@@ -2192,6 +2192,14 @@ const PaperTrading = () => {
               </span>
             </div>
             
+            {/* Live Session Timer */}
+            {running && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/50 border border-white/10">
+                <Clock className="w-3 h-3 text-cyan-400" />
+                <span className="text-xs font-mono text-cyan-400">{formatDuration(liveSessionDuration)}</span>
+              </div>
+            )}
+            
             <div className={`flex items-center gap-1.5 px-2 py-1 rounded ${wsConnected ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
               {wsConnected ? <Wifi className="w-3 h-3 text-emerald-400" /> : <WifiOff className="w-3 h-3 text-rose-400" />}
               <span className={`text-[10px] font-mono ${wsConnected ? 'text-emerald-400' : 'text-rose-400'}`}>{wsConnected ? 'LIVE' : 'POLL'}</span>
