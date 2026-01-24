@@ -1068,11 +1068,21 @@ class BacktestEngine:
     
     async def _close_position(self, market_id: str, position: Dict, exit_price: float, 
                              timestamp: str, exit_reason: str):
-        """Close position and record trade"""
+        """Close position and record trade with correct P&L calculation for YES/NO sides"""
         shares = position["shares"]
-        entry_price = position["entry_price"]
-        exit_value = shares * exit_price
+        entry_price = position["entry_price"]  # YES price at entry
+        side = position.get("side", "YES")  # Default to YES for backwards compatibility
         cost = position["cost"]
+        
+        # Calculate exit value and P&L correctly based on side
+        # For YES: exit_value = shares * current_yes_price
+        # For NO: exit_value = shares * current_no_price (where no_price = 1 - yes_price)
+        if side == 'YES':
+            exit_value = shares * exit_price
+        else:  # NO position
+            no_exit_price = 1 - exit_price  # Convert YES price to NO price
+            exit_value = shares * no_exit_price
+        
         pnl = exit_value - cost
         
         # Calculate return percentage for distribution tracking
@@ -1086,7 +1096,7 @@ class BacktestEngine:
         
         # Only log trades for debugging
         if random.random() < 0.02:  # Log 2% of trades
-            logger.info(f"TRADE: {strategy} {market_id[:8]} entry=${entry_price:.4f} exit=${exit_price:.4f} pnl=${pnl:.4f} ({exit_reason})")
+            logger.info(f"TRADE: {strategy} {side} {market_id[:8]} entry=${entry_price:.4f} exit=${exit_price:.4f} pnl=${pnl:.4f} ({exit_reason})")
             logger.info(f"  Strategy perf before: {self.strategy_performance.get(strategy, 'N/A')}")
         
         # Record exit trade
@@ -1096,11 +1106,14 @@ class BacktestEngine:
             "market_id": market_id,
             "strategy": strategy,
             "category": category,
-            "side": "SELL",
-            "price": exit_price,
+            "side": f"SELL_{side}",  # SELL_YES or SELL_NO
+            "price": exit_price if side == 'YES' else (1 - exit_price),  # Store actual exit price
+            "entry_price": entry_price if side == 'YES' else (1 - entry_price),
+            "trade_side": side,
             "shares": shares,
             "value": exit_value,
             "pnl": pnl,
+            "pnl_pct": return_pct,
             "exit_reason": exit_reason,
             "timestamp": timestamp
         }
