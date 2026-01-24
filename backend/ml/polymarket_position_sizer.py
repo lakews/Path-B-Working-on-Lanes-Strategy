@@ -571,6 +571,86 @@ class PolymarketPositionSizer:
         remaining = max_sector_usd - current_exposure
         return max(0.0, remaining)
     
+    def _calculate_event_cap(
+        self,
+        sizing_base: float,
+        market_question: str,
+        open_positions: List[Dict]
+    ) -> tuple:
+        """
+        Calculate remaining event cap for correlated markets.
+        
+        Prevents over-betting on correlated outcomes (e.g., multiple candidates
+        in the same election, multiple outcomes for the same Fed meeting).
+        
+        Args:
+            sizing_base: Max deployable capital
+            market_question: Question for current market
+            open_positions: List of open position dicts with 'question' field
+            
+        Returns:
+            Tuple of (remaining_cap, current_event_exposure, related_positions_count)
+        """
+        max_event_pct = self.event_config.get('max_event_exposure_pct', 0.15)
+        similarity_threshold = self.event_config.get('similarity_threshold', 0.7)
+        
+        max_event_usd = sizing_base * max_event_pct
+        
+        # Find related positions by question similarity
+        current_event_exposure = 0.0
+        related_count = 0
+        
+        for pos in open_positions:
+            pos_question = pos.get('question', pos.get('market_question', ''))
+            if not pos_question:
+                continue
+                
+            similarity = self._calculate_question_similarity(market_question, pos_question)
+            if similarity >= similarity_threshold:
+                current_event_exposure += pos.get('size', 0)
+                related_count += 1
+                
+        remaining = max_event_usd - current_event_exposure
+        return max(0.0, remaining), current_event_exposure, related_count
+    
+    def _calculate_question_similarity(self, q1: str, q2: str) -> float:
+        """
+        Calculate similarity between two market questions.
+        
+        Uses word overlap with normalization for common event detection.
+        Questions about the same event (e.g., "Fed rate 25bps" vs "Fed rate 50bps")
+        will have high similarity.
+        
+        Returns: Similarity score 0.0 to 1.0
+        """
+        if not q1 or not q2:
+            return 0.0
+            
+        # Normalize and tokenize
+        def tokenize(text: str) -> set:
+            # Remove punctuation and lowercase
+            import re
+            text = re.sub(r'[^\w\s]', ' ', text.lower())
+            # Remove common words and numbers that don't identify the event
+            stopwords = {'will', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'by', 'be', 'is', 'are', 'was', 'were', 'yes', 'no', 'before', 'after', 'reach', 'price'}
+            tokens = set(text.split())
+            return tokens - stopwords
+        
+        tokens1 = tokenize(q1)
+        tokens2 = tokenize(q2)
+        
+        if not tokens1 or not tokens2:
+            return 0.0
+            
+        # Jaccard similarity
+        intersection = tokens1 & tokens2
+        union = tokens1 | tokens2
+        
+        if not union:
+            return 0.0
+            
+        return len(intersection) / len(union)
+    
     def _no_trade_result(self, reason: str, detail: str) -> Dict:
         """Return a no-trade result with explanation."""
         return {
