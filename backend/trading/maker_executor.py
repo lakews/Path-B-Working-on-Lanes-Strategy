@@ -111,9 +111,21 @@ class MakerOrderExecutor:
         asks = order_book.get('asks', [])
         volume_24h = market_data.get('volume_24h', 0)
         
-        # Calculate spread
-        best_bid = float(bids[0]['price']) if bids else 0.45
-        best_ask = float(asks[0]['price']) if asks else 0.55
+        # Get the current YES price from market data as baseline
+        current_yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+        
+        # Calculate spread - use actual orderbook if available, otherwise estimate from market price
+        if bids and asks:
+            best_bid = float(bids[0]['price'])
+            best_ask = float(asks[0]['price'])
+        else:
+            # IMPORTANT: Use market price as baseline, not arbitrary defaults
+            # Estimate a small spread around the market price
+            estimated_spread = 0.02  # 2% spread estimate for illiquid markets
+            best_bid = current_yes_price - (estimated_spread / 2)
+            best_ask = current_yes_price + (estimated_spread / 2)
+            logger.warning(f"[MAKER] No orderbook - using estimated prices: bid={best_bid:.4f}, ask={best_ask:.4f} (from yes_price={current_yes_price:.4f})")
+        
         spread = best_ask - best_bid
         spread_pct = spread / max(best_ask, 0.01)
         
