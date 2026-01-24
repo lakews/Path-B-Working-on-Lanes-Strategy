@@ -547,7 +547,7 @@ const Positions = () => {
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {filteredPositions.map((position, idx) => {
-              const pnlPct = position.avg_price > 0 ? ((position.current_price - position.avg_price) / position.avg_price * 100) : 0;
+              const pnlPct = (position.unrealized_pnl_pct || 0) * 100;  // Use API value, convert from decimal
               const isProfit = (position.unrealized_pnl || 0) >= 0;
               const positionValue = (position.shares || 0) * (position.current_price || 0);
               const portfolioPct = totalValue > 0 ? (positionValue / totalValue * 100) : 0;
