@@ -1,0 +1,128 @@
+{
+  "summary": "Verified deployed capital as single source of truth for position sizing and return calculations. All 15 backend tests passed. Key verifications: 1) config.DEPLOYED_CAPITAL = $8000 (80% of $10000), 2) config.MAX_POSITION_SIZE = $240 (3% of deployed), 3) PolymarketPositionSizer uses max_deployable_capital as sizing_base, 4) Utilization = deployed/max_deployable (not deployed/equity), 5) Sector caps based on deployed capital, 6) BacktestEngine uses deployed_capital for returns and Sharpe, 7) RiskController uses config.DEPLOYED_CAPITAL for Sharpe calculation, 8) API endpoints return correct sizing_base=$8000 and max_single_position=$240 in trade breakdowns.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_deployed_capital.py",
+    "/app/test_reports/pytest/pytest_results_iteration21.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "config.py: DEPLOYED_CAPITAL property correctly calculates INITIAL_CAPITAL × (CAPITAL_DEPLOYMENT_PCT / 100)",
+    "config.py: MAX_POSITION_SIZE property correctly uses DEPLOYED_CAPITAL × (MAX_POSITION_SIZE_PCT / 100)",
+    "polymarket_position_sizer.py: calculate_position_size() uses max_deployable_capital as sizing_base (line 210)",
+    "polymarket_position_sizer.py: Utilization calculated as deployed_capital / sizing_base (line 247)",
+    "polymarket_position_sizer.py: Sector caps use sizing_base (line 289)",
+    "polymarket_position_sizer.py: Max single position = sizing_base × max_position_size_pct (line 298)",
+    "paper_trader.py: Passes self.deployed_capital as max_deployable_capital to sizer (line 2121)",
+    "backtest_engine.py: Sets deployed_capital from config.DEPLOYED_CAPITAL (line 52)",
+    "backtest_engine.py: Return % = (current - initial) / deployed_capital × 100 (line 1117)",
+    "backtest_engine.py: Sharpe returns = pnls / deployed_capital (line 1129)",
+    "strategy_tuner.py: Uses config.DEPLOYED_CAPITAL for simulations (line 229)",
+    "risk_controller.py: Sets deployed_capital from config.DEPLOYED_CAPITAL (line 17)",
+    "risk_controller.py: Sharpe calculation uses config.DEPLOYED_CAPITAL (line 264)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_deployed_capital.py"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 tests passed)",
+    "frontend": "N/A (backend only testing requested)"
+  },
+  "test_credentials": {
+    "username": "admin",
+    "password": "apex2026!"
+  },
+  "seed_data_creation": "None required - tests use existing config and position sizer",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Deployed capital verification complete. Key values with default config: initial_capital=$10000, capital_deployment_pct=80%, deployed_capital=$8000, max_position_size_pct=3%, max_single_position=$240. All position sizing and return calculations correctly use deployed_capital as the single source of truth. API trades show sizing_base=$8000 and max_single_position=$240 in breakdown.",
+  "features_tested": {
+    "config_deployed_capital": {
+      "status": "WORKING",
+      "file": "/app/backend/config.py",
+      "formula": "INITIAL_CAPITAL × (CAPITAL_DEPLOYMENT_PCT / 100)",
+      "default_value": "$8000 (80% of $10000)"
+    },
+    "config_max_position_size": {
+      "status": "WORKING",
+      "file": "/app/backend/config.py",
+      "formula": "DEPLOYED_CAPITAL × (MAX_POSITION_SIZE_PCT / 100)",
+      "default_value": "$240 (3% of $8000)"
+    },
+    "polymarket_sizer_sizing_base": {
+      "status": "WORKING",
+      "file": "/app/backend/ml/polymarket_position_sizer.py",
+      "uses": "max_deployable_capital parameter as sizing_base"
+    },
+    "polymarket_sizer_utilization": {
+      "status": "WORKING",
+      "formula": "deployed_capital / sizing_base (NOT deployed / equity)"
+    },
+    "polymarket_sizer_sector_caps": {
+      "status": "WORKING",
+      "formula": "sizing_base × sector_cap_pct"
+    },
+    "polymarket_sizer_max_single": {
+      "status": "WORKING",
+      "formula": "sizing_base × max_position_size_pct"
+    },
+    "paper_trader_integration": {
+      "status": "WORKING",
+      "file": "/app/backend/paper_trading/paper_trader.py",
+      "passes": "self.deployed_capital as max_deployable_capital to sizer"
+    },
+    "backtest_engine_deployed": {
+      "status": "WORKING",
+      "file": "/app/backend/backtest/backtest_engine.py",
+      "uses": "config.DEPLOYED_CAPITAL for sizing and returns"
+    },
+    "strategy_tuner_deployed": {
+      "status": "WORKING",
+      "file": "/app/backend/ml/strategy_tuner.py",
+      "uses": "config.DEPLOYED_CAPITAL for simulations"
+    },
+    "risk_controller_deployed": {
+      "status": "WORKING",
+      "file": "/app/backend/trading/risk_controller.py",
+      "uses": "config.DEPLOYED_CAPITAL for Sharpe calculation"
+    },
+    "api_paper_trades": {
+      "status": "WORKING",
+      "endpoint": "GET /api/paper/trades",
+      "returns": "sizing_base=$8000, max_single_position=$240 in breakdown"
+    }
+  },
+  "api_endpoints_tested": {
+    "GET /api/config": "Returns initial_capital, capital_deployment_pct, max_position_size_pct",
+    "GET /api/paper/trades": "Returns trades with sizing_breakdown showing sizing_base and max_single_position",
+    "GET /api/paper/status": "Returns paper trading status (session not running during test)",
+    "GET /api/backtest/results": "Returns backtest results with deployed_capital field",
+    "GET /api/backtest/history": "Returns backtest history"
+  },
+  "verification_summary": {
+    "deployed_capital_value": "$8000 (80% of $10000 initial)",
+    "max_single_position_value": "$240 (3% of $8000 deployed)",
+    "utilization_formula": "deployed / max_deployable (NOT deployed / equity)",
+    "return_formula": "(current - initial) / deployed × 100",
+    "all_components_verified": [
+      "config.py",
+      "polymarket_position_sizer.py",
+      "paper_trader.py",
+      "backtest_engine.py",
+      "strategy_tuner.py",
+      "risk_controller.py"
+    ]
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "notes": "All APIs are real implementations"
+  }
+}
