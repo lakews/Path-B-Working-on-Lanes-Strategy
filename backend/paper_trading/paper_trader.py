@@ -221,6 +221,12 @@ class PaperTrader:
             'unknown': 0.15,
         }
         
+        # Event caps (configurable) - max exposure to correlated markets
+        self.event_caps = {
+            'max_event_exposure_pct': 0.15,  # 15% max per correlated event
+            'similarity_threshold': 0.60,    # 60% question similarity = same event
+        }
+        
         # Current capital starts at initial (will be set properly after config load)
         self.current_capital = self.initial_capital
         
