@@ -292,10 +292,10 @@ class PolymarketPositionSizer:
         logger.info(f"[SIZER CAPS] adj={kelly_adjusted:.2f}, liq_cap={liquidity_cap:.2f}, sector_cap={sector_cap:.2f}, before_sec={size_before_sector:.2f}, after_sec={size_after_sector:.2f}")
         
         # =================================================================
-        # STEP 12: Apply Hard Limits
+        # STEP 12: Apply Hard Limits (uses sizing_base, not equity)
         # =================================================================
         # Max single position from user config (single source of truth)
-        max_single = equity * max_position_size_pct
+        max_single = sizing_base * max_position_size_pct
         final_size = min(size_after_sector, max_single)
         
         logger.debug(f"[SIZER DEBUG] kelly_base={kelly_base:.2f}, util_mult={utilization_mult:.4f}, time_pen={time_penalty:.4f}, oracle={oracle_mult:.4f}, final={final_size:.2f}")
@@ -355,8 +355,9 @@ class PolymarketPositionSizer:
                 # Final
                 'final_size': final_size,
                 
-                # Portfolio state
+                # Portfolio state (show both for transparency)
                 'equity': round(equity, 2),
+                'sizing_base': round(sizing_base, 2),  # Max deployable capital used for sizing
                 'deployed': round(deployed_capital, 2),
                 'days_to_expiry': days_to_expiry,
             }
