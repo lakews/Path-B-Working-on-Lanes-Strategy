@@ -235,14 +235,16 @@ class PolymarketPositionSizer:
         
         # =================================================================
         # STEP 3: Binary Kelly Base Size
+        # Uses sizing_base (max deployable capital from user config)
         # =================================================================
         kelly_fraction = self._calculate_binary_kelly(edge, effective_price)
-        kelly_base = equity * kelly_fraction * self.config['kelly_multiplier']
+        kelly_base = sizing_base * kelly_fraction * self.config['kelly_multiplier']
         
         # =================================================================
         # STEP 4: Utilization Brake
+        # Utilization = deployed / max_deployable (not total equity)
         # =================================================================
-        utilization = deployed_capital / equity if equity > 0 else 1.0
+        utilization = deployed_capital / sizing_base if sizing_base > 0 else 1.0
         utilization_mult = self._calculate_utilization_brake(utilization)
         
         if utilization_mult <= 0:
@@ -282,9 +284,9 @@ class PolymarketPositionSizer:
         size_before_sector = min(kelly_adjusted, liquidity_cap)
         
         # =================================================================
-        # STEP 11: Apply Sector Cap
+        # STEP 11: Apply Sector Cap (uses sizing_base, not equity)
         # =================================================================
-        sector_cap = self._calculate_sector_cap(equity, market_category, sector_exposure)
+        sector_cap = self._calculate_sector_cap(sizing_base, market_category, sector_exposure)
         size_after_sector = min(size_before_sector, sector_cap)
         
         logger.info(f"[SIZER CAPS] adj={kelly_adjusted:.2f}, liq_cap={liquidity_cap:.2f}, sector_cap={sector_cap:.2f}, before_sec={size_before_sector:.2f}, after_sec={size_after_sector:.2f}")
