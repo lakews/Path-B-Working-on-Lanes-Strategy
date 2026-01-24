@@ -14,7 +14,28 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 24, 2026)
 
-### January 24, 2026 - Session 28 (RL Engine Stability Verification)
+### January 24, 2026 - Session 28 (Continued)
+
+- ✅ **NEW: Session Duration Timer Feature**
+  - **Live Session Timer**: Shows running timer in header next to status badge when paper trading is active
+  - **Historical Session Duration**: Sessions History tab now displays duration column (e.g., 37m 11s)
+  - **Backend**: Added `start_time` and `duration_seconds` to `/api/paper/status` and `/api/paper/sessions`
+  - **Frontend**: Added `formatDuration` helper, `liveSessionDuration` state with real-time updates
+  - Test report: `/app/test_reports/iteration_25.json`
+
+- ✅ **BUG FIX: P&L % Showing Negative for Winning Trades**
+  - **Problem**: SessionTradesModal showed negative P&L % for NO positions despite positive $ P&L
+  - **Root Cause**: Frontend was recalculating P&L % using `(exit-entry)/entry` formula which is wrong for NO positions
+  - **Fix**: Changed to use `trade.pnl_pct` from API which correctly accounts for trade side
+  - **Files Fixed**: `/app/frontend/src/pages/PaperTrading.js`, `/app/frontend/src/pages/Positions.js`
+  - Test report: `/app/test_reports/iteration_23.json`, `/app/test_reports/iteration_24.json`
+
+- ✅ **BUG FIX: API Missing exit_price and pnl_pct**
+  - **Problem**: `/api/paper/session/{id}/trades` returned wrong field (`price` instead of `exit_price`) and missing `pnl_pct`
+  - **Fix**: Corrected field mapping in server.py
+  - **File**: `/app/backend/server.py`
+
+### Earlier Session 28 Fixes
 
 - ✅ **RL Engine Stability Investigation COMPLETE**
   - Created comprehensive integration test suite: `/app/backend/tests/test_rl_engine_integration.py`
