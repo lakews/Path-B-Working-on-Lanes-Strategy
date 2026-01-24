@@ -2169,6 +2169,9 @@ class PaperTrader:
             # Remove from open positions
             del self.paper_positions[market_id]
             
+            # PERSIST: Delete position from database
+            await self._delete_position_from_db(market_id)
+            
             emoji = "✅" if is_win else "❌"
             logger.info(f"{emoji} PAPER EXIT: {side} ${size:.2f} | PnL: ${pnl:.2f} ({pnl_pct:.1%}) | Reason: {exit_reason} | RL Reward: {reward:.4f}")
             
