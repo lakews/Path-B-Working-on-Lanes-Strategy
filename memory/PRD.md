@@ -16,6 +16,22 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ### January 24, 2026 - Session 28 (Continued)
 
+- ✅ **CRITICAL FIX: Position Persistence & Stop Loss**
+  - **Problem**: Positions were stored in-memory only; lost on server restart. Stop losses never triggered for orphaned positions.
+  - **Solution Implemented**:
+    1. **Database Persistence**: New `paper_positions_live` collection stores open positions
+       - Positions saved on entry via `_save_position_to_db()`
+       - Positions deleted on exit via `_delete_position_from_db()`
+       - Positions loaded on startup via `_load_positions_from_db()`
+    2. **Emergency Stop Loss Task**: Background task runs every 30 seconds
+       - Checks ALL positions for -50% emergency stop loss
+       - Triggers regardless of strategy settings
+       - Safety net that runs independently of main trading loop
+    3. **Position Recovery Endpoint**: `POST /api/paper/recover-positions`
+       - Reconstructs positions from trade history
+       - Can recover positions for any session
+  - **Files Modified**: `/app/backend/paper_trading/paper_trader.py`, `/app/backend/server.py`
+
 - ✅ **CRITICAL BUG FIX: Unrealistic Trade Results (100% Win Rate)**
   - **Problem**: Sessions showed 100% win rate with massive profits that seemed unrealistic
   - **Root Cause**: Maker executor was using **hardcoded default prices (0.45/0.55)** when orderbook was unavailable, instead of actual market prices
