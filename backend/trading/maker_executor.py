@@ -171,8 +171,18 @@ class MakerOrderExecutor:
             best_bid = float(bids[0]['price'])
             best_ask = float(asks[0]['price'])
         else:
-            # IMPORTANT: Use market price as baseline, not arbitrary defaults
-            # Estimate a small spread around the market price
+            # =================================================================
+            # TODO [REAL TRADING]: This fallback is ONLY for paper trading!
+            # For real trading, this should REJECT the trade instead:
+            #
+            #   logger.error("No orderbook - CANNOT execute real trade")
+            #   return ExecutionResult(
+            #       order_type=OrderType.TAKER,
+            #       fill_status=FillStatus.UNFILLED,
+            #       fill_price=0, fill_size=0,
+            #       reason="no_orderbook_data"
+            #   )
+            # =================================================================
             estimated_spread = 0.02  # 2% spread estimate for illiquid markets
             best_bid = max(0.001, current_yes_price - (estimated_spread / 2))  # Floor at 0.1%
             best_ask = min(0.999, current_yes_price + (estimated_spread / 2))  # Cap at 99.9%
