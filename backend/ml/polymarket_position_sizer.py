@@ -53,7 +53,7 @@ DEFAULT_CONFIG = {
     
     # Position limits
     'min_bet_floor': 5.00,        # Minimum $5 bet
-    'max_single_position_pct': 0.10,  # 10% of equity max per trade
+    # NOTE: max_single_position_pct is now passed from user config, not hardcoded here
     
     # Sector caps (configurable)
     'sector_caps': {
