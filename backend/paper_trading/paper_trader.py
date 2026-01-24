@@ -1756,8 +1756,8 @@ class PaperTrader:
                 "market_question": position.get('market_question', ''),
                 "side": side,
                 "size": size,
-                "price": current_price,
-                "entry_price": current_price,  # For consistency with exit trades
+                "price": actual_entry_price,
+                "entry_price": actual_entry_price,  # Use actual fill price
                 "strategy": strategy,
                 "asset_class": asset_class,
                 "rl_action": rl_action,
@@ -1767,6 +1767,8 @@ class PaperTrader:
                 "expiry_info": position.get('expiry_info', {}),
                 # Sizing breakdown for analysis and learning
                 "sizing_breakdown": sizing_breakdown or {},
+                # Execution info for maker/taker analysis
+                "execution_info": position.get('execution_info', {}),
                 # Sentiment breakdown for UI
                 "sentiment": {
                     "final": signals.get('sentiment', 0.5),
@@ -1786,7 +1788,9 @@ class PaperTrader:
             await broadcast_paper_event("paper_trade", {"trade": trade_log.copy()})
             await broadcast_paper_event("paper_status_update", {"status": self.get_status()})
             
-            logger.info(f"📝 PAPER ENTRY: {side} ${size:.2f} @ {current_price:.4f} | Strategy: {strategy} | RL: {rl_action} ({rl_confidence:.2f})")
+            exec_type = position.get('execution_info', {}).get('order_type', 'market')
+            spread_captured = position.get('execution_info', {}).get('spread_captured', 0)
+            logger.info(f"📝 PAPER ENTRY: {side} ${size:.2f} @ {actual_entry_price:.4f} | Strategy: {strategy} | Exec: {exec_type} | Spread: ${spread_captured:.2f}")
             logger.info(f"   Dynamic Exit: TP={dynamic_exit['take_profit']:.1%}, SL={dynamic_exit['stop_loss']:.1%}, MaxHrs={dynamic_exit['max_hours']:.0f} ({dynamic_exit['zone']})")
             
         except Exception as e:
