@@ -304,9 +304,14 @@ class StrategyTuner:
             drawdown = (peak - cumulative) / (peak + 1000)  # +1000 to avoid division by zero
             max_drawdown = np.max(drawdown) if len(drawdown) > 0 else 0
             
+            # Use deployed capital (what's at risk) for return calculations
+            # Default to 8000 (80% of 10000) if not available
+            from config import config
+            deployed_capital = getattr(config, 'DEPLOYED_CAPITAL', 8000)
+            
             return {
                 'total_pnl': float(total_pnl),
-                'total_return': float(total_pnl / 1000 * 100),
+                'total_return': float(total_pnl / deployed_capital * 100),  # Return on deployed capital
                 'total_trades': len(trades),
                 'win_rate': float(win_rate),
                 'avg_win': float(avg_win),
