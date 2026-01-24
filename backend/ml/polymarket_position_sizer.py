@@ -182,13 +182,19 @@ class PolymarketPositionSizer:
         
         # User config - single source of truth
         max_position_size_pct: float = 0.03,  # From user config (default 3%)
+        max_deployable_capital: float = None,  # From user config (initial_capital × capital_deployment_pct)
     ) -> Dict:
         """
         Calculate optimal position size for a Polymarket trade.
         
         Args:
+            equity: Total portfolio value (cash + positions at market value)
+            deployed_capital: Currently deployed capital (sum of position cost bases)
             max_position_size_pct: Max single position as decimal (0.03 = 3%). 
                                    This comes from user config and is the single source of truth.
+            max_deployable_capital: Maximum capital allowed to be deployed (from user config).
+                                    This is initial_capital × capital_deployment_pct.
+                                    All sizing calculations use this as the base, not total equity.
         
         Returns:
             Dict with:
@@ -198,6 +204,10 @@ class PolymarketPositionSizer:
         """
         open_positions = open_positions or []
         sector_exposure = sector_exposure or {}
+        
+        # Use max_deployable_capital as the sizing base (single source of truth)
+        # If not provided, fall back to equity (backward compatibility)
+        sizing_base = max_deployable_capital if max_deployable_capital is not None else equity
         
         # Get oracle risk classification
         classification = get_detailed_classification(
