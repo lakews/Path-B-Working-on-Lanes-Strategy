@@ -88,7 +88,7 @@ const SessionTradesModal = ({ isOpen, session, trades, onClose }) => {
             </thead>
             <tbody>
               {trades?.map((trade, idx) => {
-                const pnlPct = trade.entry_price > 0 ? ((trade.exit_price - trade.entry_price) / trade.entry_price * 100) : 0;
+                const pnlPct = trade.pnl_pct != null ? (trade.pnl_pct * 100) : 0;  // Use API value, convert from decimal
                 const duration = trade.hold_time_seconds ? `${Math.floor(trade.hold_time_seconds / 60)}m ${trade.hold_time_seconds % 60}s` : '-';
                 return (
                   <tr key={idx} className="border-b border-white/5 hover:bg-white/5">
