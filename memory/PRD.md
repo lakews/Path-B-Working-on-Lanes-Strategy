@@ -16,6 +16,15 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ### January 24, 2026 - Session 28 (Continued)
 
+- ✅ **CRITICAL BUG FIX: Unrealistic Trade Results (100% Win Rate)**
+  - **Problem**: Sessions showed 100% win rate with massive profits that seemed unrealistic
+  - **Root Cause**: Maker executor was using **hardcoded default prices (0.45/0.55)** when orderbook was unavailable, instead of actual market prices
+  - **Evidence**: Entry prices showed 44.52% for Broncos Super Bowl (actual price ~8%), causing all NO trades to show huge "profits"
+  - **Fix**: Updated `/app/backend/trading/maker_executor.py` to use `market_data['yes_price']` as baseline when orderbook is missing
+  - **Before**: `best_bid = 0.45` (hardcoded), `best_ask = 0.55` (hardcoded)
+  - **After**: `best_bid = yes_price - 0.01`, `best_ask = yes_price + 0.01` (based on actual price)
+  - **Impact**: Future trades will use correct prices; historical trades in sessions 61302050, ed880fd0, 64d8eb6b had inflated P&L due to this bug
+
 - ✅ **NEW: Session Duration Timer Feature**
   - **Live Session Timer**: Shows running timer in header next to status badge when paper trading is active
   - **Historical Session Duration**: Sessions History tab now displays duration column (e.g., 37m 11s)
