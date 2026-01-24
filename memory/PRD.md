@@ -27,11 +27,31 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Verified prioritized experience replay is working
   - Test report: `/app/test_reports/iteration_22.json`
 
+- ✅ **CRITICAL BUG FIX: Interrupted Sessions Not Saved**
+  - **Problem**: When server was shutdown/interrupted, paper trading sessions weren't being saved
+  - **Root Cause**: `shutdown_event` handler didn't include `paper_trader.stop()`
+  - **Fix**: Added `paper_trader.stop(graceful=False)` to shutdown handler
+  - **File**: `/app/backend/server.py`
+
+- ✅ **CRITICAL BUG FIX: Historical Sessions Showing 0 Trades**
+  - **Problem**: 94 sessions showed `status=running` with 0 trades despite having closed trades in DB
+  - **Root Cause**: Sessions never got `_save_session_results()` called on interruption
+  - **Fix**: Created recovery script `/app/backend/scripts/recover_sessions.py`
+  - **Result**: Recovered 25 sessions with 207 trades including the user's 34-trade session
+
+- ✅ **NEW: Historical Experience Loading for RL**
+  - Added `load_historical_experiences()` method to RL Engine
+  - New API endpoint: `POST /api/rl/load-historical`
+  - Pre-populated 1000 experiences from historical trades
+  - RL buffer now has 1000 experiences, 10 training iterations completed
+  - **Force Train button is now ENABLED**
+
 - **Current RL State:**
   - Model: DQN with Prioritized Replay
-  - Buffer Size: 0 (needs paper trading to populate)
-  - Force Train: DISABLED until 33+ experiences
-  - Epsilon: 0.15
+  - Buffer Size: 1000 experiences
+  - Training Iterations: 10
+  - Force Train: ENABLED
+  - Epsilon: 0.143
 
 
 - **Live Data**: ✅ Working - Uses Polymarket Gamma API for real market data
