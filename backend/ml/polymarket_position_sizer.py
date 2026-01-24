@@ -282,8 +282,8 @@ class PolymarketPositionSizer:
         # =================================================================
         # STEP 12: Apply Hard Limits
         # =================================================================
-        # Max single position = 10% of equity
-        max_single = equity * self.config['max_single_position_pct']
+        # Max single position from user config (single source of truth)
+        max_single = equity * max_position_size_pct
         final_size = min(size_after_sector, max_single)
         
         logger.debug(f"[SIZER DEBUG] kelly_base={kelly_base:.2f}, util_mult={utilization_mult:.4f}, time_pen={time_penalty:.4f}, oracle={oracle_mult:.4f}, final={final_size:.2f}")
