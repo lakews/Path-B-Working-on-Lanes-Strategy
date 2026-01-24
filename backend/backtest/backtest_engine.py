@@ -1222,9 +1222,11 @@ class BacktestEngine:
                 "backtest_id": self.backtest_id,
                 "status": "completed",
                 "initial_capital": float(self.initial_capital),
+                "deployed_capital": float(self.deployed_capital),  # Max deployable from config
                 "final_capital": float(self.current_capital),
                 "total_pnl": float(total_pnl),
-                "total_return_pct": float(total_return_pct),
+                "total_return_pct": float(total_return_pct),  # Return on deployed capital
+                "total_return_pct_on_total": float(total_return_pct_on_total),  # Return on total capital (reference)
                 "total_trades": int(total_trades),
                 "winning_trades": int(winning_trades),
                 "losing_trades": int(losing_trades),
