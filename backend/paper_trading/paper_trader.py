@@ -1633,11 +1633,52 @@ class PaperTrader:
             current_price = market_data.get('yes_price', 0.5)
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
+            # Extract edge from sizing breakdown for maker execution
+            edge = (sizing_breakdown or {}).get('edge', 0.02)
+            
+            # ============================================
+            # MAKER-FIRST EXECUTION STRATEGY
+            # ============================================
+            execution_result = None
+            actual_entry_price = current_price
+            
+            if self.use_maker_execution:
+                # Pre-check if spread makes trade worthwhile
+                order_book = market_data.get('order_book', {})
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
+                best_bid = float(bids[0]['price']) if bids else current_price - 0.02
+                best_ask = float(asks[0]['price']) if asks else current_price + 0.02
+                spread = best_ask - best_bid
+                
+                should_trade, reason = self.maker_executor.should_trade_given_spread(edge, spread)
+                
+                if not should_trade:
+                    logger.info(f"[MAKER] Skipping trade due to spread: {reason}")
+                    return
+                
+                # Execute with maker-first strategy
+                execution_result = await self.maker_executor.execute_order(
+                    side=side,
+                    size=size,
+                    market_data=market_data,
+                    edge=edge
+                )
+                
+                # Check if order was filled
+                if execution_result.fill_status.value != 'filled':
+                    logger.info(f"[MAKER] Order not filled: {execution_result.reason}")
+                    return
+                
+                # Use the actual fill price from maker execution
+                actual_entry_price = execution_result.fill_price
+                logger.info(f"[MAKER] Executed as {execution_result.order_type.value} @ {actual_entry_price:.4f}")
+            
             # Extract expiry info from sizing breakdown
             expiry_info = sizing_breakdown.get('expiry_info', {}) if sizing_breakdown else {}
             
             # Calculate dynamic exit params for this entry
-            dynamic_exit = self._get_dynamic_exit_params(side, current_price)
+            dynamic_exit = self._get_dynamic_exit_params(side, actual_entry_price)
             
             position = {
                 "position_id": str(uuid.uuid4()),
@@ -1646,18 +1687,25 @@ class PaperTrader:
                 "asset_class": asset_class,
                 "side": side,
                 "size": size,
-                "entry_price": current_price,
+                "entry_price": actual_entry_price,  # Use actual fill price
                 "entry_time": datetime.now(timezone.utc).isoformat(),
                 "strategy": strategy,
                 "rl_action": rl_action,
                 "rl_confidence": rl_confidence,
                 "signals": signals,
                 "sizing_breakdown": sizing_breakdown or {},  # Store for learning
+                # Maker execution info
+                "execution_info": {
+                    "order_type": execution_result.order_type.value if execution_result else "market",
+                    "slippage": execution_result.slippage if execution_result else 0,
+                    "spread_captured": execution_result.spread_captured if execution_result else 0,
+                    "wait_time_ms": execution_result.wait_time_ms if execution_result else 0,
+                } if execution_result else {},
                 # Risk tracking for reward shaping
                 "entry_volatility": signals.get('volatility', 0.05),
                 "max_drawdown_pct": 0.0,  # Will be updated during position monitoring
-                "min_price_seen": current_price,  # Track worst price for drawdown
-                "max_price_seen": current_price,  # Track best price
+                "min_price_seen": actual_entry_price,  # Track worst price for drawdown
+                "max_price_seen": actual_entry_price,  # Track best price
                 # Store expiry info for UI display
                 "expiry_info": {
                     "hours_to_expiry": expiry_info.get('hours_to_expiry'),
