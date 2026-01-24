@@ -266,7 +266,19 @@ const Configuration = () => {
       min_position_size: 5,
       min_liquidity_for_full_size: 10000,
       alerts_enabled: false,
-      alert_volume_threshold: 2.0
+      alert_volume_threshold: 2.0,
+      // Position Sizer
+      use_polymarket_sizer: true,
+      polymarket_fee_pct: 0.02,
+      sector_caps: {
+        crypto: 0.20, politics: 0.25, sports: 0.30, finance: 0.20,
+        entertainment: 0.15, science: 0.15, conflict: 0.10, social: 0.10, unknown: 0.15
+      },
+      // Event Caps
+      event_caps: {
+        max_event_exposure_pct: 0.15,
+        similarity_threshold: 0.60
+      }
     });
     toast.info('Reset to defaults');
   };
