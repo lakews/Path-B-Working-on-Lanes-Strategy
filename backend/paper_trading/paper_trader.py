@@ -3194,6 +3194,12 @@ class PaperTrader:
         """Get current paper trading status with full analytics"""
         win_rate = self.winning_trades / max(self.total_trades, 1)
         
+        # Calculate session duration
+        if self.session_start_time:
+            duration_seconds = int((datetime.now(timezone.utc) - self.session_start_time).total_seconds())
+        else:
+            duration_seconds = 0
+        
         # Calculate strategy results with profit factors (like backtest)
         strategy_results = {}
         for strategy, stats in self.strategy_stats.items():
