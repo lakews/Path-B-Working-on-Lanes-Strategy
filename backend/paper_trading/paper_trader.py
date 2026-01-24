@@ -3326,28 +3326,52 @@ class PaperTrader:
             if m.get('condition_id'):
                 market_data_map[m['condition_id']] = m
         
+        logger.info(f"[CLOSE_ALL] Closing {len(self.paper_positions)} positions, {len(markets)} markets in lookup")
+        
         for market_id in list(self.paper_positions.keys()):
             position = self.paper_positions[market_id]
             market_data = market_data_map.get(market_id)
             
-            if not market_data:
+            # Get position's stored prices for comparison
+            pos_entry = position.get('entry_price', 0)
+            pos_current = position.get('current_price', pos_entry)
+            pos_side = position.get('side', 'YES')
+            pos_yes_entry = position.get('yes_entry_price', pos_entry if pos_side == 'YES' else 1 - pos_entry)
+            
+            if market_data:
+                fresh_yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+                
+                # Sanity check: if fresh price is vastly different from position's current price, log warning
+                if pos_side == 'NO':
+                    pos_yes_current = 1 - pos_current if pos_current else pos_yes_entry
+                else:
+                    pos_yes_current = pos_current if pos_current else pos_yes_entry
+                
+                price_diff = abs(fresh_yes_price - pos_yes_current) if pos_yes_current else 0
+                
+                if price_diff > 0.1:  # More than 10% price difference
+                    logger.warning(f"[CLOSE_ALL] LARGE PRICE DIFF for {market_id[:16]}: "
+                                 f"Fresh YES={fresh_yes_price:.4f}, Position YES={pos_yes_current:.4f}, "
+                                 f"Diff={price_diff:.4f}")
+                    # Use position's last known price instead of suspicious fresh price
+                    market_data = {
+                        'yes_price': pos_yes_current,
+                        'id': market_id,
+                        'question': position.get('market_question', 'Unknown')
+                    }
+                    logger.info(f"[CLOSE_ALL] Using position's last known price: YES={pos_yes_current:.4f}")
+            else:
                 # Market not found in fresh fetch - use position's last known price
-                # This prevents unrealistic P&L from default 0.5 price
                 logger.warning(f"[CLOSE_ALL] Market {market_id[:16]} not in fresh fetch - using last known price")
                 
                 # Reconstruct market data from position's current_price if available
-                # current_price stores the actual price for the side (YES or NO)
-                current_price = position.get('current_price')
-                if current_price and position.get('side') == 'NO':
-                    # Convert NO price back to YES price for internal use
-                    yes_price = 1 - current_price
-                elif current_price:
-                    yes_price = current_price
+                if pos_current and pos_side == 'NO':
+                    yes_price = 1 - pos_current
+                elif pos_current:
+                    yes_price = pos_current
                 else:
-                    # Last resort: use entry price (no P&L change)
-                    yes_entry = position.get('yes_entry_price', position.get('entry_price', 0.5))
-                    yes_price = yes_entry
-                    logger.warning(f"[CLOSE_ALL] Using entry price {yes_price:.4f} as exit - no price change")
+                    yes_price = pos_yes_entry
+                    logger.warning(f"[CLOSE_ALL] Using entry price {yes_price:.4f} as exit - no P&L change")
                 
                 market_data = {
                     'yes_price': yes_price,
