@@ -1131,6 +1131,9 @@ async def get_config():
             # Oracle Risk Multipliers (configurable)
             "oracle_multipliers": saved_config.get("oracle_multipliers", None) if saved_config else None,
             "oracle_multipliers_default": get_default_ambiguity_matrix(),
+            # Event Caps (configurable)
+            "event_caps": saved_config.get("event_caps", DEFAULT_EVENT_CAPS) if saved_config else DEFAULT_EVENT_CAPS,
+            "event_caps_default": DEFAULT_EVENT_CAPS,
         }
     except Exception as e:
         logger.error(f"Error getting config: {e}")
