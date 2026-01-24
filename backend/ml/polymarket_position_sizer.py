@@ -72,7 +72,7 @@ DEFAULT_CONFIG = {
 # Event cap configuration
 EVENT_CAP_CONFIG = {
     'max_event_exposure_pct': 0.15,  # Max 15% of deployed capital per event
-    'similarity_threshold': 0.7,     # Questions with >70% word overlap are same event
+    'similarity_threshold': 0.60,    # Questions with >60% word overlap are same event (lowered from 0.7 to capture price variants)
 }
 
 
