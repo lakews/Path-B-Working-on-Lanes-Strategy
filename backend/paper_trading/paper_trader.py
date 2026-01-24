@@ -2053,7 +2053,8 @@ class PaperTrader:
                 return
             
             current_price = market_data.get('yes_price', 0.5)
-            entry_price = position['entry_price']
+            # Use yes_entry_price for internal calculations (stores the YES price at entry)
+            yes_entry_price = position.get('yes_entry_price', position['entry_price'])
             side = position['side']
             size = position['size']  # USD invested
             strategy = position['strategy']
@@ -2064,15 +2065,15 @@ class PaperTrader:
             # For NO: we buy NO shares at (1 - yes_price), sell at exit (1 - yes_price)
             if side == 'YES':
                 # YES position: buy at entry_price, sell at current_price
-                if entry_price > 0:
-                    shares = size / entry_price
+                if yes_entry_price > 0:
+                    shares = size / yes_entry_price
                     exit_value = shares * current_price
                     pnl = exit_value - size
                 else:
                     pnl = 0
             else:
-                # NO position: buy at (1 - entry_price), sell at (1 - current_price)
-                no_entry_price = 1 - entry_price
+                # NO position: buy at (1 - yes_entry_price), sell at (1 - current_price)
+                no_entry_price = 1 - yes_entry_price
                 no_exit_price = 1 - current_price
                 if no_entry_price > 0:
                     shares = size / no_entry_price
