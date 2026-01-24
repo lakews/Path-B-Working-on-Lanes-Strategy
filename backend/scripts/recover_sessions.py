@@ -94,6 +94,27 @@ async def recover_sessions():
             "asset_class": t.get('asset_class')
         } for t in trades[-100:]]
         
+        # Calculate duration from first to last trade timestamp
+        if trades:
+            trade_timestamps = [t.get('timestamp') for t in trades if t.get('timestamp')]
+            if trade_timestamps:
+                first_trade = min(trade_timestamps)
+                last_trade = max(trade_timestamps)
+                try:
+                    if isinstance(first_trade, str):
+                        first_dt = datetime.fromisoformat(first_trade.replace('Z', '+00:00'))
+                        last_dt = datetime.fromisoformat(last_trade.replace('Z', '+00:00'))
+                    else:
+                        first_dt = first_trade
+                        last_dt = last_trade
+                    duration_seconds = int((last_dt - first_dt).total_seconds())
+                except:
+                    duration_seconds = 0
+            else:
+                duration_seconds = 0
+        else:
+            duration_seconds = 0
+        
         # Update session with recovered data
         initial_capital = session.get('initial_capital', 10000)
         deployed_capital = initial_capital * 0.8  # Default 80%
@@ -103,6 +124,7 @@ async def recover_sessions():
             {"$set": {
                 "status": "recovered",
                 "end_time": datetime.now(timezone.utc).isoformat(),
+                "duration_seconds": duration_seconds,
                 "total_pnl": total_pnl,
                 "total_pnl_pct": (total_pnl / deployed_capital) * 100 if deployed_capital > 0 else 0,
                 "total_trades": total_trades,
