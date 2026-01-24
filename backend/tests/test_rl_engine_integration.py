@@ -70,7 +70,7 @@ class TestRLEngineViaAPI:
         assert 'state_features' in rl_stats, "state_features field missing"
         
         print(f"✓ Detailed Stats: model_type={model_type}, prioritized_replay={rl_stats.get('prioritized_replay')}")
-        print(f"  State features: {data['state_features']}")
+        print(f"  State features: {rl_stats.get('state_features', [])}")
     
     def test_rl_train_endpoint(self):
         """Verify /api/rl/train endpoint works (even with empty buffer)"""
