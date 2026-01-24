@@ -87,6 +87,10 @@ class PaperTrader:
         self.volatility_predictor = VolatilityPredictor()
         self.signal_fusion = SignalFusionEngine()
         
+        # Initialize real-time market service for WebSocket data
+        self.realtime_market_service: Optional[RealTimeMarketService] = None
+        self.use_websocket_data = True  # Toggle WebSocket vs REST polling
+        
         # Initialize social sentiment analyzer for news/social data
         try:
             self.social_analyzer = SocialSentimentAnalyzer()
