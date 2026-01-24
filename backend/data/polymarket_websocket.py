@@ -302,14 +302,22 @@ class PolymarketWebSocket:
         # Polymarket CLOB messages have event_type field
         msg_type = data.get('event_type', data.get('type', data.get('event', 'unknown')))
         
-        if msg_type in ['price_change', 'tick', 'price']:
+        if msg_type == 'price_change':
+            # Handle Polymarket's price_change format with price_changes array
+            price_changes = data.get('price_changes', [])
+            market_id = data.get('market', '')
+            for change in price_changes:
+                await self._handle_price_change(change, market_id)
+                
+        elif msg_type == 'book':
+            # Handle order book snapshot
+            await self._handle_book_message(data)
+            
+        elif msg_type in ['tick', 'price']:
             await self._handle_price_update(data)
             
         elif msg_type in ['trade', 'fill', 'TRADE']:
             await self._handle_trade(data)
-            
-        elif msg_type in ['book', 'order_book', 'book_snapshot']:
-            await self._handle_order_book(data)
             
         elif msg_type in ['book_delta', 'book_update']:
             await self._handle_order_book_delta(data)
@@ -322,16 +330,109 @@ class PolymarketWebSocket:
             await self._emit('error', data)
             
         elif msg_type == 'unknown' and 'market' in data:
-            # Polymarket sends market updates without explicit type
-            # Check if it has price data
-            if 'price' in data or 'yes_price' in data or 'outcome_price' in data:
+            # Check for book data or price data
+            if 'bids' in data or 'asks' in data:
+                await self._handle_book_message(data)
+            elif 'price_changes' in data:
+                for change in data.get('price_changes', []):
+                    await self._handle_price_change(change, data.get('market', ''))
+            elif 'price' in data or 'best_bid' in data:
                 await self._handle_price_update(data)
-            elif 'bids' in data or 'asks' in data:
-                await self._handle_order_book(data)
-            else:
-                logger.debug(f"Unrecognized market message: {list(data.keys())[:5]}")
         else:
-            logger.debug(f"Unknown message type: {msg_type}")
+            pass  # Ignore unknown messages silently
+    
+    async def _handle_price_change(self, change: Dict, market_id: str):
+        """Handle a price change from the price_changes array."""
+        try:
+            asset_id = change.get('asset_id', '')
+            best_bid = float(change.get('best_bid', 0) or 0)
+            best_ask = float(change.get('best_ask', 0) or 0)
+            
+            if asset_id and (best_bid > 0 or best_ask > 0):
+                # Calculate mid price
+                if best_bid > 0 and best_ask > 0:
+                    price = (best_bid + best_ask) / 2
+                else:
+                    price = best_bid or best_ask
+                
+                old_price = self._latest_prices.get(asset_id)
+                self._latest_prices[asset_id] = {
+                    'price': price,
+                    'best_bid': best_bid,
+                    'best_ask': best_ask,
+                    'market': market_id,
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                    'side': change.get('side', 'unknown')
+                }
+                
+                # Emit price update event
+                await self._emit('price_update', {
+                    'asset_id': asset_id,
+                    'market': market_id,
+                    'price': price,
+                    'best_bid': best_bid,
+                    'best_ask': best_ask,
+                    'old_price': old_price.get('price') if old_price else None
+                })
+                
+        except Exception as e:
+            logger.error(f"Error handling price change: {e}")
+    
+    async def _handle_book_message(self, data: Dict):
+        """Handle order book snapshot message."""
+        try:
+            asset_id = data.get('asset_id', '')
+            market_id = data.get('market', '')
+            bids = data.get('bids', [])
+            asks = data.get('asks', [])
+            last_trade_price = float(data.get('last_trade_price', 0) or 0)
+            
+            if not asset_id:
+                return
+            
+            # Get best bid/ask
+            best_bid = float(bids[0]['price']) if bids else 0
+            best_ask = float(asks[0]['price']) if asks else 0
+            
+            # Calculate mid price
+            if best_bid > 0 and best_ask > 0:
+                price = (best_bid + best_ask) / 2
+            elif last_trade_price > 0:
+                price = last_trade_price
+            else:
+                price = best_bid or best_ask
+            
+            old_price = self._latest_prices.get(asset_id)
+            self._latest_prices[asset_id] = {
+                'price': price,
+                'best_bid': best_bid,
+                'best_ask': best_ask,
+                'last_trade_price': last_trade_price,
+                'market': market_id,
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+                'book_depth': {'bids': len(bids), 'asks': len(asks)}
+            }
+            
+            # Emit events
+            await self._emit('price_update', {
+                'asset_id': asset_id,
+                'market': market_id,
+                'price': price,
+                'best_bid': best_bid,
+                'best_ask': best_ask,
+                'last_trade_price': last_trade_price,
+                'old_price': old_price.get('price') if old_price else None
+            })
+            
+            await self._emit('book', {
+                'asset_id': asset_id,
+                'market': market_id,
+                'bids': bids[:5],  # Top 5 only for event
+                'asks': asks[:5]
+            })
+            
+        except Exception as e:
+            logger.error(f"Error handling book message: {e}")
     
     async def _handle_price_update(self, data: Dict):
         """Handle price update message."""
