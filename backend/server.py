@@ -1742,18 +1742,19 @@ async def rl_learn_from_backtest(backtest_id: str):
 @api_router.get("/rl/detailed-stats")
 async def get_detailed_rl_stats():
     """Get detailed RL training statistics including Q-table analysis"""
+    global rl_engine
+    
     try:
-        from ml.rl_engine import RLAdaptiveEngine
-        rl = RLAdaptiveEngine()
+        # Use global rl_engine to get accurate buffer stats
+        if not rl_engine:
+            rl_engine = RLAdaptiveEngine()
+            await rl_engine.load_model()
         
-        # Load existing model
-        await rl.load_model()
-        
-        stats = await rl.get_training_stats()
+        stats = await rl_engine.get_training_stats()
         
         return {
             "rl_stats": stats,
-            "model_status": "loaded" if rl.training_iterations > 0 else "fresh"
+            "model_status": "loaded" if rl_engine.training_iterations > 0 else "fresh"
         }
     except Exception as e:
         logger.error(f"Error getting detailed RL stats: {e}")
