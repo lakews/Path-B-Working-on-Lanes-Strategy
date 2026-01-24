@@ -1719,14 +1719,18 @@ class PaperTrader:
                 return
             
             current_price = float(market_data.get('yes_price', 0.5) or 0.5)
-            entry_price = position['entry_price']
+            # Use yes_entry_price for internal calculations (stores the YES price at entry)
+            yes_entry_price = position.get('yes_entry_price', position['entry_price'])
             side = position['side']
             size = position.get('size', 0)
             strategy = position.get('strategy', 'arbitrage')
             asset_class = position.get('asset_class', 'unknown')
             
-            # UPDATE position's current_price for UI display
-            position['current_price'] = current_price
+            # UPDATE position's current_price for UI display (using the side's actual price)
+            if side == 'YES':
+                position['current_price'] = current_price
+            else:
+                position['current_price'] = 1 - current_price  # NO price for display
             
             # Get time to expiry
             expiry_info = self._calculate_time_to_expiry(market_data)
@@ -1737,8 +1741,8 @@ class PaperTrader:
             # GET EXIT PARAMETERS (Dynamic or Simple mode)
             # ============================================
             if self.use_dynamic_exit:
-                # DYNAMIC MODE: Time-aware exit params
-                exit_params = self._get_dynamic_exit_params(side, entry_price, days_to_expiry)
+                # DYNAMIC MODE: Time-aware exit params (use YES price for internal calculations)
+                exit_params = self._get_dynamic_exit_params(side, yes_entry_price, days_to_expiry)
             else:
                 # SIMPLE MODE: Configurable exit params
                 exit_params = self._get_simple_exit_params(strategy, asset_class)
@@ -1768,8 +1772,8 @@ class PaperTrader:
             # CALCULATE UNREALIZED P&L
             # ============================================
             if side == 'YES':
-                if entry_price > 0:
-                    shares = size / entry_price
+                if yes_entry_price > 0:
+                    shares = size / yes_entry_price
                     current_value = shares * current_price
                     unrealized_pnl = current_value - size
                     pnl_pct = unrealized_pnl / size if size > 0 else 0
@@ -1777,7 +1781,7 @@ class PaperTrader:
                     pnl_pct = 0
                     unrealized_pnl = 0
             else:
-                no_entry_price = 1 - entry_price
+                no_entry_price = 1 - yes_entry_price
                 no_current_price = 1 - current_price
                 if no_entry_price > 0:
                     shares = size / no_entry_price
