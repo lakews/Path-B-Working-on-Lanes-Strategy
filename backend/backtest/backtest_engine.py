@@ -47,8 +47,11 @@ class BacktestEngine:
         self.running = False
         self.backtest_id = None
         
-        # Backtest state
+        # Backtest state - use deployed capital from config (single source of truth)
         self.initial_capital = max(config.INITIAL_CAPITAL, 1000)
+        self.deployed_capital = config.DEPLOYED_CAPITAL  # Max capital to deploy
+        self.capital_deployment_pct = config.CAPITAL_DEPLOYMENT_PCT / 100  # As decimal
+        self.max_position_size_pct = config.MAX_POSITION_SIZE_PCT / 100  # As decimal
         self.current_capital = self.initial_capital
         self.positions: Dict[str, Dict] = {}
         self.trades: List[Dict] = []
