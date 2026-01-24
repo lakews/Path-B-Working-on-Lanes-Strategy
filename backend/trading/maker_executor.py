@@ -122,8 +122,8 @@ class MakerOrderExecutor:
             # IMPORTANT: Use market price as baseline, not arbitrary defaults
             # Estimate a small spread around the market price
             estimated_spread = 0.02  # 2% spread estimate for illiquid markets
-            best_bid = current_yes_price - (estimated_spread / 2)
-            best_ask = current_yes_price + (estimated_spread / 2)
+            best_bid = max(0.001, current_yes_price - (estimated_spread / 2))  # Floor at 0.1%
+            best_ask = min(0.999, current_yes_price + (estimated_spread / 2))  # Cap at 99.9%
             logger.warning(f"[MAKER] No orderbook - using estimated prices: bid={best_bid:.4f}, ask={best_ask:.4f} (from yes_price={current_yes_price:.4f})")
         
         spread = best_ask - best_bid
