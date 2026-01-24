@@ -179,9 +179,16 @@ class PolymarketPositionSizer:
         # Portfolio context
         open_positions: List[Dict] = None,  # Current open positions
         sector_exposure: Optional[Dict[str, float]] = None,  # {category: usd_amount}
+        
+        # User config - single source of truth
+        max_position_size_pct: float = 0.03,  # From user config (default 3%)
     ) -> Dict:
         """
         Calculate optimal position size for a Polymarket trade.
+        
+        Args:
+            max_position_size_pct: Max single position as decimal (0.03 = 3%). 
+                                   This comes from user config and is the single source of truth.
         
         Returns:
             Dict with:
