@@ -545,6 +545,9 @@ class PaperTrader:
         
         self.running = False
         
+        # Clean up persisted positions (all should be closed now)
+        await self._cleanup_persisted_positions()
+        
         # Save session results
         await self._save_session_results()
         
@@ -552,6 +555,17 @@ class PaperTrader:
         await self._learn_from_session()
         
         logger.info(f"Paper Trading Stopped - Total PnL: ${self.total_pnl:.2f}")
+    
+    async def _cleanup_persisted_positions(self):
+        """Remove all persisted positions for this session after clean close"""
+        try:
+            result = await self.db.paper_positions_live.delete_many({
+                "session_id": self.session_id
+            })
+            if result.deleted_count > 0:
+                logger.info(f"[PERSIST] Cleaned up {result.deleted_count} persisted positions")
+        except Exception as e:
+            logger.error(f"[PERSIST] Error cleaning up positions: {e}")
     
     async def _continuous_mode_handler(self):
         """Handle continuous mode - auto-restart sessions"""
