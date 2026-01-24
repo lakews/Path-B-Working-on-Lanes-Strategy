@@ -1,0 +1,136 @@
+{
+  "summary": "Iteration 26: Backtest P&L Calculation Bug Fix and WebSocket Integration - All 27 tests passed. Verified backtest engine correctly handles YES and NO positions with proper P&L calculation, and paper trader initializes WebSocket service with REST fallback.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration26_backtest_pnl_websocket.py",
+    "/app/test_reports/pytest/pytest_results_iteration26.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iteration26_backtest_pnl_websocket.py"
+  ],
+  "success_rate": {
+    "backend": "100% (27/27 tests passed)"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backtest P&L calculation for YES/NO positions and WebSocket integration in paper trader have been verified. Key methods tested: _determine_trade_side(), _open_position(), _check_exit_conditions(), _close_position() in backtest_engine.py, and start(), stop(), _get_active_markets() in paper_trader.py.",
+  "verified_features": {
+    "Backtest P&L - YES positions": {
+      "status": "VERIFIED",
+      "evidence": "Formula: pnl_pct = (current_price - entry_price) / entry_price. Profit when YES price goes UP."
+    },
+    "Backtest P&L - NO positions": {
+      "status": "VERIFIED",
+      "evidence": "Formula: no_entry = 1 - entry_price, no_current = 1 - current_price, pnl_pct = (no_current - no_entry) / no_entry. Profit when YES price goes DOWN."
+    },
+    "Backtest position side tracking": {
+      "status": "VERIFIED",
+      "evidence": "_open_position() has 'side' parameter, positions store 'side' field (YES/NO)"
+    },
+    "_determine_trade_side method": {
+      "status": "VERIFIED",
+      "evidence": "Method exists in backtest_engine.py with sentiment-based logic: >0.55 → YES, <0.45 → NO, neutral → price-based"
+    },
+    "_check_exit_conditions side-aware": {
+      "status": "VERIFIED",
+      "evidence": "Calculates P&L correctly based on position side (YES vs NO)"
+    },
+    "_close_position side-aware": {
+      "status": "VERIFIED",
+      "evidence": "Exit value calculation: YES uses exit_price, NO uses (1 - exit_price)"
+    },
+    "Paper trader WebSocket initialization": {
+      "status": "VERIFIED",
+      "evidence": "start() method initializes RealTimeMarketService via get_realtime_market_service()"
+    },
+    "Paper trader WebSocket fallback": {
+      "status": "VERIFIED",
+      "evidence": "_get_active_markets() tries WebSocket first, falls back to REST API if unavailable"
+    },
+    "Paper trader WebSocket cleanup": {
+      "status": "VERIFIED",
+      "evidence": "stop() method calls realtime_market_service.stop() for cleanup"
+    },
+    "Backend health": {
+      "status": "VERIFIED",
+      "evidence": "Backend starts without errors, /api/health returns healthy"
+    }
+  },
+  "test_details": {
+    "TestBackendHealth": {
+      "test_health_endpoint": "PASSED",
+      "test_paper_status_endpoint": "PASSED",
+      "test_backtest_results_endpoint": "PASSED"
+    },
+    "TestBacktestPnLCalculation": {
+      "test_yes_position_pnl_calculation": "PASSED - 20% profit when price 0.50→0.60",
+      "test_yes_position_loss_calculation": "PASSED - 20% loss when price 0.50→0.40",
+      "test_no_position_pnl_calculation": "PASSED - 50% profit when YES 0.60→0.40",
+      "test_no_position_loss_calculation": "PASSED - 33% loss when YES 0.40→0.60",
+      "test_no_position_at_extreme_prices": "PASSED - 150% profit when YES 0.80→0.50"
+    },
+    "TestBacktestPositionSideTracking": {
+      "test_determine_trade_side_logic": "PASSED"
+    },
+    "TestBacktestExitValueCalculation": {
+      "test_yes_exit_value": "PASSED",
+      "test_no_exit_value": "PASSED"
+    },
+    "TestWebSocketServiceIntegration": {
+      "test_realtime_market_service_module_exists": "PASSED",
+      "test_paper_trader_has_websocket_imports": "PASSED",
+      "test_paper_trader_has_websocket_attributes_in_init": "PASSED",
+      "test_get_active_markets_has_websocket_logic": "PASSED"
+    },
+    "TestWebSocketFallbackLogic": {
+      "test_fallback_when_websocket_unavailable": "PASSED"
+    },
+    "TestBacktestAPIIntegration": {
+      "test_backtest_results_have_strategy_breakdown": "PASSED",
+      "test_backtest_results_have_trade_info": "PASSED"
+    },
+    "TestPaperTradingAPIIntegration": {
+      "test_paper_status_shows_session_info": "PASSED"
+    },
+    "TestBacktestEngineCodeChanges": {
+      "test_backtest_engine_has_determine_trade_side": "PASSED",
+      "test_backtest_engine_open_position_has_side": "PASSED",
+      "test_backtest_engine_check_exit_has_side_logic": "PASSED",
+      "test_backtest_engine_close_position_has_side_logic": "PASSED",
+      "test_backtest_pnl_formula_for_no_positions": "PASSED"
+    },
+    "TestPaperTraderCodeChanges": {
+      "test_paper_trader_start_initializes_websocket": "PASSED",
+      "test_paper_trader_stop_stops_websocket": "PASSED",
+      "test_paper_trader_get_active_markets_websocket_first": "PASSED"
+    }
+  },
+  "code_review_summary": {
+    "backtest_engine.py": {
+      "_determine_trade_side": "Correctly determines YES/NO based on sentiment (>0.55→YES, <0.45→NO) and price (>0.65→NO, <0.35→YES)",
+      "_open_position": "Correctly calculates entry_price based on side (YES=price, NO=1-price), stores side in position",
+      "_check_exit_conditions": "Correctly calculates P&L% based on side using proper NO formula",
+      "_close_position": "Correctly calculates exit_value based on side (YES=shares*exit_price, NO=shares*(1-exit_price))"
+    },
+    "paper_trader.py": {
+      "start": "Initializes RealTimeMarketService for WebSocket data with try/catch fallback",
+      "stop": "Properly stops WebSocket service during cleanup",
+      "_get_active_markets": "Tries WebSocket first (if use_websocket_data and realtime_market_service available), falls back to REST API"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  }
+}
