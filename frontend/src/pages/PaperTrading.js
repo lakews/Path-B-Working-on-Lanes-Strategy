@@ -2593,9 +2593,18 @@ const PaperTrading = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-white font-medium">Session: {session.session_id}</p>
-                      <p className="text-xs text-white/40 mt-1">{new Date(session.start_time).toLocaleString()} - {session.status}</p>
+                      <p className="text-xs text-white/40 mt-1">
+                        {new Date(session.start_time).toLocaleString()} - {session.status}
+                        {session.duration_seconds > 0 && (
+                          <span className="ml-2 text-cyan-400">
+                            <Clock className="w-3 h-3 inline mr-1" />
+                            {formatDuration(session.duration_seconds)}
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div className="flex items-center gap-4 text-sm">
+                      <div className="text-right"><p className="text-white/60">Duration</p><p className="text-cyan-400 font-medium">{formatDuration(session.duration_seconds)}</p></div>
                       <div className="text-right"><p className="text-white/60">Trades</p><p className="text-white font-medium">{session.total_trades || 0}</p></div>
                       <div className="text-right"><p className="text-white/60">Win Rate</p><p className="text-white font-medium">{((session.win_rate || 0) * 100).toFixed(1)}%</p></div>
                       <div className="text-right"><p className="text-white/60">P&L</p><p className={`font-bold ${(session.total_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{(session.total_pnl || 0) >= 0 ? '+' : ''}${(session.total_pnl || 0).toFixed(2)}</p></div>
