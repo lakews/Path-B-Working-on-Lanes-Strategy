@@ -297,14 +297,22 @@ class PolymarketPositionSizer:
         sector_cap = self._calculate_sector_cap(sizing_base, market_category, sector_exposure)
         size_after_sector = min(size_before_sector, sector_cap)
         
-        logger.info(f"[SIZER CAPS] adj={kelly_adjusted:.2f}, liq_cap={liquidity_cap:.2f}, sector_cap={sector_cap:.2f}, before_sec={size_before_sector:.2f}, after_sec={size_after_sector:.2f}")
+        # =================================================================
+        # STEP 11.5: Apply Event Cap (correlated markets)
+        # =================================================================
+        event_cap, current_event_exposure, related_positions = self._calculate_event_cap(
+            sizing_base, market_question, open_positions
+        )
+        size_after_event = min(size_after_sector, event_cap)
+        
+        logger.info(f"[SIZER CAPS] adj={kelly_adjusted:.2f}, liq_cap={liquidity_cap:.2f}, sector_cap={sector_cap:.2f}, event_cap={event_cap:.2f} (related:{related_positions}), after_event={size_after_event:.2f}")
         
         # =================================================================
         # STEP 12: Apply Hard Limits (uses sizing_base, not equity)
         # =================================================================
         # Max single position from user config (single source of truth)
         max_single = sizing_base * max_position_size_pct
-        final_size = min(size_after_sector, max_single)
+        final_size = min(size_after_event, max_single)
         
         logger.debug(f"[SIZER DEBUG] kelly_base={kelly_base:.2f}, util_mult={utilization_mult:.4f}, time_pen={time_penalty:.4f}, oracle={oracle_mult:.4f}, final={final_size:.2f}")
         
@@ -348,12 +356,16 @@ class PolymarketPositionSizer:
                 # Caps
                 'liquidity_cap': round(liquidity_cap, 2),
                 'sector_cap': round(sector_cap, 2),
+                'event_cap': round(event_cap, 2),
+                'event_exposure': round(current_event_exposure, 2),
+                'related_positions': related_positions,
                 'max_single_position': round(max_single, 2),
                 
                 # Intermediate values
                 'kelly_adjusted': round(kelly_adjusted, 2),
                 'size_before_sector': round(size_before_sector, 2),
                 'size_after_sector': round(size_after_sector, 2),
+                'size_after_event': round(size_after_event, 2),
                 
                 # Classification
                 'category': market_category,
