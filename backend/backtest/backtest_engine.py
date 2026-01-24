@@ -871,9 +871,10 @@ class BacktestEngine:
     async def _open_position(self, market_id: str, price: float, strategy: str, 
                             category: str, timestamp: str, profit_target: float,
                             stop_loss: float, size_mult: float) -> Dict:
-        """Open a new position with adaptive sizing"""
-        available_capital = self.current_capital * 0.8
-        base_size = available_capital * 0.04  # 4% base position
+        """Open a new position with adaptive sizing based on deployed capital"""
+        # Use deployed capital (from config) as the sizing base
+        available_capital = min(self.current_capital, self.deployed_capital) * self.capital_deployment_pct
+        base_size = available_capital * self.max_position_size_pct  # Max position size from config
         position_size = base_size * size_mult
         
         shares = position_size / price if price > 0 else 0
