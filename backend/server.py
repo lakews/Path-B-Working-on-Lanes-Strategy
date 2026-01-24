@@ -285,6 +285,14 @@ class TradingConfig(BaseModel):
     polymarket_fee_pct: Optional[float] = None            # Exit fee (default 0.02 = 2%)
     sector_caps: Optional[Dict[str, float]] = None        # Max portfolio allocation per category
     oracle_multipliers: Optional[Dict[str, float]] = None # Oracle risk multipliers by category
+    # Event Caps Configuration
+    event_caps: Optional[Dict[str, float]] = None         # Event concentration limits
+
+# Default event caps (used for reset)
+DEFAULT_EVENT_CAPS = {
+    "max_event_exposure_pct": 0.15,  # 15% max per correlated event
+    "similarity_threshold": 0.60,    # 60% question similarity = same event
+}
 
 # Store user config preferences
 user_config = {
