@@ -1947,6 +1947,29 @@ const PaperTrading = () => {
 
   useEffect(() => { fetchSavedConfig(); }, [fetchSavedConfig]);
 
+  // Live session timer - updates every second when running
+  useEffect(() => {
+    let interval;
+    if (status?.running && status?.start_time) {
+      // Calculate initial duration
+      const startTime = new Date(status.start_time).getTime();
+      const updateDuration = () => {
+        const now = Date.now();
+        const durationSecs = Math.floor((now - startTime) / 1000);
+        setLiveSessionDuration(durationSecs);
+      };
+      
+      updateDuration(); // Initial calculation
+      interval = setInterval(updateDuration, 1000); // Update every second
+    } else {
+      setLiveSessionDuration(0);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [status?.running, status?.start_time]);
+
   const startPaperTrading = async () => {
     setLoading(true);
     try {
