@@ -551,6 +551,57 @@ class RLAdaptiveEngine:
         except Exception as e:
             logger.error(f"Error loading RL model: {e}")
     
+    async def load_historical_experiences(self):
+        """Load historical experiences from database into replay buffer"""
+        try:
+            experiences = await self.db.rl_historical_experiences.find({}).to_list(None)
+            
+            if not experiences:
+                logger.info("No historical experiences to load")
+                return 0
+            
+            loaded_count = 0
+            for exp in experiences:
+                state = np.array(exp.get('state', [0.5]*8), dtype=np.float32)
+                action_idx = exp.get('action_idx', 0)
+                reward = exp.get('reward', 0)
+                next_state = state.copy()  # Use same state as approximation
+                done = True  # Historical trades are all completed
+                
+                if self.use_dqn and self.dqn_agent:
+                    self.dqn_agent.store_experience(state, action_idx, reward, next_state, done)
+                else:
+                    # Legacy replay buffer
+                    self.replay_buffer.append({
+                        'state': state.tolist(),
+                        'action': action_idx,
+                        'reward': reward,
+                        'next_state': next_state.tolist(),
+                        'timestamp': exp.get('timestamp', '')
+                    })
+                
+                loaded_count += 1
+                self.episode_rewards.append(reward)
+            
+            logger.info(f"Loaded {loaded_count} historical experiences into replay buffer")
+            
+            # If we have enough experiences, do some training
+            if self.use_dqn and self.dqn_agent and loaded_count >= 32:
+                logger.info("Training on loaded historical experiences...")
+                for _ in range(min(10, loaded_count // 32)):  # Up to 10 training steps
+                    loss = self.dqn_agent.train_step()
+                    if loss:
+                        logger.info(f"Historical training step: loss={loss:.6f}")
+                
+                # Save the trained model
+                await self.save_model()
+            
+            return loaded_count
+            
+        except Exception as e:
+            logger.error(f"Error loading historical experiences: {e}")
+            return 0
+    
     def get_action_size(self, action: str) -> float:
         """Convert action to position size multiplier"""
         size_map = {
