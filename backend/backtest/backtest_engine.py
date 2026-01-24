@@ -619,9 +619,16 @@ class BacktestEngine:
                         entry_idx = idx
                         highest_price = current_price
             else:
-                # Update trailing stop
-                if current_price > highest_price:
-                    highest_price = current_price
+                # Update trailing stop - track highest value price based on side
+                side = position.get("side", "YES")
+                if side == 'YES':
+                    # For YES: track highest YES price (we profit when price goes up)
+                    if current_price > highest_price:
+                        highest_price = current_price
+                else:
+                    # For NO: track lowest YES price (we profit when YES price goes down)
+                    if current_price < highest_price or highest_price == 0:
+                        highest_price = current_price
                 
                 # Calculate actual price change
                 price_change = current_price - position["entry_price"]
