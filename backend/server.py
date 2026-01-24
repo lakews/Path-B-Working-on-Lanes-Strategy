@@ -2679,6 +2679,89 @@ async def stop_paper_trading(
             content={"message": f"Failed to stop paper trading: {str(e)}"}
         )
 
+@api_router.post("/paper/recover-positions")
+async def recover_positions(
+    session_id: str = None,
+    username: str = Depends(verify_credentials_dual)
+):
+    """Recover/reconstruct positions from trade history
+    
+    Useful for:
+    - Recovering positions after unexpected restart
+    - Reconstructing positions for an old session
+    - Debugging position state
+    """
+    global paper_trader
+    
+    try:
+        db = get_db()
+        
+        target_session = session_id
+        if not target_session and paper_trader:
+            target_session = paper_trader.session_id
+        
+        if not target_session:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "No session_id provided and no active paper trader"}
+            )
+        
+        # Get all entry trades for this session
+        entries = await db.paper_trades.find({
+            "session_id": target_session,
+            "type": "entry"
+        }).to_list(None)
+        
+        # Get all exit trades for this session
+        exits = await db.paper_trades.find({
+            "session_id": target_session,
+            "type": "exit"
+        }).to_list(None)
+        
+        # Find closed market IDs
+        closed_markets = set(e.get("market_id") for e in exits)
+        
+        # Find open positions
+        open_positions = []
+        for entry in entries:
+            market_id = entry.get("market_id")
+            if market_id and market_id not in closed_markets:
+                open_positions.append({
+                    "market_id": market_id,
+                    "market_question": entry.get("market_question", "Unknown")[:50] + "...",
+                    "entry_price": entry.get("entry_price", 0),
+                    "side": entry.get("side", "NO"),
+                    "size": entry.get("size", 0),
+                    "entry_time": entry.get("timestamp"),
+                    "strategy": entry.get("strategy", "unknown")
+                })
+        
+        # If paper_trader is running and it's the same session, load into memory
+        loaded_count = 0
+        if paper_trader and paper_trader.running and paper_trader.session_id == target_session:
+            for pos in open_positions:
+                market_id = pos["market_id"]
+                if market_id not in paper_trader.paper_positions:
+                    paper_trader.paper_positions[market_id] = pos
+                    await paper_trader._save_position_to_db(market_id, pos)
+                    loaded_count += 1
+        
+        return {
+            "message": f"Found {len(open_positions)} open positions for session {target_session}",
+            "session_id": target_session,
+            "total_entries": len(entries),
+            "total_exits": len(exits),
+            "open_positions": open_positions,
+            "loaded_to_memory": loaded_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Error recovering positions: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to recover positions: {str(e)}"}
+        )
+
 
 async def save_session_analytics(positions, status):
     """Save session-level analytics for historical comparison.
