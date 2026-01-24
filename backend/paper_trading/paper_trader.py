@@ -2030,11 +2030,13 @@ class PaperTrader:
                 deployed = portfolio_state.get('deployed_capital', 0)
                 sector_exposure = portfolio_state.get('sector_exposure', {})
                 
-                # Get open positions for correlation check
+                # Get open positions for correlation check (include question for event cap)
                 open_positions_list = [
                     {
                         'category': p.get('asset_class', p.get('category', 'unknown')),
                         'tags': p.get('tags', []),
+                        'question': p.get('market_question', ''),
+                        'size': p.get('size', 0),
                     }
                     for p in self.paper_positions.values()
                 ]
