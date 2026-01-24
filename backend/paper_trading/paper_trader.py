@@ -3078,10 +3078,18 @@ class PaperTrader:
         try:
             win_rate = self.winning_trades / max(self.total_trades, 1)
             
+            # Calculate session duration
+            end_time = datetime.now(timezone.utc)
+            if self.session_start_time:
+                duration_seconds = int((end_time - self.session_start_time).total_seconds())
+            else:
+                duration_seconds = 0
+            
             session_results = {
                 "session_id": self.session_id,
                 "type": "paper_trading",
-                "end_time": datetime.now(timezone.utc).isoformat(),
+                "end_time": end_time.isoformat(),
+                "duration_seconds": duration_seconds,
                 "status": "completed",
                 "initial_capital": self.initial_capital,
                 "deployed_capital_limit": self.deployed_capital,  # Max allowed deployment from config
