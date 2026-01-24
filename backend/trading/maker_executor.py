@@ -146,7 +146,7 @@ class MakerOrderExecutor:
                 spread_captured=0,
                 wait_time_ms=self.config['maker_timeout_ms'],
                 attempts=1,
-                reason=f"edge_insufficient_for_taker"
+                reason="edge_insufficient_for_taker"
             )
     
     async def _try_maker_fill(
