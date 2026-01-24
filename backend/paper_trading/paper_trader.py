@@ -2009,8 +2009,9 @@ class PaperTrader:
                 "market_question": position.get('market_question', ''),
                 "side": side,
                 "size": size,
-                "price": actual_entry_price,
-                "entry_price": actual_entry_price,  # Use actual fill price
+                "price": display_entry_price,  # Display price for the side traded
+                "entry_price": display_entry_price,  # Display price for the side traded
+                "yes_entry_price": actual_entry_price,  # Keep YES price for reference
                 "strategy": strategy,
                 "asset_class": asset_class,
                 "rl_action": rl_action,
