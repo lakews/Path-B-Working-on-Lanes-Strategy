@@ -1,0 +1,125 @@
+{
+  "test_run": "RL Engine Stability Integration Test",
+  "timestamp": "2025-01-24T19:00:00Z",
+  "iteration": 22,
+  "total_tests": 16,
+  "passed": 16,
+  "failed": 0,
+  "skipped": 0,
+  "test_results": [
+    {
+      "test_class": "TestRLEngineViaAPI",
+      "test_name": "test_rl_stats_endpoint_returns_valid_response",
+      "status": "PASSED",
+      "description": "Verifies /api/rl/stats returns valid DQN stats with buffer_size, epsilon, and training iterations"
+    },
+    {
+      "test_class": "TestRLEngineViaAPI",
+      "test_name": "test_rl_detailed_stats_endpoint",
+      "status": "PASSED",
+      "description": "Verifies /api/rl/detailed-stats returns comprehensive DQN info including state_features"
+    },
+    {
+      "test_class": "TestRLEngineViaAPI",
+      "test_name": "test_rl_train_endpoint",
+      "status": "PASSED",
+      "description": "Verifies /api/rl/train endpoint works (even with empty buffer)"
+    },
+    {
+      "test_class": "TestRLEngineViaAPI",
+      "test_name": "test_rl_save_and_load_model",
+      "status": "PASSED",
+      "description": "Verifies model save and load functionality works correctly"
+    },
+    {
+      "test_class": "TestRLEngineViaAPI",
+      "test_name": "test_rl_switch_mode_to_dqn",
+      "status": "PASSED",
+      "description": "Verifies switching to DQN mode via API"
+    },
+    {
+      "test_class": "TestRLEngineViaAPI",
+      "test_name": "test_rl_switch_mode_to_qtable_and_back",
+      "status": "PASSED",
+      "description": "Verifies switching between Q-table and DQN modes"
+    },
+    {
+      "test_class": "TestDQNAgentDirect",
+      "test_name": "test_dqn_agent_initialization",
+      "status": "PASSED",
+      "description": "Verifies DQNAgent initializes with correct architecture (8 -> 64 -> 64 -> 7)"
+    },
+    {
+      "test_class": "TestDQNAgentDirect",
+      "test_name": "test_dqn_agent_select_action",
+      "status": "PASSED",
+      "description": "Verifies action selection returns valid action index and confidence"
+    },
+    {
+      "test_class": "TestDQNAgentDirect",
+      "test_name": "test_dqn_agent_store_experience",
+      "status": "PASSED",
+      "description": "Verifies experience storage in prioritized replay buffer"
+    },
+    {
+      "test_class": "TestDQNAgentDirect",
+      "test_name": "test_dqn_agent_train_step_insufficient_buffer",
+      "status": "PASSED",
+      "description": "Verifies train_step returns None when buffer < batch_size (32)"
+    },
+    {
+      "test_class": "TestDQNAgentDirect",
+      "test_name": "test_dqn_agent_train_step_sufficient_buffer",
+      "status": "PASSED",
+      "description": "Verifies train_step works and returns loss when buffer >= batch_size"
+    },
+    {
+      "test_class": "TestDQNAgentDirect",
+      "test_name": "test_dqn_agent_multiple_training_iterations",
+      "status": "PASSED",
+      "description": "Verifies multiple training iterations with epsilon decay"
+    },
+    {
+      "test_class": "TestDQNAgentDirect",
+      "test_name": "test_dqn_agent_get_stats",
+      "status": "PASSED",
+      "description": "Verifies get_stats returns all required fields (17 fields)"
+    },
+    {
+      "test_class": "TestForceTrainButtonCondition",
+      "test_name": "test_force_train_button_condition_via_api",
+      "status": "PASSED",
+      "description": "Verifies Force Train button enabled condition (buffer_size > 32)"
+    },
+    {
+      "test_class": "TestRLEngineDirectInitialization",
+      "test_name": "test_rl_engine_initialization_via_api",
+      "status": "PASSED",
+      "description": "Verifies RL Engine initializes correctly with 8 state features in DQN mode"
+    },
+    {
+      "test_class": "TestPaperTradingRLIntegration",
+      "test_name": "test_paper_trading_status_includes_rl_stats",
+      "status": "PASSED",
+      "description": "Verifies paper trading includes RL stats (skipped if not running)"
+    }
+  ],
+  "summary": {
+    "rl_engine_stable": true,
+    "dqn_working": true,
+    "prioritized_replay_working": true,
+    "model_save_load_working": true,
+    "mode_switching_working": true,
+    "force_train_button_condition": "buffer_size > 32",
+    "current_buffer_size": 0,
+    "force_train_enabled": false,
+    "note": "Buffer is empty. Paper trading needs to generate closed trades to populate the replay buffer."
+  },
+  "issues_found": [],
+  "recommendations": [
+    "Run paper trading to generate experiences and fill the replay buffer",
+    "After 33+ closed trades, Force Train button will be enabled",
+    "Consider pre-populating buffer from historical trades for immediate training"
+  ],
+  "test_file": "/app/backend/tests/test_rl_engine_integration.py"
+}
