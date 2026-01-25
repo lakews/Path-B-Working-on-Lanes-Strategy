@@ -2803,25 +2803,26 @@ const PaperTrading = () => {
 
           {/* Trade History */}
           <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-            <div className="p-4 border-b border-white/10">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                 <History className="w-5 h-5 text-cyan-400" />Trade History
                 <span className="text-xs text-white/40 ml-2">({trades.length} trades)</span>
               </h3>
+              <span className="text-xs text-white/40">Click any row for details • Drag column edges to resize</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full" style={{ tableLayout: 'fixed' }}>
                 <thead><tr className="bg-white/5 text-left">
-                  <SortableHeader label="Status" sortKey="type" currentSort={tradeSort} onSort={handleTradeSort} />
-                  <SortableHeader label="Market" sortKey="market" currentSort={tradeSort} onSort={handleTradeSort} />
-                  <SortableHeader label="Strategy" sortKey="strategy" currentSort={tradeSort} onSort={handleTradeSort} />
-                  <SortableHeader label="Side" sortKey="side" currentSort={tradeSort} onSort={handleTradeSort} />
-                  <SortableHeader label="Size" sortKey="size" currentSort={tradeSort} onSort={handleTradeSort} />
-                  <SortableHeader label="Entry → Exit" sortKey="entry" currentSort={tradeSort} onSort={handleTradeSort} />
-                  <SortableHeader label="P&L ($)" sortKey="pnl" currentSort={tradeSort} onSort={handleTradeSort} />
-                  <SortableHeader label="Return (%)" sortKey="return" currentSort={tradeSort} onSort={handleTradeSort} />
-                  <SortableHeader label="Time" sortKey="timestamp" currentSort={tradeSort} onSort={handleTradeSort} />
-                  <th className="py-3 px-4 text-xs text-white/60 uppercase">Actions</th>
+                  <ResizableHeader label="Status" sortKey="type" currentSort={tradeSort} onSort={handleTradeSort} width={columnWidths.status} onResize={(w) => handleColumnResize('status', w)} minWidth={60} />
+                  <ResizableHeader label="Market" sortKey="market" currentSort={tradeSort} onSort={handleTradeSort} width={columnWidths.market} onResize={(w) => handleColumnResize('market', w)} minWidth={100} />
+                  <ResizableHeader label="Strategy" sortKey="strategy" currentSort={tradeSort} onSort={handleTradeSort} width={columnWidths.strategy} onResize={(w) => handleColumnResize('strategy', w)} minWidth={60} />
+                  <ResizableHeader label="Side" sortKey="side" currentSort={tradeSort} onSort={handleTradeSort} width={columnWidths.side} onResize={(w) => handleColumnResize('side', w)} minWidth={50} />
+                  <ResizableHeader label="Size" sortKey="size" currentSort={tradeSort} onSort={handleTradeSort} width={columnWidths.size} onResize={(w) => handleColumnResize('size', w)} minWidth={60} />
+                  <ResizableHeader label="Entry → Exit" sortKey="entry" currentSort={tradeSort} onSort={handleTradeSort} width={columnWidths.prices} onResize={(w) => handleColumnResize('prices', w)} minWidth={100} />
+                  <ResizableHeader label="P&L ($)" sortKey="pnl" currentSort={tradeSort} onSort={handleTradeSort} width={columnWidths.pnl} onResize={(w) => handleColumnResize('pnl', w)} minWidth={60} />
+                  <ResizableHeader label="Return" sortKey="return" currentSort={tradeSort} onSort={handleTradeSort} width={columnWidths.return} onResize={(w) => handleColumnResize('return', w)} minWidth={60} />
+                  <ResizableHeader label="Time" sortKey="timestamp" currentSort={tradeSort} onSort={handleTradeSort} width={columnWidths.time} onResize={(w) => handleColumnResize('time', w)} minWidth={70} />
+                  <th className="py-3 px-4 text-xs text-white/60 uppercase" style={{ width: `${columnWidths.actions}px` }}>Actions</th>
                 </tr></thead>
                 <tbody>
                   {sortedTrades.slice(0, 50).map((trade, idx) => (
