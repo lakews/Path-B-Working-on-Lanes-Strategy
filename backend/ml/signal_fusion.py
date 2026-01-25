@@ -153,7 +153,13 @@ class SignalFusionEngine:
     ) -> Tuple[str, str]:
         """Determine trading action and direction"""
         try:
-            current_price = market_data.get('yes_price', 0.5)
+            # STRICT PRICE VALIDATION - Cannot determine action without price
+            current_price = market_data.get('yes_price')
+            if current_price is None or current_price == 0:
+                logger.warning("[SIGNAL-FUSION-REJECT] Missing price for action determination")
+                return 'WAIT', 'NONE'
+            current_price = float(current_price)
+            
             fair_value = signals.get('fair_value', 0.5)
             sentiment = signals.get('sentiment', 0.5)
             volatility = signals.get('volatility', 0.5)
