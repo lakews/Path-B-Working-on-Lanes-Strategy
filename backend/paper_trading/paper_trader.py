@@ -89,9 +89,8 @@ class PaperTrader:
         
         # Initialize real-time market service for WebSocket data
         self.realtime_market_service: Optional[RealTimeMarketService] = None
-        # DISABLED: WebSocket prices are unreliable (YES/NO token confusion)
-        # TODO: Fix token mapping in realtime_market_service.py before re-enabling
-        self.use_websocket_data = False  # Toggle WebSocket vs REST polling
+        # WebSocket prices now correctly handle YES/NO token mapping
+        self.use_websocket_data = True  # Toggle WebSocket vs REST polling
         
         # Initialize social sentiment analyzer for news/social data
         try:
