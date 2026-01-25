@@ -67,9 +67,9 @@ class HistoricalDataCollector:
     async def store_market_data(self, market_data: Dict) -> bool:
         """Store market data in database"""
         try:
-            # Extract prices safely
-            yes_price = 0.5
-            no_price = 0.5
+            # Extract prices safely - STRICT VALIDATION: None if no valid price
+            yes_price = None
+            no_price = None
             
             # Try different price fields - tokens array is the standard format
             tokens = market_data.get('tokens', [])
@@ -78,22 +78,29 @@ class HistoricalDataCollector:
                     outcome = token.get('outcome', '').lower()
                     price = token.get('price', 0)
                     if outcome in ['yes', 'true'] or 'yes' in outcome:
-                        yes_price = float(price) if price else 0.5
+                        yes_price = float(price) if price else None
                     elif outcome in ['no', 'false'] or 'no' in outcome:
-                        no_price = float(price) if price else 0.5
+                        no_price = float(price) if price else None
                     # For other outcomes (sports teams, etc.), use first as yes, second as no
                     elif tokens.index(token) == 0:
-                        yes_price = float(price) if price else 0.5
+                        yes_price = float(price) if price else None
                     else:
-                        no_price = float(price) if price else 0.5
+                        no_price = float(price) if price else None
             elif 'outcomePrices' in market_data:
                 prices = market_data.get('outcomePrices', [])
                 if len(prices) >= 2:
-                    yes_price = float(prices[0]) if prices[0] else 0.5
-                    no_price = float(prices[1]) if prices[1] else 0.5
+                    yes_price = float(prices[0]) if prices[0] else None
+                    no_price = float(prices[1]) if prices[1] else None
             elif 'yes_price' in market_data:
-                yes_price = float(market_data.get('yes_price', 0.5))
-                no_price = float(market_data.get('no_price', 0.5))
+                raw_yes = market_data.get('yes_price')
+                raw_no = market_data.get('no_price')
+                yes_price = float(raw_yes) if raw_yes is not None and raw_yes != 0 else None
+                no_price = float(raw_no) if raw_no is not None and raw_no != 0 else None
+            
+            # STRICT VALIDATION: Skip storing if no valid price data
+            if yes_price is None or yes_price == 0:
+                logger.debug(f"[HISTORICAL] Skipping market with no valid price: {market_data.get('condition_id', 'unknown')[:16]}")
+                return False
             
             snapshot = {
                 "id": str(uuid.uuid4()),
