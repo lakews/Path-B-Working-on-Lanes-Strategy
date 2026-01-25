@@ -3183,8 +3183,12 @@ class PaperTrader:
                             current_value = no_shares * no_current
                             unrealized = current_value - size
                         
-                        # Update position
-                        position['current_price'] = round(current_price, 4)
+                        # Update position with current price
+                        # Store the actual price for the side being traded (NO price for NO positions)
+                        if side == 'YES':
+                            position['current_price'] = round(current_price, 4)
+                        else:
+                            position['current_price'] = round(1 - current_price, 4)  # NO price
                         position['shares'] = round(shares, 2)
                         position['current_value'] = round(current_value, 2)
                         position['unrealized_pnl'] = round(unrealized, 2)
