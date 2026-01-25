@@ -257,52 +257,150 @@ Extracts sentiment directly from Polymarket's own data (no external API).
 
 **File:** `/app/backend/ml/sentiment_llm.py`
 
-Uses GPT to analyze the market question and estimate probability.
+Uses GPT-4o-mini to analyze the market question and estimate probability.
 
-### How It Works:
+### LLM SENTIMENT FLOWCHART
 
-1. **Build Prompt:**
-```python
-prompt = f"""
-Analyze this prediction market:
-Question: {question}
-Category: {category}
-Current Price: {current_price} (market's implied probability)
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                           LLM SENTIMENT ANALYSIS                                  ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
 
-Estimate the TRUE probability (0.0-1.0) that this resolves YES.
-Return ONLY a number between 0.0 and 1.0.
-"""
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              INPUT                                               │
+│  question: "Will Bitcoin reach $100k by Dec 2026?"                              │
+│  category: "crypto"                                                             │
+│  current_price: 0.35 (market's implied probability)                             │
+│  volume_24h: $125,000                                                           │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+                    ┌────────────────────────────────┐
+                    │       CHECK CACHE              │
+                    ├────────────────────────────────┤
+                    │ cache_key = hash(question)     │
+                    │                                │
+                    │ IF cached AND not expired:     │
+                    │   return cached_result         │
+                    │                                │
+                    │ Cache TTL:                     │
+                    │  • Hot (vol>$50k): 10 min      │
+                    │  • Cold (vol<$50k): 60 min     │
+                    └───────────────┬────────────────┘
+                                    │ Cache Miss
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │       BUILD PROMPT             │
+                    ├────────────────────────────────┤
+                    │ """                            │
+                    │ Analyze this prediction market:│
+                    │                                │
+                    │ Question: {question}           │
+                    │ Category: {category}           │
+                    │ Current Price: {price}         │
+                    │ Volume 24h: ${volume}          │
+                    │                                │
+                    │ Consider:                      │
+                    │ 1. Base Rate (historical)      │
+                    │ 2. Current Evidence            │
+                    │ 3. Market Context              │
+                    │ 4. Time Factor                 │
+                    │ 5. Contrarian Check            │
+                    │                                │
+                    │ Return probability 0.00-1.00   │
+                    │ """                            │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │       CALL GPT-4o-mini         │
+                    ├────────────────────────────────┤
+                    │ Via Emergent LLM Integration   │
+                    │                                │
+                    │ model: gpt-4o-mini             │
+                    │ temperature: 0.3               │
+                    │ max_tokens: 10                 │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │       PARSE RESPONSE           │
+                    ├────────────────────────────────┤
+                    │ response = "0.65"              │
+                    │                                │
+                    │ TRY:                           │
+                    │   sentiment = float(response)  │
+                    │   sentiment = clamp(0, 1, val) │
+                    │ EXCEPT:                        │
+                    │   sentiment = 0.5 (neutral)    │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │    CALCULATE CONFIDENCE        │
+                    ├────────────────────────────────┤
+                    │ divergence = |llm - market|    │
+                    │                                │
+                    │ // High divergence = alpha     │
+                    │ IF divergence > 0.30:          │
+                    │   base_conf = 0.7              │
+                    │ ELIF divergence > 0.15:        │
+                    │   base_conf = 0.5              │
+                    │ ELSE:                          │
+                    │   base_conf = 0.3              │
+                    │                                │
+                    │ // Volume adjustment           │
+                    │ IF volume > 100k:              │
+                    │   conf = base_conf × 1.2       │
+                    │ ELIF volume > 50k:             │
+                    │   conf = base_conf × 1.1       │
+                    │ ELSE:                          │
+                    │   conf = base_conf             │
+                    │                                │
+                    │ confidence = min(0.85, conf)   │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │       CACHE RESULT             │
+                    ├────────────────────────────────┤
+                    │ cache[key] = {                 │
+                    │   sentiment: 0.65,             │
+                    │   confidence: 0.7,             │
+                    │   timestamp: now(),            │
+                    │   ttl: 600 or 3600             │
+                    │ }                              │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │         OUTPUT                 │
+                    │ llm_sentiment: 0.65            │
+                    │ llm_confidence: 0.7            │
+                    └────────────────────────────────┘
 ```
 
-2. **Parse Response:**
-```python
-# Extract float from LLM response
-sentiment = float(response_text.strip())  # e.g., 0.65
+### LLM System Prompt:
+```
+You are an expert prediction market analyst.
+
+CALIBRATION GUIDELINES:
+- 0.00-0.10: Near impossible (< 10% chance)
+- 0.10-0.30: Unlikely (10-30% chance)
+- 0.30-0.50: Somewhat unlikely (30-50% chance)
+- 0.50: Maximum uncertainty / coin flip
+- 0.50-0.70: Somewhat likely (50-70% chance)
+- 0.70-0.90: Likely (70-90% chance)
+- 0.90-1.00: Near certain (> 90% chance)
+
+Return ONLY a decimal number between 0.00 and 1.00.
 ```
 
-3. **Calculate Confidence:**
-```python
-# Confidence based on divergence from market price
-divergence = abs(llm_sentiment - market_price)
-
-if divergence > 0.3:  # High divergence = potential alpha
-    confidence = 0.7
-elif divergence > 0.15:
-    confidence = 0.5
-else:
-    confidence = 0.3  # Agrees with market
-
-# Volume factor
-if volume_24h > 100000:
-    confidence *= 1.2  # High volume = more reliable
-```
-
-### Smart Caching:
-```python
-# Hot markets (volume > $50k): 10 minute cache
-# Cold markets (volume < $50k): 60 minute cache
-cache_ttl = 600 if volume_24h > 50000 else 3600
-```
+### Smart Caching Logic:
+| Market Type | Volume Threshold | Cache TTL | Reason |
+|-------------|------------------|-----------|--------|
+| Hot Market | > $50,000 | 10 min | Fast-moving, needs fresh analysis |
+| Cold Market | < $50,000 | 60 min | Slow-moving, save API calls |
 
 ---
 
