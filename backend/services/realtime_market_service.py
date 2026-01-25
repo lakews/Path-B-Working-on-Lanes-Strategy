@@ -71,27 +71,55 @@ class RealTimeMarketService:
         self._dropped_updates = 0  # Updates received before mapping was ready
         
     async def start(self):
-        """Start the real-time market service."""
+        """Start the real-time market service.
+        
+        RACE CONDITION FIX: We now ensure token mapping is populated BEFORE
+        the WebSocket starts receiving price updates. The sequence is:
+        1. Discover markets first (builds token -> YES/NO mapping)
+        2. Signal that mapping is ready
+        3. Connect WebSocket and subscribe to tokens
+        4. Register price handler (now safe - mapping exists)
+        """
         if self._running:
             return
             
         self._running = True
         logger.info("Starting RealTimeMarketService...")
         
-        # Initialize WebSocket manager
+        # STEP 1: Do initial market discovery FIRST (builds token mapping)
+        # This MUST complete before WebSocket starts processing price updates
+        await self._discover_markets()
+        
+        # STEP 2: Signal that token mapping is ready
+        self._token_mapping_ready.set()
+        logger.info(f"Token mapping ready: {len(self._token_outcome)} tokens mapped to YES/NO outcomes")
+        
+        # STEP 3: Initialize WebSocket manager (connects and starts listener)
         self.ws_manager = get_websocket_manager()
         await self.ws_manager.start()
         
-        # Register price update handler
+        # STEP 4: Subscribe to tokens AFTER connection is established
+        if self._subscribed_tokens:
+            tokens_to_sub = list(self._subscribed_tokens)[:100]
+            await self.ws_manager.subscribe_to_markets(tokens_to_sub)
+            logger.info(f"Subscribed to {len(tokens_to_sub)} market tokens via WebSocket")
+        
+        # STEP 5: Register price handler AFTER mapping is ready
+        # Now price updates can be processed correctly
         self.ws_manager.register_price_handler(self._on_price_update)
         
-        # Do initial market discovery
-        await self._discover_markets()
+        # Process any queued updates that arrived during initialization
+        if self._pending_price_updates:
+            logger.info(f"Processing {len(self._pending_price_updates)} queued price updates")
+            for update in self._pending_price_updates:
+                await self._process_price_update(update)
+            self._pending_price_updates.clear()
         
-        # Start background discovery loop
+        # Start background discovery loop for periodic refresh
         self._discovery_task = asyncio.create_task(self._discovery_loop())
         
-        logger.info(f"RealTimeMarketService started - {len(self._market_cache)} markets cached")
+        logger.info(f"RealTimeMarketService started - {len(self._market_cache)} markets cached, "
+                   f"{len(self._token_outcome)} token mappings active")
         
     async def stop(self):
         """Stop the real-time market service."""
