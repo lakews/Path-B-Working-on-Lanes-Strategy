@@ -173,14 +173,34 @@ class RealTimeMarketService:
                         
                     self._market_cache[market_id] = market
                     
-                    # Track token mappings
+                    # Track token mappings with YES/NO outcomes
                     tokens = market.get('tokens') or market.get('clobTokenIds', [])
+                    outcomes = market.get('outcomes', ['Yes', 'No'])  # Default order
+                    
                     if tokens:
                         self._market_tokens[market_id] = tokens
-                        for token in tokens:
+                        
+                        # Map each token to its outcome (YES or NO)
+                        for i, token in enumerate(tokens):
                             self._token_to_market[token] = market_id
+                            
+                            # outcomes[0] = first token outcome, outcomes[1] = second token outcome
+                            if i < len(outcomes):
+                                self._token_outcome[token] = outcomes[i]
+                                
+                                # Track YES and NO tokens for each market
+                                if outcomes[i] == 'Yes':
+                                    self._market_yes_token[market_id] = token
+                                elif outcomes[i] == 'No':
+                                    self._market_no_token[market_id] = token
+                            
                             if token not in self._subscribed_tokens:
                                 new_tokens.append(token)
+                    
+                    # Initialize YES price cache from REST data
+                    yes_price = market.get('yes_price')
+                    if yes_price is not None:
+                        self._yes_price_cache[market_id] = float(yes_price)
                 
                 self._last_discovery_time = datetime.now(timezone.utc)
                 
@@ -190,7 +210,8 @@ class RealTimeMarketService:
                     self._subscribed_tokens.update(new_tokens[:100])
                     logger.info(f"Subscribed to {len(new_tokens[:100])} new market tokens via WebSocket")
                 
-                logger.info(f"Market discovery complete: {len(markets)} markets, {len(self._subscribed_tokens)} subscribed tokens")
+                logger.info(f"Market discovery complete: {len(markets)} markets, "
+                           f"{len(self._token_outcome)} tokens mapped (YES/NO)")
                 
         except Exception as e:
             logger.error(f"Error during market discovery: {e}")
