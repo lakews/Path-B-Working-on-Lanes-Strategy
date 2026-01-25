@@ -233,26 +233,36 @@ class RealTimeMarketService:
         Get markets from cache (fast operation).
         
         Returns cached market data enriched with latest WebSocket prices.
+        Uses YES price cache which correctly handles both YES and NO token updates.
         """
         markets = list(self._market_cache.values())
         
         # Sort by volume (descending)
         markets.sort(key=lambda m: m.get('volume_24h', 0), reverse=True)
         
-        # Enrich with latest WebSocket prices
+        # Enrich with latest prices from YES price cache
         for market in markets[:limit]:
-            tokens = self._market_tokens.get(market.get('id'), [])
-            if tokens:
-                ws_price = self._price_cache.get(tokens[0])
-                if ws_price is not None:
-                    market['yes_price'] = ws_price
-                    market['no_price'] = 1 - ws_price
+            market_id = market.get('id')
+            
+            # Use YES price cache (correctly computed from YES or NO token updates)
+            yes_price = self._yes_price_cache.get(market_id)
+            
+            if yes_price is not None:
+                market['yes_price'] = yes_price
+                market['no_price'] = 1 - yes_price
+                
+                # Check if this price came from WebSocket or REST
+                if market.get('price_source', '').startswith('websocket'):
+                    pass  # Keep existing source
+                elif market_id in self._yes_price_cache and market.get('last_ws_update'):
                     market['price_source'] = 'websocket'
                 else:
                     market['price_source'] = 'rest_cache'
+            else:
+                market['price_source'] = 'rest_cache'
                     
             # Get order book from WebSocket cache
-            ws_book = self.ws_manager.get_latest_order_book(market.get('id')) if self.ws_manager else None
+            ws_book = self.ws_manager.get_latest_order_book(market_id) if self.ws_manager else None
             if ws_book:
                 market['order_book'] = ws_book
                 
