@@ -2824,12 +2824,23 @@ class PaperTrader:
             # Build positions list for portfolio manager
             positions_list = []
             for market_id, pos in self.paper_positions.items():
+                entry_price = pos.get('entry_price')
+                # STRICT VALIDATION: Skip positions without valid entry_price
+                if entry_price is None or entry_price == 0:
+                    logger.warning(f"[PORTFOLIO-SKIP] Position {market_id[:16]} has no valid entry_price")
+                    continue
+                    
+                current_price = pos.get('current_price')
+                # Use entry_price as fallback for current_price ONLY if entry_price is valid
+                if current_price is None or current_price == 0:
+                    current_price = entry_price
+                    
                 positions_list.append({
                     'market_id': market_id,
                     'side': pos.get('side', 'YES'),
                     'size': pos.get('size', 0),
-                    'entry_price': pos.get('entry_price', 0.5),
-                    'current_price': pos.get('current_price', pos.get('entry_price', 0.5)),
+                    'entry_price': float(entry_price),
+                    'current_price': float(current_price),
                     'category': pos.get('asset_class', pos.get('category', 'unknown')),
                 })
             
