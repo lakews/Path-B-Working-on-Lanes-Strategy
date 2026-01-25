@@ -77,7 +77,15 @@ class PolymarketAPI:
                 except:
                     outcome_prices = []
             
-            yes_price = float(outcome_prices[0]) if outcome_prices else 0.5
+            # STRICT PRICE VALIDATION - Return None if no valid price data
+            if not outcome_prices or len(outcome_prices) == 0:
+                logger.debug(f"[API] No outcomePrices for market {m.get('conditionId', 'unknown')[:16]} - skipping")
+                return None
+            
+            yes_price = float(outcome_prices[0])
+            if yes_price == 0:
+                logger.debug(f"[API] Zero yes_price for market {m.get('conditionId', 'unknown')[:16]} - skipping")
+                return None
             volume_24h = float(m.get('volume24hr', 0) or 0)
             liquidity = float(m.get('liquidityNum', 0) or 0)
             
