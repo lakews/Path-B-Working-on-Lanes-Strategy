@@ -115,11 +115,10 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - **Solution**:
     1. Fixed `current_price` storage to always use the price for the side being traded
     2. Added sanity checks in `_close_all_positions` to detect large price discrepancies
-    3. **Disabled WebSocket for price data** until YES/NO token mapping is fixed
-    4. Paper trader now uses REST API for accurate prices
+    3. ~~Disabled WebSocket for price data until YES/NO token mapping is fixed~~ **FIXED in Session 30**
   - **Result**: P&L is now realistic (-2% to +5% per trade, not 94%)
   - **Files Modified**: `/app/backend/paper_trading/paper_trader.py`, `/app/backend/services/realtime_market_service.py`
-  - **Known Issue**: WebSocket price updates are disabled - trades use REST API (slightly higher latency)
+  - **Status**: ✅ WebSocket re-enabled and working correctly as of Session 30
 
 ### January 24, 2026 - Session 28 (Continued)
 
