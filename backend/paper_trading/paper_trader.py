@@ -1967,9 +1967,12 @@ class PaperTrader:
                 best_ask = float(asks[0]['price'])
                 spread = best_ask - best_bid
                 
-                # Validate spread is reasonable
-                if spread <= 0 or spread > 0.5:
-                    logger.warning(f"[ENTRY-REJECT] Invalid spread {spread:.4f} for {market_id[:16]}")
+                # Get max spread from config (default to 0.99 for wide tolerance)
+                max_spread_config = self.config.get('max_spread', 0.99)
+                
+                # Validate spread is within configured tolerance
+                if spread <= 0 or spread > max_spread_config:
+                    logger.warning(f"[ENTRY-REJECT] Spread {spread:.4f} exceeds max {max_spread_config:.4f} for {market_id[:16]}")
                     return
                 
                 should_trade, reason = self.maker_executor.should_trade_given_spread(edge, spread)
