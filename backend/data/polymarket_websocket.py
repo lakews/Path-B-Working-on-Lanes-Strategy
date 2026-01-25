@@ -342,39 +342,59 @@ class PolymarketWebSocket:
             pass  # Ignore unknown messages silently
     
     async def _handle_price_change(self, change: Dict, market_id: str):
-        """Handle a price change from the price_changes array."""
+        """Handle a price change from the price_changes array.
+        
+        Price determination priority:
+        1. Mid-price if both bid and ask exist
+        2. last_trade_price if available (most reliable for illiquid markets)
+        3. Single-sided price (bid or ask)
+        """
         try:
             asset_id = change.get('asset_id', '')
             best_bid = float(change.get('best_bid', 0) or 0)
             best_ask = float(change.get('best_ask', 0) or 0)
+            last_trade_price = float(change.get('last_trade_price', 0) or 0)
             
-            if asset_id and (best_bid > 0 or best_ask > 0):
-                # Calculate mid price
-                if best_bid > 0 and best_ask > 0:
-                    price = (best_bid + best_ask) / 2
-                else:
-                    price = best_bid or best_ask
-                
-                old_price = self._latest_prices.get(asset_id)
-                self._latest_prices[asset_id] = {
-                    'price': price,
-                    'best_bid': best_bid,
-                    'best_ask': best_ask,
-                    'market': market_id,
-                    'timestamp': datetime.now(timezone.utc).isoformat(),
-                    'side': change.get('side', 'unknown')
-                }
-                
-                # Emit price update event
-                await self._emit('price_update', {
-                    'asset_id': asset_id,
-                    'market': market_id,
-                    'price': price,
-                    'best_bid': best_bid,
-                    'best_ask': best_ask,
-                    'old_price': old_price.get('price') if old_price else None
-                })
-                
+            if not asset_id:
+                return
+            
+            # Calculate price with proper fallback chain
+            if best_bid > 0 and best_ask > 0:
+                # Best case: use mid-price
+                price = (best_bid + best_ask) / 2
+            elif last_trade_price > 0:
+                # Fallback: use last trade price (most reliable for one-sided books)
+                price = last_trade_price
+            elif best_bid > 0 or best_ask > 0:
+                # Last resort: use available side
+                # Note: This can be misleading for illiquid markets
+                price = best_bid if best_bid > 0 else best_ask
+            else:
+                # No price data available
+                return
+            
+            old_price = self._latest_prices.get(asset_id)
+            self._latest_prices[asset_id] = {
+                'price': price,
+                'best_bid': best_bid,
+                'best_ask': best_ask,
+                'last_trade_price': last_trade_price,
+                'market': market_id,
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+                'side': change.get('side', 'unknown')
+            }
+            
+            # Emit price update event
+            await self._emit('price_update', {
+                'asset_id': asset_id,
+                'market': market_id,
+                'price': price,
+                'best_bid': best_bid,
+                'best_ask': best_ask,
+                'last_trade_price': last_trade_price,
+                'old_price': old_price.get('price') if old_price else None
+            })
+            
         except Exception as e:
             logger.error(f"Error handling price change: {e}")
     
