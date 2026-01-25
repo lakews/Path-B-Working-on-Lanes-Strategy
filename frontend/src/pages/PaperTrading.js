@@ -2020,6 +2020,21 @@ const PaperTrading = () => {
   const [sessionTradesModal, setSessionTradesModal] = useState({ isOpen: false, session: null, trades: [] });
   const [sentimentModal, setSentimentModal] = useState({ isOpen: false, trade: null });
   const [sizingModal, setSizingModal] = useState({ isOpen: false, position: null });
+  const [tradeDetailsModal, setTradeDetailsModal] = useState({ isOpen: false, trade: null });
+  
+  // Column widths state for resizable columns
+  const [columnWidths, setColumnWidths] = useState({
+    status: 80,
+    market: 250,
+    strategy: 100,
+    side: 70,
+    size: 80,
+    prices: 150,
+    pnl: 80,
+    return: 80,
+    time: 100,
+    actions: 80
+  });
   
   // Exit mode state (Dynamic vs Simple)
   const [useDynamicExit, setUseDynamicExit] = useState(true);
