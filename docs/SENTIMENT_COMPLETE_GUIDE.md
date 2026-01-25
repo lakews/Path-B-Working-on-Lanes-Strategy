@@ -922,7 +922,7 @@ flowchart TB
         
         RL_OUT["🎯 RL Decision<br/>action: BUY_MEDIUM<br/>confidence: 0.72"]
         
-        FINAL["✅ TRADE<br/>Side: YES<br/>Size: $400<br/>Strategy: alpha_directional"]
+        FINAL["✅ TRADE<br/>Side: YES<br/>Size: $204<br/>Strategy: alpha_directional"]
     end
 
     INPUT --> POLY
