@@ -137,36 +137,119 @@ Sentiment is a **0.0 to 1.0 score** that drives trade direction:
 
 Extracts sentiment directly from Polymarket's own data (no external API).
 
-### Signals Extracted:
+### POLYMARKET SENTIMENT FLOWCHART
 
-| Signal | Calculation | Interpretation |
-|--------|-------------|----------------|
-| **Order Flow Imbalance** | `buy_volume / (buy_volume + sell_volume)` | >0.5 = buying pressure |
-| **Volume Momentum** | `current_vol / avg_vol` over 1h/6h/24h | >1.0 = increasing interest |
-| **Spread Analysis** | `1 - (spread / spread_neutral)` | Tighter spread = more confidence |
-| **Price Velocity** | `(current - prev) / time` | Positive = bullish momentum |
-| **Whale Detection** | Count of trades > $1,000 | Whale buys = bullish signal |
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                      POLYMARKET NATIVE SENTIMENT EXTRACTION                       ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
 
-### Combined Score Formula:
-```python
-polymarket_sentiment = (
-    order_flow_imbalance * 0.30 +      # Order pressure
-    volume_momentum * 0.20 +            # Volume trend
-    spread_confidence * 0.15 +          # Market confidence
-    price_velocity * 0.20 +             # Price direction
-    whale_signal * 0.15                 # Smart money
-)
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              INPUT DATA                                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  market_data: { yes_price, volume_24h, liquidity }                              │
+│  trades: [ { side, size, price, timestamp }, ... ]                              │
+│  order_book: { bids: [...], asks: [...] }                                       │
+│  price_history: [ { timestamp, price }, ... ]                                   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+           ┌───────────────────────────┼───────────────────────────┐
+           │                           │                           │
+           ▼                           ▼                           ▼
+┌─────────────────────┐   ┌─────────────────────┐   ┌─────────────────────┐
+│  1. ORDER FLOW      │   │  2. VOLUME MOMENTUM │   │  3. SPREAD CONF     │
+│     (25% weight)    │   │     (15% weight)    │   │     (10% weight)    │
+├─────────────────────┤   ├─────────────────────┤   ├─────────────────────┤
+│                     │   │                     │   │                     │
+│ IF order_book:      │   │ Compare volume:     │   │ spread = ask - bid  │
+│   bid_depth = Σbids │   │  • current vs 1h    │   │                     │
+│   ask_depth = Σasks │   │  • current vs 6h    │   │ IF spread < 0.04:   │
+│   imbalance =       │   │  • current vs 24h   │   │   conf = HIGH (0.8) │
+│     bid/(bid+ask)   │   │                     │   │ ELIF spread < 0.08: │
+│                     │   │ momentum = cur/avg  │   │   conf = MED (0.6)  │
+│ ELSE IF trades:     │   │                     │   │ ELSE:               │
+│   buy_vol = Σbuys   │   │ IF momentum > 2.0:  │   │   conf = LOW (0.3)  │
+│   sell_vol = Σsells │   │   score = 0.75      │   │                     │
+│   imbalance =       │   │ ELIF momentum > 1.2:│   │ score = 1 -         │
+│     buy/(buy+sell)  │   │   score = 0.6       │   │   (spread/neutral)  │
+│                     │   │ ELIF momentum < 0.8:│   │                     │
+│ score = 0.3 +       │   │   score = 0.4       │   │                     │
+│   (imbalance × 0.4) │   │ ELSE:               │   │                     │
+│                     │   │   score = 0.5       │   │                     │
+│ Range: 0.3 - 0.7    │   │                     │   │                     │
+└──────────┬──────────┘   └──────────┬──────────┘   └──────────┬──────────┘
+           │                         │                         │
+           ▼                         ▼                         ▼
+┌─────────────────────┐   ┌─────────────────────┐   ┌─────────────────────┐
+│  4. PRICE VELOCITY  │   │  5. WHALE SIGNAL    │   │  6. PRICE MOMENTUM  │
+│     (15% weight)    │   │     (20% weight)    │   │     (15% weight)    │
+├─────────────────────┤   ├─────────────────────┤   ├─────────────────────┤
+│                     │   │                     │   │                     │
+│ velocity =          │   │ whale_thresh=$1000  │   │ IF price_history:   │
+│   (price_now -      │   │                     │   │   trend = prices[-1]│
+│    price_prev) /    │   │ FOR each trade:     │   │           - prices[0]│
+│    time_delta       │   │   IF size > thresh: │   │                     │
+│                     │   │     whale_count++   │   │ IF trend > 0.05:    │
+│ IF velocity > 0:    │   │     IF side=BUY:    │   │   score = 0.75      │
+│   bullish           │   │       bullish++     │   │ ELIF trend > 0.02:  │
+│ ELSE:               │   │     ELSE:           │   │   score = 0.6       │
+│   bearish           │   │       bearish++     │   │ ELIF trend < -0.05: │
+│                     │   │                     │   │   score = 0.25      │
+│ score = 0.5 +       │   │ net_whale =         │   │ ELIF trend < -0.02: │
+│   (velocity × 10)   │   │   bullish - bearish │   │   score = 0.4       │
+│                     │   │                     │   │ ELSE:               │
+│ Clamped: 0.2 - 0.8  │   │ score = 0.5 +       │   │   score = 0.5       │
+│                     │   │   (net × 0.1)       │   │                     │
+└──────────┬──────────┘   └──────────┬──────────┘   └──────────┬──────────┘
+           │                         │                         │
+           └─────────────────────────┼─────────────────────────┘
+                                     │
+                                     ▼
+                    ┌────────────────────────────────┐
+                    │     WEIGHTED COMBINATION       │
+                    ├────────────────────────────────┤
+                    │                                │
+                    │ combined = 0.5 (base neutral)  │
+                    │                                │
+                    │ FOR each signal:               │
+                    │   IF signal.valid:             │
+                    │     combined += (score - 0.5)  │
+                    │                  × weight      │
+                    │                                │
+                    │ combined = clamp(0.01, 0.99)   │
+                    │                                │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │     CONFIDENCE CALCULATION     │
+                    ├────────────────────────────────┤
+                    │ confidence = 0.3 (base)        │
+                    │ IF has_trades: +0.2            │
+                    │ IF has_order_book: +0.2        │
+                    │ IF price_history > 10: +0.15   │
+                    │ IF trade_history > 20: +0.15   │
+                    │ MAX confidence: 0.9            │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │         OUTPUT                 │
+                    │ polymarket_sentiment: 0.0-1.0  │
+                    │ polymarket_confidence: 0.0-0.9 │
+                    └────────────────────────────────┘
 ```
 
-### Confidence Calculation:
-```python
-confidence = 0.3  # Base
-if has_trades: confidence += 0.2
-if has_order_book: confidence += 0.2
-if price_history_points > 10: confidence += 0.15
-if trade_history_points > 20: confidence += 0.15
-# Max: 0.9
-```
+### Signal Weights (Total: 100%):
+
+| Signal | Weight | What It Measures |
+|--------|--------|------------------|
+| **Order Flow** | 25% | Buy vs Sell pressure from orderbook depth or trades |
+| **Whale Signal** | 20% | Large trades (>$1000) direction |
+| **Volume Momentum** | 15% | Volume increase/decrease vs historical |
+| **Price Velocity** | 15% | Rate of price change |
+| **Price Momentum** | 15% | Overall price trend direction |
+| **Spread Confidence** | 10% | Tighter spread = more market confidence |
 
 ---
 
