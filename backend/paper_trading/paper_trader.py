@@ -1033,13 +1033,30 @@ class PaperTrader:
                 track_skip("closed_or_inactive")
                 return
             
-            # Check for stuck/stale prices - skip markets with default prices unless high volume confirms they're real
-            yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
-            if yes_price in [0.0, 0.5, 1.0]:  # Default/stuck prices
-                # Use user-configured multiplier for stuck price volume requirement
+            # ============================================
+            # STRICT PRICE VALIDATION - REJECT DEFAULT PRICES
+            # ============================================
+            yes_price = market_data.get('yes_price')
+            if yes_price is None or yes_price == 0:
+                track_skip("no_price_data")
+                return
+            
+            yes_price = float(yes_price)
+            
+            # Check for stuck/stale prices - these are likely defaults or no real trading
+            if yes_price in [0.0, 1.0]:  # Extreme prices - likely no real data
+                track_skip("extreme_price")
+                return
+            
+            # Check for suspicious ~0.5 prices (likely default/no real data)
+            if abs(yes_price - 0.5) < 0.02:
+                # Price is near 0.5 - require high volume AND real orderbook to proceed
                 stale_price_min_volume = min_vol_threshold * self.stuck_price_multiplier
-                if effective_volume < stale_price_min_volume:
-                    track_skip("stuck_price")
+                order_book = market_data.get('order_book', {})
+                has_orderbook = bool(order_book.get('bids')) and bool(order_book.get('asks'))
+                
+                if effective_volume < stale_price_min_volume or not has_orderbook:
+                    track_skip("stuck_price_no_orderbook")
                     return
             
             # Get ML signals
