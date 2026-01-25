@@ -208,7 +208,11 @@ class RealTimeMarketService:
         market['last_ws_update'] = datetime.now(timezone.utc).isoformat()
                 
     async def _discover_markets(self):
-        """Discover markets via REST API (slow operation)."""
+        """Discover markets via REST API (slow operation).
+        
+        Builds the token -> market and token -> outcome mappings that are
+        essential for correctly interpreting WebSocket price updates.
+        """
         try:
             logger.info("Discovering markets via REST API...")
             self._rest_fetches += 1
@@ -221,8 +225,11 @@ class RealTimeMarketService:
                     logger.warning("No markets returned from REST API")
                     return
                 
-                # Update market cache
+                # Track new tokens for subscription
                 new_tokens = []
+                tokens_mapped = 0
+                
+                # Update market cache and build token mappings
                 for market in markets:
                     market_id = market.get('id') or market.get('condition_id')
                     if not market_id:
@@ -243,16 +250,19 @@ class RealTimeMarketService:
                             
                             # outcomes[0] = first token outcome, outcomes[1] = second token outcome
                             if i < len(outcomes):
-                                self._token_outcome[token] = outcomes[i]
+                                outcome = outcomes[i]
+                                self._token_outcome[token] = outcome
+                                tokens_mapped += 1
                                 
                                 # Track YES and NO tokens for each market
-                                if outcomes[i] == 'Yes':
+                                if outcome == 'Yes':
                                     self._market_yes_token[market_id] = token
-                                elif outcomes[i] == 'No':
+                                elif outcome == 'No':
                                     self._market_no_token[market_id] = token
                             
                             if token not in self._subscribed_tokens:
                                 new_tokens.append(token)
+                                self._subscribed_tokens.add(token)
                     
                     # Initialize YES price cache from REST data
                     yes_price = market.get('yes_price')
@@ -261,14 +271,16 @@ class RealTimeMarketService:
                 
                 self._last_discovery_time = datetime.now(timezone.utc)
                 
-                # Subscribe to new tokens via WebSocket
-                if new_tokens and self.ws_manager:
-                    await self.ws_manager.subscribe_to_markets(new_tokens[:100])  # Limit to top 100
-                    self._subscribed_tokens.update(new_tokens[:100])
-                    logger.info(f"Subscribed to {len(new_tokens[:100])} new market tokens via WebSocket")
+                # Only subscribe to WebSocket if already connected (not during initial startup)
+                if self._token_mapping_ready.is_set() and new_tokens and self.ws_manager:
+                    # This is a refresh discovery, safe to subscribe
+                    tokens_to_sub = new_tokens[:100]
+                    await self.ws_manager.subscribe_to_markets(tokens_to_sub)
+                    logger.info(f"Subscribed to {len(tokens_to_sub)} new market tokens via WebSocket")
                 
                 logger.info(f"Market discovery complete: {len(markets)} markets, "
-                           f"{len(self._token_outcome)} tokens mapped (YES/NO)")
+                           f"{tokens_mapped} tokens mapped (YES/NO), "
+                           f"{len(new_tokens)} new tokens found")
                 
         except Exception as e:
             logger.error(f"Error during market discovery: {e}")
