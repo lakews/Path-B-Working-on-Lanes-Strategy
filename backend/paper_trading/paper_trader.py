@@ -2935,8 +2935,28 @@ class PaperTrader:
         try:
             # Extract base market data
             market_id = market_data.get('id', '')
-            yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
-            no_price = float(market_data.get('no_price', 0.5) or 0.5)
+            
+            # Get prices - use sensible defaults only for signal calculation (not trading)
+            yes_price = market_data.get('yes_price')
+            no_price = market_data.get('no_price')
+            
+            # If no price data, return neutral signals (caller should validate before trading)
+            if yes_price is None or yes_price == 0:
+                logger.debug(f"[SIGNALS] No price data for {market_id[:16]} - returning neutral signals")
+                return {
+                    'volatility': 0.05,
+                    'sentiment': 0.5,
+                    'sharp_alignment': 0.5,
+                    'price_uncertainty': 0.5,
+                    'volume_signal': 0.0,
+                    'momentum': 0.0,
+                    'edge': 0.0,
+                    'no_price_data': True  # Flag for caller to check
+                }
+            
+            yes_price = float(yes_price)
+            no_price = float(no_price) if no_price else 1 - yes_price
+            
             volume_24h = float(market_data.get('volume_24h', 0) or 0)
             total_volume = float(market_data.get('volume', 0) or 0)
             liquidity = float(market_data.get('liquidity', 0) or 0)
