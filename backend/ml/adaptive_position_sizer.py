@@ -163,7 +163,13 @@ class AdaptivePositionSizer:
         volume_24h = market_data.get('volume_24h', 0) or 0
         volume = market_data.get('volume', volume_24h) or 0
         outstanding = market_data.get('outstanding_contracts', market_data.get('liquidity', 1000)) or 1000
-        spread = market_data.get('spread', market_data.get('yes_price', 0.5) * 0.02) or 0.02
+        
+        # STRICT PRICE VALIDATION for spread calculation
+        yes_price = market_data.get('yes_price')
+        if yes_price is not None and yes_price != 0:
+            spread = market_data.get('spread', float(yes_price) * 0.02) or 0.02
+        else:
+            spread = market_data.get('spread', 0.02) or 0.02  # Use fixed default if no price
         
         # Use volume_24h as primary indicator - more relevant for active markets
         effective_volume = max(volume_24h, volume)
