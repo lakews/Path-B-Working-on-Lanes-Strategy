@@ -174,13 +174,20 @@ class ApexTrader:
         try:
             market_id = market_data.get('id')
             
+            # STRICT PRICE VALIDATION - Reject trades without valid price data
+            yes_price = market_data.get('yes_price')
+            if yes_price is None or yes_price == 0:
+                logger.warning(f"[RL-REJECT] Missing price data for {market_id[:16] if market_id else 'unknown'} - skipping trade")
+                return None
+            yes_price = float(yes_price)
+            
             if self.paper_mode:
                 # Paper mode - simulate execution
                 result = await strategy.evaluate_opportunity(market_data)
                 if result and result.get('should_trade'):
                     # Record pending trade for RL feedback
                     self.pending_trades[market_id] = {
-                        'entry_price': market_data.get('yes_price', 0.5),
+                        'entry_price': yes_price,
                         'entry_time': datetime.now(timezone.utc).isoformat(),
                         'strategy': strategy.__class__.__name__,
                         'rl_action': rl_action,
@@ -195,7 +202,7 @@ class ApexTrader:
                         "strategy": strategy.__class__.__name__,
                         "rl_action": rl_action,
                         "rl_confidence": rl_confidence,
-                        "price": market_data.get('yes_price', 0.5),
+                        "price": yes_price,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                         "paper_mode": True
                     })
@@ -207,7 +214,7 @@ class ApexTrader:
                 if result:
                     # Record for RL feedback
                     self.pending_trades[market_id] = {
-                        'entry_price': market_data.get('yes_price', 0.5),
+                        'entry_price': yes_price,
                         'entry_time': datetime.now(timezone.utc).isoformat(),
                         'strategy': strategy.__class__.__name__,
                         'rl_action': rl_action,
@@ -267,7 +274,12 @@ class ApexTrader:
     async def _manage_existing_position(self, position: Dict, market_data: Dict):
         """Manage existing position with RL-guided exit decisions"""
         try:
-            current_price = market_data.get('yes_price', 0.5)
+            # STRICT PRICE VALIDATION - Cannot manage position without valid price
+            current_price = market_data.get('yes_price')
+            if current_price is None or current_price == 0:
+                logger.warning(f"[POSITION-SKIP] Missing price data for position management - skipping")
+                return
+            current_price = float(current_price)
             entry_price = position['avg_price']
             market_id = market_data.get('id')
             
@@ -363,9 +375,11 @@ class ApexTrader:
                 positions = await self.position_mgr.get_all_positions()
                 if positions:
                     markets = await self._get_active_markets()
+                    # STRICT PRICE VALIDATION - Only include markets with valid prices
                     market_prices = {
-                        m['id']: m.get('yes_price', 0.5) 
+                        m['id']: float(m['yes_price']) 
                         for m in markets
+                        if m.get('yes_price') is not None and m.get('yes_price') != 0
                     }
                     await self.position_mgr.update_positions(market_prices)
                 
