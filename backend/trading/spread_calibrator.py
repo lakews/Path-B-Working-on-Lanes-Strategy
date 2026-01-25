@@ -196,7 +196,14 @@ class SpreadCalibrator:
         """Convenience method to get optimal spread for a market"""
         try:
             market_id = market_data.get('id')
-            price = market_data.get('yes_price', 0.5)
+            price = market_data.get('yes_price')
+            
+            # STRICT: Reject if no valid price
+            if price is None or price == 0:
+                logger.warning(f"[SPREAD] No valid price for {market_id} - using base spread")
+                return self.base_spread
+            
+            price = float(price)
             liquidity = market_data.get('liquidity', 0)
             volume = market_data.get('volume', 0)
             
