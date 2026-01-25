@@ -1853,9 +1853,10 @@ class PaperTrader:
             if should_exit:
                 tp_str = f"{take_profit_threshold:.1%}" if take_profit_threshold else "None"
                 sl_str = f"{stop_loss_threshold:.1%}" if stop_loss_threshold else "None"
+                display_entry_price = position.get('entry_price', yes_entry_price)
                 logger.info(f"📤 EXIT: {market_id[:16]} | Reason: {exit_reason} | Mode: {exit_mode}")
                 logger.debug(f"  Params: TP={tp_str}, SL={sl_str}, MaxHrs={max_hours}")
-                logger.debug(f"  Position: {side} @ ${entry_price:.4f} -> ${current_price:.4f} | P&L: ${unrealized_pnl:.2f} ({pnl_pct:.2%})")
+                logger.debug(f"  Position: {side} @ ${display_entry_price:.4f} -> ${current_price:.4f} | P&L: ${unrealized_pnl:.2f} ({pnl_pct:.2%})")
                 await self._execute_paper_exit(market_id, market_data, exit_reason)
                 
         except Exception as e:
