@@ -1268,13 +1268,13 @@ const Configuration = () => {
                 onChange={(e) => setConfig({...config, max_open_positions: parseInt(e.target.value)})} 
                 className="flex-1 h-2 bg-white/10 rounded-lg" 
                 min="10" 
-                max="200" 
+                max="1000" 
                 step="10" 
               />
-              <span className="text-white font-bold text-xl w-16 text-right">{config.max_open_positions || 50}</span>
+              <span className="text-white font-bold text-xl w-20 text-right">{config.max_open_positions || 50}</span>
             </div>
-            <div className="grid grid-cols-5 gap-2 mt-4">
-              {[20, 50, 100, 150, 200].map((val) => (
+            <div className="grid grid-cols-6 gap-2 mt-4">
+              {[25, 50, 100, 250, 500, 1000].map((val) => (
                 <button 
                   key={val} 
                   onClick={() => setConfig({...config, max_open_positions: val})} 
