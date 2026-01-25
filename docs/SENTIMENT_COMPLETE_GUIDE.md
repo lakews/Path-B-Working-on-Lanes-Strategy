@@ -889,7 +889,7 @@ Let's trace through the entire sentiment pipeline with realistic values.
 │  ╠═══════════════════════════════════════════════════════════════════════╣  │
 │  ║  Market:    "Will Bitcoin reach $100,000 by December 2026?"          ║  │
 │  ║  Side:      YES (BUY)                                                 ║  │
-│  ║  Size:      $400                                                      ║  │
+│  ║  Size:      $204                                                      ║  │
 │  ║  Price:     0.35                                                      ║  │
 │  ║  Strategy:  alpha_directional                                         ║  │
 │  ║  Sentiment: 0.627 (BULLISH)                                          ║  │
