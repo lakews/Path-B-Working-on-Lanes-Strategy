@@ -876,10 +876,11 @@ Let's trace through the entire sentiment pipeline with realistic values.
 │  └─ SELECTED: "alpha_directional" (default for bullish)                     │
 │                                                                              │
 │  POSITION SIZING (Polymarket Sizer):                                         │
-│  ├─ base_size: $500 (from capital deployment %)                             │
-│  ├─ kelly_adjustment: 0.8 (based on edge)                                   │
+│  ├─ deployed_capital: $10K × 80% = $8,000                                   │
+│  ├─ max_position: $8,000 × 3% = $240                                        │
+│  ├─ kelly_adjustment: 0.85 (based on edge)                                  │
 │  ├─ liquidity_clamp: 1.0 (high liquidity)                                   │
-│  └─ final_size: $400                                                        │
+│  └─ final_size: $240 × 0.85 = $204                                          │
 │                                                                              │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
