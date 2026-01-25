@@ -365,6 +365,7 @@ class RealTimeMarketService:
         """Get service statistics."""
         return {
             'running': self._running,
+            'token_mapping_ready': self._token_mapping_ready.is_set(),
             'markets_cached': len(self._market_cache),
             'tokens_subscribed': len(self._subscribed_tokens),
             'tokens_mapped': len(self._token_outcome),
@@ -372,6 +373,8 @@ class RealTimeMarketService:
             'prices_cached': len(self._price_cache),
             'ws_updates': self._ws_updates,
             'rest_fetches': self._rest_fetches,
+            'dropped_updates': self._dropped_updates,
+            'pending_updates': len(self._pending_price_updates),
             'last_discovery': self._last_discovery_time.isoformat() if self._last_discovery_time else None,
             'websocket': self.ws_manager.get_stats() if self.ws_manager else None,
         }
