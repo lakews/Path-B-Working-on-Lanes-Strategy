@@ -140,6 +140,20 @@ class RealTimeMarketService:
     async def _on_price_update(self, data: Dict):
         """Handle real-time price update from WebSocket.
         
+        If token mapping isn't ready yet, queues the update for later processing.
+        Otherwise, processes immediately with correct YES/NO token identification.
+        """
+        # Queue updates if mapping isn't ready yet
+        if not self._token_mapping_ready.is_set():
+            self._pending_price_updates.append(data)
+            self._dropped_updates += 1
+            return
+        
+        await self._process_price_update(data)
+    
+    async def _process_price_update(self, data: Dict):
+        """Process a price update with token mapping.
+        
         Correctly identifies whether the price update is for a YES or NO token
         and updates the market's yes_price accordingly.
         """
@@ -157,7 +171,14 @@ class RealTimeMarketService:
         outcome = self._token_outcome.get(token_id)
         market_id = self._token_to_market.get(token_id)
         
-        if not market_id or market_id not in self._market_cache:
+        if not market_id:
+            # Token not in our mapping - might be a new token or untracked market
+            # Log at debug level to avoid spam
+            logger.debug(f"Price update for unmapped token: {token_id[:20]}...")
+            return
+            
+        if market_id not in self._market_cache:
+            logger.debug(f"Market not in cache: {market_id[:16]}")
             return
             
         market = self._market_cache[market_id]
@@ -178,8 +199,10 @@ class RealTimeMarketService:
             market['no_price'] = price
             market['price_source'] = 'websocket_no'
         else:
-            # Unknown token outcome - log warning and skip
-            logger.warning(f"Unknown token outcome for {token_id[:20]}... in market {market_id[:16]}")
+            # Token exists in token_to_market but not in token_outcome
+            # This shouldn't happen after proper initialization
+            logger.warning(f"Token {token_id[:20]}... mapped to market but missing outcome. "
+                          f"Token outcome map size: {len(self._token_outcome)}")
             return
             
         market['last_ws_update'] = datetime.now(timezone.utc).isoformat()
