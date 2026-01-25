@@ -1772,11 +1772,40 @@ class PaperTrader:
             strategy = position.get('strategy', 'arbitrage')
             asset_class = position.get('asset_class', 'unknown')
             
+            # SPREAD-AWARE EXIT PRICING:
+            # When entering at the ask (paying spread), we need to account for selling at the bid
+            # The midpoint price from API doesn't reflect actual exit price
+            # Use a spread adjustment to make P&L more realistic
+            order_book = market_data.get('order_book', {})
+            bids = order_book.get('bids', [])
+            asks = order_book.get('asks', [])
+            
+            if bids and asks:
+                # We have orderbook - use bid for NO exits, ask for YES exits
+                best_bid = float(bids[0]['price'])
+                best_ask = float(asks[0]['price'])
+                if side == 'YES':
+                    # Selling YES = hitting bid
+                    exit_yes_price = best_bid
+                else:
+                    # Selling NO = buying YES = hitting ask
+                    exit_yes_price = best_ask
+                logger.debug(f"[EXIT] Using orderbook price: bid={best_bid}, ask={best_ask}, exit_yes={exit_yes_price}")
+            else:
+                # No orderbook - use midpoint but apply conservative spread estimate
+                # This prevents immediate stop losses from wide spreads
+                spread_estimate = 0.02  # Assume 2% spread for conservative P&L
+                if side == 'YES':
+                    exit_yes_price = current_price - (spread_estimate / 2)  # Sell at bid (lower)
+                else:
+                    exit_yes_price = current_price + (spread_estimate / 2)  # Buy at ask (higher)
+                exit_yes_price = max(0.001, min(0.999, exit_yes_price))  # Clamp to valid range
+            
             # UPDATE position's current_price for UI display (using the side's actual price)
             if side == 'YES':
-                position['current_price'] = current_price
+                position['current_price'] = exit_yes_price
             else:
-                position['current_price'] = 1 - current_price  # NO price for display
+                position['current_price'] = 1 - exit_yes_price  # NO price for display
             
             # Get time to expiry
             expiry_info = self._calculate_time_to_expiry(market_data)
