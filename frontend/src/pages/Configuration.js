@@ -36,7 +36,7 @@ const Configuration = () => {
     min_liquidity: 100,
     max_liquidity: 1000000,
     min_volume_24h: 1000,
-    max_spread: 0.05,
+    max_spread: 0.99,
     max_open_positions: 50,
     stuck_price_multiplier: 2.0,
     enabled_asset_classes: ['finance', 'politics', 'sports', 'crypto', 'entertainment', 'science'],
