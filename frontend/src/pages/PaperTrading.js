@@ -2109,6 +2109,11 @@ const PaperTrading = () => {
   // Sorting state for trades table
   const [tradeSort, setTradeSort] = useState({ key: 'timestamp', direction: 'desc' });
 
+  // Column resize handler
+  const handleColumnResize = (columnKey, newWidth) => {
+    setColumnWidths(prev => ({ ...prev, [columnKey]: newWidth }));
+  };
+
   // Sort handler
   const handleTradeSort = (key) => {
     setTradeSort(prev => ({
