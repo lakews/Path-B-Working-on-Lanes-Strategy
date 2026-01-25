@@ -685,31 +685,101 @@ Fast sentiment estimation when LLM is disabled.
 
 **File:** `/app/backend/ml/enhanced_sentiment.py:370-404`
 
-### Weighted Average:
-```python
-poly_weight = polymarket_confidence * 0.30    # Max 30%
-llm_weight = llm_confidence * 0.35            # Max 35%
-corr_weight = correlation_strength * 0.15     # Max 15%
-github_weight = github_confidence * 0.20      # Max 20%
+### FINAL COMBINATION FLOWCHART
 
-total_weight = poly_weight + llm_weight + corr_weight + github_weight
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                      FINAL SENTIMENT COMBINATION                                  ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
 
-combined_sentiment = (
-    polymarket_sentiment * poly_weight +
-    llm_sentiment * llm_weight +
-    correlation_sentiment * corr_weight +
-    github_sentiment * github_weight
-) / total_weight
-
-combined_confidence = min(0.95, total_weight)
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         ALL SENTIMENT SOURCES                                    │
+├──────────────────┬──────────────────┬──────────────────┬────────────────────────┤
+│ POLYMARKET       │ LLM              │ CORRELATION      │ GITHUB (if applicable)│
+│ sentiment: 0.62  │ sentiment: 0.65  │ sentiment: 0.58  │ sentiment: 0.70       │
+│ confidence: 0.7  │ confidence: 0.6  │ strength: 0.4    │ confidence: 0.5       │
+│ weight: 30%      │ weight: 35%      │ weight: 15%      │ weight: 20%           │
+└────────┬─────────┴────────┬─────────┴────────┬─────────┴──────────┬─────────────┘
+         │                  │                  │                    │
+         ▼                  ▼                  ▼                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    CALCULATE EFFECTIVE WEIGHTS                                   │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ poly_weight = polymarket_confidence × 0.30 = 0.7 × 0.30 = 0.21                  │
+│ llm_weight  = llm_confidence × 0.35        = 0.6 × 0.35 = 0.21                  │
+│ corr_weight = correlation_strength × 0.15  = 0.4 × 0.15 = 0.06                  │
+│ git_weight  = github_confidence × 0.20     = 0.5 × 0.20 = 0.10                  │
+│                                                                                  │
+│ total_weight = 0.21 + 0.21 + 0.06 + 0.10 = 0.58                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    WEIGHTED AVERAGE CALCULATION                                  │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│ combined_sentiment = (                                                           │
+│     polymarket_sentiment × poly_weight  +                                        │
+│     llm_sentiment × llm_weight          +                                        │
+│     correlation_sentiment × corr_weight +                                        │
+│     github_sentiment × git_weight                                                │
+│ ) / total_weight                                                                 │
+│                                                                                  │
+│ = (0.62×0.21 + 0.65×0.21 + 0.58×0.06 + 0.70×0.10) / 0.58                        │
+│ = (0.1302 + 0.1365 + 0.0348 + 0.0700) / 0.58                                    │
+│ = 0.3715 / 0.58                                                                  │
+│ = 0.640                                                                          │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    CONFIDENCE CALCULATION                                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ combined_confidence = min(0.95, total_weight)                                    │
+│                     = min(0.95, 0.58)                                            │
+│                     = 0.58                                                       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    FALLBACK (No External Signals)                                │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ IF total_weight == 0:                                                            │
+│     combined_sentiment = yes_price    // Use market price                        │
+│     combined_confidence = 0.1         // Very low confidence                     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+                    ┌────────────────────────────────┐
+                    │      FINAL OUTPUT              │
+                    ├────────────────────────────────┤
+                    │ combined_sentiment: 0.640      │
+                    │ combined_confidence: 0.58      │
+                    │ sources_used: ['polymarket',   │
+                    │   'llm', 'correlation',        │
+                    │   'github']                    │
+                    │ interpretation: "BULLISH"      │
+                    └────────────────────────────────┘
 ```
 
-### Fallback (No External Signals):
-```python
-if total_weight == 0:
-    combined_sentiment = yes_price  # Use market price
-    combined_confidence = 0.1       # Low confidence
-```
+### Weight Summary Table:
+
+| Source | Max Weight | Effective Weight Formula |
+|--------|------------|--------------------------|
+| Polymarket Native | 30% | `polymarket_confidence × 0.30` |
+| LLM Analysis | 35% | `llm_confidence × 0.35` |
+| Cross-Market | 15% | `correlation_strength × 0.15` |
+| GitHub | 20% | `github_confidence × 0.20` |
+
+### Example Scenarios:
+
+| Scenario | Poly | LLM | Corr | GitHub | Combined |
+|----------|------|-----|------|--------|----------|
+| All sources agree bullish | 0.70 | 0.75 | 0.65 | 0.80 | ~0.72 |
+| LLM disagrees (bearish) | 0.65 | 0.30 | 0.60 | 0.55 | ~0.50 |
+| Only Polymarket available | 0.60 | N/A | N/A | N/A | 0.60 |
+| High confidence LLM | 0.55 | 0.80 (high conf) | 0.50 | N/A | ~0.70 |
 
 ---
 
