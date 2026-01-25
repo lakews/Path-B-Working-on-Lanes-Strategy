@@ -706,11 +706,18 @@ class PaperTrader:
             reconstructed = 0
             for entry in entries:
                 market_id = entry.get("market_id")
+                entry_price = entry.get("entry_price")
+                
+                # STRICT VALIDATION: Skip entries without valid entry_price
+                if entry_price is None or entry_price == 0:
+                    logger.warning(f"[RECONSTRUCT-SKIP] Entry {market_id[:16] if market_id else 'unknown'} has no valid entry_price - skipping")
+                    continue
+                
                 if market_id and market_id not in closed_markets and market_id not in self.paper_positions:
                     position = {
                         "market_id": market_id,
                         "market_question": entry.get("market_question", "Unknown"),
-                        "entry_price": entry.get("entry_price", 0.5),
+                        "entry_price": float(entry_price),
                         "side": entry.get("side", "NO"),
                         "size": entry.get("size", 0),
                         "shares": entry.get("shares", 0),
