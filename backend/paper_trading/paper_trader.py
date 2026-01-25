@@ -2849,10 +2849,18 @@ class PaperTrader:
         sharp_alignment = signals.get('sharp_alignment', 0.5)
         price_uncertainty = signals.get('price_uncertainty', 0.5)
         
-        # Get price from market data
-        yes_price = 0.5
+        # Get price from market data - REQUIRE REAL DATA for strategy selection
+        yes_price = None
         if market_data:
-            yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+            yes_price = market_data.get('yes_price')
+        
+        if yes_price is None or yes_price == 0:
+            # No valid price - default to arbitrage (least price-dependent)
+            if 'arbitrage' in self.enabled_strategies:
+                return 'arbitrage'
+            return self.enabled_strategies[0] if self.enabled_strategies else None
+        
+        yes_price = float(yes_price)
         
         # Strategy selection based on ACTUAL signals - balanced distribution
         # Uses configurable thresholds (loaded from DB config)
