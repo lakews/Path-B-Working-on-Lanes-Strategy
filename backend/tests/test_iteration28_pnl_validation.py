@@ -211,7 +211,10 @@ class TestPaperTradingSession:
             return
         
         assert response.status_code == 200
-        trades = response.json()
+        data = response.json()
+        
+        # Handle both list and dict responses
+        trades = data.get('trades', data) if isinstance(data, dict) else data
         
         if not trades:
             print("⚠️ No trades generated yet")
@@ -222,7 +225,7 @@ class TestPaperTradingSession:
         extreme_pnl_count = 0
         reasonable_pnl_count = 0
         
-        for trade in trades[:20]:  # Check first 20 trades
+        for trade in list(trades)[:20]:  # Check first 20 trades
             pnl = trade.get('pnl', 0)
             pnl_pct = trade.get('pnl_pct', 0)
             entry_price = trade.get('entry_price', 0)
@@ -258,7 +261,10 @@ class TestPaperTradingSession:
             return
         
         assert response.status_code == 200
-        trades = response.json()
+        data = response.json()
+        
+        # Handle both list and dict responses
+        trades = data.get('trades', data) if isinstance(data, dict) else data
         
         if not trades:
             print("⚠️ No trades generated yet")
