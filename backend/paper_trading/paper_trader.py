@@ -1968,7 +1968,7 @@ class PaperTrader:
                 spread = best_ask - best_bid
                 
                 # Get max spread from config (default to 0.99 for wide tolerance)
-                max_spread_config = self.config.get('max_spread', 0.99)
+                max_spread_config = getattr(self, 'max_spread', 0.99)
                 
                 # Validate spread is within configured tolerance
                 if spread <= 0 or spread > max_spread_config:
