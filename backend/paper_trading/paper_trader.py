@@ -1873,9 +1873,29 @@ class PaperTrader:
                 logger.warning(f"[ENTRY-SKIP] Already have position in {market_id[:16]}")
                 return
             
+            # ============================================
+            # STRICT PRICE VALIDATION - NO FALLBACKS
+            # ============================================
+            # Get current price - REJECT if not available
+            current_price = market_data.get('yes_price')
+            if current_price is None or current_price == 0:
+                logger.warning(f"[ENTRY-REJECT] No valid yes_price for {market_id[:16]} - skipping trade")
+                return
+            
+            current_price = float(current_price)
+            
+            # Check for suspicious default prices (likely no real data)
+            if abs(current_price - 0.5) < 0.02:
+                # Price is suspiciously close to 0.5 - check if we have real orderbook
+                order_book = market_data.get('order_book', {})
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
+                if not bids or not asks:
+                    logger.warning(f"[ENTRY-REJECT] Price {current_price:.4f} near 0.5 and no orderbook for {market_id[:16]} - likely default price")
+                    return
+            
             logger.info(f"[ENTRY-EXEC] Opening {strategy} {side} ${size:.2f} in {market_id[:16]}")
             
-            current_price = market_data.get('yes_price', 0.5)
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
             # Extract edge from sizing breakdown for maker execution
@@ -1888,13 +1908,24 @@ class PaperTrader:
             actual_entry_price = current_price
             
             if self.use_maker_execution:
-                # Pre-check if spread makes trade worthwhile
+                # Get orderbook - REJECT if not available
                 order_book = market_data.get('order_book', {})
                 bids = order_book.get('bids', [])
                 asks = order_book.get('asks', [])
-                best_bid = float(bids[0]['price']) if bids else current_price - 0.02
-                best_ask = float(asks[0]['price']) if asks else current_price + 0.02
+                
+                # STRICT: Require real orderbook data - NO FALLBACKS
+                if not bids or not asks:
+                    logger.warning(f"[ENTRY-REJECT] No orderbook data for {market_id[:16]} - cannot execute maker order")
+                    return
+                
+                best_bid = float(bids[0]['price'])
+                best_ask = float(asks[0]['price'])
                 spread = best_ask - best_bid
+                
+                # Validate spread is reasonable
+                if spread <= 0 or spread > 0.5:
+                    logger.warning(f"[ENTRY-REJECT] Invalid spread {spread:.4f} for {market_id[:16]}")
+                    return
                 
                 should_trade, reason = self.maker_executor.should_trade_given_spread(edge, spread)
                 
