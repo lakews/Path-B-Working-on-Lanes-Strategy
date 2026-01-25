@@ -14,6 +14,31 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 25, 2026)
 
+### January 25, 2026 - Session 31 (Price Fallback Removal)
+
+- ✅ **CRITICAL FIX: Remove ALL 0.5 Price Fallbacks**
+  - **Problem**: Trades were being executed with entry prices suspiciously close to 0.5 when real market data was unavailable, due to fallback logic using default values
+  - **Root Cause**: Multiple locations in the codebase used `market_data.get('yes_price', 0.5)` pattern, which inserted a fake 0.5 price when real data was missing
+  - **Solution**: Replaced all fallback logic with strict rejection - the system now REJECTS trades when price data is unavailable instead of using defaults
+  - **Pattern Used**: `if yes_price is None or yes_price == 0: return None` (or raise exception)
+  - **Files Modified**:
+    - `/app/backend/trading_bot.py` - `_execute_with_rl`, `_manage_existing_position`
+    - `/app/backend/strategies/delta_neutral.py` - `execute_strategy`
+    - `/app/backend/strategies/volatility_exploitation.py` - `execute_strategy`
+    - `/app/backend/strategies/alpha_directional.py` - `execute_strategy`
+    - `/app/backend/strategies/arbitrage.py` - `execute_strategy`, `_detect_arbitrage`
+    - `/app/backend/ml/kelly_sharpe_optimizer.py` - `calculate_position_size`
+    - `/app/backend/ml/signal_fusion.py` - `_determine_action`, `_heuristic_sentiment`
+    - `/app/backend/ml/adaptive_position_sizer.py` - `calculate_spread_adjustment`, `calculate_liquidity_multiplier`
+    - `/app/backend/ml/rl_engine.py` - `_build_state`
+    - `/app/backend/services/market_data_service.py` - `_normalize_market_data`
+    - `/app/backend/data/polymarket_api.py` - `_normalize_gamma_market`
+    - `/app/backend/data/historical_collector.py` - `store_market_data`
+    - `/app/backend/server.py` - `/api/markets` endpoint
+    - `/app/backend/paper_trading/paper_trader.py` - position reconstruction, portfolio state
+  - **Test Report**: `/app/test_reports/iteration_30.json` - 30/30 tests passed
+  - **Impact**: All trades will now use ONLY real market prices; system will reject trades rather than use fake 0.5 prices
+
 ### January 25, 2026 - Session 30 (Live Trading Refactor)
 
 - ✅ **MAJOR FEATURE: Live CLOB Trading Support**
