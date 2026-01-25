@@ -1844,12 +1844,12 @@ class PaperTrader:
             }
             
             # ============================================
-            # CALCULATE UNREALIZED P&L
+            # CALCULATE UNREALIZED P&L (using spread-aware exit price)
             # ============================================
             if side == 'YES':
                 if yes_entry_price > 0:
                     shares = size / yes_entry_price
-                    current_value = shares * current_price
+                    current_value = shares * exit_yes_price  # Use spread-aware exit price
                     unrealized_pnl = current_value - size
                     pnl_pct = unrealized_pnl / size if size > 0 else 0
                 else:
@@ -1857,10 +1857,10 @@ class PaperTrader:
                     unrealized_pnl = 0
             else:
                 no_entry_price = 1 - yes_entry_price
-                no_current_price = 1 - current_price
+                no_exit_price = 1 - exit_yes_price  # Use spread-aware exit price
                 if no_entry_price > 0:
                     shares = size / no_entry_price
-                    current_value = shares * no_current_price
+                    current_value = shares * no_exit_price
                     unrealized_pnl = current_value - size
                     pnl_pct = unrealized_pnl / size if size > 0 else 0
                 else:
