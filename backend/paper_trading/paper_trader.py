@@ -3163,25 +3163,26 @@ class PaperTrader:
                     
                     total_unrealized = 0.0
                     for market_id, position in self.paper_positions.items():
-                        entry_price = position['entry_price']
+                        # Use yes_entry_price for internal calculations (stores the YES price at entry)
+                        yes_entry_price = position.get('yes_entry_price', position['entry_price'])
                         side = position['side']
                         size = position['size']  # USD invested
                         
-                        # Get REAL current price from API (no simulation)
-                        current_price = market_prices.get(market_id, entry_price)
-                        
-                        # Calculate shares owned
-                        shares = size / entry_price if entry_price > 0 else 0
+                        # Get REAL current price from API (no simulation) - this is YES price
+                        current_price = market_prices.get(market_id, yes_entry_price)
                         
                         # Calculate current value and unrealized P&L
                         if side == 'YES':
+                            # YES position: buy at yes_entry_price, value at current_price
+                            shares = size / yes_entry_price if yes_entry_price > 0 else 0
                             current_value = shares * current_price
                             unrealized = current_value - size
                         else:
-                            no_entry = 1 - entry_price
+                            # NO position: buy at (1 - yes_entry_price), value at (1 - current_price)
+                            no_entry = 1 - yes_entry_price
                             no_current = 1 - current_price
-                            no_shares = size / no_entry if no_entry > 0 else 0
-                            current_value = no_shares * no_current
+                            shares = size / no_entry if no_entry > 0 else 0
+                            current_value = shares * no_current
                             unrealized = current_value - size
                         
                         # Update position with current price
