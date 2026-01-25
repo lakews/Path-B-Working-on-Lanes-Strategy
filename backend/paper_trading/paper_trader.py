@@ -3480,25 +3480,40 @@ class PaperTrader:
                     pos_yes_current = 1 - pos_current  # Convert NO price back to YES
                 else:
                     # Fallback: use entry YES price (no change)
-                    pos_yes_current = pos_yes_entry if pos_yes_entry else (1 - pos_entry if pos_entry else 0.5)
+                    pos_yes_current = pos_yes_entry if pos_yes_entry else (1 - pos_entry if pos_entry else None)
             
             if market_data:
-                fresh_yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+                fresh_yes_price = market_data.get('yes_price')
                 
-                price_diff = abs(fresh_yes_price - pos_yes_current) if pos_yes_current else 0
-                
-                if price_diff > 0.1:  # More than 10% price difference - suspicious
-                    logger.warning(f"[CLOSE_ALL] LARGE PRICE DIFF for {market_id[:16]}: "
-                                 f"Fresh YES={fresh_yes_price:.4f}, Computed Position YES={pos_yes_current:.4f}, "
-                                 f"Diff={price_diff:.4f}")
-                    logger.info(f"[CLOSE_ALL] Raw position data: current_price={pos_current}, yes_entry={pos_yes_entry}, side={pos_side}")
-                    # Use position's last known price instead of suspicious fresh price
-                    market_data = {
-                        'yes_price': pos_yes_current,
-                        'id': market_id,
-                        'question': position.get('market_question', 'Unknown')
-                    }
-                    logger.info(f"[CLOSE_ALL] Using computed position YES price: {pos_yes_current:.4f}")
+                # STRICT: Require valid fresh price for closing
+                if fresh_yes_price is None or fresh_yes_price == 0:
+                    logger.warning(f"[CLOSE_ALL] No valid fresh price for {market_id[:16]} - using position's last known price")
+                    # Use position's computed current price
+                    if pos_yes_current is not None:
+                        market_data = {
+                            'yes_price': pos_yes_current,
+                            'id': market_id,
+                            'question': position.get('market_question', 'Unknown')
+                        }
+                    else:
+                        logger.error(f"[CLOSE_ALL] Cannot close {market_id[:16]} - no valid price available")
+                        continue
+                else:
+                    fresh_yes_price = float(fresh_yes_price)
+                    price_diff = abs(fresh_yes_price - pos_yes_current) if pos_yes_current else 0
+                    
+                    if price_diff > 0.1:  # More than 10% price difference - suspicious
+                        logger.warning(f"[CLOSE_ALL] LARGE PRICE DIFF for {market_id[:16]}: "
+                                     f"Fresh YES={fresh_yes_price:.4f}, Computed Position YES={pos_yes_current:.4f}, "
+                                     f"Diff={price_diff:.4f}")
+                        logger.info(f"[CLOSE_ALL] Raw position data: current_price={pos_current}, yes_entry={pos_yes_entry}, side={pos_side}")
+                        # Use position's last known price instead of suspicious fresh price
+                        market_data = {
+                            'yes_price': pos_yes_current,
+                            'id': market_id,
+                            'question': position.get('market_question', 'Unknown')
+                        }
+                        logger.info(f"[CLOSE_ALL] Using computed position YES price: {pos_yes_current:.4f}")
             else:
                 # Market not found in fresh fetch - use position's last known price
                 logger.warning(f"[CLOSE_ALL] Market {market_id[:16]} not in fresh fetch - using last known price")
