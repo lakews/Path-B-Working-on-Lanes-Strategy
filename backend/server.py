@@ -844,9 +844,15 @@ async def get_markets(limit: int = 50, category: str = None):
                 if raw_markets:
                     markets = []
                     for m in raw_markets:
-                        # Prices are already normalized by the API
-                        yes_price = float(m.get('yes_price', 0.5))
-                        no_price = float(m.get('no_price', 0.5))
+                        # STRICT PRICE VALIDATION - Skip markets without valid prices
+                        raw_yes = m.get('yes_price')
+                        raw_no = m.get('no_price')
+                        
+                        if raw_yes is None or raw_yes == 0:
+                            continue  # Skip markets without valid price data
+                        
+                        yes_price = float(raw_yes)
+                        no_price = float(raw_no) if raw_no is not None and raw_no != 0 else (1 - yes_price)
                         
                         # Get category from normalized data or categorize
                         question = m.get('question', '')
