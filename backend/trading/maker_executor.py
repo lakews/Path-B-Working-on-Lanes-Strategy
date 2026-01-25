@@ -327,21 +327,24 @@ class MakerOrderExecutor:
         token_id: Optional[str]
     ) -> Optional[OrderBook]:
         """
-        Fetch fresh orderbook data.
+        Fetch fresh orderbook data with retry logic.
         
-        For live trading, always fetches from CLOB API.
-        For paper trading, uses market_data if available, otherwise fetches.
+        STRICT MODE: No synthetic/fallback prices. If we can't get real data, reject the trade.
+        
+        Retry flow:
+        - Attempt 1: Fetch orderbook → fails → wait 0.5s
+        - Attempt 2: Fetch orderbook → fails → wait 1.0s  
+        - Attempt 3: Fetch orderbook → fails → REJECT trade
+        
+        Returns None if orderbook cannot be fetched, triggering trade rejection.
         """
-        # In live mode, always fetch fresh
-        if self.mode == ExecutionMode.LIVE and self._clob_client and token_id:
-            return await self._clob_client.get_orderbook(token_id)
-        
-        # In paper mode, try to use existing data first
+        # Try to use existing orderbook data from market_data (if recently fetched)
         existing_book = market_data.get('order_book', {})
         bids = existing_book.get('bids', [])
         asks = existing_book.get('asks', [])
         
         if bids and asks:
+            # Existing data available - use it
             return OrderBook(
                 token_id=token_id or '',
                 bids=bids,
@@ -349,22 +352,30 @@ class MakerOrderExecutor:
                 timestamp=datetime.now(timezone.utc)
             )
         
-        # No existing data - fetch from API
+        # No existing data - must fetch from CLOB API
+        # This applies to BOTH paper and live mode
         if self._clob_client and token_id:
-            return await self._clob_client.get_orderbook(token_id)
-        
-        # Paper mode without orderbook - create synthetic one
-        if self.mode == ExecutionMode.PAPER:
-            current_price = float(market_data.get('yes_price', 0.5) or 0.5)
-            estimated_spread = 0.02
+            # Retry loop with exponential backoff
+            for attempt in range(3):
+                orderbook = await self._clob_client.get_orderbook(token_id, retries=1)
+                
+                if orderbook and orderbook.bids and orderbook.asks:
+                    logger.debug(f"[ORDERBOOK] Fetched on attempt {attempt + 1}: "
+                               f"bid={orderbook.best_bid}, ask={orderbook.best_ask}")
+                    return orderbook
+                
+                # Wait before retry (exponential backoff)
+                if attempt < 2:
+                    wait_time = 0.5 * (attempt + 1)  # 0.5s, 1.0s
+                    logger.debug(f"[ORDERBOOK] Attempt {attempt + 1} failed, waiting {wait_time}s...")
+                    await asyncio.sleep(wait_time)
             
-            return OrderBook(
-                token_id=token_id or '',
-                bids=[{'price': max(0.001, current_price - estimated_spread/2), 'size': 1000}],
-                asks=[{'price': min(0.999, current_price + estimated_spread/2), 'size': 1000}],
-                timestamp=datetime.now(timezone.utc)
-            )
+            logger.warning(f"[ORDERBOOK] Failed to fetch after 3 attempts for token {token_id[:20] if token_id else 'N/A'}...")
+        else:
+            logger.warning(f"[ORDERBOOK] Cannot fetch - no CLOB client or token_id")
         
+        # NO FALLBACK - Return None to trigger trade rejection
+        # This prevents trades based on synthetic/default prices
         return None
     
     async def _try_maker_fill(
