@@ -2271,20 +2271,44 @@ async def get_polymarket_history_stats():
 async def get_realtime_status():
     """
     Get real-time data feed status including WebSocket connection stats.
+    Used by the WebSocket Health Monitor widget on the dashboard.
     """
     try:
         from data.polymarket_websocket import get_websocket_manager
+        from services.realtime_market_service import get_realtime_market_service
         
         ws_manager = get_websocket_manager()
-        stats = ws_manager.get_stats()
+        ws_stats = ws_manager.get_stats()
+        
+        # Get realtime market service stats if available
+        rtm_service = get_realtime_market_service()
+        rtm_stats = rtm_service.get_stats() if rtm_service else {}
         
         return {
-            "websocket": stats,
-            "status": "connected" if stats.get('connected') else "disconnected",
-            "data_freshness": {
-                "last_message": stats.get('last_message'),
-                "messages_received": stats.get('messages_received', 0),
-                "subscribed_markets": stats.get('subscribed_tokens', 0),
+            "status": "connected" if ws_stats.get('connected') else "disconnected",
+            "websocket": {
+                "connected": ws_stats.get('connected', False),
+                "running": ws_stats.get('running', False),
+                "messages_received": ws_stats.get('messages_received', 0),
+                "subscribed_tokens": ws_stats.get('subscribed_tokens', 0),
+                "cached_prices": ws_stats.get('cached_prices', 0),
+                "cached_order_books": ws_stats.get('cached_order_books', 0),
+                "last_message": ws_stats.get('last_message'),
+            },
+            "market_service": {
+                "running": rtm_stats.get('running', False),
+                "token_mapping_ready": rtm_stats.get('token_mapping_ready', False),
+                "markets_cached": rtm_stats.get('markets_cached', 0),
+                "tokens_mapped": rtm_stats.get('tokens_mapped', 0),
+                "yes_prices_cached": rtm_stats.get('yes_prices_cached', 0),
+                "ws_updates_processed": rtm_stats.get('ws_updates', 0),
+                "dropped_updates": rtm_stats.get('dropped_updates', 0),
+                "rest_fetches": rtm_stats.get('rest_fetches', 0),
+                "last_discovery": rtm_stats.get('last_discovery'),
+            },
+            "health": {
+                "is_healthy": ws_stats.get('connected', False) and rtm_stats.get('token_mapping_ready', False),
+                "update_rate": rtm_stats.get('ws_updates', 0),  # Total updates since start
             }
         }
         
