@@ -32,7 +32,7 @@ class StrategyTuner:
                 'stop_loss': [0.006, 0.008, 0.010, 0.012, 0.015],
                 'bank_profit_threshold': [0.001, 0.002, 0.003],
                 'timeout_snapshots': [8, 12, 15, 20],
-                'spread_threshold': [0.012, 0.015, 0.018, 0.020]
+                'spread_threshold': [0.03, 0.05, 0.07]  # Calibrated for real-world 2-6% spreads
             },
             'volatility_exploitation': {
                 'profit_target': [0.02, 0.03, 0.04, 0.05],
@@ -51,7 +51,7 @@ class StrategyTuner:
             'arbitrage': {
                 'profit_target': [0.01, 0.015, 0.02, 0.025],
                 'stop_loss': [0.015, 0.02, 0.025, 0.03],
-                'min_spread': [0.02, 0.025, 0.03],
+                'min_spread': [0.03, 0.05, 0.07],  # Calibrated for real-world 2-6% spreads
                 'position_timeout': [30, 40, 50, 60]
             }
         }
@@ -335,7 +335,7 @@ class StrategyTuner:
         trend = (prices[-1] - prices[-5]) / prices[-5] if prices[-5] > 0 else 0
         
         if strategy == 'delta_neutral':
-            spread_threshold = params.get('spread_threshold', 0.015)
+            spread_threshold = params.get('spread_threshold', 0.05)  # Default 5% for real-world spreads
             return volatility < 0.04 and 0.25 < current < 0.75
         
         elif strategy == 'volatility_exploitation':
@@ -349,7 +349,7 @@ class StrategyTuner:
             return abs(trend) > trend_thresh
         
         elif strategy == 'arbitrage':
-            min_spread = params.get('min_spread', 0.02)
+            min_spread = params.get('min_spread', 0.05)  # Default 5% for real-world spreads
             return volatility < 0.05
         
         return False

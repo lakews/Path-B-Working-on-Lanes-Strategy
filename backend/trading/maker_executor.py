@@ -712,10 +712,11 @@ class MakerOrderExecutor:
         if edge <= 0:
             return False, "no_edge"
             
-        # If spread eats more than 50% of edge, probably not worth it
-        if spread > edge * 0.5:
+        # Allow trading when edge covers spread (breakeven+), not 2x coverage
+        # Real-world Polymarket spreads are 2-6%, demanding 2x was too restrictive
+        if spread > edge * 1.0:
             if edge < self.config['min_edge_for_aggressive_taker']:
-                return False, f"spread_too_wide: spread={spread:.4f} > edge*0.5={edge*0.5:.4f}"
+                return False, f"spread_too_wide: spread={spread:.4f} > edge={edge:.4f}"
         
         return True, "ok"
 

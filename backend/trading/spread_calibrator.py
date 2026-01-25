@@ -16,7 +16,7 @@ class SpreadCalibrator:
         self.db = get_db()
         self.base_spread = 0.02  # 2% base spread
         self.min_spread = 0.005  # 0.5% minimum
-        self.max_spread = 0.15   # 15% maximum
+        self.max_spread = 0.25   # 25% maximum - calibrated for real-world Polymarket liquidity
         self.volatility_threshold = 0.5
         self.liquidity_threshold = 10000
         

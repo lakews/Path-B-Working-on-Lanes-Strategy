@@ -148,7 +148,7 @@ class PaperTrader:
         self.min_liquidity = 100.0
         self.max_liquidity = 1000000.0  # NEW: Max liquidity filter
         self.min_volume_24h = 1000.0
-        self.max_spread = 0.20  # Default to 20% - wider spreads are too risky
+        self.max_spread = 0.25  # Default to 25% - calibrated for real-world Polymarket liquidity (2-6c spreads)
         self.max_open_positions = 50
         self.stuck_price_multiplier = 2.0  # Volume multiplier for stuck prices (0.0, 0.5, 1.0)
         

@@ -191,8 +191,8 @@ class AdaptivePositionSizer:
         max_from_outstanding = outstanding * 0.05
         outstanding_mult = min(1.0, max_from_outstanding / max_position_usd) if max_position_usd > 0 else 1.0
         
-        # Spread penalty (wider spread = smaller position)
-        spread_mult = max(0.3, 1.0 - (spread * 5))  # 0.02 spread = 0.9 mult, 0.1 spread = 0.5 mult
+        # Spread penalty (wider spread = smaller position) - reduced penalty for real-world spreads
+        spread_mult = max(0.3, 1.0 - (spread * 2))  # 0.05 spread = 0.9 mult, 0.25 spread = 0.5 mult
         
         # Combine factors
         liquidity_mult = min(volume_mult, outstanding_mult) * spread_mult
