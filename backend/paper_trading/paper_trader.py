@@ -1156,6 +1156,7 @@ class PaperTrader:
             # Fetch order book for liquidity clamp (if Polymarket sizer enabled)
             # Note: This is optional - the sizer works without it but is more accurate with it
             order_book_asks = []
+            order_book_data = {}  # Full orderbook for maker execution
             if self.use_polymarket_sizer:
                 try:
                     # Get token ID from market data
@@ -1164,8 +1165,12 @@ class PaperTrader:
                         # Import and use the API to fetch order book
                         from data.polymarket_api import PolymarketAPI
                         async with PolymarketAPI() as api:
-                            order_book = await api.get_order_book(token_ids[0])
-                            order_book_asks = order_book.get('asks', [])
+                            order_book_data = await api.get_order_book(token_ids[0])
+                            order_book_asks = order_book_data.get('asks', [])
+                            # Store full orderbook in market_data for maker execution
+                            if order_book_data.get('bids') and order_book_data.get('asks'):
+                                market_data['order_book'] = order_book_data
+                                logger.debug(f"[ORDERBOOK] Fetched {len(order_book_data.get('bids', []))} bids, {len(order_book_data.get('asks', []))} asks for {market_id[:16]}")
                 except Exception as e:
                     logger.debug(f"Could not fetch order book: {e}")
             
