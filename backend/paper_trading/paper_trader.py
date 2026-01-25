@@ -766,8 +766,17 @@ class PaperTrader:
                     if not market_data:
                         continue
                     
-                    current_price = float(market_data.get('yes_price', 0.5) or 0.5)
-                    entry_price = position.get('entry_price', 0.5)
+                    # Get current price - skip position monitoring if no valid price
+                    current_price = market_data.get('yes_price')
+                    if current_price is None or current_price == 0:
+                        logger.debug(f"[EMERGENCY SL] No price data for {market_id[:16]} - skipping")
+                        continue
+                    
+                    current_price = float(current_price)
+                    entry_price = position.get('entry_price', 0)
+                    if entry_price == 0:
+                        continue
+                        
                     side = position.get('side', 'NO')
                     size = position.get('size', 0)
                     
