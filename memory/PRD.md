@@ -14,7 +14,36 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 25, 2026)
 
-### January 25, 2026 - Session 30 (WebSocket Fix + Health Monitor)
+### January 25, 2026 - Session 30 (Live Trading Refactor)
+
+- ✅ **MAJOR FEATURE: Live CLOB Trading Support**
+  - **What**: Refactored `maker_executor.py` to support both paper trading (simulation) and live trading (real CLOB orders)
+  - **Files Created**:
+    - `/app/backend/trading/clob_client.py` - Unified CLOB API wrapper
+    - `/app/docs/LIVE_TRADING_SETUP.md` - Setup guide for live trading
+  - **Files Modified**: `/app/backend/trading/maker_executor.py` (complete rewrite)
+  - **Key Features**:
+    1. **Dual Mode Support**: `ExecutionMode.PAPER` (simulation) and `ExecutionMode.LIVE` (real orders)
+    2. **Fresh Orderbook Requirement**: Always fetches fresh orderbook before trades
+    3. **Staleness Check**: Rejects orderbook data >2 seconds old
+    4. **Real CLOB API**: Uses `py-clob-client` for order placement/monitoring/cancellation
+    5. **Order Monitoring**: Polls order status until filled/cancelled/timeout
+    6. **Slippage Protection**: Max 1% taker, 0.5% maker slippage
+    7. **Circuit Breaker**: Trips after 5 consecutive failures, 60s cooldown
+    8. **Liquidity Check**: Requires minimum $100 orderbook depth
+  - **To Enable Live Trading**:
+    1. Set `POLYMARKET_PRIVATE_KEY` environment variable
+    2. Initialize executor with `ExecutionMode.LIVE`
+    3. Ensure wallet has USDC on Polygon
+  - **Dependencies Added**: `py-clob-client`, `eth-account`, `eth-abi`
+
+- ✅ **WebSocket Fix + Health Monitor** (Earlier in session)
+  - Fixed WebSocket YES/NO token mapping race condition
+  - Fixed price fallback for illiquid markets
+  - Added WebSocket Health Monitor widget to dashboard
+  - See detailed notes below
+
+### WebSocket Fixes (Earlier in Session 30)
 
 - ✅ **CRITICAL FIX: WebSocket YES/NO Token Mapping Race Condition**
   - **Problem**: WebSocket price updates were processed BEFORE token-to-outcome mapping was populated, causing "Unknown token outcome" errors and incorrect prices (e.g., 0.5 when real price was 0.0065), leading to unrealistic P&L (+94% in seconds)
