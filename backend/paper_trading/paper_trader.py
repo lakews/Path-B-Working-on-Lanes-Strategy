@@ -1745,7 +1745,14 @@ class PaperTrader:
             if not position:
                 return
             
-            current_price = float(market_data.get('yes_price', 0.5) or 0.5)
+            # Get current price - REJECT EXIT if no valid price
+            current_price = market_data.get('yes_price')
+            if current_price is None or current_price == 0:
+                logger.warning(f"[EXIT-SKIP] No valid price for {market_id[:16]} - cannot exit safely")
+                return
+            
+            current_price = float(current_price)
+            
             # Use yes_entry_price for internal calculations (stores the YES price at entry)
             yes_entry_price = position.get('yes_entry_price', position['entry_price'])
             side = position['side']
