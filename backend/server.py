@@ -2033,7 +2033,7 @@ async def get_enhanced_sentiment(market_id: str):
         return {
             "market_id": market_id,
             "question": market_data.get('question', ''),
-            "current_price": market_data.get('yes_price', 0.5),
+            "current_price": market_data.get('yes_price'),  # Let frontend handle None
             "sentiment": result
         }
         

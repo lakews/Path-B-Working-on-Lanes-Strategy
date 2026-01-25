@@ -34,8 +34,14 @@ class MultiMarketArbitrageStrategy:
             market_id = market_data.get('id')
             question = market_data.get('question', '')
             category = market_data.get('category')
-            yes_price = market_data.get('yes_price', 0.5)
             liquidity = market_data.get('liquidity', 0)
+            
+            # STRICT PRICE VALIDATION
+            yes_price = market_data.get('yes_price')
+            if yes_price is None or yes_price == 0:
+                logger.warning(f"[ARBITRAGE-REJECT] Missing price for {market_id[:16] if market_id else 'unknown'}")
+                return None
+            yes_price = float(yes_price)
             
             # Only consider liquid markets
             if liquidity < self.min_liquidity:
@@ -140,8 +146,16 @@ class MultiMarketArbitrageStrategy:
     ) -> Optional[Dict]:
         """Detect arbitrage opportunity between two markets"""
         try:
-            price1 = market1.get('yes_price', 0.5)
-            price2 = market2.get('yes_price', 0.5)
+            # STRICT PRICE VALIDATION
+            price1 = market1.get('yes_price')
+            price2 = market2.get('yes_price')
+            
+            if price1 is None or price1 == 0 or price2 is None or price2 == 0:
+                logger.debug("[ARBITRAGE] Missing price in one or both markets for comparison")
+                return None
+            
+            price1 = float(price1)
+            price2 = float(price2)
             
             # Calculate price difference
             price_diff = abs(price1 - price2)

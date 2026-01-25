@@ -32,7 +32,13 @@ class AlphaDirectionalStrategy:
         """
         try:
             market_id = market_data.get('id')
-            yes_price = market_data.get('yes_price', 0.5)
+            
+            # STRICT PRICE VALIDATION
+            yes_price = market_data.get('yes_price')
+            if yes_price is None or yes_price == 0:
+                logger.warning(f"[ALPHA-REJECT] Missing price for {market_id[:16] if market_id else 'unknown'}")
+                return None
+            yes_price = float(yes_price)
             
             signal = await self.signal_fusion.generate_trading_signal(market_data)
             
