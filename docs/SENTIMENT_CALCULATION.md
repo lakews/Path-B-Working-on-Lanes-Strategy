@@ -410,32 +410,117 @@ Return ONLY a decimal number between 0.00 and 1.00.
 
 Tracks related markets to identify category-wide momentum.
 
-### Market Groups:
-```python
-market_groups = {
-    'crypto': ['bitcoin', 'btc', 'ethereum', 'eth', 'solana'],
-    'trump': ['trump', 'donald', 'maga', 'republican'],
-    'biden': ['biden', 'democrat', 'democratic'],
-    'fed': ['fed', 'interest rate', 'inflation', 'fomc'],
-    'ai': ['ai', 'openai', 'chatgpt', 'google', 'microsoft'],
-    'sports_nba': ['nba', 'basketball', 'lakers', 'celtics'],
-    'sports_nfl': ['nfl', 'football', 'superbowl', 'chiefs'],
-}
+### CORRELATION SENTIMENT FLOWCHART
+
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                       CROSS-MARKET CORRELATION ANALYSIS                           ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              INPUT                                               │
+│  market_id: "btc_100k_dec2026"                                                  │
+│  question: "Will Bitcoin reach $100k by Dec 2026?"                              │
+│  category: "crypto"                                                             │
+│  yes_price: 0.35                                                                │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+                    ┌────────────────────────────────┐
+                    │    IDENTIFY RELATED GROUPS     │
+                    ├────────────────────────────────┤
+                    │ market_groups = {              │
+                    │   'crypto': ['bitcoin', 'btc', │
+                    │     'ethereum', 'eth', 'sol'], │
+                    │   'trump': ['trump', 'donald', │
+                    │     'maga', 'republican'],     │
+                    │   'biden': ['biden', 'democrat'│
+                    │     'democratic'],             │
+                    │   'fed': ['fed', 'interest',   │
+                    │     'inflation', 'fomc'],      │
+                    │   'ai': ['ai', 'openai',       │
+                    │     'chatgpt', 'microsoft'],   │
+                    │   'sports_nba': ['nba',        │
+                    │     'basketball', 'lakers'],   │
+                    │   'sports_nfl': ['nfl',        │
+                    │     'superbowl', 'chiefs'],    │
+                    │ }                              │
+                    │                                │
+                    │ FOR each group:                │
+                    │   IF keyword in question:      │
+                    │     related_groups.add(group)  │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │   TRACK CATEGORY PRICES        │
+                    ├────────────────────────────────┤
+                    │ // Store price history by cat  │
+                    │ category_prices[category]      │
+                    │   [market_id] = yes_price      │
+                    │                                │
+                    │ // Trim to last 100 entries    │
+                    │ per market                     │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │  CALCULATE CATEGORY MOMENTUM   │
+                    ├────────────────────────────────┤
+                    │ price_changes = []             │
+                    │                                │
+                    │ FOR each market in category:   │
+                    │   IF has history > 1:          │
+                    │     change = current - prev    │
+                    │     price_changes.append(chg)  │
+                    │                                │
+                    │ IF len(price_changes) > 0:     │
+                    │   momentum = mean(price_chgs)  │
+                    │ ELSE:                          │
+                    │   momentum = 0                 │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │   CONVERT TO SENTIMENT         │
+                    ├────────────────────────────────┤
+                    │ // Scale momentum to sentiment │
+                    │ raw_sent = 0.5 + (momentum × 5)│
+                    │                                │
+                    │ // Clamp to valid range        │
+                    │ correlation_sent = clamp(      │
+                    │   0.1, 0.9, raw_sent           │
+                    │ )                              │
+                    │                                │
+                    │ // Confidence based on sample  │
+                    │ IF num_markets > 10:           │
+                    │   strength = 0.8               │
+                    │ ELIF num_markets > 5:          │
+                    │   strength = 0.5               │
+                    │ ELSE:                          │
+                    │   strength = 0.2               │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │         OUTPUT                 │
+                    │ correlation_sentiment: 0.1-0.9 │
+                    │ correlation_strength: 0.2-0.8  │
+                    │ category_momentum: -0.1 to 0.1 │
+                    │ related_groups: ['crypto']     │
+                    └────────────────────────────────┘
 ```
 
-### Calculation:
-```python
-# Track price changes across related markets
-for market in same_category_markets:
-    price_changes.append(market.current_price - market.prev_price)
-
-# Average momentum
-category_momentum = np.mean(price_changes)
-
-# Convert to sentiment
-correlation_sentiment = 0.5 + (category_momentum * 5)  # Scale up
-correlation_sentiment = clamp(0.1, 0.9, correlation_sentiment)
-```
+### Market Groups Keywords:
+| Group | Keywords |
+|-------|----------|
+| crypto | bitcoin, btc, ethereum, eth, solana, sol, crypto |
+| trump | trump, donald, maga, republican, gop |
+| biden | biden, democrat, democratic, dnc |
+| fed | fed, interest rate, inflation, fomc, powell |
+| ai | ai, openai, chatgpt, google, microsoft, nvidia |
+| sports_nba | nba, basketball, lakers, celtics, lebron |
+| sports_nfl | nfl, football, superbowl, chiefs, eagles |
 
 ---
 
