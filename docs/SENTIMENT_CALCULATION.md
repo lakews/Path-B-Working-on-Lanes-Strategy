@@ -787,26 +787,77 @@ Fast sentiment estimation when LLM is disabled.
 
 **File:** `/app/backend/paper_trading/paper_trader.py:1096-1113`
 
-### Decision Logic:
-```python
-sentiment = signals.get('sentiment', 0.5)
+### TRADE DECISION FLOWCHART
 
-if sentiment > bullish_sentiment_threshold:  # Default: 0.55
-    side = 'YES'  # Bullish = Buy YES
-    
-elif sentiment < bearish_sentiment_threshold:  # Default: 0.45
-    side = 'NO'   # Bearish = Buy NO
-    
-else:
-    # Neutral - use RL action
-    side = 'YES' if 'BUY' in rl_action else 'NO'
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                       SENTIMENT → TRADE DECISION                                  ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         INPUT FROM SIGNAL FUSION                                 │
+│  sentiment: 0.640                                                               │
+│  confidence: 0.58                                                               │
+│  rl_action: "BUY"                                                               │
+│  rl_confidence: 0.72                                                            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    CONFIGURABLE THRESHOLDS (UI Settings)                         │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│ bullish_sentiment_threshold = 0.55  (default, configurable in UI)               │
+│ bearish_sentiment_threshold = 0.45  (default, configurable in UI)               │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+                    ┌────────────────────────────────┐
+                    │      DECISION LOGIC            │
+                    └───────────────┬────────────────┘
+                                    │
+                ┌───────────────────┼───────────────────┐
+                │                   │                   │
+                ▼                   ▼                   ▼
+    ┌───────────────────┐ ┌───────────────────┐ ┌───────────────────┐
+    │ sentiment > 0.55  │ │ 0.45 ≤ sent ≤ 0.55│ │ sentiment < 0.45  │
+    │                   │ │                   │ │                   │
+    │     BULLISH       │ │     NEUTRAL       │ │     BEARISH       │
+    │                   │ │                   │ │                   │
+    │ side = "YES"      │ │ Use RL Action:    │ │ side = "NO"       │
+    │                   │ │ IF "BUY" in rl:   │ │                   │
+    │ // Buy YES token  │ │   side = "YES"    │ │ // Buy NO token   │
+    │ // Bet event will │ │ ELSE:             │ │ // Bet event will │
+    │ // happen         │ │   side = "NO"     │ │ // NOT happen     │
+    └─────────┬─────────┘ └─────────┬─────────┘ └─────────┬─────────┘
+              │                     │                     │
+              └─────────────────────┼─────────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │         OUTPUT                 │
+                    │ side: "YES" or "NO"            │
+                    │ (passed to strategy selection) │
+                    └────────────────────────────────┘
+
 ```
 
-### Configurable Thresholds (UI Settings):
-| Setting | Default | Effect |
-|---------|---------|--------|
-| `bullish_sentiment_threshold` | 0.55 | Sentiment above this → YES |
-| `bearish_sentiment_threshold` | 0.45 | Sentiment below this → NO |
+### Decision Matrix:
+
+| Sentiment Value | Interpretation | Trade Side | Reasoning |
+|-----------------|----------------|------------|-----------|
+| 0.00 - 0.44 | Strong Bearish | **NO** | High confidence event won't happen |
+| 0.45 - 0.54 | Neutral | RL-driven | Insufficient directional signal |
+| 0.55 - 1.00 | Strong Bullish | **YES** | High confidence event will happen |
+
+### Example Decisions:
+
+| Sentiment | RL Action | Final Side | Explanation |
+|-----------|-----------|------------|-------------|
+| 0.72 | BUY | YES | Bullish sentiment overrides RL |
+| 0.35 | SELL | NO | Bearish sentiment overrides RL |
+| 0.50 | BUY | YES | Neutral → RL "BUY" → YES |
+| 0.50 | SELL | NO | Neutral → RL "SELL" → NO |
+| 0.52 | HOLD | NO | Neutral → RL neutral → default NO |
 
 ---
 
