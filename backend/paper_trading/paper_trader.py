@@ -2420,8 +2420,20 @@ class PaperTrader:
                     for p in self.paper_positions.values()
                 ]
                 
-                # Get ask price from market data
-                yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+                # Get ask price from market data - REQUIRE REAL DATA
+                yes_price = market_data.get('yes_price')
+                if yes_price is None or yes_price == 0:
+                    logger.warning(f"[SIZER] No valid yes_price - cannot calculate position size")
+                    return {'position_size': 0, 'rejection_reason': 'no_price_data'}
+                
+                yes_price = float(yes_price)
+                
+                # Reject suspicious ~0.5 prices without orderbook
+                if abs(yes_price - 0.5) < 0.02:
+                    order_book = market_data.get('order_book', {})
+                    if not order_book.get('bids') or not order_book.get('asks'):
+                        logger.warning(f"[SIZER] Price {yes_price:.4f} near 0.5 without orderbook - likely default")
+                        return {'position_size': 0, 'rejection_reason': 'suspicious_default_price'}
                 
                 # Calculate model probability from signals
                 # The RL action direction is critical - it tells us which side the model favors
