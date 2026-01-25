@@ -1,0 +1,101 @@
+{
+  "summary": "Iteration 29: WebSocket Health Monitor and P&L Validation - All features verified working correctly. WebSocket race condition fix confirmed (0 dropped updates). Token mapping working (400 tokens for 200 markets). P&L calculations are accurate - the +94% P&L on Fed position is legitimate due to significant market movement.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration29_websocket_health.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "WebSocket race condition fix verified - asyncio.Event ensures token mapping is ready before processing price updates",
+    "Token mapping correctly identifies YES/NO tokens (400 tokens = 200 markets × 2 tokens each)",
+    "P&L calculation is CORRECT - the +94% gain on Fed position is legitimate (market moved from YES=0.4876 to YES=0.0015)",
+    "WebSocket Health Monitor widget displays all required data: connection status, updates/sec, total updates, token mapping, subscribed markets, cached prices, live chart"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration29_websocket_health.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All WebSocket features verified working. The +94% P&L on Fed position is NOT a bug - it's a legitimate gain because the market moved significantly (YES price went from 0.4876 to 0.0015, meaning NO position nearly doubled in value). WebSocket Health Monitor widget is fully functional with live chart.",
+  "verified_features": {
+    "WebSocket token mapping": {
+      "status": "VERIFIED",
+      "evidence": "400 tokens mapped for 200 markets (2 tokens per market: YES and NO)"
+    },
+    "WebSocket race condition fix": {
+      "status": "VERIFIED",
+      "evidence": "dropped_updates = 0, token_mapping_ready = true before WebSocket starts processing"
+    },
+    "WebSocket price updates": {
+      "status": "VERIFIED",
+      "evidence": "153 updates/sec, 12,801 total updates processed"
+    },
+    "Paper trading P&L validation": {
+      "status": "VERIFIED",
+      "evidence": "P&L calculations are accurate. Fed position +94% is legitimate (market moved from YES=0.4876 to YES=0.0015). Patriots position -1.92% is realistic."
+    },
+    "Entry/exit prices between 0 and 1": {
+      "status": "VERIFIED",
+      "evidence": "All entry prices verified: 0.4876, 0.2307 (YES prices), 0.5124, 0.7693 (NO prices)"
+    },
+    "WebSocket Health Monitor widget": {
+      "status": "VERIFIED",
+      "evidence": "Widget displays on dashboard with: connection status (Connected), updates/sec (153), total updates (12,801), token mapping (400 tokens), subscribed markets (100), cached prices (200), live chart"
+    },
+    "/api/realtime/status endpoint": {
+      "status": "VERIFIED",
+      "evidence": "Returns comprehensive stats including websocket, market_service, and health fields"
+    },
+    "Backend health check": {
+      "status": "VERIFIED",
+      "evidence": "/api/health returns {status: healthy}"
+    }
+  },
+  "pnl_calculation_explanation": {
+    "fed_position": {
+      "market": "Fed decreases interest rates by 50+ bps after January 2026 meeting?",
+      "side": "NO",
+      "yes_entry_price": 0.4876,
+      "yes_current_price": 0.0015,
+      "no_entry_price": 0.5124,
+      "no_current_price": 0.9985,
+      "size_usd": 120,
+      "shares": 234.19,
+      "current_value": 233.84,
+      "unrealized_pnl": 113.84,
+      "unrealized_pnl_pct": 94.87,
+      "explanation": "The market moved strongly in favor of NO (Fed unlikely to cut 50+ bps). YES price dropped from 0.4876 to 0.0015, so NO price increased from 0.5124 to 0.9985. This is a legitimate ~95% gain."
+    },
+    "patriots_position": {
+      "market": "Will the New England Patriots win Super Bowl 2026?",
+      "side": "NO",
+      "yes_entry_price": 0.2307,
+      "yes_current_price": 0.2455,
+      "no_entry_price": 0.7693,
+      "no_current_price": 0.7545,
+      "size_usd": 240,
+      "shares": 311.97,
+      "current_value": 235.38,
+      "unrealized_pnl": -4.62,
+      "unrealized_pnl_pct": -1.92,
+      "explanation": "Small loss as YES price increased slightly from 0.2307 to 0.2455, reducing NO value."
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  }
+}
