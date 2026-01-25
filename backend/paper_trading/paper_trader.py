@@ -3649,6 +3649,10 @@ class PaperTrader:
                 if spread > self.max_spread:
                     continue
                 
+                # STRICT: Only include markets with valid prices
+                if m.get('yes_price') is None or m.get('yes_price') == 0:
+                    continue
+                
                 filtered_markets.append(m)
             
             # Log less frequently to reduce noise
@@ -3659,13 +3663,17 @@ class PaperTrader:
             # Cache top markets in DB for analytics (less frequently)
             if filtered_markets and cycle_count % 100 == 1:
                 for m in filtered_markets[:100]:
+                    yes_price = m.get('yes_price')
+                    if yes_price is None:
+                        continue  # Skip markets without valid prices
+                    
                     market_doc = {
                         "condition_id": m.get('condition_id') or m.get('id'),
                         "id": m.get('id'),
                         "question": m.get('question', ''),
                         "category": m.get('category', 'unknown'),
-                        "yes_price": float(m.get('yes_price', 0.5) or 0.5),
-                        "no_price": float(m.get('no_price', 0.5) or 0.5),
+                        "yes_price": float(yes_price),
+                        "no_price": float(m.get('no_price', 1 - float(yes_price))),
                         "liquidity": float(m.get('liquidity', 0) or 0),
                         "volume": float(m.get('volume', 0) or 0),
                         "volume_24h": float(m.get('volume_24h', 0) or 0),
