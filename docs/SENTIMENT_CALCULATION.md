@@ -530,14 +530,82 @@ Tracks related markets to identify category-wide momentum.
 
 Analyzes GitHub activity for technology-related markets.
 
-### Triggers:
-- Only activates for markets with keywords: `ai`, `crypto`, `bitcoin`, `ethereum`, etc.
+### GITHUB SENTIMENT FLOWCHART
 
-### Signals:
-- Repository star growth
-- Commit frequency
-- Issue/PR activity
-- Developer sentiment in discussions
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                         GITHUB SENTIMENT ANALYSIS                                 ║
+║                      (Only for tech/crypto markets)                               ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              INPUT                                               │
+│  question: "Will OpenAI release GPT-5 by June 2026?"                            │
+│  category: "ai"                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+                    ┌────────────────────────────────┐
+                    │     CHECK RELEVANCE            │
+                    ├────────────────────────────────┤
+                    │ tech_keywords = [              │
+                    │   'ai', 'openai', 'chatgpt',   │
+                    │   'bitcoin', 'ethereum',       │
+                    │   'crypto', 'solana',          │
+                    │   'google', 'microsoft',       │
+                    │   'nvidia', 'github'           │
+                    │ ]                              │
+                    │                                │
+                    │ is_relevant = any(             │
+                    │   kw in question.lower()       │
+                    │   for kw in tech_keywords      │
+                    │ )                              │
+                    └───────────────┬────────────────┘
+                                    │
+                     ┌──────────────┴──────────────┐
+                     │                             │
+              NOT RELEVANT                    RELEVANT
+                     │                             │
+                     ▼                             ▼
+        ┌────────────────────┐      ┌────────────────────────────┐
+        │ SKIP GITHUB        │      │  FETCH GITHUB SIGNALS      │
+        │                    │      ├────────────────────────────┤
+        │ github_sent = 0.5  │      │ • Star count growth        │
+        │ github_conf = 0.0  │      │ • Commit frequency         │
+        │                    │      │ • Issue/PR activity        │
+        │ return             │      │ • Developer discussions    │
+        └────────────────────┘      │ • Release activity         │
+                                    └───────────────┬────────────┘
+                                                    │
+                                                    ▼
+                                    ┌────────────────────────────┐
+                                    │   ANALYZE SIGNALS          │
+                                    ├────────────────────────────┤
+                                    │ star_growth:               │
+                                    │   >10% = bullish (0.7)     │
+                                    │   >5%  = slight bull (0.6) │
+                                    │   <-5% = bearish (0.4)     │
+                                    │                            │
+                                    │ commit_activity:           │
+                                    │   high = bullish           │
+                                    │   low = bearish            │
+                                    │                            │
+                                    │ issue_sentiment:           │
+                                    │   positive = bullish       │
+                                    │   negative = bearish       │
+                                    └───────────────┬────────────┘
+                                                    │
+                                                    ▼
+                                    ┌────────────────────────────┐
+                                    │         OUTPUT             │
+                                    │ github_sentiment: 0.0-1.0  │
+                                    │ github_confidence: 0.0-0.8 │
+                                    │ repos_analyzed: [...]      │
+                                    └────────────────────────────┘
+```
+
+### When GitHub Analysis is Triggered:
+- Markets containing: `ai`, `openai`, `chatgpt`, `bitcoin`, `ethereum`, `crypto`, `solana`, `google`, `microsoft`, `nvidia`
 
 ---
 
