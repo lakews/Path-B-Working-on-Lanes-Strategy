@@ -547,6 +547,9 @@ const Dashboard = () => {
           </button>
         </div>
 
+        {/* WebSocket Health Monitor */}
+        <WebSocketHealthMonitor />
+
         {/* Historical Data Status */}
         <div className="rounded-xl bg-gradient-to-br from-blue-900/30 to-cyan-900/30 border border-blue-500/20 p-4" data-testid="data-status-card">
           <div className="flex items-center justify-between mb-3">
