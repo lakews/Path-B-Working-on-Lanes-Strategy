@@ -184,9 +184,14 @@ class SignalFusionEngine:
     def _heuristic_sentiment(self, market_data: Dict) -> Tuple[float, float]:
         """Fast heuristic sentiment for backtesting (no LLM calls)"""
         try:
-            # Use price as sentiment proxy - prices reflect market sentiment
-            yes_price = market_data.get('yes_price', 0.5)
-            no_price = market_data.get('no_price', 0.5)
+            # STRICT VALIDATION - Return low confidence if no price data
+            yes_price = market_data.get('yes_price')
+            if yes_price is None or yes_price == 0:
+                return 0.5, 0.0  # Neutral sentiment, zero confidence
+            
+            yes_price = float(yes_price)
+            no_price = market_data.get('no_price')
+            no_price = float(no_price) if no_price is not None and no_price != 0 else (1 - yes_price)
             volume = market_data.get('volume', 0)
             
             # Price-based sentiment

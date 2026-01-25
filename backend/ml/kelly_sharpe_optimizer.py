@@ -27,7 +27,12 @@ class KellySharpeOptimizer:
         try:
             current_capital = await self._get_current_capital()
             
-            price = market_data.get('yes_price', 0.5)
+            # STRICT PRICE VALIDATION - Reject without valid price
+            price = market_data.get('yes_price')
+            if price is None or price == 0:
+                logger.warning("[KELLY-REJECT] Missing price data for Kelly calculation")
+                return 0.0, 0.0
+            price = float(price)
             
             odds = self._calculate_odds(price)
             

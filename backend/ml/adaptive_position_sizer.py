@@ -228,7 +228,13 @@ class AdaptivePositionSizer:
         # Get spread from market data
         best_bid = float(market_data.get('best_bid', 0) or 0)
         best_ask = float(market_data.get('best_ask', 0) or 0)
-        yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+        
+        # STRICT PRICE VALIDATION
+        yes_price = market_data.get('yes_price')
+        if yes_price is None or yes_price == 0:
+            # Cannot calculate spread adjustment without price - return neutral multiplier
+            return 1.0
+        yes_price = float(yes_price)
         
         if best_bid > 0 and best_ask > 0:
             spread = best_ask - best_bid
