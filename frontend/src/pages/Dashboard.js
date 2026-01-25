@@ -6,6 +6,7 @@ import {
   BarChart3, Layers, Brain, AlertTriangle, RefreshCw, Play, Pause, Settings,
   ArrowUpRight, ArrowDownRight, Percent, Shield, Cpu, Database, Wifi, WifiOff, FileText
 } from 'lucide-react';
+import WebSocketHealthMonitor from '../components/WebSocketHealthMonitor';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
