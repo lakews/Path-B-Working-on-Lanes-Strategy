@@ -3333,33 +3333,43 @@ class PaperTrader:
             market_data = market_data_map.get(market_id)
             
             # Get position's stored prices for comparison
-            pos_entry = position.get('entry_price', 0)
-            pos_current = position.get('current_price', pos_entry)
+            pos_entry = position.get('entry_price', 0)  # Display entry price (NO price for NO positions)
+            pos_current = position.get('current_price')  # Display current price (NO price for NO positions)
             pos_side = position.get('side', 'YES')
-            pos_yes_entry = position.get('yes_entry_price', pos_entry if pos_side == 'YES' else 1 - pos_entry)
+            pos_yes_entry = position.get('yes_entry_price')  # Internal YES entry price
+            
+            # Debug: log position prices
+            logger.debug(f"[CLOSE_ALL] Position {market_id[:16]}: side={pos_side}, entry={pos_entry}, current={pos_current}, yes_entry={pos_yes_entry}")
+            
+            # Calculate what the YES price should be based on position data
+            if pos_side == 'YES':
+                # For YES positions, current_price is YES price directly
+                pos_yes_current = pos_current if pos_current else pos_yes_entry
+            else:
+                # For NO positions, current_price is NO price, so convert to YES
+                if pos_current:
+                    pos_yes_current = 1 - pos_current  # Convert NO price back to YES
+                else:
+                    # Fallback: use entry YES price (no change)
+                    pos_yes_current = pos_yes_entry if pos_yes_entry else (1 - pos_entry if pos_entry else 0.5)
             
             if market_data:
                 fresh_yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
                 
-                # Sanity check: if fresh price is vastly different from position's current price, log warning
-                if pos_side == 'NO':
-                    pos_yes_current = 1 - pos_current if pos_current else pos_yes_entry
-                else:
-                    pos_yes_current = pos_current if pos_current else pos_yes_entry
-                
                 price_diff = abs(fresh_yes_price - pos_yes_current) if pos_yes_current else 0
                 
-                if price_diff > 0.1:  # More than 10% price difference
+                if price_diff > 0.1:  # More than 10% price difference - suspicious
                     logger.warning(f"[CLOSE_ALL] LARGE PRICE DIFF for {market_id[:16]}: "
-                                 f"Fresh YES={fresh_yes_price:.4f}, Position YES={pos_yes_current:.4f}, "
+                                 f"Fresh YES={fresh_yes_price:.4f}, Computed Position YES={pos_yes_current:.4f}, "
                                  f"Diff={price_diff:.4f}")
+                    logger.info(f"[CLOSE_ALL] Raw position data: current_price={pos_current}, yes_entry={pos_yes_entry}, side={pos_side}")
                     # Use position's last known price instead of suspicious fresh price
                     market_data = {
                         'yes_price': pos_yes_current,
                         'id': market_id,
                         'question': position.get('market_question', 'Unknown')
                     }
-                    logger.info(f"[CLOSE_ALL] Using position's last known price: YES={pos_yes_current:.4f}")
+                    logger.info(f"[CLOSE_ALL] Using computed position YES price: {pos_yes_current:.4f}")
             else:
                 # Market not found in fresh fetch - use position's last known price
                 logger.warning(f"[CLOSE_ALL] Market {market_id[:16]} not in fresh fetch - using last known price")
