@@ -73,14 +73,21 @@ class MarketDataService:
     
     def normalize_market_data(self, raw_data: Dict) -> Dict:
         """Normalize market data from API"""
+        # STRICT PRICE VALIDATION - Use None if no valid price available
+        raw_yes = raw_data.get('yes_price')
+        raw_no = raw_data.get('no_price')
+        
+        yes_price = float(raw_yes) if raw_yes is not None and raw_yes != 0 else None
+        no_price = float(raw_no) if raw_no is not None and raw_no != 0 else None
+        
         return {
             "id": raw_data.get('condition_id', str(uuid.uuid4())),
             "condition_id": raw_data.get('condition_id'),
             "question": raw_data.get('question', ''),
             "category": self._infer_category(raw_data.get('question', '')),
             "end_date": raw_data.get('end_date'),
-            "yes_price": float(raw_data.get('yes_price', 0.5)),
-            "no_price": float(raw_data.get('no_price', 0.5)),
+            "yes_price": yes_price,
+            "no_price": no_price,
             "volume": float(raw_data.get('volume', 0)),
             "liquidity": float(raw_data.get('liquidity', 0)),
             "order_book": {},
