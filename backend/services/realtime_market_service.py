@@ -214,6 +214,8 @@ class RealTimeMarketService:
         essential for correctly interpreting WebSocket price updates.
         """
         try:
+            import json
+            
             logger.info("Discovering markets via REST API...")
             self._rest_fetches += 1
             
@@ -228,6 +230,8 @@ class RealTimeMarketService:
                 # Track new tokens for subscription
                 new_tokens = []
                 tokens_mapped = 0
+                yes_tokens = 0
+                no_tokens = 0
                 
                 # Update market cache and build token mappings
                 for market in markets:
@@ -239,26 +243,43 @@ class RealTimeMarketService:
                     
                     # Track token mappings with YES/NO outcomes
                     tokens = market.get('tokens') or market.get('clobTokenIds', [])
-                    outcomes = market.get('outcomes', ['Yes', 'No'])  # Default order
+                    
+                    # Parse outcomes - may be a JSON string or a list
+                    outcomes_raw = market.get('outcomes', ['Yes', 'No'])
+                    if isinstance(outcomes_raw, str):
+                        try:
+                            outcomes = json.loads(outcomes_raw)
+                        except json.JSONDecodeError:
+                            outcomes = ['Yes', 'No']  # Fallback
+                    else:
+                        outcomes = outcomes_raw
                     
                     if tokens:
                         self._market_tokens[market_id] = tokens
                         
-                        # Map each token to its outcome (YES or NO)
+                        # In Polymarket, tokens are ordered: [first_outcome_token, second_outcome_token]
+                        # For binary markets: first = Yes, second = No
+                        # For other markets: first = outcome1, second = outcome2
+                        # We use positional mapping: index 0 = "Yes" equivalent, index 1 = "No" equivalent
+                        
                         for i, token in enumerate(tokens):
                             self._token_to_market[token] = market_id
                             
-                            # outcomes[0] = first token outcome, outcomes[1] = second token outcome
                             if i < len(outcomes):
-                                outcome = outcomes[i]
-                                self._token_outcome[token] = outcome
-                                tokens_mapped += 1
+                                outcome_name = outcomes[i]
                                 
-                                # Track YES and NO tokens for each market
-                                if outcome == 'Yes':
+                                # Normalize: index 0 is always treated as "Yes" for price calculations
+                                # index 1 is always treated as "No"
+                                if i == 0:
+                                    self._token_outcome[token] = 'Yes'
                                     self._market_yes_token[market_id] = token
-                                elif outcome == 'No':
+                                    yes_tokens += 1
+                                else:
+                                    self._token_outcome[token] = 'No'
                                     self._market_no_token[market_id] = token
+                                    no_tokens += 1
+                                
+                                tokens_mapped += 1
                             
                             if token not in self._subscribed_tokens:
                                 new_tokens.append(token)
@@ -279,7 +300,7 @@ class RealTimeMarketService:
                     logger.info(f"Subscribed to {len(tokens_to_sub)} new market tokens via WebSocket")
                 
                 logger.info(f"Market discovery complete: {len(markets)} markets, "
-                           f"{tokens_mapped} tokens mapped (YES/NO), "
+                           f"{tokens_mapped} tokens mapped ({yes_tokens} YES, {no_tokens} NO), "
                            f"{len(new_tokens)} new tokens found")
                 
         except Exception as e:
