@@ -2369,6 +2369,13 @@ const PaperTrading = () => {
         position={sizingModal.position}
         onClose={() => setSizingModal({ isOpen: false, position: null })}
       />
+      
+      {/* Trade Details Modal */}
+      <TradeDetailsModal
+        isOpen={tradeDetailsModal.isOpen}
+        trade={tradeDetailsModal.trade}
+        onClose={() => setTradeDetailsModal({ isOpen: false, trade: null })}
+      />
 
       {/* Header */}
       <div className="rounded-xl bg-slate-900/50 border border-white/10 overflow-hidden">
