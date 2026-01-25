@@ -1,4 +1,4 @@
-# APEX TRADER - Sentiment Calculation System
+# APEX TRADER - Sentiment Calculation System (Detailed)
 
 ## Overview
 
@@ -6,6 +6,93 @@ Sentiment is a **0.0 to 1.0 score** that drives trade direction:
 - **< 0.45** = Bearish → Buy NO
 - **0.45-0.55** = Neutral → RL-driven
 - **> 0.55** = Bullish → Buy YES
+
+---
+
+## MASTER FLOWCHART
+
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                           SENTIMENT CALCULATION MASTER FLOW                       ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+                                    ┌─────────────┐
+                                    │ MARKET DATA │
+                                    │ (Input)     │
+                                    └──────┬──────┘
+                                           │
+                 ┌─────────────────────────┼─────────────────────────┐
+                 │                         │                         │
+                 ▼                         ▼                         ▼
+    ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐
+    │   POLYMARKET       │   │      LLM           │   │   CORRELATION      │
+    │   NATIVE DATA      │   │   ANALYSIS         │   │   TRACKER          │
+    │                    │   │                    │   │                    │
+    │ • Order Book       │   │ • Question Parse   │   │ • Category Price   │
+    │ • Trade History    │   │ • Context Build    │   │ • Related Markets  │
+    │ • Volume Data      │   │ • GPT-4o-mini      │   │ • Group Momentum   │
+    │ • Price History    │   │ • Response Parse   │   │                    │
+    └─────────┬──────────┘   └─────────┬──────────┘   └─────────┬──────────┘
+              │                        │                        │
+              ▼                        ▼                        ▼
+    ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐
+    │ SIGNAL EXTRACTION  │   │ PROBABILITY EST.   │   │ MOMENTUM CALC      │
+    │                    │   │                    │   │                    │
+    │ 1. Order Flow 25%  │   │ sentiment: 0.0-1.0 │   │ category_momentum  │
+    │ 2. Vol Momentum 15%│   │ confidence: 0.0-1.0│   │ correlation_strength│
+    │ 3. Spread Conf 10% │   │                    │   │                    │
+    │ 4. Price Vel   15% │   │ Based on:          │   │ Based on:          │
+    │ 5. Whale Sign  20% │   │ • Base rates       │   │ • Same category    │
+    │ 6. Price Mom   15% │   │ • Current evidence │   │ • Keyword groups   │
+    └─────────┬──────────┘   │ • Time factors     │   │ • Price changes    │
+              │              └─────────┬──────────┘   └─────────┬──────────┘
+              │                        │                        │
+              ▼                        ▼                        ▼
+    ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐
+    │ polymarket_sent    │   │ llm_sentiment      │   │ correlation_sent   │
+    │ polymarket_conf    │   │ llm_confidence     │   │ correlation_str    │
+    │ (0.0-1.0 each)     │   │ (0.0-1.0 each)     │   │ (0.0-1.0 each)     │
+    └─────────┬──────────┘   └─────────┬──────────┘   └─────────┬──────────┘
+              │                        │                        │
+              │    WEIGHT: 30%         │    WEIGHT: 35%         │    WEIGHT: 15%
+              │                        │                        │
+              └────────────────────────┼────────────────────────┘
+                                       │
+                            ┌──────────┴──────────┐
+                            │                     │
+                            │  + GITHUB (20%)     │◄── Only for tech/crypto
+                            │    (if applicable)  │
+                            │                     │
+                            └──────────┬──────────┘
+                                       │
+                                       ▼
+                         ┌─────────────────────────┐
+                         │   WEIGHTED COMBINATION  │
+                         │                         │
+                         │ combined = Σ(sent × w)  │
+                         │           ─────────────  │
+                         │              Σ(w)       │
+                         │                         │
+                         │ confidence = min(0.95,  │
+                         │              Σ(w))      │
+                         └────────────┬────────────┘
+                                      │
+                                      ▼
+                         ┌─────────────────────────┐
+                         │   FINAL SENTIMENT       │
+                         │   (0.0 - 1.0)           │
+                         └────────────┬────────────┘
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    │                 │                 │
+                    ▼                 ▼                 ▼
+           ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+           │  < 0.45      │  │ 0.45 - 0.55  │  │  > 0.55      │
+           │  BEARISH     │  │  NEUTRAL     │  │  BULLISH     │
+           │              │  │              │  │              │
+           │  → Buy NO    │  │  → RL-driven │  │  → Buy YES   │
+           └──────────────┘  └──────────────┘  └──────────────┘
+```
 
 ---
 
