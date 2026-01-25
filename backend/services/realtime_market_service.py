@@ -60,9 +60,15 @@ class RealTimeMarketService:
         self._discovery_task: Optional[asyncio.Task] = None
         self._running = False
         
+        # RACE CONDITION FIX: Event to signal when token mapping is ready
+        # Price updates will be queued until this event is set
+        self._token_mapping_ready = asyncio.Event()
+        self._pending_price_updates: List[Dict] = []  # Queue for updates before mapping ready
+        
         # Stats
         self._ws_updates = 0
         self._rest_fetches = 0
+        self._dropped_updates = 0  # Updates received before mapping was ready
         
     async def start(self):
         """Start the real-time market service."""
