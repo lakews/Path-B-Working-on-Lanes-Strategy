@@ -3271,7 +3271,13 @@ class PaperTrader:
                 if self.paper_positions:
                     # Fetch latest market prices from Gamma API
                     markets = await self._get_active_markets()
-                    market_prices = {m['id']: float(m.get('yes_price', 0.5) or 0.5) for m in markets}
+                    
+                    # Build price map - ONLY include markets with valid prices
+                    market_prices = {}
+                    for m in markets:
+                        price = m.get('yes_price')
+                        if price is not None and price != 0:
+                            market_prices[m['id']] = float(price)
                     
                     total_unrealized = 0.0
                     for market_id, position in self.paper_positions.items():
@@ -3280,8 +3286,13 @@ class PaperTrader:
                         side = position['side']
                         size = position['size']  # USD invested
                         
-                        # Get REAL current price from API (no simulation) - this is YES price
-                        current_price = market_prices.get(market_id, yes_entry_price)
+                        # Get REAL current price from API - skip if no valid price
+                        current_price = market_prices.get(market_id)
+                        if current_price is None:
+                            # No valid price - use entry price as fallback for display only
+                            # This won't affect trading decisions
+                            current_price = yes_entry_price
+                            logger.debug(f"[UNREALIZED] No price for {market_id[:16]} - using entry price")
                         
                         # Calculate current value and unrealized P&L
                         if side == 'YES':
