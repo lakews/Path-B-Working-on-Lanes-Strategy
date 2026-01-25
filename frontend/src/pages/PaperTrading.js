@@ -1619,7 +1619,7 @@ const PositionCard = ({ position, onViewSizing }) => {
 };
 
 // Trade Row Component - Shows both open (ENTRY) and completed trades
-const TradeRow = ({ trade, onViewSentiment }) => {
+const TradeRow = ({ trade, onViewSentiment, onRowClick }) => {
   const isEntry = trade.type === 'entry';
   const isComplete = trade.type === 'exit';
   
@@ -1687,8 +1687,18 @@ const TradeRow = ({ trade, onViewSentiment }) => {
   
   const statusBadge = getStatusBadge();
   
+  const handleRowClick = (e) => {
+    // Don't trigger row click if clicking on buttons
+    if (e.target.closest('button')) return;
+    onRowClick && onRowClick(trade);
+  };
+  
   return (
-    <tr className="border-b border-white/5 hover:bg-white/5">
+    <tr 
+      className="border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
+      onClick={handleRowClick}
+      data-testid={`trade-row-${trade.position_id || trade.market_id?.substring(0, 8)}`}
+    >
       <td className="py-3 px-4">
         <div className="flex items-center gap-1">
           <span 
@@ -1733,15 +1743,24 @@ const TradeRow = ({ trade, onViewSentiment }) => {
       </td>
       <td className="py-3 px-4 text-xs text-white/40">{new Date(trade.timestamp).toLocaleTimeString()}</td>
       <td className="py-3 px-4">
-        {hasSentiment && onViewSentiment && (
+        <div className="flex items-center gap-1">
+          {hasSentiment && onViewSentiment && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onViewSentiment(trade); }}
+              className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition"
+              title="View Sentiment Analysis"
+            >
+              <Brain className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
-            onClick={() => onViewSentiment(trade)}
-            className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition"
-            title="View Sentiment Analysis"
+            onClick={(e) => { e.stopPropagation(); onRowClick && onRowClick(trade); }}
+            className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition"
+            title="View Trade Details"
           >
-            <Brain className="w-3.5 h-3.5" />
+            <Eye className="w-3.5 h-3.5" />
           </button>
-        )}
+        </div>
       </td>
     </tr>
   );
