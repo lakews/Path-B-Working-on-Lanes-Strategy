@@ -274,22 +274,17 @@ class RealTimeMarketService:
         if not market:
             return None
             
-        # Enrich with WebSocket data
-        tokens = self._market_tokens.get(market_id, [])
-        if tokens:
-            ws_price = self._price_cache.get(tokens[0])
-            if ws_price is not None:
-                market['yes_price'] = ws_price
-                market['no_price'] = 1 - ws_price
+        # Enrich with correct YES price from cache
+        yes_price = self._yes_price_cache.get(market_id)
+        if yes_price is not None:
+            market['yes_price'] = yes_price
+            market['no_price'] = 1 - yes_price
                 
         return market
     
     def get_latest_price(self, market_id: str) -> Optional[float]:
-        """Get latest price from WebSocket cache."""
-        tokens = self._market_tokens.get(market_id, [])
-        if tokens:
-            return self._price_cache.get(tokens[0])
-        return None
+        """Get latest YES price from cache (correctly computed from YES or NO token updates)."""
+        return self._yes_price_cache.get(market_id)
     
     def get_order_book(self, market_id: str) -> Optional[Dict]:
         """Get order book from WebSocket cache."""
@@ -303,6 +298,8 @@ class RealTimeMarketService:
             'running': self._running,
             'markets_cached': len(self._market_cache),
             'tokens_subscribed': len(self._subscribed_tokens),
+            'tokens_mapped': len(self._token_outcome),
+            'yes_prices_cached': len(self._yes_price_cache),
             'prices_cached': len(self._price_cache),
             'ws_updates': self._ws_updates,
             'rest_fetches': self._rest_fetches,
