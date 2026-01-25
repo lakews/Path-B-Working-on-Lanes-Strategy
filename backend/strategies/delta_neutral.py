@@ -35,8 +35,20 @@ class DeltaNeutralStrategy:
         """
         try:
             market_id = market_data.get('id')
-            yes_price = market_data.get('yes_price', 0.5)
-            no_price = market_data.get('no_price', 0.5)
+            
+            # STRICT PRICE VALIDATION - Reject without valid prices
+            yes_price = market_data.get('yes_price')
+            no_price = market_data.get('no_price')
+            
+            if yes_price is None or yes_price == 0:
+                logger.warning(f"[DELTA-NEUTRAL-REJECT] Missing yes_price for {market_id[:16] if market_id else 'unknown'}")
+                return None
+            if no_price is None or no_price == 0:
+                # Calculate no_price from yes_price if not provided
+                no_price = 1 - float(yes_price)
+            
+            yes_price = float(yes_price)
+            no_price = float(no_price)
             
             spread = abs(yes_price + no_price - 1.0)
             
