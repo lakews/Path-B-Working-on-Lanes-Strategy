@@ -39,8 +39,16 @@ class RealTimeMarketService:
         self._market_tokens: Dict[str, List[str]] = {}  # market_id -> token_ids
         self._token_to_market: Dict[str, str] = {}  # token_id -> market_id
         
+        # NEW: Track which tokens are YES vs NO
+        self._token_outcome: Dict[str, str] = {}  # token_id -> "Yes" or "No"
+        self._market_yes_token: Dict[str, str] = {}  # market_id -> yes_token_id
+        self._market_no_token: Dict[str, str] = {}  # market_id -> no_token_id
+        
         # Price cache (updated by WebSocket in real-time)
-        self._price_cache: Dict[str, float] = {}
+        # Store both YES and NO prices separately
+        self._yes_price_cache: Dict[str, float] = {}  # market_id -> yes_price
+        self._no_price_cache: Dict[str, float] = {}  # market_id -> no_price
+        self._price_cache: Dict[str, float] = {}  # token_id -> price (raw)
         self._order_book_cache: Dict[str, Dict] = {}
         
         # Discovery state
