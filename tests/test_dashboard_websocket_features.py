@@ -13,7 +13,7 @@ try:
 except ImportError:
     websockets = None
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://price-fix.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://smart-market-bot-8.preview.emergentagent.com')
 
 class TestWebSocketEndpoint:
     """Test WebSocket endpoint accessibility"""
