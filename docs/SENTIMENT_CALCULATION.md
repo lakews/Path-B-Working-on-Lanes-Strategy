@@ -615,24 +615,69 @@ Analyzes GitHub activity for technology-related markets.
 
 Fast sentiment estimation when LLM is disabled.
 
-```python
-def _heuristic_sentiment(self, market_data):
-    yes_price = market_data.get('yes_price')
-    volume = market_data.get('volume', 0)
-    
-    # Use market price as sentiment proxy
-    sentiment = yes_price  # Market's implied probability
-    
-    # Volume-adjusted confidence
-    confidence = min(volume / 10000, 0.8)
-    
-    return sentiment, confidence
+### HEURISTIC FALLBACK FLOWCHART
+
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                    HEURISTIC SENTIMENT (FALLBACK MODE)                            ║
+║           Used when: backtest_mode=True OR LLM unavailable                        ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         TRIGGER CONDITIONS                                       │
+│  • backtest_mode = True                                                         │
+│  • sentiment_analyzer = None                                                    │
+│  • LLM API failure/timeout                                                      │
+│  • LLM initialization error                                                     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+                    ┌────────────────────────────────┐
+                    │       SIMPLE ESTIMATION        │
+                    ├────────────────────────────────┤
+                    │ // Market price = market's     │
+                    │ // implied probability         │
+                    │                                │
+                    │ sentiment = yes_price          │
+                    │                                │
+                    │ // Example:                    │
+                    │ // yes_price = 0.65            │
+                    │ // sentiment = 0.65 (bullish)  │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │  VOLUME-BASED CONFIDENCE       │
+                    ├────────────────────────────────┤
+                    │ // Higher volume = more        │
+                    │ // reliable price signal       │
+                    │                                │
+                    │ confidence = min(              │
+                    │   volume_24h / 10000,          │
+                    │   0.8                          │
+                    │ )                              │
+                    │                                │
+                    │ // $10k vol = 0.8 conf (max)   │
+                    │ // $5k vol = 0.5 conf          │
+                    │ // $1k vol = 0.1 conf          │
+                    └───────────────┬────────────────┘
+                                    │
+                                    ▼
+                    ┌────────────────────────────────┐
+                    │         OUTPUT                 │
+                    │ sentiment: yes_price           │
+                    │ confidence: 0.0-0.8            │
+                    └────────────────────────────────┘
 ```
 
-**When Used:**
-- `backtest_mode = True`
-- `sentiment_analyzer = None`
-- LLM API failure/timeout
+### When Heuristic is Used:
+| Scenario | Heuristic Active? |
+|----------|-------------------|
+| Normal trading | ❌ No - Uses full pipeline |
+| Backtesting | ✅ Yes - Speed priority |
+| LLM API down | ✅ Yes - Fallback |
+| LLM rate limited | ✅ Yes - Fallback |
+| No Emergent key | ✅ Yes - Can't call LLM |
 
 ---
 
