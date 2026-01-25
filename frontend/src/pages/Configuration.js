@@ -1232,13 +1232,13 @@ const Configuration = () => {
                 onChange={(e) => setConfig({...config, max_spread: parseFloat(e.target.value) / 100})} 
                 className="flex-1 h-2 bg-white/10 rounded-lg" 
                 min="1" 
-                max="20" 
-                step="0.5" 
+                max="100" 
+                step="1" 
               />
-              <span className="text-white font-bold text-xl w-16 text-right">{((config.max_spread || 0.05) * 100).toFixed(1)}%</span>
+              <span className="text-white font-bold text-xl w-20 text-right">{((config.max_spread || 0.05) * 100).toFixed(1)}%</span>
             </div>
-            <div className="grid grid-cols-4 gap-2 mt-4">
-              {[0.01, 0.02, 0.05, 0.10].map((val) => (
+            <div className="grid grid-cols-5 gap-2 mt-4">
+              {[0.05, 0.10, 0.25, 0.50, 0.99].map((val) => (
                 <button 
                   key={val} 
                   onClick={() => setConfig({...config, max_spread: val})} 
@@ -1248,7 +1248,7 @@ const Configuration = () => {
                 </button>
               ))}
             </div>
-            <p className="text-xs text-white/40 mt-3">Lower spread = tighter markets, less slippage</p>
+            <p className="text-xs text-white/40 mt-3">Higher spread tolerance = more trade opportunities but more slippage risk</p>
           </div>
 
           <div className="lg:col-span-3 rounded-xl bg-white/5 border border-white/10 p-6">
