@@ -14,6 +14,38 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 25, 2026)
 
+### January 25, 2026 - Session 30 (WebSocket Race Condition Fix)
+
+- ✅ **CRITICAL FIX: WebSocket YES/NO Token Mapping Race Condition**
+  - **Problem**: WebSocket price updates were processed BEFORE token-to-outcome mapping was populated, causing "Unknown token outcome" errors and incorrect prices (e.g., 0.5 when real price was 0.0065), leading to unrealistic P&L (+94% in seconds)
+  - **Root Cause**: In `RealTimeMarketService.start()`, the WebSocket listener started before `_discover_markets()` populated the `_token_outcome` map. Price updates arrived with `asset_id` but the system couldn't determine if they were YES or NO tokens.
+  - **Solution**:
+    1. Reordered startup sequence: market discovery now runs FIRST, BEFORE WebSocket starts
+    2. Added `asyncio.Event` (`_token_mapping_ready`) to signal when mapping is complete
+    3. Price updates that arrive before mapping is ready are queued, not discarded
+    4. Fixed outcome parsing: API returns outcomes as JSON string (e.g., `["Yes", "No"]`), not Python list
+    5. Normalized token mapping: index 0 = "Yes", index 1 = "No" regardless of actual outcome names (handles sports markets like "Knicks" vs "76ers")
+  - **Files Modified**: `/app/backend/services/realtime_market_service.py`
+  - **Verification Results**:
+    - Token mapping ready: True
+    - 392 tokens mapped (196 YES, 196 NO)
+    - 1208 WebSocket updates received in 10 seconds
+    - 0 dropped updates (race condition fix working)
+  - Test report: `/app/test_reports/iteration_28.json`
+
+- ✅ **BUG FIX: Position Monitoring P&L Calculation for NO Trades**
+  - **Problem**: Position monitoring loop calculated P&L incorrectly for NO positions, showing extreme percentages like +210%
+  - **Root Cause**: Used `entry_price` (which is NO price for NO positions) instead of `yes_entry_price` for calculations
+  - **Solution**: Changed to use `yes_entry_price = position.get('yes_entry_price', position['entry_price'])` for consistent P&L
+  - **Files Modified**: `/app/backend/paper_trading/paper_trader.py` (line 3166)
+  - **Result**: P&L now shows realistic values (-1.66% to -2.05% instead of +210%)
+  - Test report: `/app/test_reports/iteration_28.json`
+
+- ✅ **WebSocket Re-enabled for Paper Trading**
+  - WebSocket price data is now working correctly
+  - `use_websocket_data = True` in paper_trader.py
+  - Paper trader uses real-time WebSocket prices with REST API fallback
+
 ### January 25, 2026 - Session 29
 
 - ✅ **BUG FIX: Backtest P&L Calculation for NO Trades**
