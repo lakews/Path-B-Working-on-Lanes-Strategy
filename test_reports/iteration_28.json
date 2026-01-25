@@ -1,0 +1,72 @@
+{
+  "summary": "Iteration 28: P&L Calculation Bug Fix - Fixed critical bug in _position_monitoring_loop where NO position P&L was calculated incorrectly. The bug used entry_price (which is NO price for NO positions) instead of yes_entry_price, causing extreme P&L percentages like +210%. After fix, P&L values are realistic (-1% to -2% range).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "WebSocket",
+        "issue": "ws_updates counter shows 0 - WebSocket may not be receiving price updates from Polymarket",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration28_pnl_validation.py",
+    "/app/backend/tests/test_websocket_token_mapping.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "FIXED: _position_monitoring_loop at line 3166 was using entry_price (display price) instead of yes_entry_price for P&L calculation",
+    "For NO positions, entry_price is the NO price, but the calculation assumed it was YES price",
+    "Fix: Changed to use yes_entry_price = position.get('yes_entry_price', position['entry_price']) for consistent calculations",
+    "WebSocket token mapping fix verified - token mapping is populated before WebSocket starts processing"
+  ],
+  "updated_files": [
+    "/app/backend/paper_trading/paper_trader.py",
+    "/app/backend/tests/test_iteration28_pnl_validation.py"
+  ],
+  "success_rate": {
+    "backend": "100% (WebSocket token mapping tests pass, P&L calculation verified)"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "P&L calculation bug fixed in _position_monitoring_loop. The bug was using entry_price (display price) instead of yes_entry_price for NO position calculations. After fix, P&L values are realistic (-1% to -2% range instead of +210%). WebSocket token mapping fix verified working.",
+  "verified_features": {
+    "WebSocket token mapping initialization": {
+      "status": "VERIFIED",
+      "evidence": "Token mapping ready: True, 390 tokens mapped (195 YES, 195 NO)"
+    },
+    "Paper trading session starts successfully": {
+      "status": "VERIFIED",
+      "evidence": "Session started with session_id, initial_capital=$10000"
+    },
+    "Trades have realistic P&L percentages": {
+      "status": "VERIFIED",
+      "evidence": "After fix: P&L values are -1.66%, -2.05%, -1.99% (realistic). Before fix: +210%, +136% (unrealistic)"
+    },
+    "Entry and exit prices are reasonable": {
+      "status": "VERIFIED",
+      "evidence": "All entry prices between 0 and 1 (e.g., 0.6914836, 0.5104778, 0.7213508)"
+    },
+    "Backend API health check": {
+      "status": "VERIFIED",
+      "evidence": "Health endpoint returns {status: healthy}"
+    }
+  },
+  "bug_fix_details": {
+    "bug_description": "NO position P&L was calculated incorrectly, showing extreme percentages like +210%",
+    "root_cause": "_position_monitoring_loop used entry_price (which is NO price for NO positions) instead of yes_entry_price. The calculation no_entry = 1 - entry_price was wrong because entry_price was already the NO price.",
+    "fix_applied": "Changed to use yes_entry_price = position.get('yes_entry_price', position['entry_price']) for consistent P&L calculations",
+    "verification": "After fix, NO positions show realistic P&L: -1.66%, -2.05%, -1.99%"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  }
+}
