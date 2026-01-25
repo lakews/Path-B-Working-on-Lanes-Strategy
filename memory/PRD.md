@@ -74,9 +74,20 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
        - YES: Shows YES price (no change)
        - NO: Shows NO price (1 - YES price)
     3. Updated position monitoring, exit execution, and trade logging
-  - **Result**: NO trade now shows Entry: 0.51, Exit: 0.71, P&L: +$179 (+135%)
-    - NO price went UP (0.51 -> 0.71), so profit makes sense ✅
   - **Files Modified**: `/app/backend/paper_trading/paper_trader.py`
+
+- ✅ **BUG FIX: Unrealistic P&L from WebSocket Price Confusion**
+  - **Problem**: Trades showed 94%+ P&L in seconds due to massive price swings
+  - **Root Cause #1**: WebSocket prices were confusing YES/NO tokens - returning wrong prices (e.g., 0.5 when real price was 0.0065)
+  - **Root Cause #2**: `current_price` field was being overwritten with YES price in one place but NO price in another
+  - **Solution**:
+    1. Fixed `current_price` storage to always use the price for the side being traded
+    2. Added sanity checks in `_close_all_positions` to detect large price discrepancies
+    3. **Disabled WebSocket for price data** until YES/NO token mapping is fixed
+    4. Paper trader now uses REST API for accurate prices
+  - **Result**: P&L is now realistic (-2% to +5% per trade, not 94%)
+  - **Files Modified**: `/app/backend/paper_trading/paper_trader.py`, `/app/backend/services/realtime_market_service.py`
+  - **Known Issue**: WebSocket price updates are disabled - trades use REST API (slightly higher latency)
 
 ### January 24, 2026 - Session 28 (Continued)
 
