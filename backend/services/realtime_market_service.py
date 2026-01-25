@@ -104,20 +104,51 @@ class RealTimeMarketService:
         logger.info("RealTimeMarketService stopped")
         
     async def _on_price_update(self, data: Dict):
-        """Handle real-time price update from WebSocket."""
+        """Handle real-time price update from WebSocket.
+        
+        Correctly identifies whether the price update is for a YES or NO token
+        and updates the market's yes_price accordingly.
+        """
         token_id = data.get('asset_id') or data.get('token_id')
         price = data.get('price')
         
-        if token_id and price is not None:
-            self._price_cache[token_id] = float(price)
-            self._ws_updates += 1
+        if not token_id or price is None:
+            return
             
-            # Also update market cache if we know this token
-            market_id = self._token_to_market.get(token_id)
-            if market_id and market_id in self._market_cache:
-                self._market_cache[market_id]['yes_price'] = float(price)
-                self._market_cache[market_id]['no_price'] = 1 - float(price)
-                self._market_cache[market_id]['last_ws_update'] = datetime.now(timezone.utc).isoformat()
+        price = float(price)
+        self._price_cache[token_id] = price
+        self._ws_updates += 1
+        
+        # Determine if this is a YES or NO token
+        outcome = self._token_outcome.get(token_id)
+        market_id = self._token_to_market.get(token_id)
+        
+        if not market_id or market_id not in self._market_cache:
+            return
+            
+        market = self._market_cache[market_id]
+        
+        if outcome == 'Yes':
+            # This is the YES token price - use directly
+            self._yes_price_cache[market_id] = price
+            market['yes_price'] = price
+            market['no_price'] = 1 - price
+            market['price_source'] = 'websocket_yes'
+        elif outcome == 'No':
+            # This is the NO token price - convert to YES price
+            # NO price + YES price = 1, so YES price = 1 - NO price
+            yes_price = 1 - price
+            self._no_price_cache[market_id] = price
+            self._yes_price_cache[market_id] = yes_price
+            market['yes_price'] = yes_price
+            market['no_price'] = price
+            market['price_source'] = 'websocket_no'
+        else:
+            # Unknown token outcome - log warning and skip
+            logger.warning(f"Unknown token outcome for {token_id[:20]}... in market {market_id[:16]}")
+            return
+            
+        market['last_ws_update'] = datetime.now(timezone.utc).isoformat()
                 
     async def _discover_markets(self):
         """Discover markets via REST API (slow operation)."""
