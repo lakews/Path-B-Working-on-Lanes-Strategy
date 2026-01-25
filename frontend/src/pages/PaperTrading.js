@@ -1786,6 +1786,72 @@ const SortableHeader = ({ label, sortKey, currentSort, onSort }) => {
   );
 };
 
+// Resizable Column Header Component
+const ResizableHeader = ({ label, sortKey, currentSort, onSort, width, onResize, minWidth = 60 }) => {
+  const isActive = currentSort.key === sortKey;
+  const isAsc = currentSort.direction === 'asc';
+  const [isResizing, setIsResizing] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startWidth, setStartWidth] = useState(width);
+  
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    setStartX(e.clientX);
+    setStartWidth(width);
+  };
+  
+  useEffect(() => {
+    if (!isResizing) return;
+    
+    const handleMouseMove = (e) => {
+      const diff = e.clientX - startX;
+      const newWidth = Math.max(minWidth, startWidth + diff);
+      onResize && onResize(newWidth);
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, startX, startWidth, minWidth, onResize]);
+  
+  return (
+    <th 
+      className="py-3 px-4 text-xs text-white/60 uppercase cursor-pointer hover:text-white hover:bg-white/5 transition select-none relative"
+      style={{ width: width ? `${width}px` : 'auto', minWidth: `${minWidth}px` }}
+      onClick={() => onSort && onSort(sortKey)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {sortKey && (
+          <span className={`text-[10px] ${isActive ? 'text-cyan-400' : 'text-white/30'}`}>
+            {isActive ? (isAsc ? '▲' : '▼') : '⇅'}
+          </span>
+        )}
+      </div>
+      {/* Resize handle */}
+      <div
+        className={`absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-cyan-500/50 transition ${isResizing ? 'bg-cyan-500' : ''}`}
+        onMouseDown={handleMouseDown}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 hover:opacity-100 transition">
+          <GripVertical className="w-3 h-3 text-white/40" />
+        </div>
+      </div>
+    </th>
+  );
+};
+
 // Performance Table with Totals Component
 const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLiveBadge, initialCapital = 10000 }) => {
   if (!data || Object.keys(data).length === 0) {
