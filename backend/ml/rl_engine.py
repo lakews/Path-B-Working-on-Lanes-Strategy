@@ -131,9 +131,16 @@ class RLAdaptiveEngine:
     def _build_state(self, market_data: Dict, signals: Dict) -> np.ndarray:
         """Build state vector from market data and signals"""
         try:
+            # STRICT PRICE VALIDATION - use 0.5 only for neutral signal defaults, not price
+            yes_price = market_data.get('yes_price')
+            if yes_price is None or yes_price == 0:
+                # No valid price - return zero state to indicate invalid input
+                logger.debug("[RL-STATE] Missing price data - returning zero state")
+                return np.zeros(self.n_states, dtype=np.float32)
+            
             state = np.array([
-                market_data.get('yes_price', 0.5),
-                signals.get('volatility', 0.5),
+                float(yes_price),
+                signals.get('volatility', 0.5),  # Signal defaults are OK - they're neutral
                 signals.get('sentiment', 0.5),
                 signals.get('sharp_alignment', 0.5),
                 min(market_data.get('liquidity', 0) / 100000, 1.0),
