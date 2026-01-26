@@ -902,6 +902,269 @@ const Configuration = () => {
         </div>
       )}
 
+      {/* Exit Engine Tab (Task 24: Alpha-State Exit Engine) */}
+      {activeTab === 'exit_engine' && (
+        <div className="space-y-6" data-testid="exit-engine-tab">
+          {/* Header with Save and Reset */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Target className="w-6 h-6 text-rose-400" />
+                Alpha-State Exit Engine
+              </h2>
+              <p className="text-sm text-white/50 mt-1">Hierarchical exit logic: State → Strategy → Asset Class → Zone</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={resetExitEngineConfig} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white flex items-center gap-2 text-sm">
+                <RefreshCw className="w-4 h-4" />Reset to Defaults
+              </button>
+              <button onClick={saveExitEngineConfig} disabled={savingExitEngine} data-testid="save-exit-engine-btn" className="px-4 py-2 rounded-lg bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50 flex items-center gap-2 text-sm">
+                <Save className="w-4 h-4" />{savingExitEngine ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+          
+          {/* Stats Banner */}
+          {exitEngineStats && (
+            <div className="rounded-xl bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-white/10 p-4">
+              <div className="grid grid-cols-6 gap-4 text-center">
+                <div>
+                  <p className="text-xs text-white/50">Total Checks</p>
+                  <p className="text-lg font-bold text-white">{exitEngineStats.total_checks?.toLocaleString() || 0}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/50">Holds</p>
+                  <p className="text-lg font-bold text-green-400">{exitEngineStats.holds?.toLocaleString() || 0}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/50">Close All</p>
+                  <p className="text-lg font-bold text-red-400">{exitEngineStats.close_all?.toLocaleString() || 0}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/50">Free Rolls</p>
+                  <p className="text-lg font-bold text-cyan-400">{exitEngineStats.free_rolls?.toLocaleString() || 0}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/50">Whale Exits</p>
+                  <p className="text-lg font-bold text-purple-400">{exitEngineStats.whale_exits?.toLocaleString() || 0}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/50">Thesis Fails</p>
+                  <p className="text-lg font-bold text-amber-400">{exitEngineStats.thesis_fails?.toLocaleString() || 0}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Global Safety Settings */}
+          <div className="rounded-xl bg-gradient-to-br from-rose-500/10 to-orange-500/10 border border-rose-500/30 p-6">
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-400" />Global Safety Settings
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Whale Threshold (¢)</label>
+                <input type="number" value={(exitEngineConfig.global?.whale_threshold_price || 0.10) * 100} onChange={(e) => setExitEngineConfig({...exitEngineConfig, global: {...exitEngineConfig.global, whale_threshold_price: parseFloat(e.target.value) / 100}})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="1" max="20" />
+                <p className="text-[10px] text-white/30 mt-1">Entries below this → Whale Zone</p>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Max Spread %</label>
+                <input type="number" value={(exitEngineConfig.global?.max_spread_pct || 0.10) * 100} onChange={(e) => setExitEngineConfig({...exitEngineConfig, global: {...exitEngineConfig.global, max_spread_pct: parseFloat(e.target.value) / 100}})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="1" max="30" />
+                <p className="text-[10px] text-white/30 mt-1">Wick filter - skip exit if spread &gt; this</p>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Expiry Guard (hrs)</label>
+                <input type="number" value={exitEngineConfig.global?.expiry_guard_hours || 2.0} onChange={(e) => setExitEngineConfig({...exitEngineConfig, global: {...exitEngineConfig.global, expiry_guard_hours: parseFloat(e.target.value)}})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="0.5" min="0.5" max="6" />
+                <p className="text-[10px] text-white/30 mt-1">Force close losing trades this close to expiry</p>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Min Trade Size ($)</label>
+                <input type="number" value={exitEngineConfig.global?.min_trade_size_usd || 2.0} onChange={(e) => setExitEngineConfig({...exitEngineConfig, global: {...exitEngineConfig.global, min_trade_size_usd: parseFloat(e.target.value)}})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="0.5" min="1" max="10" />
+                <p className="text-[10px] text-white/30 mt-1">Dust check for partial sells</p>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Free Ride Floor (¢)</label>
+                <input type="number" value={(exitEngineConfig.global?.free_ride_floor || 0.02) * 100} onChange={(e) => setExitEngineConfig({...exitEngineConfig, global: {...exitEngineConfig.global, free_ride_floor: parseFloat(e.target.value) / 100}})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="1" max="10" />
+                <p className="text-[10px] text-white/30 mt-1">Cleanup floor for house money</p>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Free Ride Ceiling (¢)</label>
+                <input type="number" value={(exitEngineConfig.global?.free_ride_ceiling || 0.98) * 100} onChange={(e) => setExitEngineConfig({...exitEngineConfig, global: {...exitEngineConfig.global, free_ride_ceiling: parseFloat(e.target.value) / 100}})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="90" max="99" />
+                <p className="text-[10px] text-white/30 mt-1">Capture full value for house money</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Whale Zone Rules */}
+          <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 p-6">
+            <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+              <span className="text-xl">🐋</span>Whale Zone Exit Rules
+            </h3>
+            <p className="text-xs text-white/40 mb-4">For entries below ${((exitEngineConfig.global?.whale_threshold_price || 0.10) * 100).toFixed(0)}¢ - Uses price MULTIPLES, not percentages</p>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                <label className="text-xs text-white/50 mb-1 block">Stop Loss</label>
+                <div className="flex items-center gap-2">
+                  <input type="number" value={(exitEngineConfig.whale_zone?.stop_loss_multiple || 0.50)} onChange={(e) => setExitEngineConfig({...exitEngineConfig, whale_zone: {...exitEngineConfig.whale_zone, stop_loss_multiple: parseFloat(e.target.value)}})} className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="0.1" min="0.1" max="0.9" />
+                  <span className="text-white/60">x</span>
+                </div>
+                <p className="text-xs text-red-300 mt-2">Exit if price drops to {((exitEngineConfig.whale_zone?.stop_loss_multiple || 0.50) * 100).toFixed(0)}% of entry</p>
+              </div>
+              <div className="p-4 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                <label className="text-xs text-white/50 mb-1 block">Free Roll Trigger</label>
+                <div className="flex items-center gap-2">
+                  <input type="number" value={(exitEngineConfig.whale_zone?.free_roll_multiple || 2.0)} onChange={(e) => setExitEngineConfig({...exitEngineConfig, whale_zone: {...exitEngineConfig.whale_zone, free_roll_multiple: parseFloat(e.target.value)}})} className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="0.5" min="1.5" max="5" />
+                  <span className="text-white/60">x</span>
+                </div>
+                <p className="text-xs text-cyan-300 mt-2">Sell {((exitEngineConfig.whale_zone?.free_roll_sell_pct || 0.50) * 100).toFixed(0)}% when price doubles</p>
+              </div>
+              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <label className="text-xs text-white/50 mb-1 block">Free Roll Sell %</label>
+                <div className="flex items-center gap-2">
+                  <input type="number" value={(exitEngineConfig.whale_zone?.free_roll_sell_pct || 0.50) * 100} onChange={(e) => setExitEngineConfig({...exitEngineConfig, whale_zone: {...exitEngineConfig.whale_zone, free_roll_sell_pct: parseFloat(e.target.value) / 100}})} className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="10" min="10" max="90" />
+                  <span className="text-white/60">%</span>
+                </div>
+                <p className="text-xs text-amber-300 mt-2">Portion to sell on free roll</p>
+              </div>
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                <label className="text-xs text-white/50 mb-1 block">Moonbag Exit</label>
+                <div className="flex items-center gap-2">
+                  <input type="number" value={(exitEngineConfig.whale_zone?.moonbag_multiple || 5.0)} onChange={(e) => setExitEngineConfig({...exitEngineConfig, whale_zone: {...exitEngineConfig.whale_zone, moonbag_multiple: parseFloat(e.target.value)}})} className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="3" max="10" />
+                  <span className="text-white/60">x</span>
+                </div>
+                <p className="text-xs text-green-300 mt-2">Sell 100% at {(exitEngineConfig.whale_zone?.moonbag_multiple || 5.0)}x</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Mechanical Strategy Config */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <Scale className="w-5 h-5 text-cyan-400" />Mechanical Strategies (Fixed TP/SL)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {['arbitrage', 'delta_neutral'].map((strat) => {
+                const stratConfig = exitEngineConfig.strategies?.[strat] || {};
+                const label = strat === 'arbitrage' ? 'Arbitrage' : 'Delta Neutral';
+                return (
+                  <div key={strat} className="p-4 rounded-lg bg-white/5 border border-white/10">
+                    <h4 className="text-sm font-semibold text-white mb-3">{label}</h4>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs text-white/50 mb-1 block">TP %</label>
+                        <input type="number" value={(stratConfig.tp_pct || 0.02) * 100} onChange={(e) => setExitEngineConfig({...exitEngineConfig, strategies: {...exitEngineConfig.strategies, [strat]: {...stratConfig, tp_pct: parseFloat(e.target.value) / 100}}})} className="w-full px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm" step="0.5" min="0.5" max="10" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-white/50 mb-1 block">SL %</label>
+                        <input type="number" value={(stratConfig.sl_pct || 0.02) * 100} onChange={(e) => setExitEngineConfig({...exitEngineConfig, strategies: {...exitEngineConfig.strategies, [strat]: {...stratConfig, sl_pct: parseFloat(e.target.value) / 100}}})} className="w-full px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm" step="0.5" min="0.5" max="10" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-white/50 mb-1 block">Max Hrs</label>
+                        <input type="number" value={stratConfig.max_hours || 6} onChange={(e) => setExitEngineConfig({...exitEngineConfig, strategies: {...exitEngineConfig.strategies, [strat]: {...stratConfig, max_hours: parseInt(e.target.value)}}})} className="w-full px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm" step="1" min="1" max="48" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Alpha Directional Base Config */}
+          <div className="rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 p-6">
+            <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-400" />Alpha Directional (Base Settings)
+            </h3>
+            <p className="text-xs text-white/40 mb-4">These base values are modified by Asset Class multipliers below</p>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Profit Trigger %</label>
+                <input type="number" value={(exitEngineConfig.strategies?.alpha_directional?.profit_trigger_pct || 0.30) * 100} onChange={(e) => setExitEngineConfig({...exitEngineConfig, strategies: {...exitEngineConfig.strategies, alpha_directional: {...(exitEngineConfig.strategies?.alpha_directional || {}), profit_trigger_pct: parseFloat(e.target.value) / 100}}})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="5" min="10" max="100" />
+                <p className="text-[10px] text-white/30 mt-1">Base target for Free Roll</p>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Base Stop Loss %</label>
+                <input type="number" value={(exitEngineConfig.strategies?.alpha_directional?.base_sl_pct || 0.15) * 100} onChange={(e) => setExitEngineConfig({...exitEngineConfig, strategies: {...exitEngineConfig.strategies, alpha_directional: {...(exitEngineConfig.strategies?.alpha_directional || {}), base_sl_pct: parseFloat(e.target.value) / 100}}})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="5" max="50" />
+                <p className="text-[10px] text-white/30 mt-1">Base hard stop</p>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Base Max Hours</label>
+                <input type="number" value={exitEngineConfig.strategies?.alpha_directional?.base_max_hours || 72} onChange={(e) => setExitEngineConfig({...exitEngineConfig, strategies: {...exitEngineConfig.strategies, alpha_directional: {...(exitEngineConfig.strategies?.alpha_directional || {}), base_max_hours: parseInt(e.target.value)}}})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="12" min="12" max="336" />
+                <p className="text-[10px] text-white/30 mt-1">Base time limit (3 days default)</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Alpha Asset Modifiers Matrix */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-purple-400" />Alpha Asset Class Modifiers
+            </h3>
+            <p className="text-xs text-white/40 mb-4">Multipliers applied to Alpha base values. Checkboxes enable/disable features per asset class.</p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-2 px-2 text-white/60 font-medium">Asset Class</th>
+                    <th className="text-center py-2 px-2 text-green-400 font-medium">Profit ×</th>
+                    <th className="text-center py-2 px-2 text-red-400 font-medium">SL ×</th>
+                    <th className="text-center py-2 px-2 text-blue-400 font-medium">Time ×</th>
+                    <th className="text-center py-2 px-2 text-amber-400 font-medium">Trailing</th>
+                    <th className="text-center py-2 px-2 text-purple-400 font-medium">Thesis Fail</th>
+                    <th className="text-center py-2 px-2 text-cyan-400 font-medium">Allow Zombie</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {['politics', 'finance', 'crypto', 'sports', 'entertainment', 'science'].map((asset) => {
+                    const mods = exitEngineConfig.alpha_modifiers?.[asset] || {};
+                    const baseAlpha = exitEngineConfig.strategies?.alpha_directional || {};
+                    const effectiveTP = ((baseAlpha.profit_trigger_pct || 0.30) * (mods.profit_mult || 1.0) * 100).toFixed(0);
+                    const effectiveSL = ((baseAlpha.base_sl_pct || 0.15) * (mods.sl_mult || 1.0) * 100).toFixed(1);
+                    const effectiveHrs = ((baseAlpha.base_max_hours || 72) * (mods.time_mult || 1.0)).toFixed(0);
+                    
+                    return (
+                      <tr key={asset} className="border-b border-white/5 hover:bg-white/5">
+                        <td className="py-2 px-2">
+                          <span className="text-white font-medium capitalize">{asset}</span>
+                          <span className="text-xs text-white/40 ml-2">→ {effectiveTP}% / -{effectiveSL}% / {effectiveHrs}h</span>
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <input type="number" value={mods.profit_mult || 1.0} onChange={(e) => setExitEngineConfig({...exitEngineConfig, alpha_modifiers: {...exitEngineConfig.alpha_modifiers, [asset]: {...mods, profit_mult: parseFloat(e.target.value)}}})} className="w-16 px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-center text-xs" step="0.1" min="0.5" max="3" />
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <input type="number" value={mods.sl_mult || 1.0} onChange={(e) => setExitEngineConfig({...exitEngineConfig, alpha_modifiers: {...exitEngineConfig.alpha_modifiers, [asset]: {...mods, sl_mult: parseFloat(e.target.value)}}})} className="w-16 px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-center text-xs" step="0.1" min="0.3" max="2" />
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <input type="number" value={mods.time_mult || 1.0} onChange={(e) => setExitEngineConfig({...exitEngineConfig, alpha_modifiers: {...exitEngineConfig.alpha_modifiers, [asset]: {...mods, time_mult: parseFloat(e.target.value)}}})} className="w-16 px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-center text-xs" step="0.25" min="0.25" max="5" />
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <input type="checkbox" checked={mods.use_trailing !== false} onChange={(e) => setExitEngineConfig({...exitEngineConfig, alpha_modifiers: {...exitEngineConfig.alpha_modifiers, [asset]: {...mods, use_trailing: e.target.checked}}})} className="w-4 h-4 rounded bg-white/5 border-white/20 text-amber-500" />
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <input type="checkbox" checked={mods.use_thesis_fail !== false} onChange={(e) => setExitEngineConfig({...exitEngineConfig, alpha_modifiers: {...exitEngineConfig.alpha_modifiers, [asset]: {...mods, use_thesis_fail: e.target.checked}}})} className="w-4 h-4 rounded bg-white/5 border-white/20 text-purple-500" />
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <input type="checkbox" checked={mods.allow_zombie === true} onChange={(e) => setExitEngineConfig({...exitEngineConfig, alpha_modifiers: {...exitEngineConfig.alpha_modifiers, [asset]: {...mods, allow_zombie: e.target.checked}}})} className="w-4 h-4 rounded bg-white/5 border-white/20 text-cyan-500" />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Legend */}
+            <div className="mt-4 p-3 rounded-lg bg-slate-800/50 grid grid-cols-3 gap-4 text-xs text-white/60">
+              <div><strong className="text-amber-400">Trailing Stop:</strong> Lock in gains when price rises 15%+</div>
+              <div><strong className="text-purple-400">Thesis Fail:</strong> Exit if losing after 50% of max time</div>
+              <div><strong className="text-cyan-400">Allow Zombie:</strong> Don't auto-exit stagnant trades</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'trading' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="rounded-xl bg-white/5 border border-white/10 p-6">
