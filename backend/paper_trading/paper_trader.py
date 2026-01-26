@@ -3047,28 +3047,52 @@ class PaperTrader:
         base_log_odds = prob_to_log_odds(p_market)
         
         # ================================================================
-        # STEP 2: SENTIMENT DELTA
+        # STEP 2: SENTIMENT DELTA (RELATIVE TO MARKET)
+        # ================================================================
+        # FIX: Calculate sentiment delta as RELATIVE to market, not absolute.
+        # 
+        # OLD BUG: sentiment_delta = log_odds(sentiment)
+        #   - If sentiment=0.40, log_odds=-0.405 (negative)
+        #   - This dragged prices DOWN even when market was 0.10 (sentiment > market!)
+        #
+        # NEW FIX: sentiment_delta = log_odds(sentiment) - log_odds(market)
+        #   - If sentiment=0.40 and market=0.10: delta = -0.405 - (-2.20) = +1.79 (BULLISH)
+        #   - If sentiment=0.40 and market=0.70: delta = -0.405 - (+0.85) = -1.25 (BEARISH)
+        #
+        # This matches the RL logic which was already correct!
         # ================================================================
         p_sentiment = sentiment
         
-        # Neutral band: 0.45-0.55 contributes ZERO (narrowed from 0.40-0.60)
+        # Neutral band: 0.45-0.55 contributes ZERO (noise filter)
         NEUTRAL_LOW = 0.45
         NEUTRAL_HIGH = 0.55
-        SENTIMENT_WEIGHT = 0.60  # Boosted from 0.40 to overcome 2% fee spread
+        SENTIMENT_WEIGHT = 0.50  # Reduced slightly - relative deltas are more powerful
+        
+        # Safety cap for raw delta to prevent hallucination-driven extreme moves
+        MAX_SENTIMENT_DELTA = 2.0  # Clamp to prevent 0.01→0.99 swings
         
         is_sentiment_neutral = NEUTRAL_LOW <= p_sentiment <= NEUTRAL_HIGH
         
         if is_sentiment_neutral:
             weighted_sentiment_delta = 0.0
             sentiment_status = 'neutral_excluded'
+            raw_sentiment_delta = 0.0
         else:
+            # FIXED: Calculate RELATIVE delta (sentiment vs market)
             sentiment_log_odds = prob_to_log_odds(p_sentiment)
-            sentiment_delta = sentiment_log_odds  # Already relative to neutral (0.0)
-            weighted_sentiment_delta = sentiment_delta * SENTIMENT_WEIGHT
+            market_log_odds = base_log_odds  # Already calculated in Step 1
+            
+            # The "pull" - positive if sentiment > market, negative if sentiment < market
+            raw_sentiment_delta = sentiment_log_odds - market_log_odds
+            
+            # Safety clamp to prevent hallucinations from extreme moves
+            raw_sentiment_delta = max(-MAX_SENTIMENT_DELTA, min(MAX_SENTIMENT_DELTA, raw_sentiment_delta))
+            
+            weighted_sentiment_delta = raw_sentiment_delta * SENTIMENT_WEIGHT
             sentiment_status = 'active'
         
         # ================================================================
-        # STEP 3: RL DELTA
+        # STEP 3: RL DELTA (Already correct - relative to market)
         # ================================================================
         rl_action = rl_action.upper() if rl_action else 'HOLD'
         
