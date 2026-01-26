@@ -2800,9 +2800,30 @@ const PaperTrading = () => {
           
           {/* Performance Metrics - Improved Grid */}
           {status && (
-            <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
               <MetricCard title="Capital" value={`$${(status.current_capital || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`} subtitle={`Initial: $${(status.initial_capital || 10000).toLocaleString()}`} icon={Wallet} color="blue" />
-              <MetricCard title="Total P&L" value={`${(status.combined_pnl || status.total_pnl || 0) >= 0 ? '+' : '-'}$${Math.abs(status.combined_pnl || status.total_pnl || 0).toFixed(2)}`} subtitle={`Realized: ${(status.total_pnl || 0) >= 0 ? '+' : '-'}$${Math.abs(status.total_pnl || 0).toFixed(2)}`} trend={status.combined_pnl_pct || status.total_pnl_pct} icon={DollarSign} color={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "green" : "red"} />
+              <MetricCard title="Total P&L" value={`${(status.combined_pnl || status.total_pnl || 0) >= 0 ? '+' : '-'}$${Math.abs(status.combined_pnl || status.total_pnl || 0).toFixed(2)}`} subtitle={`${(status.combined_pnl_pct || status.total_pnl_pct || 0) >= 0 ? '+' : ''}${(status.combined_pnl_pct || status.total_pnl_pct || 0).toFixed(2)}% return`} trend={status.combined_pnl_pct || status.total_pnl_pct} icon={DollarSign} color={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "green" : "red"} />
+              {/* Realized vs Unrealized P&L Breakdown */}
+              <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs uppercase tracking-wider text-white/40">P&L Breakdown</span>
+                  <TrendingUp className="w-4 h-4 text-cyan-400/60" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-white/50">Realized</span>
+                    <span className={`text-sm font-bold ${(status.total_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {(status.total_pnl || 0) >= 0 ? '+' : '-'}${Math.abs(status.total_pnl || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-white/50">Unrealized</span>
+                    <span className={`text-sm font-bold ${(status.unrealized_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {(status.unrealized_pnl || 0) >= 0 ? '+' : '-'}${Math.abs(status.unrealized_pnl || 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
               <MetricCard title="Win Rate" value={`${((status.win_rate || 0) * 100).toFixed(1)}%`} subtitle={`${status.winning_trades || 0}/${status.total_trades || 0} wins`} icon={Target} color="cyan" />
               <MetricCard title="Total Trades" value={status.total_trades || 0} icon={Activity} color="purple" />
               <MetricCard title="Open Positions" value={status.open_positions ?? positions.length ?? 0} icon={Layers} color="orange" />
