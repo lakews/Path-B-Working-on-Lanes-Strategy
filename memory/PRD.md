@@ -45,6 +45,21 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   
   - **UI is now the Single Source of Truth** for all risk parameters
 
+- ✅ **NEW FEATURE: HFT vs Alpha Performance Breakdown in Paper Trading**
+  - **Backend Changes** (`paper_trading/paper_trader.py`):
+    - Added `execution_path_stats` calculation in `get_status()`
+    - Aggregates trades by execution path (HFT: delta_neutral + volatility_exploitation, Alpha: alpha_directional + arbitrage)
+    - Calculates per-path: allocated_capital, deployed_capital, utilization_pct, realized_pnl, unrealized_pnl, total_pnl, return_pct, trades, wins, win_rate, profit_factor
+  
+  - **Frontend Changes** (`PaperTrading.js`):
+    - Added `HftAlphaPerformanceCard` component with:
+      - Side-by-side HFT (cyan) and Alpha (purple) cards
+      - Capital deployment progress bars with utilization %
+      - Realized P&L, Unrealized P&L, Total P&L with Return %
+      - Trade stats: Trades, Win Rate, Profit Factor
+      - LIVE badge when session is running
+    - Displays strategies mapped to each path (e.g., "volatility_exploitation, delta_neutral" for HFT)
+
 ### January 26, 2026 - Session 32 (Two-Speed Hybrid Architecture)
 
 - ✅ **MAJOR REFACTOR: Two-Speed Hybrid Architecture**
