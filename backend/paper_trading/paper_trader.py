@@ -3159,7 +3159,7 @@ class PaperTrader:
         if return_diagnostics:
             return {
                 'final_probability': bayesian_final_prob,
-                'fusion_method': 'bayesian_log_odds_pure',
+                'fusion_method': 'bayesian_log_odds_relative',  # Updated name
                 'components': {
                     'p_market': round(p_market, 6),
                     'p_sentiment': round(p_sentiment, 4),
@@ -3167,6 +3167,7 @@ class PaperTrader:
                 },
                 'log_odds': {
                     'base_log_odds': round(base_log_odds, 4),
+                    'raw_sentiment_delta': round(raw_sentiment_delta, 4),  # NEW: Pre-weight delta
                     'sentiment_delta': round(weighted_sentiment_delta, 4),
                     'rl_delta': round(weighted_rl_delta, 4),
                     'total_delta': round(total_delta, 4),
@@ -3175,6 +3176,7 @@ class PaperTrader:
                 'weights': {
                     'sentiment_weight': SENTIMENT_WEIGHT,
                     'rl_weight': RL_WEIGHT,
+                    'max_sentiment_delta': MAX_SENTIMENT_DELTA,  # NEW: Safety cap
                 },
                 'signal_status': {
                     'sentiment': sentiment_status,
