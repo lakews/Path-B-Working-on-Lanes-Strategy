@@ -1267,9 +1267,14 @@ class MakerOrderExecutor:
         )
     
     def get_stats(self) -> Dict:
-        """Get execution statistics."""
+        """Get execution statistics including hysteresis metrics."""
         total_attempts = self.stats['maker_attempts'] + self.stats['taker_attempts']
         maker_rate = self.stats['maker_fills'] / max(1, self.stats['maker_attempts'])
+        
+        # Hysteresis efficiency metrics
+        hysteresis_skips = self.stats.get('hysteresis_skips', 0)
+        total_with_skips = total_attempts + hysteresis_skips
+        skip_rate = hysteresis_skips / max(1, total_with_skips)
         
         return {
             **self.stats,
@@ -1280,6 +1285,18 @@ class MakerOrderExecutor:
             ),
             'total_executions': total_attempts,
             'circuit_breaker_active': self._circuit_breaker_until is not None,
+            # Hysteresis stats
+            'hysteresis': {
+                'enabled': self.config.get('hysteresis_enabled', True),
+                'skips': hysteresis_skips,
+                'api_calls_saved': self.stats.get('api_calls_saved', 0),
+                'skip_rate': round(skip_rate, 3),
+                'active_orders': len(self._active_orders),
+                'config': {
+                    'min_tick_change': self.config.get('min_tick_change', 0.003),
+                    'min_size_change': self.config.get('min_size_change', 5.0)
+                }
+            }
         }
     
     def should_trade_given_spread(self, edge: float, spread: float) -> Tuple[bool, str]:
