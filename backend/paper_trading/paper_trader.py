@@ -1273,17 +1273,39 @@ class PaperTrader:
             return None
     
     async def _execute_hft_trade(self, market_data: Dict, opportunity: Dict):
-        """Execute an HFT trade."""
+        """
+        Execute an HFT trade.
+        
+        This handles both:
+        1. Autonomous HFT scalps (pure market microstructure)
+        2. Delegated Alpha trades (wide spread, need Maker execution)
+        """
         try:
             market_id = market_data.get('id', '')
             side = opportunity['side']
             size = opportunity['size']
             strategy = opportunity.get('strategy', 'hft_scalp')
+            regime = opportunity.get('regime', MarketRegime.TAKER_TIGHT)
+            spread_zone = opportunity.get('spread_zone', 'NORMAL')
             
-            logger.info(
-                f"[HFT TRADE] {side} ${size:.2f} in {market_id[:16]}... | "
-                f"Edge: {opportunity['edge']:.2%} | Strategy: {strategy}"
-            )
+            # Different logging for different modes
+            if regime == MarketRegime.MAKER_OPPORTUNITY:
+                logger.info(
+                    f"💰 [HFT MAKER] {side} ${size:.2f} in {market_id[:16]}... | "
+                    f"Edge: {opportunity['edge']:.2%} | Zone: {spread_zone} | "
+                    f"Strategy: {strategy} (Alpha delegated - posting liquidity)"
+                )
+            elif regime == MarketRegime.MAKER_WIDE:
+                logger.info(
+                    f"📊 [HFT MAKER] {side} ${size:.2f} in {market_id[:16]}... | "
+                    f"Edge: {opportunity['edge']:.2%} | Zone: {spread_zone} | "
+                    f"Strategy: {strategy} (standard maker)"
+                )
+            else:
+                logger.info(
+                    f"⚡ [HFT TRADE] {side} ${size:.2f} in {market_id[:16]}... | "
+                    f"Edge: {opportunity['edge']:.2%} | Strategy: {strategy}"
+                )
             
             # Use the same entry execution as Alpha (but with HFT-specific sizing)
             # This reuses the maker executor infrastructure
@@ -1293,14 +1315,16 @@ class PaperTrader:
                 side=side,
                 size=size,
                 strategy='delta_neutral',  # HFT trades use delta_neutral exit params
-                signals={'hft_mode': True, 'edge': opportunity['edge']},
+                signals={'hft_mode': True, 'edge': opportunity['edge'], 'regime': regime},
                 rl_action='HFT_ENTRY',
                 rl_confidence=0.5,
                 sizing_breakdown={
                     'hft_trade': True,
                     'edge': opportunity['edge'],
                     'fair_value': opportunity.get('fair_value'),
-                    'regime': opportunity.get('regime'),
+                    'regime': regime,
+                    'spread_zone': spread_zone,
+                    'delegated_from_alpha': strategy in ['hft_golden_penny', 'hft_smart'],
                 }
             )
             
