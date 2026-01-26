@@ -514,7 +514,7 @@ const Configuration = () => {
                       value={config.hft_max_position_pct || 10} 
                       onChange={(e) => setConfig({...config, hft_max_position_pct: parseInt(e.target.value)})} 
                       className="w-full h-1.5 bg-white/10 rounded-lg" 
-                      min="5" max="25" step="5" 
+                      min="1" max="50" step="1" 
                     />
                     <p className="text-xs text-white/40 mt-1">Max: ${(deployedCapital * (config.hft_allocation_pct || 40) / 100 * (config.hft_max_position_pct || 10) / 100).toFixed(2)}/trade</p>
                   </div>
@@ -528,7 +528,7 @@ const Configuration = () => {
                       value={config.hft_max_positions || 3} 
                       onChange={(e) => setConfig({...config, hft_max_positions: parseInt(e.target.value)})} 
                       className="w-full h-1.5 bg-white/10 rounded-lg" 
-                      min="1" max="10" step="1" 
+                      min="1" max="50" step="1" 
                     />
                   </div>
                 </div>
