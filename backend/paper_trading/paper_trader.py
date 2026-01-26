@@ -2307,35 +2307,63 @@ class PaperTrader:
                 return
             
             # Get current price - require valid price for exit
-            current_price = market_data.get('yes_price')
-            if current_price is None or current_price == 0:
+            current_yes_price = market_data.get('yes_price')
+            if current_yes_price is None or current_yes_price == 0:
                 logger.warning(f"[EXIT-SKIP] No valid exit price for {market_id[:16]}")
                 return
             
-            current_price = float(current_price)
+            current_yes_price = float(current_yes_price)
+            
+            # ==========================================================================
+            # SPREAD-AWARE EXIT PRICING (same as _check_exit_conditions)
+            # ==========================================================================
+            order_book = market_data.get('order_book', {})
+            bids = order_book.get('bids', [])
+            asks = order_book.get('asks', [])
+            
+            side = position['side']
+            
+            if bids and asks:
+                # Use orderbook prices - more accurate than midpoint
+                best_bid = float(bids[0]['price'])
+                best_ask = float(asks[0]['price'])
+                if side == 'YES':
+                    # Selling YES = hitting bid
+                    exit_yes_price = best_bid
+                else:
+                    # Selling NO = buying YES = hitting ask
+                    exit_yes_price = best_ask
+                logger.debug(f"[EXIT] Using orderbook price: bid={best_bid}, ask={best_ask}, exit_yes={exit_yes_price}")
+            else:
+                # No orderbook - use midpoint with conservative spread estimate
+                spread_estimate = 0.02
+                if side == 'YES':
+                    exit_yes_price = current_yes_price - (spread_estimate / 2)
+                else:
+                    exit_yes_price = current_yes_price + (spread_estimate / 2)
+                exit_yes_price = max(0.001, min(0.999, exit_yes_price))
             
             # Use yes_entry_price for internal calculations (stores the YES price at entry)
             yes_entry_price = position.get('yes_entry_price', position['entry_price'])
-            side = position['side']
             size = position['size']  # USD invested
             strategy = position['strategy']
             asset_class = position.get('asset_class', 'unknown')
             
-            # CORRECT P&L Calculation based on shares
-            # For YES: we buy YES shares at yes_price, sell at exit yes_price
-            # For NO: we buy NO shares at (1 - yes_price), sell at exit (1 - yes_price)
+            # ==========================================================================
+            # CORRECT P&L Calculation based on shares (using spread-aware exit price)
+            # ==========================================================================
             if side == 'YES':
-                # YES position: buy at entry_price, sell at current_price
+                # YES position: buy at entry_price, sell at exit_yes_price
                 if yes_entry_price > 0:
                     shares = size / yes_entry_price
-                    exit_value = shares * current_price
+                    exit_value = shares * exit_yes_price
                     pnl = exit_value - size
                 else:
                     pnl = 0
             else:
-                # NO position: buy at (1 - yes_entry_price), sell at (1 - current_price)
+                # NO position: buy at (1 - yes_entry_price), sell at (1 - exit_yes_price)
                 no_entry_price = 1 - yes_entry_price
-                no_exit_price = 1 - current_price
+                no_exit_price = 1 - exit_yes_price
                 if no_entry_price > 0:
                     shares = size / no_entry_price
                     exit_value = shares * no_exit_price
