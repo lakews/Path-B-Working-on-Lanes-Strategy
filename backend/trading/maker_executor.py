@@ -196,7 +196,7 @@ class MakerOrderExecutor:
         self._circuit_breaker_until: Optional[datetime] = None
         
         # Stats tracking
-        self.stats = {
+199|        self.stats = {
             'maker_attempts': 0,
             'maker_fills': 0,
             'taker_attempts': 0,
@@ -206,6 +206,9 @@ class MakerOrderExecutor:
             'total_spread_paid': 0.0,
             'avg_wait_time_ms': 0,
             'circuit_breaker_trips': 0,
+            # Hysteresis stats
+            'hysteresis_skips': 0,        # Orders skipped due to hysteresis
+            'api_calls_saved': 0,         # Estimated API calls saved
         }
         
         # ==========================================================================
@@ -213,6 +216,13 @@ class MakerOrderExecutor:
         # ==========================================================================
         # Track inventory per market (positive = long, negative = short)
         self._inventory: Dict[str, float] = {}  # market_id -> position in USD
+        
+        # ==========================================================================
+        # ACTIVE ORDER TRACKING (for Hysteresis)
+        # ==========================================================================
+        # Track currently active orders per market/side to enable smart updates
+        # Key: (market_id, side) -> {'price': float, 'size': float, 'order_id': str, 'timestamp': datetime}
+        self._active_orders: Dict[Tuple[str, str], Dict] = {}
         
         logger.info(f"MakerOrderExecutor initialized in {mode.value} mode")
     
