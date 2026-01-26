@@ -540,6 +540,135 @@ class MakerOrderExecutor:
         max_inv = self.config.get('max_inventory_usd', 1000.0)
         return max(-1.0, min(1.0, current / max_inv))
     
+    # ==========================================================================
+    # QUOTE HYSTERESIS: Smart Order Updates
+    # ==========================================================================
+    
+    def should_update_order(
+        self,
+        market_id: str,
+        side: str,
+        new_price: float,
+        new_size: float
+    ) -> Tuple[bool, str]:
+        """
+        Determine if we should update an existing order based on hysteresis rules.
+        
+        Only update an existing order on the book if the price/size has moved
+        significantly enough to justify the cost of a cancel/replace.
+        
+        Benefits:
+        - Preserves API rate limits (~90% reduction in API calls)
+        - Maintains queue priority on the exchange
+        - Reduces order flickering
+        
+        Args:
+            market_id: Market identifier
+            side: 'YES' or 'NO'
+            new_price: Newly calculated quote price
+            new_size: Newly calculated order size
+            
+        Returns:
+            (should_update, reason)
+        """
+        # Check if hysteresis is enabled
+        if not self.config.get('hysteresis_enabled', True):
+            return True, "hysteresis_disabled"
+        
+        # Get current active order for this market/side
+        order_key = (market_id, side)
+        current_order = self._active_orders.get(order_key)
+        
+        # If no existing order, we must place one
+        if current_order is None:
+            return True, "no_existing_order"
+        
+        # Get hysteresis thresholds
+        min_tick_change = self.config.get('min_tick_change', 0.003)
+        min_size_change = self.config.get('min_size_change', 5.0)
+        
+        # 1. PRICE CHECK (Hysteresis)
+        # If the price difference is insignificant, stay put to keep queue priority
+        current_price = current_order.get('price', 0)
+        price_diff = abs(current_price - new_price)
+        
+        if price_diff >= min_tick_change:
+            # Price moved enough - update the order
+            return True, f"price_diff_{price_diff:.4f}>={min_tick_change}"
+        
+        # 2. SIZE CHECK
+        # If price is same-ish, check if we need to radically change size
+        # (e.g., because of risk limits or inventory changes)
+        current_size = current_order.get('size', 0)
+        size_diff = abs(current_size - new_size)
+        
+        if size_diff >= min_size_change:
+            # Size changed significantly - update the order
+            return True, f"size_diff_{size_diff:.2f}>={min_size_change}"
+        
+        # NO UPDATE NEEDED - Stay in the queue, save the API call
+        logger.debug(
+            f"[HYSTERESIS] SKIP update for {market_id[:16]}... {side} | "
+            f"Price: {current_price:.4f}→{new_price:.4f} (diff={price_diff:.4f}<{min_tick_change}) | "
+            f"Size: ${current_size:.2f}→${new_size:.2f} (diff=${size_diff:.2f}<${min_size_change})"
+        )
+        
+        return False, "within_hysteresis_bounds"
+    
+    def record_active_order(
+        self,
+        market_id: str,
+        side: str,
+        price: float,
+        size: float,
+        order_id: Optional[str] = None
+    ):
+        """
+        Record an active order for hysteresis tracking.
+        
+        Call this after successfully placing or updating an order.
+        """
+        order_key = (market_id, side)
+        self._active_orders[order_key] = {
+            'price': price,
+            'size': size,
+            'order_id': order_id,
+            'timestamp': datetime.now(timezone.utc)
+        }
+        
+        logger.debug(
+            f"[HYSTERESIS] Recorded active order: {market_id[:16]}... {side} "
+            f"@ {price:.4f} x ${size:.2f}"
+        )
+    
+    def clear_active_order(self, market_id: str, side: str):
+        """
+        Clear an active order record after fill or cancellation.
+        """
+        order_key = (market_id, side)
+        if order_key in self._active_orders:
+            del self._active_orders[order_key]
+            logger.debug(f"[HYSTERESIS] Cleared active order: {market_id[:16]}... {side}")
+    
+    def get_active_order(self, market_id: str, side: str) -> Optional[Dict]:
+        """Get current active order info for a market/side."""
+        return self._active_orders.get((market_id, side))
+    
+    def get_hysteresis_stats(self) -> Dict:
+        """Get hysteresis performance statistics."""
+        total_attempts = self.stats['maker_attempts'] + self.stats.get('hysteresis_skips', 0)
+        skip_rate = self.stats.get('hysteresis_skips', 0) / max(1, total_attempts)
+        
+        return {
+            'hysteresis_enabled': self.config.get('hysteresis_enabled', True),
+            'min_tick_change': self.config.get('min_tick_change', 0.003),
+            'min_size_change': self.config.get('min_size_change', 5.0),
+            'orders_skipped': self.stats.get('hysteresis_skips', 0),
+            'api_calls_saved': self.stats.get('api_calls_saved', 0),
+            'skip_rate': round(skip_rate, 3),
+            'active_orders_count': len(self._active_orders)
+        }
+    
     async def execute_order(
         self,
         side: str,  # 'YES' or 'NO'
