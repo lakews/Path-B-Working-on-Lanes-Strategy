@@ -1936,10 +1936,16 @@ class PaperTrader:
                 asks = order_book.get('asks', [])
             
             if bids and asks:
-                # We have orderbook - use bid for NO exits, ask for YES exits
+                # Use orderbook prices - more accurate than midpoint
                 best_bid = float(bids[0]['price'])
                 best_ask = float(asks[0]['price'])
-                if side == 'YES':
+                spread = best_ask - best_bid
+                
+                # SANITY CHECK: Reject if spread is too wide (>15%)
+                if spread < 0 or spread > 0.15:
+                    logger.warning(f"[EXIT-EVAL] Suspicious orderbook spread={spread:.2%}, using midpoint instead")
+                    exit_yes_price = current_price
+                elif side == 'YES':
                     # Selling YES = hitting bid
                     exit_yes_price = best_bid
                 else:
