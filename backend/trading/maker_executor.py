@@ -803,6 +803,36 @@ class MakerOrderExecutor:
                    f"Spread: {spread:.4f} ({spread_pct:.2%}) | Edge: {edge:.2%} | "
                    f"Alpha={quote_center:.4f} | Bid={my_bid:.4f} Ask={my_ask:.4f}")
         
+        # Determine our target price based on side
+        target_price = my_bid if side == 'YES' else my_ask
+        
+        # ==========================================================================
+        # HYSTERESIS CHECK: Should we update or stay in queue?
+        # ==========================================================================
+        should_update, hysteresis_reason = self.should_update_order(
+            market_id=market_id,
+            side=side,
+            new_price=target_price,
+            new_size=size
+        )
+        
+        if not should_update:
+            # Order is within hysteresis bounds - skip update to preserve queue priority
+            self.stats['hysteresis_skips'] = self.stats.get('hysteresis_skips', 0) + 1
+            self.stats['api_calls_saved'] = self.stats.get('api_calls_saved', 0) + 2  # cancel + place
+            
+            logger.info(f"[HYSTERESIS] SKIP {side} order for {market_id[:16]}... | "
+                       f"Reason: {hysteresis_reason} | "
+                       f"API calls saved: {self.stats.get('api_calls_saved', 0)}")
+            
+            return ExecutionResult(
+                order_type=OrderType.MAKER,
+                fill_status=FillStatus.UNFILLED,
+                fill_price=0, fill_size=0,
+                wait_time_ms=0,
+                reason=f"hysteresis_skip_{hysteresis_reason}"
+            )
+        
         # Decision tree for execution strategy
         if edge >= self.config['min_edge_for_aggressive_taker']:
             # High edge - go directly as taker (speed matters more than spread)
