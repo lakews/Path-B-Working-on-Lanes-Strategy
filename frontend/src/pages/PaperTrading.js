@@ -2484,6 +2484,7 @@ const PaperTrading = () => {
   const [selectedSession, setSelectedSession] = useState(null);
   const [continuousMode, setContinuousMode] = useState(false);
   const [aiStats, setAiStats] = useState(null);
+  const [gammaStats, setGammaStats] = useState(null);  // Gamma Strategy Dashboard (Task 22)
   const [showStopOptions, setShowStopOptions] = useState(false);
   const [cumulativeStats, setCumulativeStats] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
