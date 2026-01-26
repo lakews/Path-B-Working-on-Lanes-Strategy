@@ -1012,6 +1012,8 @@ class PaperTrader:
         
         This is "Smart HFT" - we know what Alpha thinks the fair value is,
         so we can post limit orders around that price to capture spread.
+        
+        LIQUIDITY UNLOCK v2: Handle MAKER_OPPORTUNITY regime with aggressive penny-ing.
         """
         try:
             market_id = market_data.get('id', '')
@@ -1032,12 +1034,68 @@ class PaperTrader:
             if available_capital < 5:
                 return None
             
-            # Calculate edge from Alpha's fair value
-            # If Alpha says fair value is 0.55 and market is 0.50, there's 5% YES edge
+            # Get orderbook data for spread-based strategies
+            best_bid = market_data.get('best_bid', 0)
+            best_ask = market_data.get('best_ask', 0)
+            spread = best_ask - best_bid if (best_bid > 0 and best_ask > 0) else 0
+            
+            # =================================================================
+            # REGIME-SPECIFIC STRATEGIES
+            # =================================================================
+            
+            if regime == MarketRegime.MAKER_OPPORTUNITY:
+                # GOLDEN ZONE: Fat spread (15-30%), aggressive liquidity provision
+                # Strategy: Front-run the best bid, ignore fair value edge requirements
+                # The spread itself IS the edge!
+                
+                if best_bid <= 0 or best_ask <= 0:
+                    return None  # Need orderbook for penny-ing
+                
+                # Penny the best bid: place order 1 tick above current best
+                my_bid = best_bid + 0.001
+                
+                # Safety: Don't bid higher than Alpha's fair value
+                # (We want the spread, but not at any price)
+                if my_bid > fair_value:
+                    logger.debug(f"[HFT GOLDEN] {market_id[:16]}... bid {my_bid:.4f} > FV {fair_value:.4f}, waiting")
+                    return None
+                
+                # Implied edge = what we capture if filled and can exit at ask
+                implied_edge = (best_ask - my_bid) / my_bid
+                
+                # Larger position in golden zone (spread is fat, risk is lower)
+                hft_size = min(
+                    available_capital * 0.025,  # Max 2.5% per golden trade
+                    self.max_position_size * 0.6,  # 60% of normal max
+                    60.0  # Cap at $60 for golden zone
+                )
+                
+                logger.info(
+                    f"💰 [HFT GOLDEN] {market_id[:16]}... | "
+                    f"Spread: {spread:.2%} | Bid: {best_bid:.4f} → MyBid: {my_bid:.4f} | "
+                    f"FV: {fair_value:.4f} | Implied Edge: {implied_edge:.2%}"
+                )
+                
+                return {
+                    'should_trade': True,
+                    'side': 'YES',
+                    'size': hft_size,
+                    'edge': implied_edge,
+                    'fair_value': fair_value,
+                    'my_price': my_bid,
+                    'strategy': 'hft_golden_penny',
+                    'regime': regime,
+                    'spread_zone': 'GOLDEN',
+                }
+            
+            # Standard edge-based logic for MAKER_WIDE and TAKER_TIGHT
             edge = fair_value - yes_price
             
             # For HFT, we need smaller edge threshold (we're capturing spread)
-            min_hft_edge = 0.005 if regime == MarketRegime.MAKER_WIDE else 0.008
+            if regime == MarketRegime.MAKER_WIDE:
+                min_hft_edge = 0.005  # 0.5% edge for wide maker
+            else:
+                min_hft_edge = 0.008  # 0.8% edge for tight markets
             
             if abs(edge) > min_hft_edge:
                 side = 'YES' if edge > 0 else 'NO'
