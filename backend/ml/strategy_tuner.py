@@ -1,6 +1,8 @@
 """
 Strategy Tuning Mode - Automatic Parameter Optimization
 Uses grid search and walk-forward optimization to find optimal strategy parameters
+
+NOTE: Spread grid values imported from centralized spread_policy for consistency.
 """
 import logging
 import asyncio
@@ -9,6 +11,12 @@ from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from itertools import product
 import uuid
+
+# Import centralized spread grid values
+try:
+    from execution.spread_policy import SPREAD_GRID_VALUES
+except ImportError:
+    SPREAD_GRID_VALUES = [0.03, 0.05, 0.07]  # Fallback
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +34,14 @@ class StrategyTuner:
         self.results = []
         
         # Define parameter grids for each strategy
+        # NOTE: spread_threshold values use centralized SPREAD_GRID_VALUES
         self.parameter_grids = {
             'delta_neutral': {
                 'profit_target': [0.003, 0.004, 0.005, 0.006, 0.008],
                 'stop_loss': [0.006, 0.008, 0.010, 0.012, 0.015],
                 'bank_profit_threshold': [0.001, 0.002, 0.003],
                 'timeout_snapshots': [8, 12, 15, 20],
-                'spread_threshold': [0.03, 0.05, 0.07]  # Calibrated for real-world 2-6% spreads
+                'spread_threshold': SPREAD_GRID_VALUES  # [0.03, 0.05, 0.07]
             },
             'volatility_exploitation': {
                 'profit_target': [0.02, 0.03, 0.04, 0.05],
@@ -51,7 +60,7 @@ class StrategyTuner:
             'arbitrage': {
                 'profit_target': [0.01, 0.015, 0.02, 0.025],
                 'stop_loss': [0.015, 0.02, 0.025, 0.03],
-                'min_spread': [0.03, 0.05, 0.07],  # Calibrated for real-world 2-6% spreads
+                'min_spread': SPREAD_GRID_VALUES,  # [0.03, 0.05, 0.07]
                 'position_timeout': [30, 40, 50, 60]
             }
         }
