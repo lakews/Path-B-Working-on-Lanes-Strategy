@@ -1302,9 +1302,9 @@ class PaperTrader:
                 regime = MarketRegime.TAKER_TIGHT
                 regime_diagnostics = {}
             
-            # Skip zombies
+            # Log zombie markets but still return analysis for tracking
             if regime == MarketRegime.ZOMBIE:
-                return None
+                logger.debug(f"[ALPHA] Zombie market {market_id[:16]}... - no orderbook liquidity")
             
             # Calculate edge
             effective_price = yes_price + 0.02  # Fee-adjusted
