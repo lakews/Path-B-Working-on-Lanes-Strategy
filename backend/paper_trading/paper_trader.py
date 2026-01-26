@@ -1245,12 +1245,15 @@ class PaperTrader:
             
             yes_price = float(yes_price)
             
+            # Skip extreme prices
+            if yes_price in [0.0, 1.0]:
+                return None
+            
             # Get signals (includes LLM call - slow!)
             signals = await self._get_signals(market_data)
             
-            # Get RL action
-            rl_state = self._build_rl_state(market_data, signals)
-            rl_action, rl_confidence = await self.rl_engine.get_action(rl_state)
+            # Get RL action using existing method
+            rl_action, rl_confidence = await self.rl_engine.get_optimal_action(market_data, signals)
             
             # Calculate model probability (Bayesian fusion)
             model_result = self._calculate_model_probability(
