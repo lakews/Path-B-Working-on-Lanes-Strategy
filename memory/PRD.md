@@ -131,7 +131,37 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - **Files Modified**:
     - `/app/backend/paper_trading/paper_trader.py` - Added regime-based execution guardrails in Alpha loop, enhanced `_execute_hft_trade` logging
   
-  - **Reality Check**: All current Polymarket markets have 98%+ CLOB spreads (bid=0.01, ask=0.99). This is a data reality - the markets have no real orderbook depth. The bot is correctly protecting itself from execution.
+- ✅ **P0 CRITICAL FIX (Task 20): Polymarket Orderbook Sorting Bug**
+  - **Problem**: Bot was seeing 98-99% spreads on ALL markets, including liquid ones with real 1-2% spreads. This caused the bot to reject every trade opportunity.
+  
+  - **Root Cause**: Polymarket CLOB API returns orderbooks with NON-STANDARD sorting:
+    - BIDS: Sorted ASCENDING (lowest bid first) - opposite of standard!
+    - ASKS: Sorted DESCENDING (highest ask first) - opposite of standard!
+    
+    When we read `asks[0]`, we got 0.999 instead of the real best ask at 0.002.
+    This made every spread appear as 99.8% instead of the real 0.1%.
+  
+  - **Solution**: Added orderbook normalization in `get_order_book()`:
+    ```python
+    # Sort bids DESCENDING by price (highest bid first)
+    bids = sorted(bids, key=lambda x: float(x['price']), reverse=True)
+    
+    # Sort asks ASCENDING by price (lowest ask first)  
+    asks = sorted(asks, key=lambda x: float(x['price']), reverse=False)
+    ```
+  
+  - **Files Modified**: `/app/backend/data/polymarket_api.py` - `get_order_book()` method
+  
+  - **Results - Before vs After**:
+    ```
+    BEFORE: Spread: 99.80% | Bid: 0.0010 | Ask: 0.9990
+    AFTER:  Spread: 0.10%  | Bid: 0.0010 | Ask: 0.0020
+    
+    BEFORE: Triggered: 0, Positions: 0
+    AFTER:  Triggered: 8, Positions: 10
+    ```
+  
+  - **Impact**: Bot went from seeing "empty swamp" to seeing real market liquidity. Trading is now active!
 
 ### January 26, 2026 - Session 34 (Two-Speed Architecture + Core Fixes)
 
