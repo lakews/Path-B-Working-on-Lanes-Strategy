@@ -1411,10 +1411,11 @@ class PaperTrader:
             
             # Calculate model probability (Bayesian fusion)
             model_result = self._calculate_model_probability(
-                yes_price=yes_price,
                 sentiment=signals.get('sentiment', 0.5),
-                rl_action=rl_action,
+                sharp_alignment=signals.get('sharp_alignment', 0.5),
                 rl_confidence=rl_confidence,
+                yes_price=yes_price,
+                rl_action=rl_action,
                 return_diagnostics=True
             )
             
