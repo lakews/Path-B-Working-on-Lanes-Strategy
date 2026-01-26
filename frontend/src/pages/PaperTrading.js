@@ -2830,6 +2830,11 @@ const PaperTrading = () => {
             <AssetClassEquityCard equityData={status?.asset_class_equity} initialCapital={initialCapital} />
           )}
 
+          {/* HFT vs Alpha Performance - Two-Speed Architecture Breakdown */}
+          {status && (
+            <HftAlphaPerformanceCard executionPathStats={status?.execution_path_stats} showLive={running} />
+          )}
+
           {/* Strategy & Asset Class Tables with Totals */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-3">
