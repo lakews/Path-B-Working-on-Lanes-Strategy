@@ -1427,8 +1427,8 @@ const Configuration = () => {
                 <Layers className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <h3 className="text-white font-semibold">Max Open Positions</h3>
-                <p className="text-xs text-white/50">Maximum concurrent positions (prevents over-leveraging)</p>
+                <h3 className="text-white font-semibold">Max Open Positions (Global Total)</h3>
+                <p className="text-xs text-white/50">Total positions across ALL markets (portfolio-wide limit)</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -1437,14 +1437,14 @@ const Configuration = () => {
                 value={config.max_open_positions || 50} 
                 onChange={(e) => setConfig({...config, max_open_positions: parseInt(e.target.value)})} 
                 className="flex-1 h-2 bg-white/10 rounded-lg" 
-                min="10" 
-                max="1000" 
+                min="1" 
+                max="5000" 
                 step="10" 
               />
               <span className="text-white font-bold text-xl w-20 text-right">{config.max_open_positions || 50}</span>
             </div>
-            <div className="grid grid-cols-6 gap-2 mt-4">
-              {[25, 50, 100, 250, 500, 1000].map((val) => (
+            <div className="grid grid-cols-7 gap-2 mt-4">
+              {[10, 50, 100, 250, 500, 1000, 5000].map((val) => (
                 <button 
                   key={val} 
                   onClick={() => setConfig({...config, max_open_positions: val})} 
