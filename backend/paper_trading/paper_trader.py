@@ -2187,6 +2187,12 @@ class PaperTrader:
                 best_ask = float(asks[0]['price'])
                 spread = best_ask - best_bid
                 
+                # DEBUG: Log orderbook details when spread is suspicious
+                if spread > 0.5:
+                    logger.warning(f"[ENTRY-DEBUG] Suspicious orderbook for {market_id[:16]}: "
+                                  f"bid={best_bid:.4f}, ask={best_ask:.4f}, spread={spread:.4f} "
+                                  f"| bids[0]={bids[0]} | asks[0]={asks[0]}")
+                
                 # Get max spread from config (default to 0.99 for wide tolerance)
                 max_spread_config = getattr(self, 'max_spread', 0.99)
                 
