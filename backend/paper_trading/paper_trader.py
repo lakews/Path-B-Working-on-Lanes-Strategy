@@ -827,15 +827,23 @@ class PaperTrader:
         }
     
     async def start(self):
-        """Start paper trading session"""
+        """Start paper trading session with TWO-SPEED ARCHITECTURE"""
         self.running = True
-        logger.info(f"Starting Paper Trading Session: {self.session_id}")
+        logger.info(f"🚀 Starting Paper Trading Session: {self.session_id}")
+        logger.info("=" * 60)
+        logger.info("TWO-SPEED ARCHITECTURE ENABLED")
+        logger.info("  HFT Loop:   Fast (0.5s) - Microstructure, Scalping")
+        logger.info("  Alpha Loop: Slow (30s)  - Bayesian, LLM Analysis")
+        logger.info("=" * 60)
         
         # Load user configuration
         await self._load_user_config()
         
         # Load RL model
         await self.rl_engine.load_model()
+        
+        # Initialize strategy context (shared state between loops)
+        self.strategy_context = get_strategy_context()
         
         # Initialize real-time market service (WebSocket)
         if self.use_websocket_data:
@@ -851,14 +859,537 @@ class PaperTrader:
         # Initialize session in DB
         await self._init_session()
         
-        # Run trading loops (including emergency stop loss task)
+        # =================================================================
+        # TWO-SPEED ARCHITECTURE: Run HFT and Alpha loops CONCURRENTLY
+        # =================================================================
+        # - HFT Loop: Fast reactions, market microstructure, no LLM
+        # - Alpha Loop: Slow analysis, Bayesian fusion, LLM sentiment
+        # - Plus: monitoring, learning, emergency tasks
         await asyncio.gather(
-            self._trading_loop(),
-            self._position_monitoring_loop(),
-            self._learning_loop(),
-            self._continuous_mode_handler(),
-            self._emergency_stoploss_task()  # Safety net for stop losses
+            self._run_hft_loop(),              # Fast Path (0.5s cycle)
+            self._run_alpha_loop(),            # Slow Path (30s cycle)
+            self._position_monitoring_loop(),  # Exit monitoring
+            self._learning_loop(),             # RL training
+            self._continuous_mode_handler(),   # Session management
+            self._emergency_stoploss_task()    # Safety net
         )
+    
+    # =================================================================
+    # HFT LOOP: THE REFLEX (Fast Path)
+    # =================================================================
+    # Runs every 0.5-1.0s
+    # - Checks orderbook spreads and microstructure
+    # - Executes "reflex" trades (scalps, spread capture)
+    # - Uses Alpha's theoretical prices if available
+    # - NO LLM calls, NO heavy Bayesian computation
+    # =================================================================
+    
+    async def _run_hft_loop(self):
+        """
+        HFT Reflex Loop - Fast, reactive trading based on market microstructure.
+        
+        This loop:
+        1. Fetches orderbook snapshots (fast)
+        2. Checks for scalping/arbitrage opportunities
+        3. Uses Alpha's fair value targets if available
+        4. Executes maker orders to capture spread
+        
+        Runs every 0.5 seconds.
+        """
+        HFT_CYCLE_INTERVAL = 0.5  # 500ms between cycles
+        
+        logger.info("🚀 HFT Reflex Loop Started")
+        
+        hft_cycle_count = 0
+        
+        while self.running:
+            try:
+                hft_cycle_count += 1
+                cycle_start = datetime.now(timezone.utc)
+                
+                # Skip if in graceful stop mode
+                if self.graceful_stop:
+                    await asyncio.sleep(HFT_CYCLE_INTERVAL)
+                    continue
+                
+                # 1. FAST FETCH: Get market snapshots (orderbook focused)
+                markets = await self._get_active_markets()
+                
+                if not markets:
+                    await asyncio.sleep(HFT_CYCLE_INTERVAL)
+                    continue
+                
+                # 2. REFLEX CHECK: Process markets for HFT opportunities
+                # Only process markets where we have Alpha targets OR good spreads
+                hft_evaluated = 0
+                hft_triggered = 0
+                
+                for market_data in markets[:50]:  # Process top 50 for speed
+                    if not self.running:
+                        break
+                    
+                    market_id = market_data.get('id')
+                    
+                    # Skip if we already have a position (let Alpha/monitoring handle exits)
+                    if market_id in self.paper_positions:
+                        continue
+                    
+                    # Check if Alpha has analyzed this market
+                    alpha_target = self.strategy_context.get_target(market_id)
+                    
+                    if alpha_target and not alpha_target.get('stale'):
+                        # SMART MODE: Use Alpha's fair value
+                        opportunity = await self._evaluate_hft_opportunity(
+                            market_data, 
+                            fair_value=alpha_target['fair_value'],
+                            regime=alpha_target['regime']
+                        )
+                    else:
+                        # SCALP MODE: Pure market microstructure
+                        opportunity = await self._evaluate_hft_scalp(market_data)
+                    
+                    hft_evaluated += 1
+                    
+                    if opportunity and opportunity.get('should_trade'):
+                        hft_triggered += 1
+                        await self._execute_hft_trade(market_data, opportunity)
+                
+                # Record cycle completion
+                self.strategy_context.record_hft_cycle()
+                
+                # Log every 20 cycles
+                if hft_cycle_count % 20 == 0:
+                    cycle_time = (datetime.now(timezone.utc) - cycle_start).total_seconds() * 1000
+                    bridge_stats = self.strategy_context.get_stats()
+                    logger.info(
+                        f"[HFT #{hft_cycle_count}] Evaluated: {hft_evaluated}, "
+                        f"Triggered: {hft_triggered}, Cycle: {cycle_time:.0f}ms, "
+                        f"Alpha Hits: {bridge_stats['hit_rate']:.1%}"
+                    )
+                
+                # 3. SLEEP: Brief pause for next cycle
+                await asyncio.sleep(HFT_CYCLE_INTERVAL)
+                
+            except Exception as e:
+                logger.error(f"[HFT ERROR] {e}")
+                await asyncio.sleep(1)
+        
+        logger.info("🛑 HFT Reflex Loop Stopped")
+    
+    async def _evaluate_hft_opportunity(self, market_data: Dict, fair_value: float, regime: str) -> Optional[Dict]:
+        """
+        Evaluate HFT opportunity using Alpha's theoretical price.
+        
+        This is "Smart HFT" - we know what Alpha thinks the fair value is,
+        so we can post limit orders around that price to capture spread.
+        """
+        try:
+            market_id = market_data.get('id', '')
+            yes_price = market_data.get('yes_price')
+            
+            if yes_price is None or yes_price == 0:
+                return None
+            
+            yes_price = float(yes_price)
+            
+            # Skip zombie markets
+            if regime == MarketRegime.ZOMBIE:
+                return None
+            
+            # Check capital availability
+            current_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+            available_capital = self.deployed_capital - current_deployed
+            if available_capital < 5:
+                return None
+            
+            # Calculate edge from Alpha's fair value
+            # If Alpha says fair value is 0.55 and market is 0.50, there's 5% YES edge
+            edge = fair_value - yes_price
+            
+            # For HFT, we need smaller edge threshold (we're capturing spread)
+            min_hft_edge = 0.005 if regime == MarketRegime.MAKER_WIDE else 0.008
+            
+            if abs(edge) > min_hft_edge:
+                side = 'YES' if edge > 0 else 'NO'
+                
+                # Quick position sizing for HFT (simpler than Alpha)
+                hft_size = min(
+                    available_capital * 0.02,  # Max 2% per HFT trade
+                    self.max_position_size * 0.5,  # Half of normal max
+                    50.0  # Cap at $50 for HFT
+                )
+                
+                return {
+                    'should_trade': True,
+                    'side': side,
+                    'size': hft_size,
+                    'edge': abs(edge),
+                    'fair_value': fair_value,
+                    'strategy': 'hft_smart',
+                    'regime': regime,
+                }
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"[HFT] Error evaluating opportunity: {e}")
+            return None
+    
+    async def _evaluate_hft_scalp(self, market_data: Dict) -> Optional[Dict]:
+        """
+        Evaluate pure scalping opportunity (no Alpha target available).
+        
+        This is "Blind HFT" - we don't have Alpha's opinion, so we only
+        trade if there's obvious microstructure opportunity (tight spread,
+        high volume, clear momentum).
+        """
+        try:
+            market_id = market_data.get('id', '')
+            yes_price = market_data.get('yes_price')
+            volume_24h = market_data.get('volume_24h', 0) or 0
+            
+            if yes_price is None or yes_price == 0:
+                return None
+            
+            yes_price = float(yes_price)
+            
+            # For pure scalp, we need high volume and clear price levels
+            if volume_24h < 500:  # Need decent volume for scalping
+                return None
+            
+            # Check for stuck prices (avoid)
+            if abs(yes_price - 0.5) < 0.02:
+                return None
+            
+            # For now, disable pure scalp (wait for Alpha guidance)
+            # This can be enabled later with more sophisticated microstructure logic
+            return None
+            
+        except Exception as e:
+            logger.debug(f"[HFT] Error evaluating scalp: {e}")
+            return None
+    
+    async def _execute_hft_trade(self, market_data: Dict, opportunity: Dict):
+        """Execute an HFT trade."""
+        try:
+            market_id = market_data.get('id', '')
+            side = opportunity['side']
+            size = opportunity['size']
+            strategy = opportunity.get('strategy', 'hft_scalp')
+            
+            logger.info(
+                f"[HFT TRADE] {side} ${size:.2f} in {market_id[:16]}... | "
+                f"Edge: {opportunity['edge']:.2%} | Strategy: {strategy}"
+            )
+            
+            # Use the same entry execution as Alpha (but with HFT-specific sizing)
+            # This reuses the maker executor infrastructure
+            await self._execute_paper_entry(
+                market_id=market_id,
+                market_data=market_data,
+                side=side,
+                size=size,
+                strategy='delta_neutral',  # HFT trades use delta_neutral exit params
+                signals={'hft_mode': True, 'edge': opportunity['edge']},
+                rl_action='HFT_ENTRY',
+                rl_confidence=0.5,
+                sizing_breakdown={
+                    'hft_trade': True,
+                    'edge': opportunity['edge'],
+                    'fair_value': opportunity.get('fair_value'),
+                    'regime': opportunity.get('regime'),
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"[HFT] Error executing trade: {e}")
+    
+    # =================================================================
+    # ALPHA LOOP: THE BRAIN (Slow Path)
+    # =================================================================
+    # Runs every 30 seconds
+    # - Runs full Bayesian probability fusion
+    # - Calls LLM for sentiment analysis
+    # - Updates StrategyContext with theoretical prices
+    # - Executes high-conviction directional trades
+    # =================================================================
+    
+    async def _run_alpha_loop(self):
+        """
+        Alpha Strategy Loop - Deep analysis for directional trades.
+        
+        This loop:
+        1. Fetches full market details
+        2. Runs Bayesian probability fusion (with LLM)
+        3. Updates StrategyContext with fair values
+        4. Executes high-conviction trades
+        
+        Runs every 30 seconds.
+        """
+        ALPHA_CYCLE_INTERVAL = 30  # 30 seconds between cycles
+        
+        logger.info("🧠 Alpha Strategy Loop Started")
+        
+        alpha_cycle_count = 0
+        
+        while self.running:
+            try:
+                alpha_cycle_count += 1
+                cycle_start = datetime.now(timezone.utc)
+                
+                # Skip if in graceful stop mode (but still update targets for HFT)
+                skip_new_entries = self.graceful_stop
+                
+                # 1. DEEP SCAN: Get full market details
+                markets = await self._get_active_markets()
+                
+                if not markets:
+                    await asyncio.sleep(ALPHA_CYCLE_INTERVAL)
+                    continue
+                
+                # 2. RUN STRATEGY PIPELINE (The heavy lifting)
+                alpha_evaluated = 0
+                alpha_triggered = 0
+                targets_updated = 0
+                
+                for market_data in markets[:100]:  # Process top 100
+                    if not self.running:
+                        break
+                    
+                    market_id = market_data.get('id')
+                    
+                    # Filter by asset class
+                    asset_class = market_data.get('asset_class', market_data.get('category', 'unknown')).lower()
+                    if asset_class not in [ac.lower() for ac in self.enabled_asset_classes]:
+                        continue
+                    
+                    # Run full Alpha analysis (Bayesian, signals, regime)
+                    analysis = await self._run_alpha_analysis(market_data)
+                    
+                    if analysis:
+                        alpha_evaluated += 1
+                        
+                        # Update StrategyContext for HFT loop
+                        self.strategy_context.update_target(
+                            market_id=market_id,
+                            fair_value=analysis['fair_value'],
+                            regime=analysis['regime'],
+                            confidence=analysis.get('confidence', 1.0),
+                            signals=analysis.get('signals', {})
+                        )
+                        targets_updated += 1
+                        
+                        # Execute Alpha trade if conditions met and not in graceful stop
+                        if not skip_new_entries and market_id not in self.paper_positions:
+                            if analysis.get('should_trade') and analysis.get('edge', 0) > 0.01:
+                                alpha_triggered += 1
+                                await self._execute_alpha_trade(market_data, analysis)
+                    
+                    # Evaluate exits for existing positions
+                    if market_id in self.paper_positions:
+                        await self._evaluate_exit(market_id, market_data)
+                
+                # Record cycle completion
+                self.strategy_context.record_alpha_cycle()
+                
+                # Log every cycle
+                cycle_time = (datetime.now(timezone.utc) - cycle_start).total_seconds()
+                logger.info(
+                    f"[ALPHA #{alpha_cycle_count}] Evaluated: {alpha_evaluated}, "
+                    f"Triggered: {alpha_triggered}, Targets: {targets_updated}, "
+                    f"Cycle: {cycle_time:.1f}s, Positions: {len(self.paper_positions)}"
+                )
+                
+                # Record equity curve
+                self.equity_curve.append({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "capital": self.current_capital,
+                    "pnl": self.total_pnl,
+                    "open_positions": len(self.paper_positions),
+                    "alpha_cycle": alpha_cycle_count,
+                })
+                
+                # Check graceful stop completion
+                if self.graceful_stop and not self.paper_positions:
+                    logger.info("Graceful stop complete - all positions closed")
+                    self.running = False
+                    break
+                
+                # 3. SLEEP: Wait for next cycle
+                await asyncio.sleep(ALPHA_CYCLE_INTERVAL)
+                
+            except Exception as e:
+                logger.error(f"[ALPHA ERROR] {e}")
+                import traceback
+                traceback.print_exc()
+                await asyncio.sleep(5)
+        
+        logger.info("🛑 Alpha Strategy Loop Stopped")
+    
+    async def _run_alpha_analysis(self, market_data: Dict) -> Optional[Dict]:
+        """
+        Run full Alpha analysis on a market.
+        
+        This is the "heavy" computation:
+        - Signal generation (LLM, sentiment, etc.)
+        - Bayesian probability fusion
+        - Regime classification
+        - Position sizing
+        """
+        try:
+            market_id = market_data.get('id', '')
+            yes_price = market_data.get('yes_price')
+            
+            if yes_price is None or yes_price == 0:
+                return None
+            
+            yes_price = float(yes_price)
+            
+            # Get signals (includes LLM call - slow!)
+            signals = await self._get_signals(market_data)
+            
+            # Get RL action
+            rl_state = self._build_rl_state(market_data, signals)
+            rl_action, rl_confidence = await self.rl_engine.get_action(rl_state)
+            
+            # Calculate model probability (Bayesian fusion)
+            model_result = self._calculate_model_probability(
+                yes_price=yes_price,
+                sentiment=signals.get('sentiment', 0.5),
+                rl_action=rl_action,
+                rl_confidence=rl_confidence,
+                return_diagnostics=True
+            )
+            
+            if isinstance(model_result, dict):
+                fair_value = model_result['final_probability']
+                diagnostics = model_result
+            else:
+                fair_value = model_result
+                diagnostics = {}
+            
+            # Classify regime (needs orderbook)
+            order_book = market_data.get('order_book', {})
+            bids = order_book.get('bids', [])
+            asks = order_book.get('asks', [])
+            
+            if bids and asks:
+                best_bid = float(bids[0]['price'])
+                best_ask = float(asks[0]['price'])
+                volume_24h = market_data.get('volume_24h', 0) or 0
+                regime, regime_diagnostics = classify_market_regime(best_bid, best_ask, volume_24h)
+            else:
+                regime = MarketRegime.TAKER_TIGHT
+                regime_diagnostics = {}
+            
+            # Skip zombies
+            if regime == MarketRegime.ZOMBIE:
+                return None
+            
+            # Calculate edge
+            effective_price = yes_price + 0.02  # Fee-adjusted
+            yes_edge = fair_value - effective_price
+            no_edge = (1 - fair_value) - (1 - yes_price + 0.02)
+            
+            # Determine side and edge
+            if yes_edge > no_edge and yes_edge > 0.01:
+                side = 'YES'
+                edge = yes_edge
+            elif no_edge > yes_edge and no_edge > 0.01:
+                side = 'NO'
+                edge = no_edge
+            else:
+                side = None
+                edge = max(yes_edge, no_edge)
+            
+            return {
+                'fair_value': fair_value,
+                'regime': regime,
+                'side': side,
+                'edge': edge,
+                'yes_edge': yes_edge,
+                'no_edge': no_edge,
+                'should_trade': side is not None,
+                'signals': signals,
+                'rl_action': rl_action,
+                'rl_confidence': rl_confidence,
+                'diagnostics': diagnostics,
+                'confidence': rl_confidence,
+            }
+            
+        except Exception as e:
+            logger.debug(f"[ALPHA] Error analyzing market: {e}")
+            return None
+    
+    async def _execute_alpha_trade(self, market_data: Dict, analysis: Dict):
+        """Execute an Alpha (directional) trade."""
+        try:
+            market_id = market_data.get('id', '')
+            side = analysis['side']
+            edge = analysis['edge']
+            
+            # Check capital
+            current_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+            available_capital = self.deployed_capital - current_deployed
+            if available_capital < 10:
+                return
+            
+            # Calculate position size using Kelly
+            size = min(
+                available_capital * 0.05,  # Max 5% per Alpha trade
+                self.max_position_size,
+                100.0  # Cap at $100 for Alpha
+            )
+            
+            # Determine strategy
+            yes_price = float(market_data.get('yes_price', 0.5))
+            if yes_price < 0.25 or yes_price > 0.75:
+                strategy = 'alpha_directional'
+            else:
+                strategy = 'volatility_exploitation'
+            
+            logger.info(
+                f"[ALPHA TRADE] {side} ${size:.2f} in {market_id[:16]}... | "
+                f"Edge: {edge:.2%} | FV: {analysis['fair_value']:.4f} | Strategy: {strategy}"
+            )
+            
+            await self._execute_paper_entry(
+                market_id=market_id,
+                market_data=market_data,
+                side=side,
+                size=size,
+                strategy=strategy,
+                signals=analysis.get('signals', {}),
+                rl_action=analysis.get('rl_action', 'ALPHA_ENTRY'),
+                rl_confidence=analysis.get('rl_confidence', 0.5),
+                sizing_breakdown={
+                    'alpha_trade': True,
+                    'fair_value': analysis['fair_value'],
+                    'edge': edge,
+                    'regime': analysis['regime'],
+                    'probability_diagnostics': analysis.get('diagnostics', {}),
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"[ALPHA] Error executing trade: {e}")
+    
+    # =================================================================
+    # LEGACY TRADING LOOP (Kept for compatibility, but replaced by above)
+    # =================================================================
+    
+    async def _trading_loop(self):
+        """
+        Legacy trading loop - NOW DISABLED in favor of Two-Speed Architecture.
+        
+        The functionality is split into:
+        - _run_hft_loop(): Fast microstructure trading
+        - _run_alpha_loop(): Slow Bayesian analysis
+        """
+        logger.info("Legacy _trading_loop is disabled - using Two-Speed Architecture")
+        # This loop is now effectively a no-op as HFT and Alpha loops handle everything
+        while self.running:
+            await asyncio.sleep(60)  # Sleep and let HFT/Alpha do the work
     
     async def stop(self, graceful: bool = False):
         """Stop paper trading and save final results
