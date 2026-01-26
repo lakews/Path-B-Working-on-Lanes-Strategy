@@ -4,6 +4,7 @@ APEX TRADER - Risk Configuration (Single Source of Truth)
 
 Task 21: Dual-Zone Risk Architecture
 Task 23: Unified Portfolio Manager - Consolidated ALL sizing constants here
+Task 23b: Made all parameters configurable via Settings UI
 
 This file defines ALL risk and sizing parameters for the trading system.
 No other file should contain hardcoded spread/risk/sizing values.
@@ -14,10 +15,104 @@ Two Trading Zones with Different Physics:
 
 Usage:
     from risk_config import RISK, MarketRegime, classify_market_regime
+    
+    # To reload from database:
+    await RISK.load_from_db()
 """
 
-from typing import Tuple, Dict
-from dataclasses import dataclass, field
+import logging
+from typing import Tuple, Dict, Optional
+from dataclasses import dataclass, field, asdict
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# DEFAULT VALUES (Used when resetting or no DB config exists)
+# =============================================================================
+
+DEFAULTS = {
+    # Capital Allocation
+    'ALLOCATED_CAPITAL_PCT': 80.0,
+    'CASH_BUFFER_PCT': 5.0,
+    
+    # Global Safety
+    'STOP_LOSS_PCT': 0.15,
+    'MAX_DRAWDOWN_PCT': 5.0,
+    'KILL_SWITCH_LOW': 0.03,
+    'KILL_SWITCH_HIGH': 0.97,
+    
+    # Zone Threshold
+    'PRICE_ZONE_THRESHOLD': 0.10,
+    
+    # Whale Zone
+    'WHALE_PRICE_CEILING': 0.10,
+    'WHALE_MAX_SPREAD_CENTS': 0.03,
+    'WHALE_MIN_LIQUIDITY': 500.0,
+    'WHALE_MIN_VOLUME_24H': 500.0,
+    'WHALE_MAX_USD': 15.0,
+    'WHALE_MAX_PCT': 0.01,
+    
+    # Core Zone
+    'CORE_TAKER_SPREAD_PCT': 0.02,
+    'CORE_MAKER_SPREAD_PCT': 0.10,
+    'CORE_ZOMBIE_SPREAD_PCT': 0.12,
+    'CORE_MIN_LIQUIDITY': 1000.0,
+    'CORE_MIN_VOLUME_24H': 1000.0,
+    'CORE_MAX_USD': 100.0,
+    'CORE_MAX_PCT': 0.03,
+    
+    # Strategy Math
+    'KELLY_SCALING_FACTOR': 0.25,
+    'MIN_KELLY_FRACTION': 0.10,
+    'MAX_KELLY_FRACTION': 0.50,
+    'HFT_UNIT_PCT': 0.02,
+    
+    # Liquidity
+    'MAX_LIQUIDITY_CONSUMPTION': 0.10,
+    
+    # Exposure
+    'MAX_EVENT_EXPOSURE_PCT': 0.15,
+    
+    # Sector Limits
+    'SECTOR_LIMITS': {
+        'politics': 0.25,
+        'sports': 0.30,
+        'crypto': 0.20,
+        'finance': 0.20,
+        'entertainment': 0.15,
+        'science': 0.15,
+        'conflict': 0.10,
+        'social': 0.10,
+        'unknown': 0.15,
+    },
+    
+    # Trade Filters
+    'MIN_TRADE_AMOUNT': 2.0,
+    'MIN_BET_FLOOR': 5.0,
+    
+    # Fees
+    'TAKER_FEE': 0.02,
+    'MAKER_FEE': 0.00,
+    'ADVERSE_SELECTION_COST': 0.005,
+    'MAKER_SPREAD_CAPTURE': 0.50,
+    
+    # Quality Filters
+    'MIN_PRICE_BAND': 0.03,
+    'MAX_PRICE_BAND': 0.97,
+    'TOP_N_MARKETS': 50,
+    
+    # Position Sizer
+    'UTILIZATION_EXPONENT': 1.5,
+    'UTILIZATION_HARD_STOP': 0.95,
+    'EDGE_RETENTION_PCT': 0.20,
+    'TIME_PENALTY_MAX_DAYS': 90,
+    'TIME_PENALTY_FLOOR': 0.50,
+    'EVENT_SIMILARITY_THRESHOLD': 0.60,
+    
+    # Concurrent Limits
+    'MAX_OPEN_POSITIONS': 50,
+}
 
 
 @dataclass
@@ -25,168 +120,367 @@ class RiskConfig:
     """
     Single Source of Truth for ALL risk and sizing parameters.
     
+    All values are configurable via Settings UI. Use DEFAULTS for reset.
+    
     Hierarchy of Safety:
     1. Allocated Capital (virtual sub-account)
     2. Price Zones (hard override based on price)
     3. Strategy Regime (Alpha/HFT/Gamma)
     4. Liquidity (never consume >10% of depth)
     5. Exposure (sector and event caps)
-    
-    Two distinct trading zones with different risk physics:
-    - Whale Zone: Cheap assets where we accumulate convexity
-    - Core Zone: Standard assets where we trade directionally
     """
     
     # =========================================================================
-    # CAPITAL ALLOCATION (Task 23)
+    # CAPITAL ALLOCATION
     # =========================================================================
-    ALLOCATED_CAPITAL_PCT: float = 80.0    # 80% of wallet is "deployed"
-    CASH_BUFFER_PCT: float = 5.0           # 5% reserve for gas/fees
+    ALLOCATED_CAPITAL_PCT: float = DEFAULTS['ALLOCATED_CAPITAL_PCT']
+    CASH_BUFFER_PCT: float = DEFAULTS['CASH_BUFFER_PCT']
     
     # =========================================================================
     # GLOBAL SAFETY PARAMETERS
     # =========================================================================
-    STOP_LOSS_PCT: float = 0.15            # 15% stop loss per trade
-    MAX_DRAWDOWN_PCT: float = 5.0          # 5% max portfolio drawdown
-    KILL_SWITCH_LOW: float = 0.03          # Don't trade below 3 cents
-    KILL_SWITCH_HIGH: float = 0.97         # Don't trade above 97 cents
+    STOP_LOSS_PCT: float = DEFAULTS['STOP_LOSS_PCT']
+    MAX_DRAWDOWN_PCT: float = DEFAULTS['MAX_DRAWDOWN_PCT']
+    KILL_SWITCH_LOW: float = DEFAULTS['KILL_SWITCH_LOW']
+    KILL_SWITCH_HIGH: float = DEFAULTS['KILL_SWITCH_HIGH']
     
     # =========================================================================
     # ZONE THRESHOLD
     # =========================================================================
-    PRICE_ZONE_THRESHOLD: float = 0.10     # Below = Whale, Above = Core
+    PRICE_ZONE_THRESHOLD: float = DEFAULTS['PRICE_ZONE_THRESHOLD']
     
     # =========================================================================
     # ZONE 1: CONVEXITY / WHALE ZONE ($0.03 - $0.09)
     # =========================================================================
-    # Strategy: Volatility Accumulation / Gamma Scalping
-    # Logic: Percentage spreads are IRRELEVANT here. We care about absolute ticks.
-    # 
-    # Example: Asset at $0.02 with Bid=$0.01, Ask=$0.04
-    #   - Percentage spread = 100% (looks terrible!)
-    #   - Tick spread = 3 cents (actually tradeable)
-    #   - If this goes to $0.50, we make 25x on a 3 cent risk
+    WHALE_PRICE_CEILING: float = DEFAULTS['WHALE_PRICE_CEILING']
+    WHALE_MAX_SPREAD_CENTS: float = DEFAULTS['WHALE_MAX_SPREAD_CENTS']
+    WHALE_MIN_LIQUIDITY: float = DEFAULTS['WHALE_MIN_LIQUIDITY']
+    WHALE_MIN_VOLUME_24H: float = DEFAULTS['WHALE_MIN_VOLUME_24H']
+    WHALE_MAX_USD: float = DEFAULTS['WHALE_MAX_USD']
+    WHALE_MAX_PCT: float = DEFAULTS['WHALE_MAX_PCT']
     
-    WHALE_PRICE_CEILING: float = 0.10      # Prices below this are "Whale Zone"
-    WHALE_MAX_SPREAD_CENTS: float = 0.03   # Max 3 cent absolute spread allowed
-    WHALE_MIN_LIQUIDITY: float = 500.0     # Lower liquidity threshold ($500)
-    WHALE_MIN_VOLUME_24H: float = 500.0    # Lower volume threshold ($500)
-    WHALE_MAX_USD: float = 15.0            # HARD CAP: $15 per whale trade
-    WHALE_MAX_PCT: float = 0.01            # HARD CAP: 1% of deployed capital
-    
-    # Aliases for backward compatibility
     @property
     def WHALE_MAX_POSITION(self) -> float:
         return self.WHALE_MAX_USD
     
     @property
     def WHALE_MAX_POSITION_PCT(self) -> float:
-        return self.WHALE_MAX_PCT * 100  # Return as percentage (1.0)
+        return self.WHALE_MAX_PCT * 100
     
     # =========================================================================
     # ZONE 2: CORE ALPHA ZONE ($0.10+)
     # =========================================================================
-    # Strategy: Directional Prediction & Market Making
-    # Logic: We pay for probability. We demand tight PERCENTAGE spreads.
-    #
-    # Example: Asset at $0.50 with Bid=$0.49, Ask=$0.51
-    #   - Tick spread = 2 cents
-    #   - Percentage spread = 4% (acceptable for maker)
+    CORE_TAKER_SPREAD_PCT: float = DEFAULTS['CORE_TAKER_SPREAD_PCT']
+    CORE_MAKER_SPREAD_PCT: float = DEFAULTS['CORE_MAKER_SPREAD_PCT']
+    CORE_ZOMBIE_SPREAD_PCT: float = DEFAULTS['CORE_ZOMBIE_SPREAD_PCT']
+    CORE_MIN_LIQUIDITY: float = DEFAULTS['CORE_MIN_LIQUIDITY']
+    CORE_MIN_VOLUME_24H: float = DEFAULTS['CORE_MIN_VOLUME_24H']
+    CORE_MAX_USD: float = DEFAULTS['CORE_MAX_USD']
+    CORE_MAX_PCT: float = DEFAULTS['CORE_MAX_PCT']
     
-    CORE_TAKER_SPREAD_PCT: float = 0.02    # < 2%: Safe to Take Liquidity (Alpha)
-    CORE_MAKER_SPREAD_PCT: float = 0.10    # 2% - 10%: Safe to Make Liquidity (HFT)
-    CORE_ZOMBIE_SPREAD_PCT: float = 0.12   # > 12%: Market is dead
-    CORE_MIN_LIQUIDITY: float = 1000.0     # Higher liquidity threshold ($1K)
-    CORE_MIN_VOLUME_24H: float = 1000.0    # Higher volume threshold ($1K)
-    CORE_MAX_USD: float = 100.0            # HARD CAP: $100 per core trade
-    CORE_MAX_PCT: float = 0.03             # HARD CAP: 3% of deployed capital
-    
-    # Aliases for backward compatibility
     @property
     def CORE_MAX_POSITION(self) -> float:
         return self.CORE_MAX_USD
     
     @property
     def CORE_MAX_POSITION_PCT(self) -> float:
-        return self.CORE_MAX_PCT * 100  # Return as percentage (3.0)
+        return self.CORE_MAX_PCT * 100
     
     # =========================================================================
-    # STRATEGY MATH (Task 23)
+    # STRATEGY MATH
     # =========================================================================
-    KELLY_SCALING_FACTOR: float = 0.25     # Quarter Kelly (conservative)
-    MIN_KELLY_FRACTION: float = 0.10       # Floor for Kelly
-    MAX_KELLY_FRACTION: float = 0.50       # Ceiling for Kelly
-    HFT_UNIT_PCT: float = 0.02             # Maker orders = 2% of deployed
+    KELLY_SCALING_FACTOR: float = DEFAULTS['KELLY_SCALING_FACTOR']
+    MIN_KELLY_FRACTION: float = DEFAULTS['MIN_KELLY_FRACTION']
+    MAX_KELLY_FRACTION: float = DEFAULTS['MAX_KELLY_FRACTION']
+    HFT_UNIT_PCT: float = DEFAULTS['HFT_UNIT_PCT']
     
-    # Aliases for backward compatibility
     @property
     def KELLY_FRACTION(self) -> float:
         return self.KELLY_SCALING_FACTOR
     
     # =========================================================================
-    # LIQUIDITY CONSTRAINTS (Task 23)
+    # LIQUIDITY CONSTRAINTS
     # =========================================================================
-    MAX_LIQUIDITY_CONSUMPTION: float = 0.10  # Never take >10% of order book depth
+    MAX_LIQUIDITY_CONSUMPTION: float = DEFAULTS['MAX_LIQUIDITY_CONSUMPTION']
     
     # =========================================================================
-    # EXPOSURE LIMITS (Task 23)
+    # EXPOSURE LIMITS
     # =========================================================================
-    MAX_EVENT_EXPOSURE_PCT: float = 0.15   # Max 15% per correlated event
+    MAX_EVENT_EXPOSURE_PCT: float = DEFAULTS['MAX_EVENT_EXPOSURE_PCT']
     
     # =========================================================================
-    # SECTOR CAPS (Task 23 - Consolidated from polymarket_position_sizer.py)
+    # SECTOR CAPS
     # =========================================================================
-    SECTOR_LIMITS: Dict[str, float] = field(default_factory=lambda: {
-        'politics': 0.25,       # 25% max in politics
-        'sports': 0.30,         # 30% max in sports
-        'crypto': 0.20,         # 20% max in crypto
-        'finance': 0.20,        # 20% max in finance
-        'entertainment': 0.15,  # 15% max in entertainment
-        'science': 0.15,        # 15% max in science
-        'conflict': 0.10,       # 10% max in war/conflict
-        'social': 0.10,         # 10% max in social/tweets
-        'unknown': 0.15,        # 15% default for uncategorized
-    })
+    SECTOR_LIMITS: Dict[str, float] = field(default_factory=lambda: dict(DEFAULTS['SECTOR_LIMITS']))
     
     # =========================================================================
     # TRADE FILTERS
     # =========================================================================
-    MIN_TRADE_AMOUNT: float = 2.0          # Dust filter: minimum $2 trade
-    MIN_BET_FLOOR: float = 5.0             # Practical minimum: $5
+    MIN_TRADE_AMOUNT: float = DEFAULTS['MIN_TRADE_AMOUNT']
+    MIN_BET_FLOOR: float = DEFAULTS['MIN_BET_FLOOR']
     
     # =========================================================================
-    # FEE STRUCTURE (Polymarket)
+    # FEE STRUCTURE
     # =========================================================================
-    TAKER_FEE: float = 0.02                # 2% taker fee
-    MAKER_FEE: float = 0.00                # No maker fee
-    ADVERSE_SELECTION_COST: float = 0.005  # 0.5% adverse selection
-    MAKER_SPREAD_CAPTURE: float = 0.50     # Assume 50% spread capture as maker
+    TAKER_FEE: float = DEFAULTS['TAKER_FEE']
+    MAKER_FEE: float = DEFAULTS['MAKER_FEE']
+    ADVERSE_SELECTION_COST: float = DEFAULTS['ADVERSE_SELECTION_COST']
+    MAKER_SPREAD_CAPTURE: float = DEFAULTS['MAKER_SPREAD_CAPTURE']
     
     # =========================================================================
-    # QUALITY FILTERS (Pre-Flight)
+    # QUALITY FILTERS
     # =========================================================================
-    MIN_PRICE_BAND: float = 0.03           # Skip if price < 3% (kill switch)
-    MAX_PRICE_BAND: float = 0.97           # Skip if price > 97% (kill switch)
-    TOP_N_MARKETS: int = 50                # Process top 50 by volume
+    MIN_PRICE_BAND: float = DEFAULTS['MIN_PRICE_BAND']
+    MAX_PRICE_BAND: float = DEFAULTS['MAX_PRICE_BAND']
+    TOP_N_MARKETS: int = DEFAULTS['TOP_N_MARKETS']
     
     # =========================================================================
-    # POSITION SIZER CONFIG (from polymarket_position_sizer.py)
+    # POSITION SIZER CONFIG
     # =========================================================================
-    UTILIZATION_EXPONENT: float = 1.5      # Brake exponent
-    UTILIZATION_HARD_STOP: float = 0.95    # Stop at 95% utilization
-    EDGE_RETENTION_PCT: float = 0.20       # Allow 20% edge erosion from slippage
-    TIME_PENALTY_MAX_DAYS: int = 90        # 90 days = max penalty
-    TIME_PENALTY_FLOOR: float = 0.50       # Minimum 0.5x for long-dated bets
-    EVENT_SIMILARITY_THRESHOLD: float = 0.60  # Word overlap for same event
+    UTILIZATION_EXPONENT: float = DEFAULTS['UTILIZATION_EXPONENT']
+    UTILIZATION_HARD_STOP: float = DEFAULTS['UTILIZATION_HARD_STOP']
+    EDGE_RETENTION_PCT: float = DEFAULTS['EDGE_RETENTION_PCT']
+    TIME_PENALTY_MAX_DAYS: int = DEFAULTS['TIME_PENALTY_MAX_DAYS']
+    TIME_PENALTY_FLOOR: float = DEFAULTS['TIME_PENALTY_FLOOR']
+    EVENT_SIMILARITY_THRESHOLD: float = DEFAULTS['EVENT_SIMILARITY_THRESHOLD']
     
     # =========================================================================
     # CONCURRENT POSITION LIMITS
     # =========================================================================
-    MAX_OPEN_POSITIONS: int = 50           # Max concurrent positions
+    MAX_OPEN_POSITIONS: int = DEFAULTS['MAX_OPEN_POSITIONS']
+    
+    # =========================================================================
+    # DATABASE PERSISTENCE
+    # =========================================================================
+    
+    def to_dict(self) -> Dict:
+        """Convert to dictionary for JSON/DB storage."""
+        return {
+            # Capital
+            'allocated_capital_pct': self.ALLOCATED_CAPITAL_PCT,
+            'cash_buffer_pct': self.CASH_BUFFER_PCT,
+            
+            # Safety
+            'stop_loss_pct': self.STOP_LOSS_PCT,
+            'max_drawdown_pct': self.MAX_DRAWDOWN_PCT,
+            'kill_switch_low': self.KILL_SWITCH_LOW,
+            'kill_switch_high': self.KILL_SWITCH_HIGH,
+            
+            # Zone
+            'price_zone_threshold': self.PRICE_ZONE_THRESHOLD,
+            
+            # Whale
+            'whale_price_ceiling': self.WHALE_PRICE_CEILING,
+            'whale_max_spread_cents': self.WHALE_MAX_SPREAD_CENTS,
+            'whale_min_liquidity': self.WHALE_MIN_LIQUIDITY,
+            'whale_min_volume_24h': self.WHALE_MIN_VOLUME_24H,
+            'whale_max_usd': self.WHALE_MAX_USD,
+            'whale_max_pct': self.WHALE_MAX_PCT,
+            
+            # Core
+            'core_taker_spread_pct': self.CORE_TAKER_SPREAD_PCT,
+            'core_maker_spread_pct': self.CORE_MAKER_SPREAD_PCT,
+            'core_zombie_spread_pct': self.CORE_ZOMBIE_SPREAD_PCT,
+            'core_min_liquidity': self.CORE_MIN_LIQUIDITY,
+            'core_min_volume_24h': self.CORE_MIN_VOLUME_24H,
+            'core_max_usd': self.CORE_MAX_USD,
+            'core_max_pct': self.CORE_MAX_PCT,
+            
+            # Strategy
+            'kelly_scaling_factor': self.KELLY_SCALING_FACTOR,
+            'min_kelly_fraction': self.MIN_KELLY_FRACTION,
+            'max_kelly_fraction': self.MAX_KELLY_FRACTION,
+            'hft_unit_pct': self.HFT_UNIT_PCT,
+            
+            # Liquidity
+            'max_liquidity_consumption': self.MAX_LIQUIDITY_CONSUMPTION,
+            
+            # Exposure
+            'max_event_exposure_pct': self.MAX_EVENT_EXPOSURE_PCT,
+            'sector_limits': self.SECTOR_LIMITS,
+            
+            # Filters
+            'min_trade_amount': self.MIN_TRADE_AMOUNT,
+            'min_bet_floor': self.MIN_BET_FLOOR,
+            
+            # Fees
+            'taker_fee': self.TAKER_FEE,
+            'maker_fee': self.MAKER_FEE,
+            
+            # Positions
+            'max_open_positions': self.MAX_OPEN_POSITIONS,
+        }
+    
+    def load_from_dict(self, data: Dict):
+        """Load values from dictionary (DB response)."""
+        if not data:
+            return
+        
+        # Capital
+        if 'allocated_capital_pct' in data:
+            self.ALLOCATED_CAPITAL_PCT = float(data['allocated_capital_pct'])
+        if 'cash_buffer_pct' in data:
+            self.CASH_BUFFER_PCT = float(data['cash_buffer_pct'])
+        
+        # Safety
+        if 'stop_loss_pct' in data:
+            self.STOP_LOSS_PCT = float(data['stop_loss_pct'])
+        if 'max_drawdown_pct' in data:
+            self.MAX_DRAWDOWN_PCT = float(data['max_drawdown_pct'])
+        if 'kill_switch_low' in data:
+            self.KILL_SWITCH_LOW = float(data['kill_switch_low'])
+        if 'kill_switch_high' in data:
+            self.KILL_SWITCH_HIGH = float(data['kill_switch_high'])
+        
+        # Zone
+        if 'price_zone_threshold' in data:
+            self.PRICE_ZONE_THRESHOLD = float(data['price_zone_threshold'])
+            self.WHALE_PRICE_CEILING = float(data['price_zone_threshold'])
+        
+        # Whale
+        if 'whale_max_spread_cents' in data:
+            self.WHALE_MAX_SPREAD_CENTS = float(data['whale_max_spread_cents'])
+        if 'whale_min_liquidity' in data:
+            self.WHALE_MIN_LIQUIDITY = float(data['whale_min_liquidity'])
+        if 'whale_min_volume_24h' in data:
+            self.WHALE_MIN_VOLUME_24H = float(data['whale_min_volume_24h'])
+        if 'whale_max_usd' in data:
+            self.WHALE_MAX_USD = float(data['whale_max_usd'])
+        if 'whale_max_pct' in data:
+            self.WHALE_MAX_PCT = float(data['whale_max_pct'])
+        
+        # Core
+        if 'core_taker_spread_pct' in data:
+            self.CORE_TAKER_SPREAD_PCT = float(data['core_taker_spread_pct'])
+        if 'core_maker_spread_pct' in data:
+            self.CORE_MAKER_SPREAD_PCT = float(data['core_maker_spread_pct'])
+        if 'core_zombie_spread_pct' in data:
+            self.CORE_ZOMBIE_SPREAD_PCT = float(data['core_zombie_spread_pct'])
+        if 'core_min_liquidity' in data:
+            self.CORE_MIN_LIQUIDITY = float(data['core_min_liquidity'])
+        if 'core_min_volume_24h' in data:
+            self.CORE_MIN_VOLUME_24H = float(data['core_min_volume_24h'])
+        if 'core_max_usd' in data:
+            self.CORE_MAX_USD = float(data['core_max_usd'])
+        if 'core_max_pct' in data:
+            self.CORE_MAX_PCT = float(data['core_max_pct'])
+        
+        # Strategy
+        if 'kelly_scaling_factor' in data:
+            self.KELLY_SCALING_FACTOR = float(data['kelly_scaling_factor'])
+        if 'min_kelly_fraction' in data:
+            self.MIN_KELLY_FRACTION = float(data['min_kelly_fraction'])
+        if 'max_kelly_fraction' in data:
+            self.MAX_KELLY_FRACTION = float(data['max_kelly_fraction'])
+        if 'hft_unit_pct' in data:
+            self.HFT_UNIT_PCT = float(data['hft_unit_pct'])
+        
+        # Liquidity
+        if 'max_liquidity_consumption' in data:
+            self.MAX_LIQUIDITY_CONSUMPTION = float(data['max_liquidity_consumption'])
+        
+        # Exposure
+        if 'max_event_exposure_pct' in data:
+            self.MAX_EVENT_EXPOSURE_PCT = float(data['max_event_exposure_pct'])
+        if 'sector_limits' in data and isinstance(data['sector_limits'], dict):
+            self.SECTOR_LIMITS = data['sector_limits']
+        
+        # Filters
+        if 'min_trade_amount' in data:
+            self.MIN_TRADE_AMOUNT = float(data['min_trade_amount'])
+        if 'min_bet_floor' in data:
+            self.MIN_BET_FLOOR = float(data['min_bet_floor'])
+        
+        # Fees
+        if 'taker_fee' in data:
+            self.TAKER_FEE = float(data['taker_fee'])
+        if 'maker_fee' in data:
+            self.MAKER_FEE = float(data['maker_fee'])
+        
+        # Positions
+        if 'max_open_positions' in data:
+            self.MAX_OPEN_POSITIONS = int(data['max_open_positions'])
+        
+        logger.info(f"[RISK] Loaded config from DB: whale_max=${self.WHALE_MAX_USD}, core_max=${self.CORE_MAX_USD}")
+    
+    def reset_to_defaults(self):
+        """Reset all values to defaults."""
+        self.ALLOCATED_CAPITAL_PCT = DEFAULTS['ALLOCATED_CAPITAL_PCT']
+        self.CASH_BUFFER_PCT = DEFAULTS['CASH_BUFFER_PCT']
+        self.STOP_LOSS_PCT = DEFAULTS['STOP_LOSS_PCT']
+        self.MAX_DRAWDOWN_PCT = DEFAULTS['MAX_DRAWDOWN_PCT']
+        self.KILL_SWITCH_LOW = DEFAULTS['KILL_SWITCH_LOW']
+        self.KILL_SWITCH_HIGH = DEFAULTS['KILL_SWITCH_HIGH']
+        self.PRICE_ZONE_THRESHOLD = DEFAULTS['PRICE_ZONE_THRESHOLD']
+        self.WHALE_PRICE_CEILING = DEFAULTS['WHALE_PRICE_CEILING']
+        self.WHALE_MAX_SPREAD_CENTS = DEFAULTS['WHALE_MAX_SPREAD_CENTS']
+        self.WHALE_MIN_LIQUIDITY = DEFAULTS['WHALE_MIN_LIQUIDITY']
+        self.WHALE_MIN_VOLUME_24H = DEFAULTS['WHALE_MIN_VOLUME_24H']
+        self.WHALE_MAX_USD = DEFAULTS['WHALE_MAX_USD']
+        self.WHALE_MAX_PCT = DEFAULTS['WHALE_MAX_PCT']
+        self.CORE_TAKER_SPREAD_PCT = DEFAULTS['CORE_TAKER_SPREAD_PCT']
+        self.CORE_MAKER_SPREAD_PCT = DEFAULTS['CORE_MAKER_SPREAD_PCT']
+        self.CORE_ZOMBIE_SPREAD_PCT = DEFAULTS['CORE_ZOMBIE_SPREAD_PCT']
+        self.CORE_MIN_LIQUIDITY = DEFAULTS['CORE_MIN_LIQUIDITY']
+        self.CORE_MIN_VOLUME_24H = DEFAULTS['CORE_MIN_VOLUME_24H']
+        self.CORE_MAX_USD = DEFAULTS['CORE_MAX_USD']
+        self.CORE_MAX_PCT = DEFAULTS['CORE_MAX_PCT']
+        self.KELLY_SCALING_FACTOR = DEFAULTS['KELLY_SCALING_FACTOR']
+        self.MIN_KELLY_FRACTION = DEFAULTS['MIN_KELLY_FRACTION']
+        self.MAX_KELLY_FRACTION = DEFAULTS['MAX_KELLY_FRACTION']
+        self.HFT_UNIT_PCT = DEFAULTS['HFT_UNIT_PCT']
+        self.MAX_LIQUIDITY_CONSUMPTION = DEFAULTS['MAX_LIQUIDITY_CONSUMPTION']
+        self.MAX_EVENT_EXPOSURE_PCT = DEFAULTS['MAX_EVENT_EXPOSURE_PCT']
+        self.SECTOR_LIMITS = dict(DEFAULTS['SECTOR_LIMITS'])
+        self.MIN_TRADE_AMOUNT = DEFAULTS['MIN_TRADE_AMOUNT']
+        self.MIN_BET_FLOOR = DEFAULTS['MIN_BET_FLOOR']
+        self.TAKER_FEE = DEFAULTS['TAKER_FEE']
+        self.MAKER_FEE = DEFAULTS['MAKER_FEE']
+        self.ADVERSE_SELECTION_COST = DEFAULTS['ADVERSE_SELECTION_COST']
+        self.MAKER_SPREAD_CAPTURE = DEFAULTS['MAKER_SPREAD_CAPTURE']
+        self.MAX_OPEN_POSITIONS = DEFAULTS['MAX_OPEN_POSITIONS']
+        logger.info("[RISK] Reset all parameters to defaults")
 
 
 # Global instance
 RISK = RiskConfig()
+
+
+def get_defaults() -> Dict:
+    """Get default values for UI reset button."""
+    return {
+        'allocated_capital_pct': DEFAULTS['ALLOCATED_CAPITAL_PCT'],
+        'cash_buffer_pct': DEFAULTS['CASH_BUFFER_PCT'],
+        'stop_loss_pct': DEFAULTS['STOP_LOSS_PCT'],
+        'max_drawdown_pct': DEFAULTS['MAX_DRAWDOWN_PCT'],
+        'kill_switch_low': DEFAULTS['KILL_SWITCH_LOW'],
+        'kill_switch_high': DEFAULTS['KILL_SWITCH_HIGH'],
+        'price_zone_threshold': DEFAULTS['PRICE_ZONE_THRESHOLD'],
+        'whale_max_spread_cents': DEFAULTS['WHALE_MAX_SPREAD_CENTS'],
+        'whale_min_liquidity': DEFAULTS['WHALE_MIN_LIQUIDITY'],
+        'whale_min_volume_24h': DEFAULTS['WHALE_MIN_VOLUME_24H'],
+        'whale_max_usd': DEFAULTS['WHALE_MAX_USD'],
+        'whale_max_pct': DEFAULTS['WHALE_MAX_PCT'],
+        'core_taker_spread_pct': DEFAULTS['CORE_TAKER_SPREAD_PCT'],
+        'core_maker_spread_pct': DEFAULTS['CORE_MAKER_SPREAD_PCT'],
+        'core_zombie_spread_pct': DEFAULTS['CORE_ZOMBIE_SPREAD_PCT'],
+        'core_min_liquidity': DEFAULTS['CORE_MIN_LIQUIDITY'],
+        'core_min_volume_24h': DEFAULTS['CORE_MIN_VOLUME_24H'],
+        'core_max_usd': DEFAULTS['CORE_MAX_USD'],
+        'core_max_pct': DEFAULTS['CORE_MAX_PCT'],
+        'kelly_scaling_factor': DEFAULTS['KELLY_SCALING_FACTOR'],
+        'min_kelly_fraction': DEFAULTS['MIN_KELLY_FRACTION'],
+        'max_kelly_fraction': DEFAULTS['MAX_KELLY_FRACTION'],
+        'hft_unit_pct': DEFAULTS['HFT_UNIT_PCT'],
+        'max_liquidity_consumption': DEFAULTS['MAX_LIQUIDITY_CONSUMPTION'],
+        'max_event_exposure_pct': DEFAULTS['MAX_EVENT_EXPOSURE_PCT'],
+        'sector_limits': DEFAULTS['SECTOR_LIMITS'],
+        'min_trade_amount': DEFAULTS['MIN_TRADE_AMOUNT'],
+        'min_bet_floor': DEFAULTS['MIN_BET_FLOOR'],
+        'taker_fee': DEFAULTS['TAKER_FEE'],
+        'maker_fee': DEFAULTS['MAKER_FEE'],
+        'max_open_positions': DEFAULTS['MAX_OPEN_POSITIONS'],
+    }
 
 
 # ============================================================================
