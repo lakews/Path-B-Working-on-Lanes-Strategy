@@ -945,7 +945,23 @@ class PaperTrader:
                             regime=alpha_target['regime']
                         )
                     else:
-                        # SCALP MODE: Pure market microstructure
+                        # SCALP MODE: Pure market microstructure (autonomous)
+                        # Fetch orderbook for scalp evaluation
+                        try:
+                            token_ids = market_data.get('clobTokenIds', market_data.get('tokens', []))
+                            if token_ids and isinstance(token_ids, list) and len(token_ids) > 0:
+                                from data.polymarket_api import PolymarketAPI
+                                async with PolymarketAPI() as api:
+                                    order_book_data = await api.get_order_book(token_ids[0])
+                                    if order_book_data.get('bids') and order_book_data.get('asks'):
+                                        market_data['order_book'] = order_book_data
+                                        bids = order_book_data['bids']
+                                        asks = order_book_data['asks']
+                                        market_data['best_bid'] = float(bids[0]['price']) if bids else 0
+                                        market_data['best_ask'] = float(asks[0]['price']) if asks else 1
+                        except Exception as e:
+                            logger.debug(f"[HFT] Could not fetch orderbook: {e}")
+                        
                         opportunity = await self._evaluate_hft_scalp(market_data)
                     
                     hft_evaluated += 1
