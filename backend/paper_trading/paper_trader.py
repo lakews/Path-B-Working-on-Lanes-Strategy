@@ -5090,9 +5090,9 @@ class PaperTrader:
             quality_stats['total_fetched'] = len(live_markets)
             
             # ================================================================
-            # PRE-FLIGHT QUALITY CONTROL - The "Bouncer" 
+            # PRE-FLIGHT QUALITY CONTROL - The "Bouncer" (Dual-Zone Aware)
             # ================================================================
-            # Eliminate ghost towns BEFORE any expensive processing
+            # Task 21: Different thresholds for Whale Zone vs Core Zone
             
             quality_markets = []
             for m in live_markets:
@@ -5106,35 +5106,43 @@ class PaperTrader:
                 
                 yes_price = float(yes_price)
                 
-                # PRICE BAND CHECK (Settlement Rule)
-                # Skip extreme prices - no HFT edge in 99% probability events
-                if yes_price < MIN_PRICE_BAND:
+                # KILL SWITCH CHECK (Global safety)
+                if yes_price < RISK.KILL_SWITCH_LOW:
                     quality_stats['rejected_extreme_price'] += 1
-                    if cycle_count % 100 == 1:
-                        logger.debug(f"[QUALITY] {market_id}... SKIP: Price {yes_price:.4f} < {MIN_PRICE_BAND} (likely dead)")
                     continue
-                if yes_price > MAX_PRICE_BAND:
+                if yes_price > RISK.KILL_SWITCH_HIGH:
                     quality_stats['rejected_extreme_price'] += 1
-                    if cycle_count % 100 == 1:
-                        logger.debug(f"[QUALITY] {market_id}... SKIP: Price {yes_price:.4f} > {MAX_PRICE_BAND} (likely settled)")
                     continue
                 
-                # VOLUME CHECK (Ghost Town Rule)
+                # ============================================================
+                # DUAL-ZONE VOLUME CHECK
+                # ============================================================
+                # Whale Zone: Lower volume threshold (looking for convexity)
+                # Core Zone: Higher volume threshold (need liquidity for size)
+                
                 volume_24h = float(m.get('volume_24h', 0) or 0)
-                if volume_24h < MIN_VOLUME_24H:
+                liquidity = float(m.get('liquidity', 0) or 0)
+                
+                # Get zone-specific parameters
+                zone_params = get_zone_parameters(yes_price)
+                min_volume = zone_params['min_volume']
+                min_liquidity = zone_params['min_liquidity']
+                
+                if volume_24h < min_volume:
                     quality_stats['rejected_low_volume'] += 1
                     continue
                 
-                # LIQUIDITY CHECK (Configurable from settings)
-                liquidity = float(m.get('liquidity', 0) or 0)
-                if liquidity < self.min_liquidity:
+                if liquidity < min_liquidity:
                     quality_stats['rejected_low_liquidity'] += 1
                     continue
                 
-                # SPREAD CHECK (Don't filter here - let regime classification handle it)
-                # spread = float(m.get('spread', 1) or 1)
+                # Track zone distribution
+                if yes_price < RISK.WHALE_PRICE_CEILING:
+                    quality_stats['whale_zone_count'] += 1
+                else:
+                    quality_stats['core_zone_count'] += 1
                 
-                # Market passed all quality checks!
+                # Market passed zone-specific quality checks!
                 quality_markets.append(m)
             
             quality_stats['passed_quality'] = len(quality_markets)
