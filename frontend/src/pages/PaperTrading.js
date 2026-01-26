@@ -2631,6 +2631,10 @@ const PaperTrading = () => {
     try { const r = await axios.get(`${API}/paper/ai-stats`); setAiStats(r.data?.ai_stats); } catch (e) {}
   };
 
+  const fetchGammaStats = async () => {
+    try { const r = await axios.get(`${API}/paper/gamma-stats`); setGammaStats(r.data); } catch (e) {}
+  };
+
   const fetchCumulativeStats = async () => {
     try { const r = await axios.get(`${API}/paper/cumulative-stats`); setCumulativeStats(r.data); } catch (e) {}
   };
