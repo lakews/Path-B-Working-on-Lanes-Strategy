@@ -5,6 +5,7 @@ This module centralizes all spread-related constants and EV calculations.
 Used by both HFT and Alpha execution paths.
 
 CRITICAL: All spread thresholds should be imported from here, not hardcoded.
+NOTE: Default values can be overridden via Settings UI (spread_policy config).
 """
 import logging
 from typing import Dict, Tuple, Optional
@@ -20,28 +21,61 @@ class TradeType(Enum):
 
 
 # ============================================================================
-# CENTRALIZED SPREAD CONSTANTS
+# DEFAULT SPREAD CONSTANTS (can be overridden by config)
 # ============================================================================
 
 # Maximum spread thresholds by strategy type
-MAX_SPREAD_HFT = 0.25           # 25% - HFT can work with wider spreads using inventory skew
-MAX_SPREAD_ALPHA = 0.15         # 15% - Alpha needs tighter spreads for directional edge
-MAX_SPREAD_AGGRESSIVE = 0.06    # 6% - For aggressive taker entries
+DEFAULT_MAX_SPREAD_HFT = 0.25           # 25% - HFT can work with wider spreads using inventory skew
+DEFAULT_MAX_SPREAD_ALPHA = 0.15         # 15% - Alpha needs tighter spreads for directional edge
+DEFAULT_MAX_SPREAD_AGGRESSIVE = 0.06    # 6% - For aggressive taker entries
 
 # Minimum spread thresholds (below this, market is too tight for profit)
-MIN_SPREAD_MAKER = 0.005        # 0.5% - Minimum for maker profitability
-MIN_SPREAD_FOR_EDGE = 0.01      # 1% - Minimum spread to have edge as maker
+DEFAULT_MIN_SPREAD_MAKER = 0.005        # 0.5% - Minimum for maker profitability
+MIN_SPREAD_FOR_EDGE = 0.01              # 1% - Minimum spread to have edge as maker
 
 # Grid search bounds for strategy tuning
 SPREAD_GRID_VALUES = [0.03, 0.05, 0.07]  # Real-world Polymarket spread range
 
 # Fee structure (Polymarket)
-MAKER_FEE = 0.0                 # No maker fee on Polymarket
-TAKER_FEE = 0.02                # 2% taker fee (embedded in spread)
+DEFAULT_MAKER_FEE = 0.0                 # No maker fee on Polymarket
+DEFAULT_TAKER_FEE = 0.02                # 2% taker fee (embedded in spread)
 
 # Spread capture assumptions
-MAKER_SPREAD_CAPTURE_PCT = 0.50  # Assume we capture 50% of spread as maker
-ADVERSE_SELECTION_COST = 0.005   # 0.5% adverse selection cost per trade
+DEFAULT_MAKER_SPREAD_CAPTURE_PCT = 0.50  # Assume we capture 50% of spread as maker
+DEFAULT_ADVERSE_SELECTION_COST = 0.005   # 0.5% adverse selection cost per trade
+
+
+# Module-level variables that can be updated from config
+MAX_SPREAD_HFT = DEFAULT_MAX_SPREAD_HFT
+MAX_SPREAD_ALPHA = DEFAULT_MAX_SPREAD_ALPHA
+MAX_SPREAD_AGGRESSIVE = DEFAULT_MAX_SPREAD_AGGRESSIVE
+MIN_SPREAD_MAKER = DEFAULT_MIN_SPREAD_MAKER
+MAKER_FEE = DEFAULT_MAKER_FEE
+TAKER_FEE = DEFAULT_TAKER_FEE
+MAKER_SPREAD_CAPTURE_PCT = DEFAULT_MAKER_SPREAD_CAPTURE_PCT
+ADVERSE_SELECTION_COST = DEFAULT_ADVERSE_SELECTION_COST
+
+
+def update_spread_policy_from_config(config: Dict):
+    """Update module-level spread policy values from config."""
+    global MAX_SPREAD_HFT, MAX_SPREAD_ALPHA, MAX_SPREAD_AGGRESSIVE
+    global MIN_SPREAD_MAKER, TAKER_FEE, MAKER_SPREAD_CAPTURE_PCT, ADVERSE_SELECTION_COST
+    
+    spread_config = config.get('spread_policy', {})
+    if spread_config:
+        MAX_SPREAD_HFT = spread_config.get('max_spread_hft', DEFAULT_MAX_SPREAD_HFT)
+        MAX_SPREAD_ALPHA = spread_config.get('max_spread_alpha', DEFAULT_MAX_SPREAD_ALPHA)
+        MAX_SPREAD_AGGRESSIVE = spread_config.get('max_spread_aggressive', DEFAULT_MAX_SPREAD_AGGRESSIVE)
+        MIN_SPREAD_MAKER = spread_config.get('min_spread_maker', DEFAULT_MIN_SPREAD_MAKER)
+        MAKER_SPREAD_CAPTURE_PCT = spread_config.get('maker_spread_capture', DEFAULT_MAKER_SPREAD_CAPTURE_PCT)
+        ADVERSE_SELECTION_COST = spread_config.get('adverse_selection_cost', DEFAULT_ADVERSE_SELECTION_COST)
+        TAKER_FEE = spread_config.get('taker_fee', DEFAULT_TAKER_FEE)
+        
+        logger.info(
+            f"Spread policy updated from config: "
+            f"HFT={MAX_SPREAD_HFT:.0%}, Alpha={MAX_SPREAD_ALPHA:.0%}, "
+            f"TakerFee={TAKER_FEE:.1%}"
+        )
 
 
 @dataclass
