@@ -409,9 +409,9 @@ class TestCalculateOrders:
     def test_generates_order_for_whale_opportunity(self):
         """Should generate order when whale opportunity exists."""
         market_data = self._create_market_data(
-            yes_price=0.02,
-            best_bid=0.01,
-            best_ask=0.03,
+            yes_price=0.05,  # Valid whale zone price (above $0.03 kill switch)
+            best_bid=0.04,
+            best_ask=0.06,
         )
         
         orders = self.trader.calculate_orders(
