@@ -624,13 +624,13 @@ const AssetClassEquityCard = ({ equityData, initialCapital = 10000 }) => {
   );
 };
 
-// HFT vs Alpha Performance Card - Two-Speed Architecture Breakdown
+// HFT vs Alpha Performance Card - Two-Speed Architecture Breakdown (Redesigned)
 const HftAlphaPerformanceCard = ({ executionPathStats, showLive = false }) => {
   if (!executionPathStats) {
     return (
-      <div className="rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 p-5">
+      <div className="rounded-xl bg-gradient-to-br from-slate-900/50 to-slate-800/30 border border-white/10 p-5">
         <h4 className="text-sm font-semibold text-white/60 mb-3 flex items-center gap-2">
-          <Zap className="w-4 h-4 text-yellow-400" />
+          <Zap className="w-4 h-4 text-amber-400" />
           Two-Speed Architecture
         </h4>
         <p className="text-xs text-white/40">Start trading to see HFT vs Alpha breakdown</p>
@@ -640,84 +640,132 @@ const HftAlphaPerformanceCard = ({ executionPathStats, showLive = false }) => {
 
   const { hft, alpha } = executionPathStats;
 
-  const PathCard = ({ data, gradient, icon: Icon, accentColor }) => {
+  const PathCard = ({ data, icon: Icon, accentColor, borderColor }) => {
     const isPositive = data.total_pnl >= 0;
     return (
-      <div className={`rounded-xl bg-gradient-to-br ${gradient} border border-white/10 p-4 relative overflow-hidden`}>
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white blur-3xl" />
+      <div className={`rounded-xl bg-black/40 backdrop-blur-sm border ${borderColor} p-4 min-w-0 overflow-hidden`}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`w-8 h-8 rounded-lg bg-${accentColor}-500/20 flex items-center justify-center flex-shrink-0`}>
+              <Icon className={`w-4 h-4 text-${accentColor}-400`} />
+            </div>
+            <div className="min-w-0">
+              <h5 className="text-sm font-bold text-white truncate">{data.name}</h5>
+              <p className="text-[10px] text-white/40 truncate">{data.strategies.join(', ')}</p>
+            </div>
+          </div>
+          {showLive && data.trades > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] flex items-center gap-1 flex-shrink-0">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />LIVE
+            </span>
+          )}
         </div>
-        
-        <div className="relative">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-lg bg-${accentColor}-500/20 flex items-center justify-center`}>
-                <Icon className={`w-4 h-4 text-${accentColor}-400`} />
-              </div>
-              <div>
-                <h5 className="text-sm font-bold text-white">{data.name}</h5>
-                <p className="text-[10px] text-white/50">{data.strategies.join(', ')}</p>
-              </div>
-            </div>
-            {showLive && data.trades > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />LIVE
-              </span>
-            )}
-          </div>
 
-          {/* Capital Deployment */}
-          <div className="mb-3">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-white/50">Capital Deployed</span>
-              <span className="text-white/80">${data.deployed_capital.toLocaleString()} / ${data.allocated_capital.toLocaleString()}</span>
-            </div>
-            <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <div 
-                className={`h-full bg-${accentColor}-500 rounded-full transition-all duration-500`}
-                style={{ width: `${Math.min(100, data.utilization_pct)}%` }}
-              />
-            </div>
-            <p className="text-[10px] text-white/40 mt-1">{data.utilization_pct.toFixed(1)}% utilized</p>
+        {/* Capital Deployment Bar */}
+        <div className="mb-4">
+          <div className="flex justify-between items-baseline text-xs mb-1.5 min-w-0">
+            <span className="text-white/40 text-[10px]">Capital</span>
+            <span className="text-white/70 font-mono text-[11px] truncate">
+              ${data.deployed_capital.toLocaleString()} <span className="text-white/40">/ ${data.allocated_capital.toLocaleString()}</span>
+            </span>
           </div>
+          <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+            <div 
+              className={`h-full bg-gradient-to-r from-${accentColor}-500 to-${accentColor}-400 rounded-full transition-all duration-700 ease-out`}
+              style={{ width: `${Math.min(100, data.utilization_pct)}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-white/30 mt-1 font-mono">{data.utilization_pct.toFixed(1)}% utilized</p>
+        </div>
 
-          {/* P&L Section */}
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className="bg-white/5 rounded-lg p-2">
-              <p className="text-[10px] text-white/50 mb-0.5">Realized P&L</p>
-              <p className={`text-sm font-bold ${data.realized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {data.realized_pnl >= 0 ? '+' : ''}${data.realized_pnl.toFixed(2)}
+        {/* P&L Grid */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="bg-white/5 rounded-lg p-2.5">
+            <p className="text-[10px] text-white/40 mb-1">Realized</p>
+            <p className={`text-sm font-bold font-mono ${data.realized_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {data.realized_pnl >= 0 ? '+' : ''}{data.realized_pnl.toFixed(2)}
+            </p>
+          </div>
+          <div className="bg-white/5 rounded-lg p-2.5">
+            <p className="text-[10px] text-white/40 mb-1">Unrealized</p>
+            <p className={`text-sm font-bold font-mono ${data.unrealized_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {data.unrealized_pnl >= 0 ? '+' : ''}{data.unrealized_pnl.toFixed(2)}
+            </p>
+          </div>
+        </div>
+
+        {/* Total P&L - Hero Display */}
+        <div className={`rounded-lg p-3 mb-3 ${isPositive ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-rose-500/10 border border-rose-500/20'}`}>
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] text-white/40 mb-0.5">Total P&L</p>
+              <p className={`text-xl font-bold font-mono ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {isPositive ? '+' : ''}{data.total_pnl.toFixed(2)}
               </p>
             </div>
-            <div className="bg-white/5 rounded-lg p-2">
-              <p className="text-[10px] text-white/50 mb-0.5">Unrealized P&L</p>
-              <p className={`text-sm font-bold ${data.unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {data.unrealized_pnl >= 0 ? '+' : ''}${data.unrealized_pnl.toFixed(2)}
+            <div className="text-right">
+              <p className="text-[10px] text-white/40 mb-0.5">Return</p>
+              <p className={`text-xl font-bold font-mono ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {isPositive ? '+' : ''}{data.total_return_pct.toFixed(1)}%
               </p>
             </div>
           </div>
+        </div>
 
-          {/* Total P&L with Return % */}
-          <div className="bg-white/10 rounded-lg p-3 mb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] text-white/50 mb-0.5">Total P&L</p>
-                <p className={`text-lg font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                  {isPositive ? '+' : ''}${data.total_pnl.toFixed(2)}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] text-white/50 mb-0.5">Return %</p>
-                <p className={`text-lg font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                  {isPositive ? '+' : ''}{data.total_return_pct.toFixed(2)}%
-                </p>
-              </div>
-            </div>
+        {/* Stats Row */}
+        <div className="grid grid-cols-3 gap-1 text-center">
+          <div className="bg-white/5 rounded-lg py-2 px-1">
+            <p className="text-[9px] text-white/40">Trades</p>
+            <p className="text-sm font-bold font-mono text-white">{data.trades}</p>
           </div>
+          <div className="bg-white/5 rounded-lg py-2 px-1">
+            <p className="text-[9px] text-white/40">Win Rate</p>
+            <p className={`text-sm font-bold font-mono ${data.win_rate >= 50 ? 'text-emerald-400' : data.win_rate > 0 ? 'text-amber-400' : 'text-white/50'}`}>
+              {data.win_rate.toFixed(0)}%
+            </p>
+          </div>
+          <div className="bg-white/5 rounded-lg py-2 px-1">
+            <p className="text-[9px] text-white/40">PF</p>
+            <p className={`text-sm font-bold font-mono ${data.profit_factor >= 1 ? 'text-emerald-400' : data.profit_factor > 0 ? 'text-amber-400' : 'text-white/50'}`}>
+              {data.profit_factor.toFixed(1)}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
-          {/* Trade Stats */}
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+          <Zap className="w-4 h-4 text-amber-400" />
+          Two-Speed Architecture
+        </h4>
+        {showLive && (
+          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />LIVE
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <PathCard 
+          data={hft} 
+          icon={Zap}
+          accentColor="cyan"
+          borderColor="border-cyan-500/20"
+        />
+        <PathCard 
+          data={alpha} 
+          icon={Brain}
+          accentColor="violet"
+          borderColor="border-violet-500/20"
+        />
+      </div>
+    </div>
+  );
+};
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
               <p className="text-[10px] text-white/50">Trades</p>
