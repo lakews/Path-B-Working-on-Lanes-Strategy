@@ -561,6 +561,17 @@ class PaperTrader:
             'alpha_directional': 0.0,
             'arbitrage': 0.0
         }
+        
+        # Quality Control Stats (Task 18)
+        self._last_quality_stats: Dict = {
+            'total_fetched': 0,
+            'rejected_low_volume': 0,
+            'rejected_extreme_price': 0,
+            'rejected_low_liquidity': 0,
+            'rejected_no_price': 0,
+            'passed_quality': 0,
+        }
+        
         # Initialize asset class equity at 0 for all asset classes
         self.asset_class_equity: Dict[str, float] = {
             'finance': 0.0,
