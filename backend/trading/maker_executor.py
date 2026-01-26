@@ -366,15 +366,25 @@ class MakerOrderExecutor:
         theoretical_price: float,
         spread: float,
         market_id: str,
-        order_book: OrderBook
+        order_book: OrderBook,
+        market_mid: float = None
     ) -> Tuple[float, float, Dict]:
         """
         Calculate adjusted bid/ask quotes using:
         1. Theoretical price (from Bayesian/Alpha) as center
         2. Inventory skew adjustment
         3. OFI-based adjustment
+        4. Safety Leash: Clamp to reality (anti-hallucination)
         
         CRITICAL: We trade our Alpha (theoretical_price), not market mid.
+        However, we apply a safety leash to prevent hallucinated quotes.
+        
+        Args:
+            theoretical_price: Alpha signal from Bayesian posterior
+            spread: Current market spread
+            market_id: Market identifier for inventory tracking
+            order_book: Current orderbook for OFI calculation
+            market_mid: Market mid-price for safety clamping (optional)
         
         Returns:
             (my_bid_price, my_ask_price, debug_info)
@@ -408,11 +418,24 @@ class MakerOrderExecutor:
             # Strong selling pressure → lower bid (don't buy expensive)
             ofi_bid_adj = -ofi_adjustment
         
-        # 6. Final quotes
+        # 6. Pre-clamp quotes
         my_bid_price = max(0.001, skewed_bid + ofi_bid_adj)
         my_ask_price = min(0.999, skewed_ask + ofi_ask_adj)
         
-        # Ensure bid < ask
+        # 7. SAFETY LEASH: Clamp quotes to reality (anti-hallucination)
+        # Prevents Alpha from drifting dangerously far from market
+        was_clamped = False
+        pre_clamp_bid = my_bid_price
+        pre_clamp_ask = my_ask_price
+        
+        if market_mid is not None:
+            my_bid_price, my_ask_price, was_clamped = self.clamp_to_reality(
+                my_bid=my_bid_price,
+                my_ask=my_ask_price,
+                market_mid=market_mid
+            )
+        
+        # 8. Ensure bid < ask (final safety check)
         if my_bid_price >= my_ask_price:
             mid = (my_bid_price + my_ask_price) / 2
             my_bid_price = mid - 0.005
@@ -420,6 +443,7 @@ class MakerOrderExecutor:
         
         debug_info = {
             'theoretical_price': theoretical_price,
+            'market_mid': market_mid,
             'market_spread': spread,
             'inventory_skew': price_skew,
             'ofi': ofi,
@@ -427,14 +451,18 @@ class MakerOrderExecutor:
             'ofi_ask_adj': ofi_ask_adj,
             'base_bid': base_bid,
             'base_ask': base_ask,
+            'pre_clamp_bid': pre_clamp_bid,
+            'pre_clamp_ask': pre_clamp_ask,
             'final_bid': my_bid_price,
-            'final_ask': my_ask_price
+            'final_ask': my_ask_price,
+            'safety_leash_triggered': was_clamped,
+            'max_alpha_deviation': self.config.get('max_alpha_deviation', 0.15)
         }
         
         logger.debug(
-            f"[QUOTES] Theo={theoretical_price:.4f} | "
+            f"[QUOTES] Theo={theoretical_price:.4f} | Mid={market_mid:.4f if market_mid else 'N/A'} | "
             f"Skew={price_skew:.4f} | OFI={ofi:.2f} | "
-            f"Bid={my_bid_price:.4f} Ask={my_ask_price:.4f}"
+            f"Bid={my_bid_price:.4f} Ask={my_ask_price:.4f} | Clamped={was_clamped}"
         )
         
         return my_bid_price, my_ask_price, debug_info
