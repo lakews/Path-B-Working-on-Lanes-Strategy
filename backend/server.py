@@ -287,6 +287,28 @@ class TradingConfig(BaseModel):
     oracle_multipliers: Optional[Dict[str, float]] = None # Oracle risk multipliers by category
     # Event Caps Configuration
     event_caps: Optional[Dict[str, float]] = None         # Event concentration limits
+    
+    # ==============================================================
+    # TWO-SPEED ARCHITECTURE CONFIGURATION (HFT/Alpha)
+    # ==============================================================
+    hft_allocation_pct: Optional[float] = None            # % of deployed capital to HFT
+    alpha_allocation_pct: Optional[float] = None          # % of deployed capital to Alpha
+    hft_max_position_pct: Optional[float] = None          # Max position as % of HFT capital
+    alpha_max_position_pct: Optional[float] = None        # Max position as % of Alpha capital
+    hft_positions_pct: Optional[float] = None             # % of global max positions for HFT
+    alpha_positions_pct: Optional[float] = None           # % of global max positions for Alpha
+    # Strategy Risk Multipliers
+    strategy_risk_multipliers: Optional[Dict[str, float]] = None  # Per-strategy sizing multipliers
+    # Expiry Thresholds
+    expiry_thresholds: Optional[Dict[str, Any]] = None    # Time-to-expiry thresholds
+    # Strategy Expiry Adjustments  
+    expiry_strategy_adjustments: Optional[Dict[str, Any]] = None  # Per-strategy expiry behavior
+    # HFT Execution Parameters
+    hft_execution: Optional[Dict[str, Any]] = None        # Inventory skew, OFI settings
+    # Spread Policy
+    spread_policy: Optional[Dict[str, float]] = None      # Max spreads, fees, EV params
+    # Variance Sizing (Tail Risk)
+    variance_sizing: Optional[Dict[str, float]] = None    # Kill switch thresholds
 
 # Default event caps (used for reset)
 DEFAULT_EVENT_CAPS = {
