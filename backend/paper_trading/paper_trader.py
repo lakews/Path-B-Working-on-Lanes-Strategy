@@ -2379,7 +2379,7 @@ class PaperTrader:
                 
                 # SANITY CHECK: Verify orderbook makes sense
                 spread = best_ask - best_bid
-                if spread < 0 or spread > 0.50:
+                if spread < 0 or spread > 0.15:
                     logger.warning(f"[EXIT-WARN] Suspicious orderbook: bid={best_bid}, ask={best_ask}, spread={spread}")
                     # Fall back to midpoint
                     exit_yes_price = current_yes_price
