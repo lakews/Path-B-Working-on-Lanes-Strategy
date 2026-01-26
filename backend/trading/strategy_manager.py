@@ -6,6 +6,9 @@ Manages capital allocation between two distinct trading paths:
 2. Alpha Path: Slower, ML-driven directional trades
 
 This separation ensures the execution loop never waits for slow operations.
+
+NOTE: All allocation percentages are read from the database configuration.
+      The Settings UI is the SINGLE SOURCE OF TRUTH for these values.
 """
 import logging
 from typing import Dict, Optional, Tuple
@@ -72,36 +75,53 @@ class StrategyManager:
     - Bayesian posterior calculation
     - Directional trades based on edge
     - Can wait for signal generation
+    
+    NOTE: All configuration values come from the database (Settings UI).
+          Use StrategyManager.from_config(db_config) to create instances.
     """
     
-    # Default allocation percentages
-    DEFAULT_HFT_ALLOCATION_PCT = 0.40   # 40% of capital to HFT
-    DEFAULT_ALPHA_ALLOCATION_PCT = 0.60  # 60% of capital to Alpha
-    
-    # Position limits by strategy type
-    HFT_MAX_POSITIONS_PER_MARKET = 3    # Multiple small positions for inventory management
-    ALPHA_MAX_POSITIONS_PER_MARKET = 1  # Single directional position
-    
-    # Position size limits (as % of strategy capital)
-    HFT_MAX_POSITION_PCT = 0.10         # 10% per position (smaller, more frequent)
-    ALPHA_MAX_POSITION_PCT = 0.25       # 25% per position (larger, fewer)
+    # Fallback defaults (only used if DB config is missing)
+    DEFAULT_HFT_ALLOCATION_PCT = 40    # 40% of capital to HFT
+    DEFAULT_ALPHA_ALLOCATION_PCT = 60  # 60% of capital to Alpha
+    DEFAULT_HFT_MAX_POSITION_PCT = 10  # 10% per position for HFT
+    DEFAULT_ALPHA_MAX_POSITION_PCT = 25  # 25% per position for Alpha
+    DEFAULT_HFT_MAX_POSITIONS = 3      # 3 positions per market for HFT
+    DEFAULT_ALPHA_MAX_POSITIONS = 1    # 1 position per market for Alpha
     
     def __init__(
         self,
         total_capital: float,
-        hft_allocation_pct: float = DEFAULT_HFT_ALLOCATION_PCT,
-        alpha_allocation_pct: float = DEFAULT_ALPHA_ALLOCATION_PCT,
+        hft_allocation_pct: float,
+        alpha_allocation_pct: float,
+        hft_max_position_pct: float = DEFAULT_HFT_MAX_POSITION_PCT,
+        alpha_max_position_pct: float = DEFAULT_ALPHA_MAX_POSITION_PCT,
+        hft_max_positions: int = DEFAULT_HFT_MAX_POSITIONS,
+        alpha_max_positions: int = DEFAULT_ALPHA_MAX_POSITIONS,
         config: Optional[Dict] = None
     ):
         """
         Initialize strategy manager.
         
         Args:
-            total_capital: Total trading capital in USD
-            hft_allocation_pct: Percentage allocated to HFT (0.0 to 1.0)
-            alpha_allocation_pct: Percentage allocated to Alpha (0.0 to 1.0)
+            total_capital: Total trading capital in USD (deployed capital)
+            hft_allocation_pct: Percentage allocated to HFT (0 to 100)
+            alpha_allocation_pct: Percentage allocated to Alpha (0 to 100)
+            hft_max_position_pct: Max position size as % of HFT capital
+            alpha_max_position_pct: Max position size as % of Alpha capital
+            hft_max_positions: Max positions per market for HFT
+            alpha_max_positions: Max positions per market for Alpha
             config: Optional configuration overrides
         """
+        # Convert percentages to decimals if needed
+        if hft_allocation_pct > 1:
+            hft_allocation_pct /= 100
+        if alpha_allocation_pct > 1:
+            alpha_allocation_pct /= 100
+        if hft_max_position_pct > 1:
+            hft_max_position_pct /= 100
+        if alpha_max_position_pct > 1:
+            alpha_max_position_pct /= 100
+        
         # Validate allocations
         if hft_allocation_pct + alpha_allocation_pct > 1.0:
             logger.warning("Allocations exceed 100%, normalizing...")
@@ -112,6 +132,10 @@ class StrategyManager:
         self.total_capital = total_capital
         self.hft_allocation_pct = hft_allocation_pct
         self.alpha_allocation_pct = alpha_allocation_pct
+        self.hft_max_position_pct = hft_max_position_pct
+        self.alpha_max_position_pct = alpha_max_position_pct
+        self.hft_max_positions = hft_max_positions
+        self.alpha_max_positions = alpha_max_positions
         self.config = config or {}
         
         # Calculate capital allocations
@@ -131,6 +155,51 @@ class StrategyManager:
             f"HFT=${self.hft_capital:,.0f} ({hft_allocation_pct:.0%}), "
             f"Alpha=${self.alpha_capital:,.0f} ({alpha_allocation_pct:.0%}), "
             f"Reserve=${self.reserve_capital:,.0f}"
+        )
+    
+    @classmethod
+    def from_config(cls, db_config: Dict) -> 'StrategyManager':
+        """
+        Create StrategyManager from database configuration.
+        
+        This is the preferred way to instantiate - reads from Settings UI.
+        
+        Args:
+            db_config: Configuration dict from database (via /api/config)
+            
+        Returns:
+            Configured StrategyManager instance
+        """
+        # Get deployed capital
+        initial_capital = db_config.get('initial_capital', 10000)
+        deployment_pct = db_config.get('capital_deployment_pct', 80)
+        if deployment_pct > 1:
+            deployment_pct /= 100
+        deployed_capital = initial_capital * deployment_pct
+        
+        # Get HFT/Alpha allocations from config (Settings UI is source of truth)
+        hft_allocation = db_config.get('hft_allocation_pct', cls.DEFAULT_HFT_ALLOCATION_PCT)
+        alpha_allocation = db_config.get('alpha_allocation_pct', cls.DEFAULT_ALPHA_ALLOCATION_PCT)
+        hft_max_pos = db_config.get('hft_max_position_pct', cls.DEFAULT_HFT_MAX_POSITION_PCT)
+        alpha_max_pos = db_config.get('alpha_max_position_pct', cls.DEFAULT_ALPHA_MAX_POSITION_PCT)
+        hft_max_positions = db_config.get('hft_max_positions', cls.DEFAULT_HFT_MAX_POSITIONS)
+        alpha_max_positions = db_config.get('alpha_max_positions', cls.DEFAULT_ALPHA_MAX_POSITIONS)
+        
+        logger.info(
+            f"Creating StrategyManager from config: "
+            f"HFT={hft_allocation}%, Alpha={alpha_allocation}%, "
+            f"Deployed=${deployed_capital:,.0f}"
+        )
+        
+        return cls(
+            total_capital=deployed_capital,
+            hft_allocation_pct=hft_allocation,
+            alpha_allocation_pct=alpha_allocation,
+            hft_max_position_pct=hft_max_pos,
+            alpha_max_position_pct=alpha_max_pos,
+            hft_max_positions=hft_max_positions,
+            alpha_max_positions=alpha_max_positions,
+            config=db_config
         )
     
     def allocate_funds(
@@ -154,8 +223,8 @@ class StrategyManager:
             return self._market_allocations[market_id]
         
         # Calculate position sizes based on strategy type
-        hft_max_position = self.hft_capital * self.HFT_MAX_POSITION_PCT
-        alpha_max_position = self.alpha_capital * self.ALPHA_MAX_POSITION_PCT
+        hft_max_position = self.hft_capital * self.hft_max_position_pct
+        alpha_max_position = self.alpha_capital * self.alpha_max_position_pct
         
         # Apply market-specific adjustments if data available
         if market_data:
@@ -173,14 +242,14 @@ class StrategyManager:
             strategy_type=StrategyType.HFT,
             capital_usd=self.hft_capital,
             max_position_usd=hft_max_position,
-            max_positions=self.HFT_MAX_POSITIONS_PER_MARKET
+            max_positions=self.hft_max_positions
         )
         
         alpha_allocation = StrategyAllocation(
             strategy_type=StrategyType.ALPHA,
             capital_usd=self.alpha_capital,
             max_position_usd=alpha_max_position,
-            max_positions=self.ALPHA_MAX_POSITIONS_PER_MARKET
+            max_positions=self.alpha_max_positions
         )
         
         allocation = MarketAllocation(
