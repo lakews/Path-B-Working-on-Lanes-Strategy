@@ -2137,6 +2137,36 @@ class PaperTrader:
             edge = (sizing_breakdown or {}).get('edge', 0.02)
             
             # ============================================
+            # EXTRACT THEORETICAL PRICE (ALPHA SIGNAL)
+            # ============================================
+            # CRITICAL: The theoretical_price is the Bayesian posterior probability
+            # from the slow path (signal fusion). The maker executor MUST use this
+            # as the center for quote generation, NOT the market mid-price.
+            theoretical_price = None
+            if sizing_breakdown:
+                # Primary source: probability_diagnostics from Bayesian fusion
+                prob_diag = sizing_breakdown.get('probability_diagnostics', {})
+                if prob_diag:
+                    theoretical_price = prob_diag.get('final_probability')
+                
+                # Fallback: model_probability (may be transformed for NO bets)
+                if theoretical_price is None:
+                    model_prob = sizing_breakdown.get('model_probability')
+                    sizing_side = sizing_breakdown.get('_sizing_side', side)
+                    if model_prob is not None:
+                        # If we bet NO, model_probability was transformed (1-raw)
+                        # Convert back to YES probability for quoting
+                        if sizing_side == 'NO':
+                            theoretical_price = 1 - model_prob
+                        else:
+                            theoretical_price = model_prob
+            
+            if theoretical_price is not None:
+                logger.info(f"[ALPHA] theoretical_price={theoretical_price:.4f}, market={current_price:.4f}, diff={theoretical_price - current_price:+.4f}")
+            else:
+                logger.warning(f"[ALPHA] No theoretical_price available - maker will use market mid")
+            
+            # ============================================
             # MAKER-FIRST EXECUTION STRATEGY
             # ============================================
             execution_result = None
