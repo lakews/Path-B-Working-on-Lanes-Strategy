@@ -2800,7 +2800,7 @@ const PaperTrading = () => {
           
           {/* Performance Metrics - Improved Grid */}
           {status && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
               <MetricCard title="Capital" value={`$${(status.current_capital || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`} subtitle={`Initial: $${(status.initial_capital || 10000).toLocaleString()}`} icon={Wallet} color="blue" />
               <MetricCard 
                 title="Total P&L" 
@@ -2809,6 +2809,7 @@ const PaperTrading = () => {
                 icon={DollarSign} 
                 color={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "green" : "red"} 
                 valueColor={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "text-green-400" : "text-red-400"}
+                subtitleColor={(status.combined_pnl_pct || status.total_pnl_pct || 0) >= 0 ? "text-green-400/70" : "text-red-400/70"}
               />
               {/* Realized vs Unrealized P&L Breakdown with % */}
               <div className={`rounded-xl border p-4 ${(status.combined_pnl || 0) >= 0 ? 'bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20' : 'bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20'}`}>
@@ -2844,6 +2845,7 @@ const PaperTrading = () => {
               <MetricCard title="Win Rate" value={`${((status.win_rate || 0) * 100).toFixed(1)}%`} subtitle={`${status.winning_trades || 0}/${status.total_trades || 0} wins`} icon={Target} color="cyan" />
               <MetricCard title="Total Trades" value={status.total_trades || 0} icon={Activity} color="purple" />
               <MetricCard title="Open Positions" value={status.open_positions ?? positions.length ?? 0} icon={Layers} color="orange" />
+              <MetricCard title="Closed Positions" value={status.total_trades || 0} subtitle={`${status.winning_trades || 0}W / ${(status.total_trades || 0) - (status.winning_trades || 0)}L`} icon={CheckCircle} color="cyan" />
               <div className={`rounded-xl p-4 transition-all ${
                 status?.circuit_breaker_triggered 
                   ? 'bg-red-500/20 border-2 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3)] animate-pulse' 
