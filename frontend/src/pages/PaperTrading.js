@@ -2834,67 +2834,77 @@ const PaperTrading = () => {
             </div>
           )}
           
-          {/* Performance Metrics - Improved Grid */}
+          {/* Performance Metrics - Redesigned Bento Grid */}
           {status && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-              <MetricCard title="Capital" value={`$${(status.current_capital || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`} subtitle={`Initial: $${(status.initial_capital || 10000).toLocaleString()}`} icon={Wallet} color="blue" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {/* Row 1: Key Metrics */}
+              <MetricCard 
+                title="Capital" 
+                value={`$${(status.current_capital || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`} 
+                subtitle={`Initial: $${(status.initial_capital || 10000).toLocaleString()}`} 
+                icon={Wallet} 
+                color="blue" 
+              />
               <MetricCard 
                 title="Total P&L" 
                 value={`${(status.combined_pnl || status.total_pnl || 0) >= 0 ? '+' : '-'}$${Math.abs(status.combined_pnl || status.total_pnl || 0).toFixed(2)}`} 
                 subtitle={`${(status.combined_pnl_pct || status.total_pnl_pct || 0) >= 0 ? '+' : ''}${(status.combined_pnl_pct || status.total_pnl_pct || 0).toFixed(2)}% return`} 
                 icon={DollarSign} 
-                color={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "green" : "red"} 
-                valueColor={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "text-green-400" : "text-red-400"}
-                subtitleColor={(status.combined_pnl_pct || status.total_pnl_pct || 0) >= 0 ? "text-green-400/70" : "text-red-400/70"}
+                color={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "emerald" : "rose"} 
+                valueColor={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "text-emerald-400" : "text-rose-400"}
+                subtitleColor={(status.combined_pnl_pct || status.total_pnl_pct || 0) >= 0 ? "text-emerald-400/70" : "text-rose-400/70"}
               />
-              {/* Realized vs Unrealized P&L Breakdown with % */}
-              <div className={`rounded-xl border p-4 ${(status.combined_pnl || 0) >= 0 ? 'bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20' : 'bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs uppercase tracking-wider text-white/40">P&L Breakdown</span>
-                  <TrendingUp className={`w-4 h-4 ${(status.combined_pnl || 0) >= 0 ? 'text-green-400/60' : 'text-red-400/60'}`} />
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/50">Realized</span>
-                    <div className="text-right">
-                      <span className={`text-sm font-bold ${(status.total_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {(status.total_pnl || 0) >= 0 ? '+' : '-'}${Math.abs(status.total_pnl || 0).toFixed(2)}
-                      </span>
-                      <span className={`text-xs ml-1 ${(status.total_pnl_pct || 0) >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
-                        ({(status.total_pnl_pct || 0) >= 0 ? '+' : ''}{(status.total_pnl_pct || 0).toFixed(1)}%)
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-white/50">Unrealized</span>
-                    <div className="text-right">
-                      <span className={`text-sm font-bold ${(status.unrealized_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {(status.unrealized_pnl || 0) >= 0 ? '+' : '-'}${Math.abs(status.unrealized_pnl || 0).toFixed(2)}
-                      </span>
-                      <span className={`text-xs ml-1 ${((status.unrealized_pnl || 0) / (status.deployed_capital || 1) * 100) >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
-                        ({((status.unrealized_pnl || 0) / (status.deployed_capital || 1) * 100) >= 0 ? '+' : ''}{((status.unrealized_pnl || 0) / (status.deployed_capital || 1) * 100).toFixed(1)}%)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <MetricCard title="Win Rate" value={`${((status.win_rate || 0) * 100).toFixed(1)}%`} subtitle={`${status.winning_trades || 0}/${status.total_trades || 0} wins`} icon={Target} color="cyan" />
-              <MetricCard title="Total Trades" value={status.total_trades || 0} icon={Activity} color="purple" />
-              <MetricCard title="Open Positions" value={status.open_positions ?? positions.length ?? 0} icon={Layers} color="orange" />
-              <MetricCard title="Closed Positions" value={status.total_trades || 0} subtitle={`${status.winning_trades || 0}W / ${(status.total_trades || 0) - (status.winning_trades || 0)}L`} icon={CheckCircle} color="cyan" />
-              <div className={`rounded-xl p-4 transition-all ${
+              {/* P&L Breakdown - Uses new component */}
+              <PnLBreakdownCard 
+                realized={status.total_pnl || 0}
+                unrealized={status.unrealized_pnl || 0}
+                realizedPct={status.total_pnl_pct || 0}
+                unrealizedPct={status.deployed_capital > 0 ? ((status.unrealized_pnl || 0) / status.deployed_capital * 100) : 0}
+                isPositive={(status.combined_pnl || 0) >= 0}
+              />
+              <MetricCard 
+                title="Win Rate" 
+                value={`${((status.win_rate || 0) * 100).toFixed(0)}%`} 
+                subtitle={`${status.winning_trades || 0}/${status.total_trades || 0} wins`} 
+                icon={Target} 
+                color="cyan" 
+              />
+              
+              {/* Row 2: Position & Trade Stats */}
+              <MetricCard 
+                title="Open Positions" 
+                value={status.open_positions ?? positions.length ?? 0} 
+                icon={Layers} 
+                color="orange" 
+              />
+              <MetricCard 
+                title="Closed Trades" 
+                value={status.total_trades || 0} 
+                subtitle={`${status.winning_trades || 0}W / ${(status.total_trades || 0) - (status.winning_trades || 0)}L`} 
+                icon={CheckCircle} 
+                color="cyan" 
+              />
+              <MetricCard 
+                title="Total Trades" 
+                value={(status.total_trades || 0) + (status.open_positions ?? positions.length ?? 0)} 
+                subtitle="Open + Closed"
+                icon={Activity} 
+                color="violet" 
+              />
+              {/* Max Drawdown - Custom styling for alerts */}
+              <div className={`rounded-xl p-4 min-w-0 overflow-hidden ${
                 status?.circuit_breaker_triggered 
-                  ? 'bg-red-500/20 border-2 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3)] animate-pulse' 
-                  : 'bg-white/5 border border-white/10'
+                  ? 'bg-rose-500/20 border-2 border-rose-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3)] animate-pulse' 
+                  : 'bg-gradient-to-br from-rose-500/10 to-rose-600/5 border border-rose-500/20'
               }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-xs uppercase tracking-wider ${status?.circuit_breaker_triggered ? 'text-red-400' : 'text-white/40'}`}>Max Drawdown</span>
-                  <Shield className={`w-4 h-4 ${status?.circuit_breaker_triggered ? 'text-red-400' : 'text-red-400/60'}`} />
+                <div className="flex items-center justify-between mb-2 min-w-0">
+                  <span className={`text-[10px] sm:text-xs uppercase tracking-wider truncate ${status?.circuit_breaker_triggered ? 'text-rose-400' : 'text-white/50'}`}>Max Drawdown</span>
+                  <Shield className={`w-4 h-4 flex-shrink-0 ${status?.circuit_breaker_triggered ? 'text-rose-400' : 'text-rose-400/60'}`} />
                 </div>
-                <p className={`text-2xl font-bold tabular-nums ${status?.circuit_breaker_triggered ? 'text-red-400' : 'text-white'}`}>
+                <p className={`text-lg sm:text-xl lg:text-2xl font-bold font-mono tracking-tight ${status?.circuit_breaker_triggered ? 'text-rose-400' : 'text-white'}`}>
                   {(status?.current_drawdown_pct || 0).toFixed(1)}%
                 </p>
-                <p className={`text-xs mt-1 ${status?.circuit_breaker_triggered ? 'text-red-300/60' : 'text-white/40'}`}>
+                <p className={`text-[10px] sm:text-xs mt-1.5 truncate ${status?.circuit_breaker_triggered ? 'text-rose-300/60' : 'text-white/40'}`}>
                   Limit: {savedConfig?.max_drawdown_pct || status.config?.max_drawdown_pct || 5}%
                 </p>
               </div>
