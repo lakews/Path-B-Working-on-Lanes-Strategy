@@ -233,6 +233,67 @@ class PaperTrader:
             'similarity_threshold': 0.60,    # 60% question similarity = same event
         }
         
+        # ==============================================================
+        # TWO-SPEED ARCHITECTURE DEFAULTS (HFT/Alpha)
+        # ==============================================================
+        self.config = {}  # Full config storage
+        self.hft_allocation_pct = 40.0      # % of deployed capital to HFT
+        self.alpha_allocation_pct = 60.0    # % of deployed capital to Alpha
+        self.hft_max_position_pct = 10.0    # Max position as % of HFT capital
+        self.alpha_max_position_pct = 25.0  # Max position as % of Alpha capital
+        self.hft_positions_pct = 5.0        # % of global max positions for HFT
+        self.alpha_positions_pct = 2.0      # % of global max positions for Alpha
+        
+        # Strategy Risk Multipliers (position sizing)
+        self.strategy_risk_multipliers = {
+            'delta_neutral': 1.2,
+            'volatility_exploitation': 0.5,
+            'alpha_directional': 0.8,
+            'arbitrage': 1.1
+        }
+        
+        # Expiry thresholds (defaults)
+        self.expiry_thresholds_config = {
+            'no_entry_hours': 6,
+            'high_urgency_hours': 24,
+            'medium_urgency_days': 7,
+            'normal_days': 30
+        }
+        
+        # Expiry strategy adjustments (defaults)
+        self.expiry_strategy_adjustments = {
+            'delta_neutral': {'disable_within_hours': 48, 'size_mult_near_expiry': 0.5},
+            'volatility_exploitation': {'boost_within_days': 7, 'boost_multiplier': 1.5, 'disable_within_hours': 6},
+            'alpha_directional': {'min_confidence_near_expiry': 0.7, 'disable_within_hours': 6},
+            'arbitrage': {'disable_within_hours': 6}
+        }
+        
+        # HFT Execution parameters (defaults)
+        self.hft_execution = {
+            'max_inventory_usd': 1000,
+            'skew_factor': 0.05,
+            'ofi_threshold': 0.6,
+            'ofi_adjustment': 0.01,
+            'ofi_levels': 3
+        }
+        
+        # Spread policy (defaults)
+        self.spread_policy_config = {
+            'max_spread_hft': 0.25,
+            'max_spread_alpha': 0.15,
+            'max_spread_aggressive': 0.06,
+            'min_spread_maker': 0.005,
+            'maker_spread_capture': 0.50,
+            'adverse_selection_cost': 0.005,
+            'taker_fee': 0.02
+        }
+        
+        # Variance sizing (defaults)
+        self.variance_sizing_config = {
+            'kill_switch_low': 0.03,
+            'kill_switch_high': 0.97
+        }
+        
         # Current capital starts at initial (will be set properly after config load)
         self.current_capital = self.initial_capital
         
