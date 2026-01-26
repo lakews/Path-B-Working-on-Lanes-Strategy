@@ -1387,21 +1387,18 @@ class PaperTrader:
             market_id = market_data.get('id', '')
             yes_price = market_data.get('yes_price')
             
-            # DEBUG: Log what we received
-            logger.info(f"[ALPHA-DEBUG] {market_id[:16]}... received yes_price={yes_price}, type={type(yes_price)}")
-            
             if yes_price is None or yes_price == 0:
-                logger.info(f"[ALPHA-SKIP] {market_id[:16]}... no yes_price (value={yes_price})")
+                logger.debug(f"[ALPHA] {market_id[:16]}... skipped - no yes_price")
                 return None
             
             yes_price = float(yes_price)
             
             # Skip extreme prices
             if yes_price in [0.0, 1.0]:
-                logger.info(f"[ALPHA-SKIP] {market_id[:16]}... extreme price {yes_price}")
+                logger.debug(f"[ALPHA] {market_id[:16]}... skipped - extreme price {yes_price}")
                 return None
             
-            logger.info(f"[ALPHA-PASS] Analyzing {market_id[:16]}... yes_price={yes_price:.4f}")
+            logger.debug(f"[ALPHA] Analyzing {market_id[:16]}... yes_price={yes_price:.4f}")
             
             # Get signals (includes LLM call - slow!)
             signals = await self._get_signals(market_data)
