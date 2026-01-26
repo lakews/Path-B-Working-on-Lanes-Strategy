@@ -427,9 +427,14 @@ class MakerOrderExecutor:
         market_data: Dict,
         edge: float,
         token_id: Optional[str] = None,
+        theoretical_price: Optional[float] = None,
     ) -> ExecutionResult:
         """
         Execute order with maker-first strategy.
+        
+        CRITICAL: Uses theoretical_price (Alpha signal from Bayesian posterior) as the
+        center for quote generation, NOT the market mid-price. We trade OUR Alpha,
+        adjusted by inventory skew and OFI.
         
         Args:
             side: 'YES' or 'NO'
@@ -437,6 +442,8 @@ class MakerOrderExecutor:
             market_data: Market data including order book, prices, volume
             edge: Expected edge for this trade
             token_id: Token ID for CLOB orders (required for live trading)
+            theoretical_price: Alpha signal price from slow path (Bayesian posterior).
+                              If not provided, falls back to market mid-price (not ideal).
             
         Returns:
             ExecutionResult with fill details
