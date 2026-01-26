@@ -115,6 +115,194 @@ DEFAULTS = {
 }
 
 
+# =============================================================================
+# EXIT ENGINE CONFIGURATION (Task 24: Alpha-State Exit Engine)
+# =============================================================================
+# Hierarchical Exit Engine respecting: State > Strategy > Asset Class > Zone
+# Replaces legacy fixed TP/SL with state-dependent logic
+
+# 1. Global Safety Defaults
+EXIT_GLOBAL_SETTINGS = {
+    'whale_threshold_price': 0.10,    # Entries below this are "Whales"
+    'max_spread_pct': 0.10,           # 10% spread tolerance (Polymarket is illiquid)
+    'expiry_guard_hours': 2.0,        # Force close losing trades 2h before expiry
+    'min_trade_size_usd': 2.00,       # Minimum sell size to avoid API dust errors
+    'free_ride_floor': 0.02,          # Free ride stop loss floor ($0.02)
+    'free_ride_ceiling': 0.98,        # Free ride take profit ceiling ($0.98)
+}
+
+# 2. Strategy Baselines (The "Class" Logic)
+EXIT_STRATEGY_CONFIG = {
+    'arbitrage': {
+        'type': 'mechanical',
+        'action': 'CLOSE_ALL',        # Mechanical trades always exit fully
+        'tp_pct': 0.02,               # +2% Gain
+        'sl_pct': 0.02,               # -2% Loss
+        'max_hours': 6,               # Time limit
+    },
+    'delta_neutral': {
+        'type': 'mechanical',
+        'action': 'CLOSE_ALL',
+        'tp_pct': 0.015,              # +1.5% Gain
+        'sl_pct': 0.015,              # -1.5% Loss
+        'max_hours': 4,
+    },
+    'volatility_exploitation': {
+        'type': 'mechanical',
+        'action': 'CLOSE_ALL',
+        'tp_pct': 0.05,               # +5% Gain
+        'sl_pct': 0.05,               # -5% Loss
+        'max_hours': 24,
+    },
+    'alpha_directional': {
+        'type': 'complex',            # Uses Asset Modifiers
+        'action': 'FREE_ROLL',        # Default action is to Sell Principal
+        'profit_trigger_pct': 0.30,   # Base target to trigger Free Roll (30%)
+        'base_sl_pct': 0.15,          # Base Hard Stop (15%)
+        'base_max_hours': 72,         # Base Time Limit (3 days)
+    },
+    'gamma_scalp': {
+        'type': 'whale',              # Special whale zone handling
+        'action': 'GAMMA_EXIT',       # Uses whale exit logic
+        'stop_multiple': 0.50,        # Exit at 50% of entry
+        'free_roll_multiple': 2.0,    # Sell 50% at 2x
+        'moonbag_multiple': 5.0,      # Sell 100% at 5x
+        'max_hours': 168,             # 7 days
+    },
+}
+
+# 3. Asset Modifiers (APPLIED TO ALPHA STRATEGY ONLY)
+EXIT_ALPHA_ASSET_MODIFIERS = {
+    'politics': {
+        'description': 'Trending markets. Momentum matters.',
+        'profit_mult': 1.2,           # Trend requires room (Target 36%)
+        'sl_mult': 1.0,               # Standard Stop (15%)
+        'time_mult': 3.0,             # Long Hold (9 Days)
+        'use_trailing': True,
+        'use_thesis_fail': True,
+        'allow_zombie': False,
+    },
+    'finance': {
+        'description': 'Stable, predictable markets.',
+        'profit_mult': 1.0,           # Standard Target (30%)
+        'sl_mult': 1.2,               # Looser Stop (18%) for macro noise
+        'time_mult': 1.0,             # Standard Hold
+        'use_trailing': True,
+        'use_thesis_fail': True,
+        'allow_zombie': False,
+    },
+    'crypto': {
+        'description': 'High correlation, volatile assets.',
+        'profit_mult': 1.5,           # Higher Target (45%)
+        'sl_mult': 1.5,               # Wide Stop (22.5%) for volatility
+        'time_mult': 0.5,             # Fast moving (36h)
+        'use_trailing': True,
+        'use_thesis_fail': True,
+        'allow_zombie': False,
+    },
+    'sports': {
+        'description': 'High vol events. Fixed duration.',
+        'profit_mult': 1.0,           # Standard Target (30%)
+        'sl_mult': 1.5,               # Wide Stop (22.5%) for game swings
+        'time_mult': 0.25,            # Short Hold (18h)
+        'use_trailing': False,        # No trailing (Game scores oscillate)
+        'use_thesis_fail': False,     # Halftime down != Failed Thesis
+        'allow_zombie': True,
+    },
+    'entertainment': {
+        'description': 'Pop culture, viral events.',
+        'profit_mult': 2.0,           # High Target (60%) - Viral events
+        'sl_mult': 0.8,               # Tight Stop (12%) - Fades fast
+        'time_mult': 2.0,             # Medium Hold
+        'use_trailing': False,
+        'use_thesis_fail': False,
+        'allow_zombie': True,
+    },
+    'science': {
+        'description': 'Binary/Lotto outcomes. Long holds.',
+        'profit_mult': 2.0,           # Lotto Target (60%)
+        'sl_mult': 0.5,               # Tight Stop (7.5%) - News dependent
+        'time_mult': 5.0,             # Very Long Hold
+        'use_trailing': False,
+        'use_thesis_fail': False,
+        'allow_zombie': True,
+    },
+    'conflict': {
+        'description': 'Geopolitical events.',
+        'profit_mult': 1.0,           # Standard Target (30%)
+        'sl_mult': 1.2,               # Looser Stop for uncertainty
+        'time_mult': 2.0,             # Medium-Long Hold
+        'use_trailing': False,
+        'use_thesis_fail': False,
+        'allow_zombie': True,
+    },
+    'social': {
+        'description': 'Social media/tweets.',
+        'profit_mult': 1.5,           # Higher Target (45%)
+        'sl_mult': 1.0,               # Standard Stop
+        'time_mult': 0.5,             # Fast moving
+        'use_trailing': True,
+        'use_thesis_fail': True,
+        'allow_zombie': False,
+    },
+    'default': {
+        'description': 'Default/Unknown category.',
+        'profit_mult': 1.0,
+        'sl_mult': 1.0,
+        'time_mult': 1.0,
+        'use_trailing': True,
+        'use_thesis_fail': True,
+        'allow_zombie': False,
+    },
+}
+
+# 4. Whale Zone Exit Rules (Entry < $0.10)
+EXIT_WHALE_ZONE = {
+    'stop_loss_multiple': 0.50,       # Exit if price drops to 50% of entry
+    'free_roll_multiple': 2.0,        # Sell 50% when price doubles
+    'free_roll_sell_pct': 0.50,       # Sell 50% on free roll
+    'moonbag_multiple': 5.0,          # Sell 100% when price 5x's
+    'ignore_trailing_stop': True,     # No trailing in whale zone
+    'ignore_thesis_fail': True,       # No thesis fail in whale zone
+}
+
+
+def get_exit_config():
+    """Get the complete exit engine configuration."""
+    return {
+        'global': EXIT_GLOBAL_SETTINGS,
+        'strategies': EXIT_STRATEGY_CONFIG,
+        'alpha_modifiers': EXIT_ALPHA_ASSET_MODIFIERS,
+        'whale_zone': EXIT_WHALE_ZONE,
+    }
+
+
+def get_alpha_asset_modifier(asset_class: str) -> dict:
+    """Get exit modifiers for a specific asset class (Alpha strategy only)."""
+    # Normalize asset class name
+    normalized = asset_class.lower().strip() if asset_class else 'default'
+    
+    # Handle compound names
+    if 'crypto' in normalized or 'bitcoin' in normalized:
+        normalized = 'crypto'
+    elif 'politic' in normalized or 'election' in normalized:
+        normalized = 'politics'
+    elif 'sport' in normalized or 'game' in normalized:
+        normalized = 'sports'
+    elif 'science' in normalized or 'tech' in normalized:
+        normalized = 'science'
+    elif 'entertainment' in normalized or 'pop' in normalized:
+        normalized = 'entertainment'
+    elif 'finance' in normalized or 'econ' in normalized:
+        normalized = 'finance'
+    elif 'conflict' in normalized or 'war' in normalized:
+        normalized = 'conflict'
+    elif 'social' in normalized or 'tweet' in normalized:
+        normalized = 'social'
+    
+    return EXIT_ALPHA_ASSET_MODIFIERS.get(normalized, EXIT_ALPHA_ASSET_MODIFIERS['default'])
+
+
 @dataclass
 class RiskConfig:
     """
