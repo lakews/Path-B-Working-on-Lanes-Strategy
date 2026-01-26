@@ -525,7 +525,23 @@ const Configuration = () => {
                       className="w-full h-1.5 bg-white/10 rounded-lg" 
                       min="1" max="50" step="1" 
                     />
-                    <p className="text-xs text-white/40 mt-1">Max: ${(deployedCapital * (config.hft_allocation_pct || 40) / 100 * (config.hft_max_position_pct || 10) / 100).toFixed(2)}/trade</p>
+                    {(() => {
+                      const hftCapital = deployedCapital * (config.hft_allocation_pct || 40) / 100;
+                      const strategyMax = hftCapital * (config.hft_max_position_pct || 10) / 100;
+                      const globalMax = maxPositionValue;
+                      const effectiveMax = Math.min(strategyMax, globalMax);
+                      const isCapped = strategyMax > globalMax;
+                      return (
+                        <div className="mt-1">
+                          <p className={`text-xs ${isCapped ? 'text-yellow-400' : 'text-white/40'}`}>
+                            {isCapped 
+                              ? `Capped by global: $${effectiveMax.toFixed(2)} (global ${config.max_position_size_pct}% = $${globalMax.toFixed(2)})`
+                              : `Max: $${effectiveMax.toFixed(2)}/trade`
+                            }
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div>
                     <div className="flex justify-between text-xs text-white/50 mb-1">
@@ -570,7 +586,23 @@ const Configuration = () => {
                       className="w-full h-1.5 bg-white/10 rounded-lg" 
                       min="1" max="100" step="1" 
                     />
-                    <p className="text-xs text-white/40 mt-1">Max: ${(deployedCapital * (config.alpha_allocation_pct || 60) / 100 * (config.alpha_max_position_pct || 25) / 100).toFixed(2)}/trade</p>
+                    {(() => {
+                      const alphaCapital = deployedCapital * (config.alpha_allocation_pct || 60) / 100;
+                      const strategyMax = alphaCapital * (config.alpha_max_position_pct || 25) / 100;
+                      const globalMax = maxPositionValue;
+                      const effectiveMax = Math.min(strategyMax, globalMax);
+                      const isCapped = strategyMax > globalMax;
+                      return (
+                        <div className="mt-1">
+                          <p className={`text-xs ${isCapped ? 'text-yellow-400' : 'text-white/40'}`}>
+                            {isCapped 
+                              ? `Capped by global: $${effectiveMax.toFixed(2)} (global ${config.max_position_size_pct}% = $${globalMax.toFixed(2)})`
+                              : `Max: $${effectiveMax.toFixed(2)}/trade`
+                            }
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div>
                     <div className="flex justify-between text-xs text-white/50 mb-1">
