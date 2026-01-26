@@ -154,13 +154,16 @@ def get_strategy_context() -> StrategyContext:
 
 class MarketRegime:
     """Market regime enumeration for liquidity-aware trading."""
-    ZOMBIE = "ZOMBIE"           # Dead/illiquid - skip entirely
-    MAKER_WIDE = "MAKER_WIDE"   # Wide spread (5-20c) - maker only, post inside spread
-    TAKER_TIGHT = "TAKER_TIGHT" # Tight spread (<5c) - can cross spread if edge high
+    ZOMBIE = "ZOMBIE"                   # Dead/illiquid (>30%) - skip entirely
+    MAKER_OPPORTUNITY = "MAKER_OPPORTUNITY"  # Fat spreads (15-30%) - aggressive liquidity provision
+    MAKER_WIDE = "MAKER_WIDE"           # Wide spread (4-15%) - standard maker, post inside spread
+    TAKER_TIGHT = "TAKER_TIGHT"         # Tight spread (<4%) - can cross spread if edge high
 
 # Regime classification thresholds (in probability space, not cents)
-SPREAD_ZOMBIE_THRESHOLD = 0.15     # > 15% spread = zombie market (very illiquid)
-SPREAD_WIDE_THRESHOLD = 0.04       # > 4% spread = wide, maker-only
+# LIQUIDITY UNLOCK: Widened ZOMBIE threshold from 15% to 30% to embrace wide spreads
+SPREAD_ZOMBIE_THRESHOLD = 0.30     # > 30% spread = zombie market (too chaotic even for us)
+SPREAD_OPPORTUNITY_THRESHOLD = 0.15 # > 15% spread = fat margin opportunity (NEW: The Golden Zone)
+SPREAD_WIDE_THRESHOLD = 0.04       # > 4% spread = wide, standard maker
 MIN_VOLUME_24H = 50.0              # $50 minimum daily volume (lowered for more markets)
 
 def classify_market_regime(
