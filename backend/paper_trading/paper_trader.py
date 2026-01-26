@@ -1019,36 +1019,42 @@ class PaperTrader:
             if regime == MarketRegime.ZOMBIE:
                 return None
             
-            # CONVEXITY_OPPORTUNITY: Whale Zone - cheap assets with tight tick spread
-            # Strategy: Aggressive accumulation for gamma/convexity upside
+            # CONVEXITY_OPPORTUNITY: Whale Zone - Delegate to GammaTrader (Task 22)
+            # Uses isolated gamma_strategy.py for Gap vs. Wall logic
             if regime == MarketRegime.CONVEXITY_OPPORTUNITY:
-                if best_bid <= 0 or best_ask <= 0:
-                    return None  # Need orderbook
+                # Build market data with orderbook for GammaTrader
+                gamma_market_data = {
+                    'id': market_id,
+                    'yes_price': yes_price,
+                    'no_price': 1 - yes_price,
+                    'clobTokenIds': market_data.get('clobTokenIds', []),
+                    'order_book': {
+                        'bids': [{'price': str(best_bid), 'size': str(market_data.get('bid_volume', 100))}] if best_bid > 0 else [],
+                        'asks': [{'price': str(best_ask), 'size': str(market_data.get('ask_volume', 100))}] if best_ask > 0 else [],
+                    }
+                }
                 
-                # Calculate edge - in whale zone, use tighter edge threshold
-                edge = fair_value - yes_price
-                min_whale_edge = 0.003  # 0.3% edge for whale zone (tighter threshold)
+                # Generate orders using GammaTrader (isolated logic)
+                gamma_orders = self.gamma_trader.calculate_orders(
+                    market_data=gamma_market_data,
+                    active_positions=self.paper_positions,
+                    available_capital=available_capital
+                )
                 
-                if abs(edge) > min_whale_edge:
-                    side = 'YES' if edge > 0 else 'NO'
-                    
-                    # Whale zone: Use RISK.WHALE_MAX_POSITION from config
-                    from risk_config import RISK
-                    whale_size = min(
-                        available_capital * 0.01,  # Max 1% per whale trade
-                        RISK.WHALE_MAX_POSITION,   # $15 max from config
-                        15.0
-                    )
-                    
+                if gamma_orders:
+                    order = gamma_orders[0]  # Take first order
                     return {
                         'should_trade': True,
-                        'side': side,
-                        'size': whale_size,
-                        'edge': abs(edge),
+                        'side': order.side,
+                        'size': order.size,
+                        'edge': abs(fair_value - yes_price),
                         'fair_value': fair_value,
-                        'strategy': 'hft_gamma_scalp',
+                        'strategy': 'gamma_scalp',
                         'regime': regime,
                         'zone': 'WHALE',
+                        'gamma_order_type': order.order_type.value,
+                        'gamma_reason': order.reason.value,
+                        'gamma_price': order.price,
                     }
                 return None
             
