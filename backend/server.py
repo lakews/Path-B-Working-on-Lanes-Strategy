@@ -3234,6 +3234,101 @@ async def set_paper_exit_mode(use_dynamic: bool = True):
         "message": f"Exit mode set to: {mode_name}"
     }
 
+# ============================================================================
+# ALPHA MODEL WEIGHTS API (Task 19: Dynamic Alpha Tuning)
+# ============================================================================
+
+@api_router.get("/settings/alpha")
+async def get_alpha_weights():
+    """
+    Get current Alpha model weights.
+    
+    Returns weights that control the Bayesian probability calculation:
+    - sentiment_weight: Influence of LLM sentiment (0.0-2.0)
+    - rl_weight: Influence of RL model (0.0-2.0)
+    - Other tuning parameters
+    """
+    global paper_trader
+    
+    if not paper_trader:
+        # Return default weights if no session
+        return {
+            "active_session": False,
+            "weights": {
+                'sentiment_weight': 0.50,
+                'rl_weight': 0.60,
+                'sharp_weight': 0.30,
+                'sentiment_neutral_low': 0.45,
+                'sentiment_neutral_high': 0.55,
+                'max_sentiment_delta': 2.0,
+                'min_rl_confidence': 0.15,
+            },
+            "message": "No active session - showing defaults"
+        }
+    
+    return {
+        "active_session": True,
+        "weights": paper_trader.get_alpha_weights()
+    }
+
+@api_router.post("/settings/alpha")
+async def update_alpha_weights(
+    sentiment_weight: float = None,
+    rl_weight: float = None,
+    sharp_weight: float = None,
+    sentiment_neutral_low: float = None,
+    sentiment_neutral_high: float = None,
+    max_sentiment_delta: float = None,
+    min_rl_confidence: float = None
+):
+    """
+    Update Alpha model weights at runtime.
+    
+    This allows real-time tuning of how much each signal source influences
+    the Bayesian probability calculation. All parameters are optional.
+    
+    Weight Guidelines:
+    - sentiment_weight: 0.3-0.7 typical (higher = trust news more)
+    - rl_weight: 0.4-0.8 typical (higher = trust math model more)
+    - Combined weights can exceed 1.0 for stronger signals
+    
+    Example:
+    ```
+    POST /api/settings/alpha
+    {"sentiment_weight": 0.40, "rl_weight": 0.70}
+    ```
+    """
+    global paper_trader
+    
+    if not paper_trader:
+        return {"error": "No active paper trading session"}
+    
+    # Build update dict from provided values
+    updates = {}
+    if sentiment_weight is not None:
+        updates['sentiment_weight'] = sentiment_weight
+    if rl_weight is not None:
+        updates['rl_weight'] = rl_weight
+    if sharp_weight is not None:
+        updates['sharp_weight'] = sharp_weight
+    if sentiment_neutral_low is not None:
+        updates['sentiment_neutral_low'] = sentiment_neutral_low
+    if sentiment_neutral_high is not None:
+        updates['sentiment_neutral_high'] = sentiment_neutral_high
+    if max_sentiment_delta is not None:
+        updates['max_sentiment_delta'] = max_sentiment_delta
+    if min_rl_confidence is not None:
+        updates['min_rl_confidence'] = min_rl_confidence
+    
+    if not updates:
+        return {
+            "error": "No weights provided to update",
+            "current_weights": paper_trader.get_alpha_weights()
+        }
+    
+    result = paper_trader.update_alpha_weights(updates)
+    return result
+
 @api_router.post("/paper/dynamic-config")
 async def update_dynamic_exit_config(
     tp_capture_pct: float = None,
