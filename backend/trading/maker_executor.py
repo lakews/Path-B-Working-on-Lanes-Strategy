@@ -208,6 +208,197 @@ class MakerOrderExecutor:
         if self._consecutive_failures >= self.config['max_consecutive_failures']:
             self._trip_circuit_breaker()
     
+    # ==========================================================================
+    # HFT MICROSTRUCTURE MATH
+    # ==========================================================================
+    
+    def get_order_flow_imbalance(self, order_book: OrderBook) -> float:
+        """
+        Calculate Order Flow Imbalance (OFI) from order book.
+        
+        OFI = (bid_volume - ask_volume) / (bid_volume + ask_volume)
+        
+        Returns value between -1.0 (all asks) and +1.0 (all bids).
+        
+        Positive OFI = buying pressure → raise ask price
+        Negative OFI = selling pressure → lower bid price
+        """
+        levels = self.config.get('ofi_levels', 3)
+        
+        # Sum volume at top N levels
+        bid_vol = sum(
+            float(b.get('size', b) if isinstance(b, dict) else b)
+            for b in order_book.bids[:levels]
+        ) if order_book.bids else 0.0
+        
+        ask_vol = sum(
+            float(a.get('size', a) if isinstance(a, dict) else a)
+            for a in order_book.asks[:levels]
+        ) if order_book.asks else 0.0
+        
+        # Calculate imbalance (-1 to +1)
+        total = bid_vol + ask_vol + 1e-9  # Avoid division by zero
+        imbalance = (bid_vol - ask_vol) / total
+        
+        return imbalance
+    
+    def calculate_inventory_skew(
+        self,
+        market_id: str,
+        spread: float
+    ) -> float:
+        """
+        Calculate Inventory Skew for asymmetric quoting.
+        
+        When we have lots of inventory (long), we want to SELL more aggressively:
+        - Subtract skew from both bid and ask to lower our quotes
+        - This makes us more likely to sell (reduce inventory)
+        
+        When we're short inventory, we want to BUY more aggressively:
+        - Add to quotes (skew is negative) to raise prices
+        - This makes us more likely to buy
+        
+        Returns:
+            price_skew: Amount to subtract from quotes (positive = lower quotes)
+        """
+        current_position = self._inventory.get(market_id, 0.0)
+        max_inventory = self.config.get('max_inventory_usd', 1000.0)
+        skew_factor = self.config.get('skew_factor', 0.05)
+        
+        # Calculate inventory ratio (-1.0 to 1.0)
+        inventory_ratio = current_position / max_inventory
+        inventory_ratio = max(-1.0, min(1.0, inventory_ratio))
+        
+        # Calculate skew
+        # If we have lots of inventory (+), skew is positive, we subtract from price
+        price_skew = inventory_ratio * (spread * skew_factor)
+        
+        return price_skew
+    
+    def calculate_adjusted_quotes(
+        self,
+        theoretical_price: float,
+        spread: float,
+        market_id: str,
+        order_book: OrderBook
+    ) -> Tuple[float, float, Dict]:
+        """
+        Calculate adjusted bid/ask quotes using:
+        1. Theoretical price (from Bayesian/Alpha) as center
+        2. Inventory skew adjustment
+        3. OFI-based adjustment
+        
+        CRITICAL: We trade our Alpha (theoretical_price), not market mid.
+        
+        Returns:
+            (my_bid_price, my_ask_price, debug_info)
+        """
+        # 1. Calculate inventory skew
+        price_skew = self.calculate_inventory_skew(market_id, spread)
+        
+        # 2. Calculate OFI
+        ofi = self.get_order_flow_imbalance(order_book)
+        ofi_threshold = self.config.get('ofi_threshold', 0.6)
+        ofi_adjustment = self.config.get('ofi_adjustment', 0.01)
+        
+        # 3. Base quotes centered on THEORETICAL price, not market mid
+        half_spread = spread / 2
+        base_bid = theoretical_price - half_spread
+        base_ask = theoretical_price + half_spread
+        
+        # 4. Apply inventory skew (same direction for both)
+        # Positive skew (long inventory) → lower both quotes to sell more
+        skewed_bid = base_bid - price_skew
+        skewed_ask = base_ask - price_skew
+        
+        # 5. Apply OFI adjustment
+        ofi_bid_adj = 0.0
+        ofi_ask_adj = 0.0
+        
+        if ofi > ofi_threshold:
+            # Strong buying pressure → raise ask (don't sell cheap)
+            ofi_ask_adj = ofi_adjustment
+        elif ofi < -ofi_threshold:
+            # Strong selling pressure → lower bid (don't buy expensive)
+            ofi_bid_adj = -ofi_adjustment
+        
+        # 6. Final quotes
+        my_bid_price = max(0.001, skewed_bid + ofi_bid_adj)
+        my_ask_price = min(0.999, skewed_ask + ofi_ask_adj)
+        
+        # Ensure bid < ask
+        if my_bid_price >= my_ask_price:
+            mid = (my_bid_price + my_ask_price) / 2
+            my_bid_price = mid - 0.005
+            my_ask_price = mid + 0.005
+        
+        debug_info = {
+            'theoretical_price': theoretical_price,
+            'market_spread': spread,
+            'inventory_skew': price_skew,
+            'ofi': ofi,
+            'ofi_bid_adj': ofi_bid_adj,
+            'ofi_ask_adj': ofi_ask_adj,
+            'base_bid': base_bid,
+            'base_ask': base_ask,
+            'final_bid': my_bid_price,
+            'final_ask': my_ask_price
+        }
+        
+        logger.debug(
+            f"[QUOTES] Theo={theoretical_price:.4f} | "
+            f"Skew={price_skew:.4f} | OFI={ofi:.2f} | "
+            f"Bid={my_bid_price:.4f} Ask={my_ask_price:.4f}"
+        )
+        
+        return my_bid_price, my_ask_price, debug_info
+    
+    def update_inventory(
+        self,
+        market_id: str,
+        side: str,
+        size: float,
+        is_entry: bool = True
+    ):
+        """
+        Update inventory tracking after trade.
+        
+        Args:
+            market_id: Market identifier
+            side: 'YES' or 'NO'
+            size: Trade size in USD
+            is_entry: True for opening, False for closing
+        """
+        current = self._inventory.get(market_id, 0.0)
+        
+        # YES side is long, NO side is short
+        if is_entry:
+            if side == 'YES':
+                self._inventory[market_id] = current + size
+            else:
+                self._inventory[market_id] = current - size
+        else:
+            # Closing position reduces inventory
+            if side == 'YES':
+                self._inventory[market_id] = current - size
+            else:
+                self._inventory[market_id] = current + size
+        
+        logger.debug(
+            f"[INVENTORY] {market_id}: {current:.2f} -> {self._inventory[market_id]:.2f} "
+            f"({'entry' if is_entry else 'exit'} {side} ${size:.2f})"
+        )
+    
+    def get_inventory(self, market_id: str) -> float:
+        """Get current inventory for market."""
+        return self._inventory.get(market_id, 0.0)
+    
+    def get_inventory_ratio(self, market_id: str) -> float:
+        """Get inventory ratio (-1 to 1) for market."""
+        current = self._inventory.get(market_id, 0.0)
+        max_inv = self.config.get('max_inventory_usd', 1000.0)
+        return max(-1.0, min(1.0, current / max_inv))
+    
     async def execute_order(
         self,
         side: str,  # 'YES' or 'NO'
