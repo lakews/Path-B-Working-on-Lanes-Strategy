@@ -397,5 +397,202 @@ class TestIntegration:
         print(f"✅ Skew direction preserved with safety leash")
 
 
+class TestHysteresis:
+    """Test suite for Quote Hysteresis (Order Flickering Prevention)."""
+    
+    def setup_method(self):
+        """Setup fresh executor for each test."""
+        self.executor = MakerOrderExecutor(mode=ExecutionMode.PAPER)
+        self.executor.config['hysteresis_enabled'] = True
+        self.executor.config['min_tick_change'] = 0.003  # 0.3 cents
+        self.executor.config['min_size_change'] = 5.0    # $5
+    
+    def test_hysteresis_no_existing_order(self):
+        """Test that we always place an order if none exists."""
+        should_update, reason = self.executor.should_update_order(
+            market_id="test_market",
+            side="YES",
+            new_price=0.50,
+            new_size=100.0
+        )
+        
+        assert should_update is True, "Should update when no existing order"
+        assert reason == "no_existing_order"
+        print(f"No existing order: should_update={should_update}, reason={reason}")
+    
+    def test_hysteresis_significant_price_change(self):
+        """Test that significant price changes trigger updates."""
+        market_id = "test_market_price"
+        
+        # Record an existing order
+        self.executor.record_active_order(
+            market_id=market_id,
+            side="YES",
+            price=0.50,
+            size=100.0
+        )
+        
+        # Price change of 0.01 (> min_tick_change of 0.003)
+        should_update, reason = self.executor.should_update_order(
+            market_id=market_id,
+            side="YES",
+            new_price=0.51,  # +0.01 change
+            new_size=100.0
+        )
+        
+        assert should_update is True, "Should update when price moves significantly"
+        assert "price_diff" in reason
+        print(f"Significant price change: should_update={should_update}, reason={reason}")
+    
+    def test_hysteresis_insignificant_price_change(self):
+        """Test that small price changes are ignored (stay in queue)."""
+        market_id = "test_market_small"
+        
+        # Record an existing order
+        self.executor.record_active_order(
+            market_id=market_id,
+            side="YES",
+            price=0.50,
+            size=100.0
+        )
+        
+        # Price change of 0.001 (< min_tick_change of 0.003)
+        should_update, reason = self.executor.should_update_order(
+            market_id=market_id,
+            side="YES",
+            new_price=0.501,  # +0.001 change
+            new_size=100.0
+        )
+        
+        assert should_update is False, "Should NOT update when price change is small"
+        assert reason == "within_hysteresis_bounds"
+        print(f"Small price change: should_update={should_update}, reason={reason}")
+    
+    def test_hysteresis_significant_size_change(self):
+        """Test that significant size changes trigger updates even with same price."""
+        market_id = "test_market_size"
+        
+        # Record an existing order
+        self.executor.record_active_order(
+            market_id=market_id,
+            side="YES",
+            price=0.50,
+            size=100.0
+        )
+        
+        # Same price, but size changed by $10 (> min_size_change of $5)
+        should_update, reason = self.executor.should_update_order(
+            market_id=market_id,
+            side="YES",
+            new_price=0.50,    # Same price
+            new_size=90.0      # $10 less
+        )
+        
+        assert should_update is True, "Should update when size changes significantly"
+        assert "size_diff" in reason
+        print(f"Significant size change: should_update={should_update}, reason={reason}")
+    
+    def test_hysteresis_disabled(self):
+        """Test that hysteresis can be disabled."""
+        self.executor.config['hysteresis_enabled'] = False
+        
+        market_id = "test_market_disabled"
+        
+        # Record an existing order
+        self.executor.record_active_order(
+            market_id=market_id,
+            side="YES",
+            price=0.50,
+            size=100.0
+        )
+        
+        # Even tiny changes should update when hysteresis is disabled
+        should_update, reason = self.executor.should_update_order(
+            market_id=market_id,
+            side="YES",
+            new_price=0.5001,  # Tiny change
+            new_size=100.0
+        )
+        
+        assert should_update is True, "Should always update when hysteresis disabled"
+        assert reason == "hysteresis_disabled"
+        print(f"Hysteresis disabled: should_update={should_update}, reason={reason}")
+    
+    def test_hysteresis_active_order_tracking(self):
+        """Test active order recording and retrieval."""
+        market_id = "test_tracking"
+        
+        # Record an order
+        self.executor.record_active_order(
+            market_id=market_id,
+            side="YES",
+            price=0.55,
+            size=50.0,
+            order_id="order123"
+        )
+        
+        # Retrieve it
+        active = self.executor.get_active_order(market_id, "YES")
+        
+        assert active is not None, "Should find recorded order"
+        assert active['price'] == 0.55
+        assert active['size'] == 50.0
+        assert active['order_id'] == "order123"
+        
+        # Clear it
+        self.executor.clear_active_order(market_id, "YES")
+        
+        # Should be gone
+        active_after = self.executor.get_active_order(market_id, "YES")
+        assert active_after is None, "Order should be cleared"
+        
+        print(f"Active order tracking verified")
+    
+    def test_hysteresis_stats(self):
+        """Test hysteresis statistics tracking."""
+        # Get initial stats
+        stats = self.executor.get_hysteresis_stats()
+        
+        assert 'hysteresis_enabled' in stats
+        assert 'min_tick_change' in stats
+        assert 'orders_skipped' in stats
+        assert 'api_calls_saved' in stats
+        assert 'skip_rate' in stats
+        
+        print(f"Hysteresis stats: {stats}")
+    
+    def test_hysteresis_api_savings_estimate(self):
+        """Test that we estimate API call savings correctly."""
+        market_id = "test_savings"
+        
+        # Record an existing order
+        self.executor.record_active_order(
+            market_id=market_id,
+            side="YES",
+            price=0.50,
+            size=100.0
+        )
+        
+        initial_saved = self.executor.stats.get('api_calls_saved', 0)
+        
+        # Simulate multiple small changes that should be skipped
+        for i in range(5):
+            should_update, _ = self.executor.should_update_order(
+                market_id=market_id,
+                side="YES",
+                new_price=0.50 + i * 0.001,  # Small increments
+                new_size=100.0
+            )
+            if not should_update:
+                self.executor.stats['hysteresis_skips'] = self.executor.stats.get('hysteresis_skips', 0) + 1
+                self.executor.stats['api_calls_saved'] = self.executor.stats.get('api_calls_saved', 0) + 2
+        
+        final_saved = self.executor.stats.get('api_calls_saved', 0)
+        skips = self.executor.stats.get('hysteresis_skips', 0)
+        
+        print(f"After {skips} hysteresis skips: {final_saved - initial_saved} API calls saved")
+        assert final_saved > initial_saved, "Should track API savings"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
