@@ -6,7 +6,7 @@ import asyncio
 import logging
 import os
 import uuid
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable, Tuple
 from datetime import datetime, timezone
 from database import get_db
 from ml.rl_engine import RLAdaptiveEngine
@@ -22,6 +22,89 @@ from config import config
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# MARKET REGIME CLASSIFICATION
+# =============================================================================
+# Categorize markets by liquidity profile to apply appropriate trading strategies
+
+class MarketRegime:
+    """Market regime enumeration for liquidity-aware trading."""
+    ZOMBIE = "ZOMBIE"           # Dead/illiquid - skip entirely
+    MAKER_WIDE = "MAKER_WIDE"   # Wide spread (5-20c) - maker only, post inside spread
+    TAKER_TIGHT = "TAKER_TIGHT" # Tight spread (<5c) - can cross spread if edge high
+
+# Regime classification thresholds (in probability space, not cents)
+SPREAD_ZOMBIE_THRESHOLD = 0.20     # > 20% spread = zombie market (was 99% before!)
+SPREAD_WIDE_THRESHOLD = 0.05       # > 5% spread = wide, maker-only
+MIN_VOLUME_24H = 100.0             # $100 minimum daily volume
+
+def classify_market_regime(
+    best_bid: float,
+    best_ask: float,
+    volume_24h: float = 0
+) -> Tuple[str, Dict]:
+    """
+    Classify market into trading regime based on liquidity profile.
+    
+    This replaces the simplistic "1% edge" one-size-fits-all approach with
+    regime-specific strategies:
+    
+    - ZOMBIE: Market is dead or too dangerous. Skip immediately to save CPU.
+    - MAKER_WIDE: Spread is 5-20%. Can't cross spread profitably. Post limit orders inside.
+    - TAKER_TIGHT: Spread is <5%. High liquidity. Can cross spread if edge is sufficient.
+    
+    Args:
+        best_bid: Best bid price (0-1)
+        best_ask: Best ask price (0-1)
+        volume_24h: 24-hour trading volume in USD
+        
+    Returns:
+        (regime, diagnostics_dict)
+    """
+    spread = best_ask - best_bid
+    mid_price = (best_bid + best_ask) / 2
+    spread_pct = spread / max(mid_price, 0.01)  # Spread as % of mid
+    
+    diagnostics = {
+        'best_bid': round(best_bid, 4),
+        'best_ask': round(best_ask, 4),
+        'spread': round(spread, 4),
+        'spread_pct': round(spread_pct, 4),
+        'volume_24h': round(volume_24h, 2),
+        'thresholds': {
+            'zombie_spread': SPREAD_ZOMBIE_THRESHOLD,
+            'wide_spread': SPREAD_WIDE_THRESHOLD,
+            'min_volume': MIN_VOLUME_24H,
+        }
+    }
+    
+    # REGIME 1: ZOMBIE
+    # Market is dead or too dangerous to trade
+    # ACTION: Filter out immediately. Save CPU and API calls.
+    if spread > SPREAD_ZOMBIE_THRESHOLD:
+        diagnostics['reject_reason'] = f'spread {spread:.2%} > zombie threshold {SPREAD_ZOMBIE_THRESHOLD:.2%}'
+        return MarketRegime.ZOMBIE, diagnostics
+    
+    if volume_24h < MIN_VOLUME_24H:
+        diagnostics['reject_reason'] = f'volume ${volume_24h:.0f} < min ${MIN_VOLUME_24H:.0f}'
+        return MarketRegime.ZOMBIE, diagnostics
+    
+    # REGIME 2: MAKER_WIDE
+    # Spread is 5-20%. Too expensive to cross.
+    # ACTION: Post limit orders INSIDE the spread. Be the maker, capture spread.
+    if spread > SPREAD_WIDE_THRESHOLD:
+        diagnostics['strategy'] = 'maker_inside_spread'
+        diagnostics['min_edge_required'] = 0.005  # 0.5% edge for maker
+        return MarketRegime.MAKER_WIDE, diagnostics
+    
+    # REGIME 3: TAKER_TIGHT
+    # Spread is <5%. High liquidity.
+    # ACTION: Standard strategy. Can cross spread if edge > spread + fees.
+    diagnostics['strategy'] = 'taker_if_edge'
+    diagnostics['min_edge_required'] = 0.01  # 1% edge for taker
+    return MarketRegime.TAKER_TIGHT, diagnostics
+
 
 # Callback for WebSocket broadcasting (set by server.py)
 _broadcast_callback: Optional[Callable] = None
