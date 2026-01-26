@@ -1238,11 +1238,11 @@ class PaperTrader:
                 f"Implied Edge: {implied_edge:.2%}"
             )
             
-            # Determine regime based on spread
-            if spread > SPREAD_OPPORTUNITY_THRESHOLD:
-                regime = MarketRegime.MAKER_OPPORTUNITY
-            else:
+            # Determine regime based on spread (Task 21: Simplified)
+            if spread > SPREAD_TAKER_THRESHOLD:
                 regime = MarketRegime.MAKER_WIDE
+            else:
+                regime = MarketRegime.TAKER_TIGHT
             
             return {
                 'should_trade': True,
@@ -1251,7 +1251,6 @@ class PaperTrader:
                 'edge': implied_edge,
                 'scalp_price': scalp_price,
                 'spread': spread,
-                'spread_zone': spread_zone,
                 'strategy': 'hft_scalp_autonomous',
                 'regime': regime,
             }
