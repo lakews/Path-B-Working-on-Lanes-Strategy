@@ -2180,6 +2180,38 @@ class PaperTrader:
             actual_entry_price = current_price
             
             if self.use_maker_execution:
+                # ==========================================================================
+                # FETCH CORRECT ORDERBOOK FOR TRADING SIDE
+                # ==========================================================================
+                # Polymarket has separate orderbooks for YES and NO tokens
+                # token_ids[0] = YES token, token_ids[1] = NO token
+                token_ids = market_data.get('token_ids', market_data.get('clobTokenIds', []))
+                
+                # Determine which token we're trading
+                # YES side -> YES token (index 0), NO side -> NO token (index 1)
+                token_index = 0 if side == 'YES' else 1
+                
+                # Check if we need to fetch the correct orderbook
+                current_ob_token = market_data.get('order_book_token')
+                need_fresh_orderbook = (
+                    (side == 'YES' and current_ob_token != 'YES') or
+                    (side == 'NO' and current_ob_token != 'NO') or
+                    current_ob_token is None
+                )
+                
+                if need_fresh_orderbook and token_ids and len(token_ids) > token_index:
+                    try:
+                        from data.polymarket_api import PolymarketAPI
+                        async with PolymarketAPI() as api:
+                            token_id = token_ids[token_index]
+                            order_book_data = await api.get_order_book(token_id)
+                            if order_book_data.get('bids') and order_book_data.get('asks'):
+                                market_data['order_book'] = order_book_data
+                                market_data['order_book_token'] = side
+                                logger.debug(f"[ORDERBOOK] Fetched {side} token orderbook for execution: {market_id[:16]}")
+                    except Exception as e:
+                        logger.warning(f"[ORDERBOOK] Failed to fetch {side} orderbook: {e}")
+                
                 # Get orderbook - REJECT if not available
                 order_book = market_data.get('order_book', {})
                 bids = order_book.get('bids', [])
@@ -2196,7 +2228,8 @@ class PaperTrader:
                 
                 # DEBUG: Log orderbook details when spread is suspicious
                 if spread > 0.5:
-                    logger.warning(f"[ENTRY-DEBUG] Suspicious orderbook for {market_id[:16]}: "
+                    ob_token = market_data.get('order_book_token', 'unknown')
+                    logger.warning(f"[ENTRY-DEBUG] Suspicious {ob_token} orderbook for {market_id[:16]}: "
                                   f"bid={best_bid:.4f}, ask={best_ask:.4f}, spread={spread:.4f} "
                                   f"| bids[0]={bids[0]} | asks[0]={asks[0]}")
                 
