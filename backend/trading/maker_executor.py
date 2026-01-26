@@ -107,6 +107,19 @@ DEFAULT_CONFIG = {
     
     # Minimum liquidity
     'min_orderbook_depth_usd': 100,     # Minimum depth required to trade
+    
+    # ==========================================================================
+    # HFT MICROSTRUCTURE PARAMETERS
+    # ==========================================================================
+    
+    # Inventory Skew Configuration
+    'max_inventory_usd': 1000.0,        # Maximum inventory in USD before full skew
+    'skew_factor': 0.05,                # Sensitivity - how much to skew per unit inventory
+    
+    # OFI (Order Flow Imbalance) Configuration  
+    'ofi_threshold': 0.6,               # Threshold to trigger OFI adjustment
+    'ofi_adjustment': 0.01,             # Price adjustment amount when OFI triggered
+    'ofi_levels': 3,                    # Number of order book levels to analyze
 }
 
 
