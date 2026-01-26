@@ -1127,6 +1127,7 @@ class PaperTrader:
         Runs every 30 seconds.
         """
         ALPHA_CYCLE_INTERVAL = 30  # 30 seconds between cycles
+        MAX_MARKETS_PER_CYCLE = 20  # Limit markets to process per cycle (LLM is slow)
         
         logger.info("🧠 Alpha Strategy Loop Started")
         
@@ -1136,6 +1137,7 @@ class PaperTrader:
             try:
                 alpha_cycle_count += 1
                 cycle_start = datetime.now(timezone.utc)
+                logger.info(f"[ALPHA #{alpha_cycle_count}] Starting cycle...")
                 
                 # Skip if in graceful stop mode (but still update targets for HFT)
                 skip_new_entries = self.graceful_stop
@@ -1144,24 +1146,37 @@ class PaperTrader:
                 markets = await self._get_active_markets()
                 
                 if not markets:
+                    logger.info(f"[ALPHA #{alpha_cycle_count}] No markets available")
                     await asyncio.sleep(ALPHA_CYCLE_INTERVAL)
                     continue
                 
                 # 2. RUN STRATEGY PIPELINE (The heavy lifting)
+                # Limit markets per cycle to avoid LLM rate limits and long cycles
                 alpha_evaluated = 0
                 alpha_triggered = 0
                 targets_updated = 0
                 
-                for market_data in markets[:100]:  # Process top 100
+                # Filter by asset class first
+                filtered_markets = []
+                for m in markets:
+                    asset_class = m.get('asset_class', m.get('category', 'unknown')).lower()
+                    if asset_class in [ac.lower() for ac in self.enabled_asset_classes]:
+                        filtered_markets.append(m)
+                
+                # Take top N markets by volume
+                filtered_markets = sorted(
+                    filtered_markets, 
+                    key=lambda x: x.get('volume_24h', 0) or 0, 
+                    reverse=True
+                )[:MAX_MARKETS_PER_CYCLE]
+                
+                logger.info(f"[ALPHA #{alpha_cycle_count}] Processing {len(filtered_markets)} markets...")
+                
+                for market_data in filtered_markets:
                     if not self.running:
                         break
                     
                     market_id = market_data.get('id')
-                    
-                    # Filter by asset class
-                    asset_class = market_data.get('asset_class', market_data.get('category', 'unknown')).lower()
-                    if asset_class not in [ac.lower() for ac in self.enabled_asset_classes]:
-                        continue
                     
                     # Run full Alpha analysis (Bayesian, signals, regime)
                     analysis = await self._run_alpha_analysis(market_data)
@@ -1194,10 +1209,12 @@ class PaperTrader:
                 
                 # Log every cycle
                 cycle_time = (datetime.now(timezone.utc) - cycle_start).total_seconds()
+                bridge_stats = self.strategy_context.get_stats()
                 logger.info(
-                    f"[ALPHA #{alpha_cycle_count}] Evaluated: {alpha_evaluated}, "
+                    f"[ALPHA #{alpha_cycle_count}] COMPLETE | Evaluated: {alpha_evaluated}, "
                     f"Triggered: {alpha_triggered}, Targets: {targets_updated}, "
-                    f"Cycle: {cycle_time:.1f}s, Positions: {len(self.paper_positions)}"
+                    f"Cycle: {cycle_time:.1f}s, Positions: {len(self.paper_positions)}, "
+                    f"Bridge: {bridge_stats['active_targets']} targets"
                 )
                 
                 # Record equity curve
