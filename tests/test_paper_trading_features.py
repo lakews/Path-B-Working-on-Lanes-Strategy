@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://smart-market-bot-8.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://fastflow-trading-1.preview.emergentagent.com').rstrip('/')
 
 class TestPaperTradingAPI:
     """Paper Trading API endpoint tests"""
