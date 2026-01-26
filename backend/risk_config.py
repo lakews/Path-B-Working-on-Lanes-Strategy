@@ -268,12 +268,13 @@ EXIT_WHALE_ZONE = {
 
 
 def get_exit_config():
-    """Get the complete exit engine configuration."""
+    """Get the complete exit engine configuration (deep copy of defaults)."""
+    import copy
     return {
-        'global': EXIT_GLOBAL_SETTINGS,
-        'strategies': EXIT_STRATEGY_CONFIG,
-        'alpha_modifiers': EXIT_ALPHA_ASSET_MODIFIERS,
-        'whale_zone': EXIT_WHALE_ZONE,
+        'global': copy.deepcopy(EXIT_GLOBAL_SETTINGS),
+        'strategies': copy.deepcopy(EXIT_STRATEGY_CONFIG),
+        'alpha_modifiers': copy.deepcopy(EXIT_ALPHA_ASSET_MODIFIERS),
+        'whale_zone': copy.deepcopy(EXIT_WHALE_ZONE),
     }
 
 
