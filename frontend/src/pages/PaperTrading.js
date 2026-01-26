@@ -583,6 +583,154 @@ const AssetClassEquityCard = ({ equityData, initialCapital = 10000 }) => {
   );
 };
 
+// HFT vs Alpha Performance Card - Two-Speed Architecture Breakdown
+const HftAlphaPerformanceCard = ({ executionPathStats, showLive = false }) => {
+  if (!executionPathStats) {
+    return (
+      <div className="rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 p-5">
+        <h4 className="text-sm font-semibold text-white/60 mb-3 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-yellow-400" />
+          Two-Speed Architecture
+        </h4>
+        <p className="text-xs text-white/40">Start trading to see HFT vs Alpha breakdown</p>
+      </div>
+    );
+  }
+
+  const { hft, alpha } = executionPathStats;
+
+  const PathCard = ({ data, gradient, icon: Icon, accentColor }) => {
+    const isPositive = data.total_pnl >= 0;
+    return (
+      <div className={`rounded-xl bg-gradient-to-br ${gradient} border border-white/10 p-4 relative overflow-hidden`}>
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white blur-3xl" />
+        </div>
+        
+        <div className="relative">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-lg bg-${accentColor}-500/20 flex items-center justify-center`}>
+                <Icon className={`w-4 h-4 text-${accentColor}-400`} />
+              </div>
+              <div>
+                <h5 className="text-sm font-bold text-white">{data.name}</h5>
+                <p className="text-[10px] text-white/50">{data.strategies.join(', ')}</p>
+              </div>
+            </div>
+            {showLive && data.trades > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />LIVE
+              </span>
+            )}
+          </div>
+
+          {/* Capital Deployment */}
+          <div className="mb-3">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-white/50">Capital Deployed</span>
+              <span className="text-white/80">${data.deployed_capital.toLocaleString()} / ${data.allocated_capital.toLocaleString()}</span>
+            </div>
+            <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div 
+                className={`h-full bg-${accentColor}-500 rounded-full transition-all duration-500`}
+                style={{ width: `${Math.min(100, data.utilization_pct)}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-white/40 mt-1">{data.utilization_pct.toFixed(1)}% utilized</p>
+          </div>
+
+          {/* P&L Section */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="bg-white/5 rounded-lg p-2">
+              <p className="text-[10px] text-white/50 mb-0.5">Realized P&L</p>
+              <p className={`text-sm font-bold ${data.realized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {data.realized_pnl >= 0 ? '+' : ''}${data.realized_pnl.toFixed(2)}
+              </p>
+            </div>
+            <div className="bg-white/5 rounded-lg p-2">
+              <p className="text-[10px] text-white/50 mb-0.5">Unrealized P&L</p>
+              <p className={`text-sm font-bold ${data.unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {data.unrealized_pnl >= 0 ? '+' : ''}${data.unrealized_pnl.toFixed(2)}
+              </p>
+            </div>
+          </div>
+
+          {/* Total P&L with Return % */}
+          <div className="bg-white/10 rounded-lg p-3 mb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-white/50 mb-0.5">Total P&L</p>
+                <p className={`text-lg font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                  {isPositive ? '+' : ''}${data.total_pnl.toFixed(2)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-white/50 mb-0.5">Return %</p>
+                <p className={`text-lg font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                  {isPositive ? '+' : ''}{data.total_return_pct.toFixed(2)}%
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Trade Stats */}
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-[10px] text-white/50">Trades</p>
+              <p className="text-sm font-bold text-white">{data.trades}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-white/50">Win Rate</p>
+              <p className={`text-sm font-bold ${data.win_rate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                {data.win_rate.toFixed(1)}%
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-white/50">Profit Factor</p>
+              <p className={`text-sm font-bold ${data.profit_factor >= 1 ? 'text-green-400' : 'text-red-400'}`}>
+                {data.profit_factor.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+          <Zap className="w-4 h-4 text-yellow-400" />
+          Two-Speed Architecture Performance
+          {showLive && (
+            <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] flex items-center gap-1 ml-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />LIVE
+            </span>
+          )}
+        </h4>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PathCard 
+          data={hft} 
+          gradient="from-cyan-950/50 to-slate-900" 
+          icon={Zap}
+          accentColor="cyan"
+        />
+        <PathCard 
+          data={alpha} 
+          gradient="from-purple-950/50 to-slate-900" 
+          icon={Brain}
+          accentColor="purple"
+        />
+      </div>
+    </div>
+  );
+};
+
 // Position Card Component with Expiry Indicator
 // Sizing Breakdown Modal - Shows detailed position sizing calculation
 const SizingBreakdownModal = ({ isOpen, position, onClose }) => {
