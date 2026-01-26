@@ -1455,21 +1455,19 @@ class PaperTrader:
                             logger.debug(f"🚫 [ALPHA SKIP] {market_id[:16]}... ZOMBIE market - no execution")
                             continue
                         
-                        # MAKER zones: Delegate to HFT for liquidity posting
-                        if regime in [MarketRegime.MAKER_OPPORTUNITY, MarketRegime.MAKER_WIDE]:
-                            # GUARDRAIL: Wide spread detected - delegate to HFT
+                        # MAKER_WIDE: Delegate to HFT for limit order posting
+                        if regime == MarketRegime.MAKER_WIDE:
+                            # GUARDRAIL: Spread 2-12% - delegate to HFT for maker strategy
                             if analysis.get('should_trade') and analysis.get('edge', 0) > 0.01:
                                 alpha_triggered += 1  # Count as triggered for stats
                                 logger.info(
                                     f"⚠️ [ALPHA DELEGATE] {market_id[:16]}... FV={analysis['fair_value']:.4f} "
-                                    f"Edge={analysis['edge']:.2%} | Regime={regime} (spread too wide for Taker) "
-                                    f"→ Delegated to HFT for Maker execution"
+                                    f"Edge={analysis['edge']:.2%} | Regime={regime} → Delegated to HFT"
                                 )
                             # DO NOT execute directly - HFT will pick up the target
                             continue
                         
-                        # Execute Alpha trade if conditions met and not in graceful stop
-                        # (Only for TAKER_TIGHT regime where crossing spread is profitable)
+                        # TAKER_TIGHT: Execute Alpha trade directly (spread < 2%)
                         if not skip_new_entries and market_id not in self.paper_positions:
                             if analysis.get('should_trade') and analysis.get('edge', 0) > 0.01:
                                 alpha_triggered += 1
