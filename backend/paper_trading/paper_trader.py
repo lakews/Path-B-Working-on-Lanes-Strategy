@@ -2345,11 +2345,26 @@ class PaperTrader:
             current_yes_price = float(current_yes_price)
             
             # ==========================================================================
-            # SPREAD-AWARE EXIT PRICING (same as _check_exit_conditions)
+            # FETCH FRESH ORDERBOOK FOR EXIT EXECUTION (not stale entry data!)
             # ==========================================================================
-            order_book = market_data.get('order_book', {})
-            bids = order_book.get('bids', [])
-            asks = order_book.get('asks', [])
+            bids = []
+            asks = []
+            try:
+                token_ids = market_data.get('token_ids', [])
+                if token_ids and self.clob_api:
+                    fresh_orderbook = await self.clob_api.get_order_book(token_ids[0])
+                    bids = fresh_orderbook.get('bids', [])
+                    asks = fresh_orderbook.get('asks', [])
+                    if bids and asks:
+                        logger.debug(f"[EXIT-EXEC-OB] Fresh orderbook for execution: bid={bids[0]['price']}, ask={asks[0]['price']}")
+            except Exception as e:
+                logger.debug(f"[EXIT-EXEC-OB] Could not fetch fresh orderbook: {e}")
+            
+            # Fallback to cached orderbook if fresh fetch failed
+            if not bids or not asks:
+                order_book = market_data.get('order_book', {})
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
             
             side = position['side']
             
