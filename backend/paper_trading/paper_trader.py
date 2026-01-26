@@ -1911,13 +1911,27 @@ class PaperTrader:
             strategy = position.get('strategy', 'arbitrage')
             asset_class = position.get('asset_class', 'unknown')
             
-            # SPREAD-AWARE EXIT PRICING:
-            # When entering at the ask (paying spread), we need to account for selling at the bid
-            # The midpoint price from API doesn't reflect actual exit price
-            # Use a spread adjustment to make P&L more realistic
-            order_book = market_data.get('order_book', {})
-            bids = order_book.get('bids', [])
-            asks = order_book.get('asks', [])
+            # ==========================================================================
+            # FETCH FRESH ORDERBOOK FOR EXIT EVALUATION (not stale entry data!)
+            # ==========================================================================
+            bids = []
+            asks = []
+            try:
+                token_ids = market_data.get('token_ids', [])
+                if token_ids and self.clob_api:
+                    fresh_orderbook = await self.clob_api.get_order_book(token_ids[0])
+                    bids = fresh_orderbook.get('bids', [])
+                    asks = fresh_orderbook.get('asks', [])
+                    if bids and asks:
+                        logger.debug(f"[EXIT-OB] Fresh orderbook: bid={bids[0]['price']}, ask={asks[0]['price']}, current_yes={current_price}")
+            except Exception as e:
+                logger.debug(f"[EXIT-OB] Could not fetch fresh orderbook: {e}")
+            
+            # Fallback to cached orderbook if fresh fetch failed
+            if not bids or not asks:
+                order_book = market_data.get('order_book', {})
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
             
             if bids and asks:
                 # We have orderbook - use bid for NO exits, ask for YES exits
