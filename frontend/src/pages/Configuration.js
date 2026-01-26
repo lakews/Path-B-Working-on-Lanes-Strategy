@@ -259,6 +259,10 @@ const Configuration = () => {
         alpha_max_position_pct: savedConfig.alpha_max_position_pct ?? prev.alpha_max_position_pct,
         hft_positions_pct: savedConfig.hft_positions_pct ?? prev.hft_positions_pct,
         alpha_positions_pct: savedConfig.alpha_positions_pct ?? prev.alpha_positions_pct,
+        // Strategy Risk
+        strategy_risk_multipliers: savedConfig.strategy_risk_multipliers ?? prev.strategy_risk_multipliers,
+        expiry_thresholds: savedConfig.expiry_thresholds ?? prev.expiry_thresholds,
+        expiry_strategy_adjustments: savedConfig.expiry_strategy_adjustments ?? prev.expiry_strategy_adjustments,
       }));
       setLoading(false);
     } catch (e) { 
