@@ -196,10 +196,37 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
     - `/app/backend/paper_trading/paper_trader.py` - Added `alpha_weights`, `update_alpha_weights()`, `get_alpha_weights()`, modified `_calculate_model_probability()`
     - `/app/backend/server.py` - Added `/api/settings/alpha` endpoints
   
-  - **Weight Guidelines**:
-    - `sentiment_weight`: 0.3-0.7 typical (higher = trust news more)
-    - `rl_weight`: 0.4-0.8 typical (higher = trust math model more)
-    - Combined weights CAN exceed 1.0 for stronger signals
+- ✅ **RISK PARAMETER RESET (Task 21): Centralized Configuration**
+  - **Problem**: Spread thresholds were temporarily widened to 30-35% during the orderbook bug debugging. Now that data is accurate (0.1-2% spreads), these limits were dangerously loose.
+  
+  - **Solution - Single Source of Truth** in `/app/backend/config.py`:
+    ```python
+    SPREAD_RULES = {
+        'TAKER_THRESHOLD': 0.02,       # < 2%: Tight, safe for taker
+        'MAKER_THRESHOLD': 0.10,       # 2-10%: Maker opportunity
+        'ZOMBIE_THRESHOLD': 0.12,      # > 12%: Dead/illiquid
+        
+        'MAX_SPREAD_ALPHA': 0.05,      # 5%: Max for Alpha trades
+        'MAX_SPREAD_HFT': 0.12,        # 12%: Max for HFT maker
+        'MAX_SPREAD_AGGRESSIVE': 0.03, # 3%: Max for taker entries
+    }
+    ```
+  
+  - **Simplified Regimes** (3 instead of 4):
+    - `TAKER_TIGHT` (< 2%): Alpha can cross spread safely
+    - `MAKER_WIDE` (2-12%): HFT posts limit orders
+    - `ZOMBIE` (> 12%): Skip entirely
+  
+  - **Files Modified**:
+    - `/app/backend/config.py` - Added SPREAD_RULES, RISK_PARAMS, QUALITY_FILTERS
+    - `/app/backend/paper_trading/paper_trader.py` - Now imports from config
+    - `/app/backend/execution/spread_policy.py` - Now imports from config
+  
+  - **Evidence Working**:
+    ```
+    Spread 0.30 (2.13%) → ALPHA TRADE executed
+    Spread 1.00 (5.88%) → ALPHA TRADE executed (within limits)
+    ```
 
 ### January 26, 2026 - Session 34 (Two-Speed Architecture + Core Fixes)
 
