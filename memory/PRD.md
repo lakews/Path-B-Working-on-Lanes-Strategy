@@ -161,7 +161,45 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
     AFTER:  Triggered: 8, Positions: 10
     ```
   
-  - **Impact**: Bot went from seeing "empty swamp" to seeing real market liquidity. Trading is now active!
+- ✅ **DYNAMIC ALPHA TUNING (Task 19): Control the "Brain" at Runtime**
+  - **Problem**: Alpha model weights were hardcoded constants, requiring code changes to tune strategy performance.
+  
+  - **Solution - Dynamic Weights System**:
+    1. Added `self.alpha_weights` dict in `PaperTrader.__init__`:
+       ```python
+       self.alpha_weights = {
+           'sentiment_weight': 0.50,    # LLM sentiment influence
+           'rl_weight': 0.60,           # RL model influence
+           'sharp_weight': 0.30,        # Sharp money (future)
+           'sentiment_neutral_low': 0.45,
+           'sentiment_neutral_high': 0.55,
+           'max_sentiment_delta': 2.0,
+           'min_rl_confidence': 0.15,
+       }
+       ```
+    
+    2. Modified `_calculate_model_probability()` to use `self.alpha_weights` instead of hardcoded constants.
+    
+    3. Added API endpoints:
+       - `GET /api/settings/alpha` - Get current weights
+       - `POST /api/settings/alpha` - Update weights at runtime
+       
+    4. Exposed weights in `/api/paper/status` response under `alpha_weights`.
+  
+  - **Usage Example**:
+    ```bash
+    # Boost RL (Math Geek) to 80%, reduce Sentiment (News Reader) to 40%
+    curl -X POST "$API/api/settings/alpha?rl_weight=0.80&sentiment_weight=0.40"
+    ```
+  
+  - **Files Modified**:
+    - `/app/backend/paper_trading/paper_trader.py` - Added `alpha_weights`, `update_alpha_weights()`, `get_alpha_weights()`, modified `_calculate_model_probability()`
+    - `/app/backend/server.py` - Added `/api/settings/alpha` endpoints
+  
+  - **Weight Guidelines**:
+    - `sentiment_weight`: 0.3-0.7 typical (higher = trust news more)
+    - `rl_weight`: 0.4-0.8 typical (higher = trust math model more)
+    - Combined weights CAN exceed 1.0 for stronger signals
 
 ### January 26, 2026 - Session 34 (Two-Speed Architecture + Core Fixes)
 
