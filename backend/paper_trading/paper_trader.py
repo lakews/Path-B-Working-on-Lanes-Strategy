@@ -175,13 +175,13 @@ def classify_market_regime(
     """
     Classify market into trading regime based on liquidity profile.
     
-    LIQUIDITY UNLOCK v2: Embrace wide spreads as opportunity, not obstacle.
+    Task 21: Simplified regime classification with tightened thresholds.
+    Now that orderbook data is accurate (0.1-2% spreads), we use professional limits.
     
     Regimes (from widest to tightest spread):
-    - ZOMBIE: Spread > 30%. Market is dead or too chaotic. Skip to save CPU.
-    - MAKER_OPPORTUNITY: Spread 15-30%. The Golden Zone! Fat margins for liquidity provision.
-    - MAKER_WIDE: Spread 4-15%. Standard maker strategy. Post limit orders inside spread.
-    - TAKER_TIGHT: Spread <4%. High liquidity. Can cross spread if edge is sufficient.
+    - ZOMBIE: Spread > 12%. Market is dead/illiquid. Skip entirely.
+    - MAKER_WIDE: Spread 2-12%. Maker opportunity zone. Post limit orders.
+    - TAKER_TIGHT: Spread < 2%. High liquidity. Can cross spread if edge sufficient.
     
     Args:
         best_bid: Best bid price (0-1)
@@ -202,46 +202,35 @@ def classify_market_regime(
         'spread_pct': round(spread_pct, 4),
         'volume_24h': round(volume_24h, 2),
         'thresholds': {
-            'zombie_spread': SPREAD_ZOMBIE_THRESHOLD,
-            'opportunity_spread': SPREAD_OPPORTUNITY_THRESHOLD,
-            'wide_spread': SPREAD_WIDE_THRESHOLD,
+            'zombie': SPREAD_ZOMBIE_THRESHOLD,
+            'maker': SPREAD_MAKER_THRESHOLD,
+            'taker': SPREAD_TAKER_THRESHOLD,
             'min_volume': MIN_VOLUME_24H,
         }
     }
     
-    # REGIME 1: ZOMBIE
-    # Market is dead or too chaotic even for aggressive market making
-    # ACTION: Filter out immediately. Save CPU and API calls.
+    # REGIME 1: ZOMBIE (> 12% spread)
+    # Market is dead or has no real liquidity. Skip entirely.
     if spread > SPREAD_ZOMBIE_THRESHOLD:
-        diagnostics['reject_reason'] = f'spread {spread:.2%} > zombie threshold {SPREAD_ZOMBIE_THRESHOLD:.2%}'
+        diagnostics['reject_reason'] = f'spread {spread:.2%} > zombie {SPREAD_ZOMBIE_THRESHOLD:.0%}'
         return MarketRegime.ZOMBIE, diagnostics
     
+    # Volume check
     if volume_24h < MIN_VOLUME_24H:
         diagnostics['reject_reason'] = f'volume ${volume_24h:.0f} < min ${MIN_VOLUME_24H:.0f}'
         return MarketRegime.ZOMBIE, diagnostics
     
-    # REGIME 2: MAKER_OPPORTUNITY (The Golden Zone!)
-    # Spread is 15-30%. Fat margins for aggressive liquidity provision.
-    # ACTION: Front-run the best bid/ask with "penny-ing" strategy. Capture that fat spread!
-    if spread > SPREAD_OPPORTUNITY_THRESHOLD:
-        diagnostics['strategy'] = 'aggressive_liquidity_provision'
-        diagnostics['min_edge_required'] = 0.003  # Lower edge required - we're capturing spread
-        diagnostics['penny_offset'] = 0.001  # Front-run by 1 tick
-        return MarketRegime.MAKER_OPPORTUNITY, diagnostics
-    
-    # REGIME 3: MAKER_WIDE
-    # Spread is 4-15%. Standard market making zone.
-    # ACTION: Post limit orders INSIDE the spread. Be the maker, capture spread.
-    if spread > SPREAD_WIDE_THRESHOLD:
+    # REGIME 2: MAKER_WIDE (2-12% spread)
+    # Good opportunity for maker orders. Post limit orders inside the spread.
+    if spread > SPREAD_TAKER_THRESHOLD:
         diagnostics['strategy'] = 'maker_inside_spread'
         diagnostics['min_edge_required'] = 0.005  # 0.5% edge for maker
         return MarketRegime.MAKER_WIDE, diagnostics
     
-    # REGIME 4: TAKER_TIGHT
-    # Spread is <4%. High liquidity.
-    # ACTION: Standard strategy. Can cross spread if edge > spread + fees.
+    # REGIME 3: TAKER_TIGHT (< 2% spread)
+    # High liquidity. Can cross spread if edge > spread + fees.
     diagnostics['strategy'] = 'taker_if_edge'
-    diagnostics['min_edge_required'] = 0.01  # 1% edge for taker
+    diagnostics['min_edge_required'] = 0.01  # 1% edge for taker (need to cover spread)
     return MarketRegime.TAKER_TIGHT, diagnostics
 
 
