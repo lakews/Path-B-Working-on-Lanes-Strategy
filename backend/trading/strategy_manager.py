@@ -160,7 +160,8 @@ class StrategyManager:
         # Apply market-specific adjustments if data available
         if market_data:
             liquidity = market_data.get('liquidity', 0)
-            volume = market_data.get('volume_24h', 0)
+            # volume_24h available for future use (e.g., volume-weighted sizing)
+            _ = market_data.get('volume_24h', 0)
             
             # Reduce position size for illiquid markets
             liquidity_factor = min(1.0, liquidity / 50000) if liquidity > 0 else 0.5

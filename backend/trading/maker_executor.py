@@ -582,7 +582,7 @@ class MakerOrderExecutor:
             
             logger.warning(f"[ORDERBOOK] Failed to fetch after 3 attempts for token {token_id[:20] if token_id else 'N/A'}...")
         else:
-            logger.warning(f"[ORDERBOOK] Cannot fetch - no CLOB client or token_id")
+            logger.warning("[ORDERBOOK] Cannot fetch - no CLOB client or token_id")
         
         # NO FALLBACK - Return None to trigger trade rejection
         # This prevents trades based on synthetic/default prices
