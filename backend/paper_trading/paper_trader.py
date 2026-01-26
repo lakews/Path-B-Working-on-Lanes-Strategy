@@ -2269,6 +2269,9 @@ class PaperTrader:
                     "slippage": execution_result.slippage if execution_result else 0,
                     "spread_captured": execution_result.spread_captured if execution_result else 0,
                     "wait_time_ms": execution_result.wait_time_ms if execution_result else 0,
+                    "theoretical_price": theoretical_price,  # Alpha signal used for quoting
+                    "market_price": current_price,  # Market price at entry
+                    "alpha_diff": round(theoretical_price - current_price, 6) if theoretical_price else None,
                 } if execution_result else {},
                 # Risk tracking for reward shaping
                 "entry_volatility": signals.get('volatility', 0.05),
