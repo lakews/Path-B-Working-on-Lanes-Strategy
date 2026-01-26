@@ -530,15 +530,16 @@ const Configuration = () => {
                   <div>
                     <div className="flex justify-between text-xs text-white/50 mb-1">
                       <span>Positions Per Market</span>
-                      <span className="text-orange-300">{config.hft_max_positions}</span>
+                      <span className="text-orange-300">{config.hft_positions_pct}% = <strong>{Math.max(1, Math.round((config.max_open_positions || 50) * (config.hft_positions_pct || 5) / 100))}</strong></span>
                     </div>
                     <input 
                       type="range" 
-                      value={config.hft_max_positions || 3} 
-                      onChange={(e) => setConfig({...config, hft_max_positions: parseInt(e.target.value)})} 
+                      value={config.hft_positions_pct || 5} 
+                      onChange={(e) => setConfig({...config, hft_positions_pct: parseInt(e.target.value)})} 
                       className="w-full h-1.5 bg-white/10 rounded-lg" 
                       min="1" max="50" step="1" 
                     />
+                    <p className="text-xs text-white/40 mt-1">{config.hft_positions_pct}% of {config.max_open_positions || 50} global max</p>
                   </div>
                 </div>
                 <div className="mt-3 p-2 rounded bg-orange-500/10 text-xs text-orange-300">
@@ -574,15 +575,16 @@ const Configuration = () => {
                   <div>
                     <div className="flex justify-between text-xs text-white/50 mb-1">
                       <span>Positions Per Market</span>
-                      <span className="text-purple-300">{config.alpha_max_positions}</span>
+                      <span className="text-purple-300">{config.alpha_positions_pct}% = <strong>{Math.max(1, Math.round((config.max_open_positions || 50) * (config.alpha_positions_pct || 2) / 100))}</strong></span>
                     </div>
                     <input 
                       type="range" 
-                      value={config.alpha_max_positions || 1} 
-                      onChange={(e) => setConfig({...config, alpha_max_positions: parseInt(e.target.value)})} 
+                      value={config.alpha_positions_pct || 2} 
+                      onChange={(e) => setConfig({...config, alpha_positions_pct: parseInt(e.target.value)})} 
                       className="w-full h-1.5 bg-white/10 rounded-lg" 
-                      min="1" max="20" step="1" 
+                      min="1" max="25" step="1" 
                     />
+                    <p className="text-xs text-white/40 mt-1">{config.alpha_positions_pct}% of {config.max_open_positions || 50} global max</p>
                   </div>
                 </div>
                 <div className="mt-3 p-2 rounded bg-purple-500/10 text-xs text-purple-300">
