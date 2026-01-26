@@ -1193,7 +1193,6 @@ class PaperTrader:
             # PENNY-ING STRATEGY: Front-run the best bid
             # =============================================================
             # Place limit buy at best_bid + 0.001 to get queue priority
-            # In wide spread markets, this captures the fat margin
             scalp_price = best_bid + 0.001
             
             # Safety clamp: Don't buy higher than mid-price
@@ -1202,28 +1201,18 @@ class PaperTrader:
                 scalp_price = mid_price - 0.001  # Stay on bid side
             
             # Calculate implied edge from spread capture
-            # If we buy at scalp_price and sell at best_ask, our edge is:
             implied_edge = (best_ask - scalp_price) / scalp_price
             
-            # Position sizing based on spread zone (larger in Golden Zone)
-            if spread_zone == "GOLDEN":
-                # Fat margins = can take bigger position
-                scalp_size = min(
-                    available_capital * 0.02,  # Max 2% per golden scalp
-                    25.0,                       # Cap at $25 per scalp
-                    self.max_position_size * 0.4  # 40% of normal max
-                )
-            else:
-                # Standard sizing
-                scalp_size = min(
-                    available_capital * 0.01,  # Max 1% per scalp
-                    15.0,                       # Cap at $15 per scalp
-                    self.max_position_size * 0.3  # 30% of normal max
-                )
+            # Standard sizing (Task 21: Simplified)
+            scalp_size = min(
+                available_capital * 0.01,  # Max 1% per scalp
+                15.0,                       # Cap at $15 per scalp
+                self.max_position_size * 0.3  # 30% of normal max
+            )
             scalp_size = max(scalp_size, 5.0)  # Minimum $5
             
             logger.info(
-                f"⚡ [HFT SCALP {spread_zone}] Opportunity in {market_id[:16]}... | "
+                f"⚡ [HFT SCALP] Opportunity in {market_id[:16]}... | "
                 f"Spread: {spread:.2%} | Bid: {best_bid:.4f} → Scalp: {scalp_price:.4f} | "
                 f"Implied Edge: {implied_edge:.2%}"
             )
