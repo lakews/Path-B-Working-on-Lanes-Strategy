@@ -9,10 +9,11 @@ Key Features:
 - RL confidence scaling: Higher confidence = larger positions
 - Regime awareness: Adjusts for market volatility regimes
 - Outstanding contracts: Considers market depth
+- Tail Risk / Variance-based sizing: Reduces size at price extremes
 """
 import logging
 import numpy as np
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple
 from datetime import datetime, timezone
 from database import get_db
 
