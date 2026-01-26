@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 26, 2026 (Session 36 - Task 22)
+## Last Updated: January 26, 2026 (Session 36 - Task 23)
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -13,8 +13,50 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters, time-to-expiry awareness**
 - **Two-Speed Hybrid Architecture**: HFT (Fast Path) + Alpha (Slow Path) execution separation, **fully configurable from UI**
 - **Dual-Zone Risk Architecture**: Separate risk logic for Whale Zone (< $0.10) vs Core Zone (>= $0.10)
+- **Unified Portfolio Manager**: Single entry point for ALL position sizing decisions
 
 ## Current Status (January 26, 2026)
+
+### January 26, 2026 - Session 36 (Task 23: Unified Portfolio Manager - COMPLETE)
+
+- ✅ **TASK 23 COMPLETE: Unified Portfolio Manager**
+  
+  **Purpose**: Consolidate all risk/sizing logic into a Single Source of Truth and implement a central "Architect" class for position sizing.
+
+  **Hierarchy of Safety** (enforced in order):
+  1. **Allocated Capital**: 80% of wallet is "deployed"
+  2. **Price Zones (Hard Override)**:
+     - Whale Zone (< $0.10): $15 max / 1% cap, ignore ML signals
+     - Core Zone (≥ $0.10): $100 max / 3% cap, use Kelly sizing
+  3. **Strategy Regime**: Alpha (Kelly), HFT (2% unit), Gamma (Whale unit)
+  4. **Liquidity**: Never consume >10% of order book depth
+  5. **Exposure**: Sector caps (10-30%) and Event cap (15%)
+
+  **New File: `/app/backend/trading/portfolio_manager.py`**
+  - `PortfolioManager.calculate_target_size()` - Single entry point for ALL sizing
+  - Inputs: price, regime, signal_strength, wallet_balance, liquidity, exposures, sector
+  - Returns: `SizingResult` with full audit trail
+
+  **Consolidated File: `/app/backend/risk_config.py`**
+  - ALL sizing constants now in `RiskConfig` dataclass
+  - Includes: Capital allocation, zone thresholds, Kelly bounds, sector limits, liquidity caps
+  - Backward-compatible properties for legacy code
+
+  **Deprecated: `/app/backend/ml/polymarket_position_sizer.py`**
+  - Logic migrated to PortfolioManager
+  - Marked deprecated with migration path
+
+  **Test Results**: 83/83 tests passed
+  - `test_portfolio_manager.py`: 27 tests (zone, Kelly, sector, event, liquidity caps)
+  - `test_dual_zone_risk.py`: 25 tests (regime classification)
+  - `test_gamma_strategy.py`: 31 tests (entry/exit logic)
+
+  **Files Created/Modified**:
+  - `/app/backend/trading/portfolio_manager.py` (NEW - 400+ lines)
+  - `/app/backend/risk_config.py` (CONSOLIDATED - 380+ lines)
+  - `/app/backend/config.py` (UPDATED - deprecated properties delegate to risk_config)
+  - `/app/backend/ml/polymarket_position_sizer.py` (DEPRECATED)
+  - `/app/backend/tests/test_portfolio_manager.py` (NEW - 27 tests)
 
 ### January 26, 2026 - Session 36 (Gamma Dashboard UI - COMPLETE)
 
