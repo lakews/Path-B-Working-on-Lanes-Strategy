@@ -1092,29 +1092,18 @@ class PaperTrader:
                         'regime': regime,
                     }
                 return None
-                    'my_price': my_bid,
-                    'strategy': 'hft_golden_penny',
-                    'regime': regime,
-                    'spread_zone': 'GOLDEN',
-                }
             
-            # Standard edge-based logic for MAKER_WIDE and TAKER_TIGHT
+            # TAKER_TIGHT: Spread < 2% - Standard edge-based logic
             edge = fair_value - yes_price
-            
-            # For HFT, we need smaller edge threshold (we're capturing spread)
-            if regime == MarketRegime.MAKER_WIDE:
-                min_hft_edge = 0.005  # 0.5% edge for wide maker
-            else:
-                min_hft_edge = 0.008  # 0.8% edge for tight markets
+            min_hft_edge = 0.008  # 0.8% edge for tight markets
             
             if abs(edge) > min_hft_edge:
                 side = 'YES' if edge > 0 else 'NO'
                 
-                # Quick position sizing for HFT (simpler than Alpha)
                 hft_size = min(
                     available_capital * 0.02,  # Max 2% per HFT trade
-                    self.max_position_size * 0.5,  # Half of normal max
-                    50.0  # Cap at $50 for HFT
+                    self.max_position_size * 0.5,
+                    50.0
                 )
                 
                 return {
@@ -1123,7 +1112,7 @@ class PaperTrader:
                     'size': hft_size,
                     'edge': abs(edge),
                     'fair_value': fair_value,
-                    'strategy': 'hft_smart',
+                    'strategy': 'hft_taker',
                     'regime': regime,
                 }
             
