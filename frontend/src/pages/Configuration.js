@@ -118,6 +118,29 @@ const Configuration = () => {
         disable_within_hours: 6
       }
     },
+    // HFT Execution Parameters
+    hft_execution: {
+      max_inventory_usd: 1000,        // Max inventory before full skew
+      skew_factor: 0.05,              // Inventory skew sensitivity
+      ofi_threshold: 0.6,             // OFI trigger threshold
+      ofi_adjustment: 0.01,           // Price adjustment on OFI trigger
+      ofi_levels: 3                   // Order book levels for OFI calc
+    },
+    // Spread Policy Parameters
+    spread_policy: {
+      max_spread_hft: 0.25,           // 25% max spread for HFT
+      max_spread_alpha: 0.15,         // 15% max spread for Alpha
+      max_spread_aggressive: 0.06,    // 6% for aggressive taker
+      min_spread_maker: 0.005,        // 0.5% minimum spread
+      maker_spread_capture: 0.50,     // Assume 50% spread capture
+      adverse_selection_cost: 0.005,  // 0.5% adverse selection
+      taker_fee: 0.02                 // 2% taker fee
+    },
+    // Variance Sizing (Tail Risk)
+    variance_sizing: {
+      kill_switch_low: 0.03,          // No trade below 3%
+      kill_switch_high: 0.97          // No trade above 97%
+    },
   });
   const [oracleMultipliersDefault, setOracleMultipliersDefault] = useState({});
   const [eventCapsDefault, setEventCapsDefault] = useState({
