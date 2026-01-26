@@ -548,6 +548,9 @@ class PaperTrader:
                 # Variance sizing thresholds - store for use in position sizing
                 if "variance_sizing" in user_config:
                     self.variance_sizing_config = user_config["variance_sizing"]
+                    # Update legacy position sizer with variance sizing config
+                    if hasattr(self, 'position_sizer') and self.position_sizer:
+                        self.position_sizer.update_config({'variance_sizing': self.variance_sizing_config})
                     logger.info(f"  Variance Sizing: Kill switch {self.variance_sizing_config.get('kill_switch_low', 0.03):.0%}-{self.variance_sizing_config.get('kill_switch_high', 0.97):.0%}")
                 
                 # Recalculate derived values based on loaded config
