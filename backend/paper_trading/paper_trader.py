@@ -2976,12 +2976,29 @@ class PaperTrader:
                 yes_edge = raw_model_prob - effective_yes_price
                 no_edge = (1 - raw_model_prob) - effective_no_price
                 
-                # Choose the side with positive edge
-                # MINIMUM EDGE: Flat 1.0% across all markets (standardized)
-                min_edge = 0.01
+                # =============================================================
+                # REGIME-AWARE MINIMUM EDGE REQUIREMENTS
+                # =============================================================
+                # Different regimes require different edge thresholds:
+                # - TAKER_TIGHT: 1% (can cross spread profitably)
+                # - MAKER_WIDE: 0.5% (we capture spread, need less edge)
+                # - ZOMBIE: Already filtered out above
+                regime = market_data.get('regime', MarketRegime.TAKER_TIGHT)
+                regime_diagnostics = market_data.get('regime_diagnostics', {})
                 
-                # Log edge calculation
-                logger.info(f"[EDGE] yes_price={yes_price:.3f}, model={raw_model_prob:.4f}, yes_edge={yes_edge:.4f}, no_edge={no_edge:.4f}, min_edge={min_edge:.2f}")
+                if regime == MarketRegime.MAKER_WIDE:
+                    # Wide spread market - we're posting inside spread
+                    # Lower edge requirement because we capture spread instead of paying it
+                    min_edge = 0.005  # 0.5%
+                    execution_strategy = "maker_inside_spread"
+                else:
+                    # Tight spread market - standard taker strategy
+                    # Need higher edge to cover spread + fees
+                    min_edge = 0.01  # 1.0%
+                    execution_strategy = "taker_if_edge"
+                
+                # Log edge calculation with regime context
+                logger.info(f"[EDGE] regime={regime} | yes_price={yes_price:.3f}, model={raw_model_prob:.4f}, yes_edge={yes_edge:.4f}, no_edge={no_edge:.4f}, min_edge={min_edge:.3f}")
                 
                 if yes_edge > no_edge and yes_edge > min_edge:
                     # Bet on YES
