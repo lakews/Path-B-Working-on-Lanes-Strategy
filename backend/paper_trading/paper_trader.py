@@ -1396,7 +1396,10 @@ class PaperTrader:
                 'should_enter': False,
                 'expiry_label': 'Expired'
             }
-        elif hours_to_expiry <= self.EXPIRY_THRESHOLDS['no_entry_hours']:
+        
+        thresholds = self._get_expiry_thresholds()
+        
+        if hours_to_expiry <= thresholds['no_entry_hours']:
             return {
                 'hours_to_expiry': hours_to_expiry,
                 'days_to_expiry': days_to_expiry,
@@ -1405,9 +1408,9 @@ class PaperTrader:
                 'should_enter': False,
                 'expiry_label': f'{hours_to_expiry:.1f}h ⚠️'
             }
-        elif hours_to_expiry <= self.EXPIRY_THRESHOLDS['high_urgency_hours']:
+        elif hours_to_expiry <= thresholds['high_urgency_hours']:
             # Scale down position as expiry approaches
-            scale = hours_to_expiry / self.EXPIRY_THRESHOLDS['high_urgency_hours']
+            scale = hours_to_expiry / thresholds['high_urgency_hours']
             return {
                 'hours_to_expiry': hours_to_expiry,
                 'days_to_expiry': days_to_expiry,
@@ -1416,8 +1419,8 @@ class PaperTrader:
                 'should_enter': True,
                 'expiry_label': f'{hours_to_expiry:.0f}h 🔴'
             }
-        elif days_to_expiry <= self.EXPIRY_THRESHOLDS['medium_urgency_days']:
-            scale = days_to_expiry / self.EXPIRY_THRESHOLDS['medium_urgency_days']
+        elif days_to_expiry <= thresholds['medium_urgency_days']:
+            scale = days_to_expiry / thresholds['medium_urgency_days']
             return {
                 'hours_to_expiry': hours_to_expiry,
                 'days_to_expiry': days_to_expiry,
