@@ -514,7 +514,7 @@ const ResetButton = ({ onClick, label = "Reset" }) => (
 );
 
 // Metric Card Component
-const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = "cyan", valueColor }) => (
+const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = "cyan", valueColor, subtitleColor }) => (
   <div className={`rounded-xl bg-gradient-to-br from-${color}-500/10 to-${color}-600/5 border border-${color}-500/20 p-4`}>
     <div className="flex items-center justify-between mb-2">
       <span className="text-xs text-white/60 uppercase tracking-wider">{title}</span>
@@ -529,7 +529,7 @@ const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = "cyan",
         </span>
       )}
     </div>
-    {subtitle && <p className="text-xs text-white/40 mt-1">{subtitle}</p>}
+    {subtitle && <p className={`text-xs mt-1 ${subtitleColor || 'text-white/40'}`}>{subtitle}</p>}
   </div>
 );
 
