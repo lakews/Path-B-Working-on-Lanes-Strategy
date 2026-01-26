@@ -4094,6 +4094,7 @@ class PaperTrader:
             "open_positions": len(self.paper_positions),
             "strategy_results": strategy_results,
             "asset_class_results": asset_class_results,
+            "execution_path_stats": execution_path_stats,  # HFT vs Alpha breakdown
             "returns_distribution": returns_distribution,  # Realized trades distribution
             "unrealized_distribution": unrealized_distribution,  # Open positions distribution
             "pnl_distribution": returns_distribution if returns_distribution.get('bins') else unrealized_distribution,  # For backward compat
