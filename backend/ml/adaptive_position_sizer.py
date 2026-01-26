@@ -284,6 +284,73 @@ class AdaptivePositionSizer:
         
         return min(1.3, base_mult)
     
+    def calculate_variance_sizing(
+        self,
+        current_price: float,
+        base_size: float
+    ) -> Tuple[float, Dict]:
+        """
+        Calculate Tail Risk / Variance-based position sizing.
+        
+        Uses Bernoulli variance p * (1-p) to scale position size.
+        Maximum variance (and maximum position) is at p=0.5.
+        Minimum variance (and minimum position) is at p near 0 or 1.
+        
+        This protects against:
+        - Extreme price markets (lottery tickets)
+        - Large losses from binary outcomes
+        
+        Args:
+            current_price: Current market price (0.0 to 1.0)
+            base_size: Base position size before variance adjustment
+            
+        Returns:
+            Tuple of (adjusted_size, debug_info)
+        """
+        # 1. Hard Kill Switch at extremes
+        # Don't trade at extreme prices - too risky
+        if current_price < 0.03 or current_price > 0.97:
+            return 0.0, {
+                'kill_switch': True,
+                'reason': f'price_extreme_{current_price:.3f}',
+                'variance': 0.0,
+                'multiplier': 0.0,
+                'base_size': base_size,
+                'final_size': 0.0
+            }
+        
+        # 2. Calculate Bernoulli variance: p * (1 - p)
+        # Max at p=0.5 (variance = 0.25)
+        # Min at p=0 or p=1 (variance = 0)
+        variance = current_price * (1 - current_price)
+        
+        # 3. Calculate size multiplier
+        # At 50c: 4 * 0.25 = 1.0 (full size)
+        # At 95c: 4 * 0.0475 = 0.19 (~20% size)
+        # At 90c: 4 * 0.09 = 0.36 (~36% size)
+        # At 70c: 4 * 0.21 = 0.84 (~84% size)
+        size_multiplier = 4 * variance
+        
+        # 4. Calculate final size
+        final_size = base_size * size_multiplier
+        
+        debug_info = {
+            'kill_switch': False,
+            'price': current_price,
+            'variance': variance,
+            'multiplier': size_multiplier,
+            'base_size': base_size,
+            'final_size': final_size
+        }
+        
+        logger.debug(
+            f"[VARIANCE-SIZING] Price={current_price:.3f} | "
+            f"Var={variance:.4f} | Mult={size_multiplier:.3f} | "
+            f"Base=${base_size:.2f} → Final=${final_size:.2f}"
+        )
+        
+        return final_size, debug_info
+    
     def calculate_optimal_position_size(
         self,
         deployed_capital: float,
