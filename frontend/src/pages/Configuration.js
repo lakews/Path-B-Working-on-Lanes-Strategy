@@ -187,6 +187,40 @@ const Configuration = () => {
   const [portfolioRiskDefaults, setPortfolioRiskDefaults] = useState({});
   const [savingPortfolioRisk, setSavingPortfolioRisk] = useState(false);
   
+  // Exit Engine Configuration (Task 24: Alpha-State Exit Engine)
+  const [exitEngineConfig, setExitEngineConfig] = useState({
+    global: {
+      whale_threshold_price: 0.10,
+      max_spread_pct: 0.10,
+      expiry_guard_hours: 2.0,
+      min_trade_size_usd: 2.00,
+      free_ride_floor: 0.02,
+      free_ride_ceiling: 0.98,
+    },
+    strategies: {
+      arbitrage: { type: 'mechanical', action: 'CLOSE_ALL', tp_pct: 0.02, sl_pct: 0.02, max_hours: 6 },
+      delta_neutral: { type: 'mechanical', action: 'CLOSE_ALL', tp_pct: 0.015, sl_pct: 0.015, max_hours: 4 },
+      alpha_directional: { type: 'complex', action: 'FREE_ROLL', profit_trigger_pct: 0.30, base_sl_pct: 0.15, base_max_hours: 72 },
+    },
+    alpha_modifiers: {
+      politics: { profit_mult: 1.2, sl_mult: 1.0, time_mult: 3.0, use_trailing: true, use_thesis_fail: true, allow_zombie: false },
+      finance: { profit_mult: 1.0, sl_mult: 1.2, time_mult: 1.0, use_trailing: true, use_thesis_fail: true, allow_zombie: false },
+      crypto: { profit_mult: 1.5, sl_mult: 1.5, time_mult: 0.5, use_trailing: true, use_thesis_fail: true, allow_zombie: false },
+      sports: { profit_mult: 1.0, sl_mult: 1.5, time_mult: 0.25, use_trailing: false, use_thesis_fail: false, allow_zombie: true },
+      entertainment: { profit_mult: 2.0, sl_mult: 0.8, time_mult: 2.0, use_trailing: false, use_thesis_fail: false, allow_zombie: true },
+      science: { profit_mult: 2.0, sl_mult: 0.5, time_mult: 5.0, use_trailing: false, use_thesis_fail: false, allow_zombie: true },
+    },
+    whale_zone: {
+      stop_loss_multiple: 0.50,
+      free_roll_multiple: 2.0,
+      free_roll_sell_pct: 0.50,
+      moonbag_multiple: 5.0,
+    }
+  });
+  const [exitEngineDefaults, setExitEngineDefaults] = useState({});
+  const [savingExitEngine, setSavingExitEngine] = useState(false);
+  const [exitEngineStats, setExitEngineStats] = useState(null);
+  
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -206,7 +240,53 @@ const Configuration = () => {
   const [savingLlmConfig, setSavingLlmConfig] = useState(false);
 
 
-  useEffect(() => { fetchConfig(); fetchStatus(); fetchExitMode(); fetchLlmStats(); fetchPortfolioRisk(); }, []);
+  useEffect(() => { fetchConfig(); fetchStatus(); fetchExitMode(); fetchLlmStats(); fetchPortfolioRisk(); fetchExitEngineConfig(); }, []);
+  
+  // Fetch Exit Engine Config (Task 24)
+  const fetchExitEngineConfig = async () => {
+    try {
+      const [configRes, statsRes] = await Promise.all([
+        axios.get(`${API}/config/exit-engine`),
+        axios.get(`${API}/exit-engine/stats`).catch(() => ({ data: null }))
+      ]);
+      if (configRes.data?.config) {
+        setExitEngineConfig(configRes.data.config);
+      }
+      if (configRes.data?.defaults) {
+        setExitEngineDefaults(configRes.data.defaults);
+      }
+      if (statsRes.data?.stats) {
+        setExitEngineStats(statsRes.data.stats);
+      }
+    } catch (e) { console.error('Error fetching exit engine config:', e); }
+  };
+  
+  // Save Exit Engine Config
+  const saveExitEngineConfig = async () => {
+    setSavingExitEngine(true);
+    try {
+      const response = await axios.post(`${API}/config/exit-engine`, exitEngineConfig);
+      toast.success(response.data?.message || 'Exit engine configuration saved');
+      fetchExitEngineConfig(); // Refresh stats
+    } catch (e) {
+      toast.error('Failed to save exit engine configuration');
+    } finally {
+      setSavingExitEngine(false);
+    }
+  };
+  
+  // Reset Exit Engine to Defaults
+  const resetExitEngineConfig = async () => {
+    try {
+      const response = await axios.post(`${API}/config/exit-engine/reset`);
+      if (response.data?.config) {
+        setExitEngineConfig(response.data.config);
+      }
+      toast.success('Exit engine configuration reset to defaults');
+    } catch (e) {
+      toast.error('Failed to reset exit engine configuration');
+    }
+  };
   
   // Fetch Portfolio Risk Config (Task 23b)
   const fetchPortfolioRisk = async () => {
