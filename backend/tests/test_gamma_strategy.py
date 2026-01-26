@@ -38,10 +38,10 @@ class TestSideSelection:
         self.trader = GammaTrader()
     
     def test_yes_is_whale_when_cheap(self):
-        """YES side at $0.02 should be identified as whale."""
-        side, price = self.trader._identify_whale_side(yes_price=0.02, no_price=0.98)
+        """YES side at $0.05 should be identified as whale."""
+        side, price = self.trader._identify_whale_side(yes_price=0.05, no_price=0.95)
         assert side == 'YES'
-        assert price == 0.02
+        assert price == 0.05
     
     def test_no_is_whale_when_cheap(self):
         """NO side at $0.05 should be identified as whale (YES at $0.95)."""
