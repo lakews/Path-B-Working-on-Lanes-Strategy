@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 25, 2026
+## Last Updated: January 26, 2026
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -11,8 +11,48 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Trading Strategies**: Delta-Neutral Market Making, Volatility Exploitation, Alpha-Directional, Multi-Market Arbitrage
 - **Performance**: <100ms execution latency, <50ms ML inference, 500+ trades per 10 minutes (configurable)
 - **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters, time-to-expiry awareness**
+- **Two-Speed Hybrid Architecture**: HFT (Fast Path) + Alpha (Slow Path) execution separation
 
-## Current Status (January 25, 2026)
+## Current Status (January 26, 2026)
+
+### January 26, 2026 - Session 32 (Two-Speed Hybrid Architecture)
+
+- ✅ **MAJOR REFACTOR: Two-Speed Hybrid Architecture**
+  - **Phase 1: Architectural Split**
+    - Created `backend/trading/strategy_manager.py` - Capital allocation between HFT (40%) and Alpha (60%) strategies
+    - Created `backend/execution/async_signal_cache.py` - LLM calls run in background, execution loop reads cache instantly
+    - **CRITICAL PRINCIPLE**: Execution loop NEVER waits for LLM calls
+  
+  - **Phase 2: Microstructure Math (HFT Layer)**
+    - **Inventory Skew**: Modified `maker_executor.py` with asymmetric quoting
+      ```python
+      inventory_ratio = current_position_usdc / MAX_INVENTORY  # -1 to +1
+      price_skew = inventory_ratio * (spread * SKEW_FACTOR)
+      my_bid_price = theoretical_price - (spread/2) - price_skew
+      my_ask_price = theoretical_price + (spread/2) - price_skew
+      ```
+    - **Order Flow Imbalance (OFI)**: Added OFI calculation to adjust quotes based on order book pressure
+      ```python
+      ofi = (bid_vol - ask_vol) / (bid_vol + ask_vol)
+      if ofi > 0.6: my_ask_price += 0.01  # Don't sell cheap into buy wall
+      if ofi < -0.6: my_bid_price -= 0.01  # Don't buy expensive into sell wall
+      ```
+    - **Tail Risk / Variance Sizing**: Added to `adaptive_position_sizer.py`
+      ```python
+      variance = price * (1 - price)  # Bernoulli variance
+      size_multiplier = 4 * variance  # 1.0 at 50c, 0.19 at 95c
+      if price < 0.03 or price > 0.97: return 0  # Hard kill switch
+      ```
+  
+  - **Phase 3: Centralized Spread Policy**
+    - Created `backend/execution/spread_policy.py` - Single source of truth for spread constants
+    - `MAX_SPREAD_HFT = 0.25` (25%)
+    - `SPREAD_GRID_VALUES = [0.03, 0.05, 0.07]`
+    - Maker EV: `(spread × capture) - adverse_selection - fee`
+    - Taker EV: `edge - spread - fee`
+    - Updated `spread_calibrator.py` and `strategy_tuner.py` to use centralized constants
+  
+  - **Documentation**: Created `/app/docs/TWO_SPEED_ARCHITECTURE.md`
 
 ### January 25, 2026 - Session 31 (Price Fallback Removal)
 
