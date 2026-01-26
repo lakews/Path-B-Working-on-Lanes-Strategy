@@ -766,59 +766,6 @@ const HftAlphaPerformanceCard = ({ executionPathStats, showLive = false }) => {
     </div>
   );
 };
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <p className="text-[10px] text-white/50">Trades</p>
-              <p className="text-sm font-bold text-white">{data.trades}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-white/50">Win Rate</p>
-              <p className={`text-sm font-bold ${data.win_rate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
-                {data.win_rate.toFixed(1)}%
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] text-white/50">Profit Factor</p>
-              <p className={`text-sm font-bold ${data.profit_factor >= 1 ? 'text-green-400' : 'text-red-400'}`}>
-                {data.profit_factor.toFixed(2)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Zap className="w-4 h-4 text-yellow-400" />
-          Two-Speed Architecture Performance
-          {showLive && (
-            <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] flex items-center gap-1 ml-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />LIVE
-            </span>
-          )}
-        </h4>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PathCard 
-          data={hft} 
-          gradient="from-cyan-950/50 to-slate-900" 
-          icon={Zap}
-          accentColor="cyan"
-        />
-        <PathCard 
-          data={alpha} 
-          gradient="from-purple-950/50 to-slate-900" 
-          icon={Brain}
-          accentColor="purple"
-        />
-      </div>
-    </div>
-  );
-};
 
 // Position Card Component with Expiry Indicator
 // Sizing Breakdown Modal - Shows detailed position sizing calculation
