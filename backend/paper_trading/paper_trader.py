@@ -1577,7 +1577,7 @@ class PaperTrader:
                 volume_24h = market_data.get('volume_24h', 0) or 0
                 regime, regime_diagnostics = classify_market_regime(best_bid, best_ask, volume_24h)
                 spread = best_ask - best_bid
-                if regime in [MarketRegime.ZOMBIE, MarketRegime.MAKER_OPPORTUNITY]:
+                if regime == MarketRegime.ZOMBIE:
                     logger.info(f"[ALPHA-REGIME] {market_id[:16]}... spread={spread:.2%} → {regime}")
             else:
                 regime = MarketRegime.TAKER_TIGHT
