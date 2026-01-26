@@ -1296,16 +1296,16 @@ class PaperTrader:
         }
     }
     
-    # Time-to-expiry thresholds for strategy adjustments
-    EXPIRY_THRESHOLDS = {
+    # Default Time-to-expiry thresholds for strategy adjustments (can be overridden by config)
+    DEFAULT_EXPIRY_THRESHOLDS = {
         'no_entry_hours': 6,        # No new entries within 6 hours of expiry
         'high_urgency_hours': 24,   # Reduce max hold time, tighten exits
         'medium_urgency_days': 7,   # Boost volatility, reduce delta-neutral
         'normal_days': 30           # Normal trading
     }
     
-    # Strategy adjustments based on time-to-expiry
-    EXPIRY_STRATEGY_ADJUSTMENTS = {
+    # Default Strategy adjustments based on time-to-expiry (can be overridden by config)
+    DEFAULT_EXPIRY_STRATEGY_ADJUSTMENTS = {
         'delta_neutral': {
             'disable_within_hours': 48,  # No market making close to expiry
             'size_mult_near_expiry': 0.5
@@ -1323,6 +1323,14 @@ class PaperTrader:
             'disable_within_hours': 6    # Keep active longer, guaranteed resolution
         }
     }
+    
+    def _get_expiry_thresholds(self) -> Dict:
+        """Get expiry thresholds from config or use defaults."""
+        return self.config.get('expiry_thresholds', self.DEFAULT_EXPIRY_THRESHOLDS)
+    
+    def _get_expiry_strategy_adjustments(self) -> Dict:
+        """Get strategy expiry adjustments from config or use defaults."""
+        return self.config.get('expiry_strategy_adjustments', self.DEFAULT_EXPIRY_STRATEGY_ADJUSTMENTS)
     
     def _parse_end_date(self, market_data: Dict) -> Optional[datetime]:
         """Parse end date from market data, handling various formats"""
