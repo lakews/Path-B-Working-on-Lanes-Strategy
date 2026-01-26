@@ -3300,6 +3300,114 @@ async def set_paper_exit_mode(use_dynamic: bool = True):
     }
 
 # ============================================================================
+# PORTFOLIO RISK CONFIG API (Task 23b: Configurable Risk Parameters)
+# ============================================================================
+
+@api_router.get("/config/portfolio-risk")
+async def get_portfolio_risk_config():
+    """
+    Get current Portfolio Risk configuration.
+    This is the Single Source of Truth for all sizing parameters.
+    """
+    from risk_config import RISK, get_defaults
+    
+    try:
+        db = get_db()
+        saved_config = await db.portfolio_risk_config.find_one(
+            {"type": "portfolio_risk"},
+            {"_id": 0}
+        )
+        
+        # Load from DB if exists
+        if saved_config:
+            RISK.load_from_dict(saved_config)
+        
+        return {
+            "config": RISK.to_dict(),
+            "defaults": get_defaults(),
+            "source": "database" if saved_config else "defaults"
+        }
+    except Exception as e:
+        logger.error(f"Error getting portfolio risk config: {e}")
+        return {
+            "config": RISK.to_dict(),
+            "defaults": get_defaults(),
+            "source": "memory",
+            "error": str(e)
+        }
+
+@api_router.post("/config/portfolio-risk")
+async def update_portfolio_risk_config(config_data: Dict[str, Any]):
+    """
+    Update Portfolio Risk configuration.
+    Saves to database and updates in-memory RISK instance.
+    """
+    from risk_config import RISK
+    
+    try:
+        db = get_db()
+        
+        # Update in-memory config
+        RISK.load_from_dict(config_data)
+        
+        # Save to database
+        await db.portfolio_risk_config.update_one(
+            {"type": "portfolio_risk"},
+            {
+                "$set": {
+                    **config_data,
+                    "type": "portfolio_risk",
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            },
+            upsert=True
+        )
+        
+        logger.info(f"[CONFIG] Portfolio risk config updated: whale=${RISK.WHALE_MAX_USD}, core=${RISK.CORE_MAX_USD}")
+        
+        return {
+            "success": True,
+            "config": RISK.to_dict(),
+            "message": "Portfolio risk configuration saved"
+        }
+    except Exception as e:
+        logger.error(f"Error updating portfolio risk config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+@api_router.post("/config/portfolio-risk/reset")
+async def reset_portfolio_risk_config():
+    """
+    Reset Portfolio Risk configuration to defaults.
+    """
+    from risk_config import RISK, get_defaults
+    
+    try:
+        db = get_db()
+        
+        # Reset in-memory
+        RISK.reset_to_defaults()
+        
+        # Delete from database (will use defaults next time)
+        await db.portfolio_risk_config.delete_one({"type": "portfolio_risk"})
+        
+        logger.info("[CONFIG] Portfolio risk config reset to defaults")
+        
+        return {
+            "success": True,
+            "config": get_defaults(),
+            "message": "Portfolio risk configuration reset to defaults"
+        }
+    except Exception as e:
+        logger.error(f"Error resetting portfolio risk config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+# ============================================================================
 # ALPHA MODEL WEIGHTS API (Task 19: Dynamic Alpha Tuning)
 # ============================================================================
 
