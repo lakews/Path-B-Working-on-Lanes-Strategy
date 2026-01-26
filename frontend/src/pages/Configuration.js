@@ -85,6 +85,39 @@ const Configuration = () => {
     alpha_max_position_pct: 25,   // Max position size as % of Alpha capital
     hft_positions_pct: 5,         // % of global max positions for HFT per market
     alpha_positions_pct: 2,       // % of global max positions for Alpha per market
+    // Strategy Risk Multipliers (position sizing)
+    strategy_risk_multipliers: {
+      delta_neutral: 1.2,           // Low risk, can size up
+      volatility_exploitation: 0.5, // High risk, size down
+      alpha_directional: 0.8,       // Medium risk
+      arbitrage: 1.1                // Low risk, slight increase
+    },
+    // Expiry Thresholds
+    expiry_thresholds: {
+      no_entry_hours: 6,          // No new entries within X hours of expiry
+      high_urgency_hours: 24,     // Reduce max hold time, tighten exits
+      medium_urgency_days: 7,     // Boost volatility strategy
+      normal_days: 30             // Normal trading
+    },
+    // Strategy-specific expiry adjustments
+    expiry_strategy_adjustments: {
+      delta_neutral: {
+        disable_within_hours: 48,
+        size_mult_near_expiry: 0.5
+      },
+      volatility_exploitation: {
+        boost_within_days: 7,
+        boost_multiplier: 1.5,
+        disable_within_hours: 6
+      },
+      alpha_directional: {
+        min_confidence_near_expiry: 0.7,
+        disable_within_hours: 6
+      },
+      arbitrage: {
+        disable_within_hours: 6
+      }
+    },
   });
   const [oracleMultipliersDefault, setOracleMultipliersDefault] = useState({});
   const [eventCapsDefault, setEventCapsDefault] = useState({
