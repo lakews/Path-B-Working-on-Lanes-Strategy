@@ -1443,10 +1443,16 @@ class PaperTrader:
     
     def _get_expiry_thresholds(self) -> Dict:
         """Get expiry thresholds from config or use defaults."""
+        # Use the loaded expiry_thresholds_config if available, otherwise fall back to config dict or defaults
+        if hasattr(self, 'expiry_thresholds_config') and self.expiry_thresholds_config:
+            return self.expiry_thresholds_config
         return self.config.get('expiry_thresholds', self.DEFAULT_EXPIRY_THRESHOLDS)
     
     def _get_expiry_strategy_adjustments(self) -> Dict:
         """Get strategy expiry adjustments from config or use defaults."""
+        # Use the loaded expiry_strategy_adjustments if available
+        if hasattr(self, 'expiry_strategy_adjustments') and self.expiry_strategy_adjustments:
+            return self.expiry_strategy_adjustments
         return self.config.get('expiry_strategy_adjustments', self.DEFAULT_EXPIRY_STRATEGY_ADJUSTMENTS)
     
     def _parse_end_date(self, market_data: Dict) -> Optional[datetime]:
