@@ -1273,24 +1273,16 @@ class PaperTrader:
             size = opportunity['size']
             strategy = opportunity.get('strategy', 'hft_scalp')
             regime = opportunity.get('regime', MarketRegime.TAKER_TIGHT)
-            spread_zone = opportunity.get('spread_zone', 'NORMAL')
             
-            # Different logging for different modes
-            if regime == MarketRegime.MAKER_OPPORTUNITY:
-                logger.info(
-                    f"💰 [HFT MAKER] {side} ${size:.2f} in {market_id[:16]}... | "
-                    f"Edge: {opportunity['edge']:.2%} | Zone: {spread_zone} | "
-                    f"Strategy: {strategy} (Alpha delegated - posting liquidity)"
-                )
-            elif regime == MarketRegime.MAKER_WIDE:
+            # Different logging for different modes (Task 21: Simplified)
+            if regime == MarketRegime.MAKER_WIDE:
                 logger.info(
                     f"📊 [HFT MAKER] {side} ${size:.2f} in {market_id[:16]}... | "
-                    f"Edge: {opportunity['edge']:.2%} | Zone: {spread_zone} | "
-                    f"Strategy: {strategy} (standard maker)"
+                    f"Edge: {opportunity['edge']:.2%} | Strategy: {strategy}"
                 )
             else:
                 logger.info(
-                    f"⚡ [HFT TRADE] {side} ${size:.2f} in {market_id[:16]}... | "
+                    f"⚡ [HFT TAKER] {side} ${size:.2f} in {market_id[:16]}... | "
                     f"Edge: {opportunity['edge']:.2%} | Strategy: {strategy}"
                 )
             
