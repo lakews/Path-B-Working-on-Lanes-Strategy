@@ -355,11 +355,11 @@ class PaperTrader:
         self.max_drawdown_pct = 5.0
         self.trades_per_10min = 500
         
-        # Market selection thresholds (configurable)
-        self.min_liquidity = 100.0
-        self.max_liquidity = 1000000.0  # NEW: Max liquidity filter
-        self.min_volume_24h = 1000.0
-        self.max_spread = 0.35  # LIQUIDITY UNLOCK: Widened to 35% to embrace Golden Zone (15-30% spreads)
+        # Market selection thresholds (from centralized config - Task 21)
+        self.min_liquidity = QUALITY_FILTERS.get('MIN_LIQUIDITY', 100.0)
+        self.max_liquidity = QUALITY_FILTERS.get('MAX_LIQUIDITY', 1000000.0)
+        self.min_volume_24h = QUALITY_FILTERS.get('MIN_VOLUME_24H', 1000.0)
+        self.max_spread = SPREAD_RULES.get('MAX_SPREAD_ALPHA', 0.05)  # Tightened to 5% (was 35%)
         self.max_open_positions = 50
         self.stuck_price_multiplier = 2.0  # Volume multiplier for stuck prices (0.0, 0.5, 1.0)
         
