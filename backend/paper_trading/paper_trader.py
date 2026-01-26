@@ -5317,6 +5317,76 @@ class PaperTrader:
             traceback.print_exc()
             return []
     
+    def update_alpha_weights(self, new_weights: Dict) -> Dict:
+        """
+        Update Alpha model weights at runtime (Task 19: Dynamic Alpha Tuning).
+        
+        This allows real-time tuning of how much each signal source influences
+        the Bayesian probability calculation:
+        - sentiment_weight: LLM/news sentiment influence (default 0.50)
+        - rl_weight: Reinforcement learning model influence (default 0.60)
+        - sentiment_neutral_low/high: Neutral band bounds (default 0.45-0.55)
+        - max_sentiment_delta: Safety cap for extreme sentiment moves
+        - min_rl_confidence: Minimum RL confidence to act on signals
+        
+        Args:
+            new_weights: Dict with weight keys to update
+            
+        Returns:
+            Dict with updated weights and status
+        """
+        valid_keys = [
+            'sentiment_weight', 'rl_weight', 'sharp_weight',
+            'sentiment_neutral_low', 'sentiment_neutral_high',
+            'max_sentiment_delta', 'min_rl_confidence'
+        ]
+        
+        updated = {}
+        errors = []
+        
+        for key, value in new_weights.items():
+            if key not in valid_keys:
+                errors.append(f"Unknown weight key: {key}")
+                continue
+            
+            try:
+                # Validate ranges
+                val = float(value)
+                if key in ['sentiment_weight', 'rl_weight', 'sharp_weight']:
+                    if not (0.0 <= val <= 2.0):
+                        errors.append(f"{key} must be between 0.0 and 2.0")
+                        continue
+                elif key in ['sentiment_neutral_low', 'sentiment_neutral_high']:
+                    if not (0.0 <= val <= 1.0):
+                        errors.append(f"{key} must be between 0.0 and 1.0")
+                        continue
+                elif key == 'max_sentiment_delta':
+                    if not (0.1 <= val <= 10.0):
+                        errors.append(f"{key} must be between 0.1 and 10.0")
+                        continue
+                elif key == 'min_rl_confidence':
+                    if not (0.0 <= val <= 1.0):
+                        errors.append(f"{key} must be between 0.0 and 1.0")
+                        continue
+                
+                self.alpha_weights[key] = val
+                updated[key] = val
+            except ValueError:
+                errors.append(f"Invalid value for {key}: {value}")
+        
+        logger.info(f"[ALPHA TUNING] Updated weights: {updated}")
+        
+        return {
+            "success": len(errors) == 0,
+            "updated": updated,
+            "errors": errors,
+            "current_weights": self.alpha_weights.copy()
+        }
+    
+    def get_alpha_weights(self) -> Dict:
+        """Get current Alpha model weights."""
+        return self.alpha_weights.copy()
+    
     def get_status(self) -> Dict:
         """Get current paper trading status with full analytics"""
         win_rate = self.winning_trades / max(self.total_trades, 1)
