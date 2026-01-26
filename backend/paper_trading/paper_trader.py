@@ -332,6 +332,9 @@ class PaperTrader:
         self.maker_executor: MakerOrderExecutor = get_maker_executor()
         self.use_maker_execution = True  # Enable maker-first execution strategy
         
+        # Gamma Strategy (Task 22) - Isolated whale zone execution
+        self.gamma_trader: GammaTrader = get_gamma_trader()
+        
         # Exit parameters per strategy - loaded from DB, defaults from DEFAULT_EXIT_PARAMS
         self.exit_params_by_strategy = dict(self.DEFAULT_EXIT_PARAMS)
         
