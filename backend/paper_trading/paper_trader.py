@@ -4202,13 +4202,13 @@ class PaperTrader:
         # ================================================================
         p_sentiment = sentiment
         
-        # Neutral band: 0.45-0.55 contributes ZERO (noise filter)
-        NEUTRAL_LOW = 0.45
-        NEUTRAL_HIGH = 0.55
-        SENTIMENT_WEIGHT = 0.50  # Reduced slightly - relative deltas are more powerful
+        # Use dynamic weights from self.alpha_weights (Task 19: Dynamic Alpha Tuning)
+        NEUTRAL_LOW = self.alpha_weights.get('sentiment_neutral_low', 0.45)
+        NEUTRAL_HIGH = self.alpha_weights.get('sentiment_neutral_high', 0.55)
+        SENTIMENT_WEIGHT = self.alpha_weights.get('sentiment_weight', 0.50)
         
         # Safety cap for raw delta to prevent hallucination-driven extreme moves
-        MAX_SENTIMENT_DELTA = 2.0  # Clamp to prevent 0.01→0.99 swings
+        MAX_SENTIMENT_DELTA = self.alpha_weights.get('max_sentiment_delta', 2.0)
         
         is_sentiment_neutral = NEUTRAL_LOW <= p_sentiment <= NEUTRAL_HIGH
         
