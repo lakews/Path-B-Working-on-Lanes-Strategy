@@ -206,7 +206,46 @@ const Configuration = () => {
   const [savingLlmConfig, setSavingLlmConfig] = useState(false);
 
 
-  useEffect(() => { fetchConfig(); fetchStatus(); fetchExitMode(); fetchLlmStats(); }, []);
+  useEffect(() => { fetchConfig(); fetchStatus(); fetchExitMode(); fetchLlmStats(); fetchPortfolioRisk(); }, []);
+  
+  // Fetch Portfolio Risk Config (Task 23b)
+  const fetchPortfolioRisk = async () => {
+    try {
+      const response = await axios.get(`${API}/config/portfolio-risk`);
+      if (response.data?.config) {
+        setPortfolioRisk(response.data.config);
+      }
+      if (response.data?.defaults) {
+        setPortfolioRiskDefaults(response.data.defaults);
+      }
+    } catch (e) { console.error('Error fetching portfolio risk config:', e); }
+  };
+  
+  // Save Portfolio Risk Config
+  const savePortfolioRisk = async () => {
+    setSavingPortfolioRisk(true);
+    try {
+      const response = await axios.post(`${API}/config/portfolio-risk`, portfolioRisk);
+      toast.success(response.data?.message || 'Portfolio risk config saved');
+    } catch (e) {
+      toast.error('Failed to save portfolio risk config');
+    } finally {
+      setSavingPortfolioRisk(false);
+    }
+  };
+  
+  // Reset Portfolio Risk to Defaults
+  const resetPortfolioRisk = async () => {
+    try {
+      const response = await axios.post(`${API}/config/portfolio-risk/reset`);
+      if (response.data?.config) {
+        setPortfolioRisk(response.data.config);
+      }
+      toast.success('Portfolio risk config reset to defaults');
+    } catch (e) {
+      toast.error('Failed to reset portfolio risk config');
+    }
+  };
   
   // Fetch exit mode from API
   const fetchExitMode = async () => {
