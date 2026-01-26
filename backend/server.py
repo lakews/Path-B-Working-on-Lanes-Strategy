@@ -1320,6 +1320,46 @@ async def update_config(config_update: TradingConfig):
         if config_update.event_caps is not None:
             db_update["event_caps"] = config_update.event_caps
         
+        # ==============================================================
+        # TWO-SPEED ARCHITECTURE CONFIGURATION (HFT/Alpha)
+        # ==============================================================
+        if config_update.hft_allocation_pct is not None:
+            db_update["hft_allocation_pct"] = config_update.hft_allocation_pct
+        if config_update.alpha_allocation_pct is not None:
+            db_update["alpha_allocation_pct"] = config_update.alpha_allocation_pct
+        if config_update.hft_max_position_pct is not None:
+            db_update["hft_max_position_pct"] = config_update.hft_max_position_pct
+        if config_update.alpha_max_position_pct is not None:
+            db_update["alpha_max_position_pct"] = config_update.alpha_max_position_pct
+        if config_update.hft_positions_pct is not None:
+            db_update["hft_positions_pct"] = config_update.hft_positions_pct
+        if config_update.alpha_positions_pct is not None:
+            db_update["alpha_positions_pct"] = config_update.alpha_positions_pct
+        
+        # Strategy Risk Multipliers
+        if config_update.strategy_risk_multipliers is not None:
+            db_update["strategy_risk_multipliers"] = config_update.strategy_risk_multipliers
+        
+        # Expiry Thresholds
+        if config_update.expiry_thresholds is not None:
+            db_update["expiry_thresholds"] = config_update.expiry_thresholds
+        
+        # Strategy Expiry Adjustments
+        if config_update.expiry_strategy_adjustments is not None:
+            db_update["expiry_strategy_adjustments"] = config_update.expiry_strategy_adjustments
+        
+        # HFT Execution Parameters
+        if config_update.hft_execution is not None:
+            db_update["hft_execution"] = config_update.hft_execution
+        
+        # Spread Policy
+        if config_update.spread_policy is not None:
+            db_update["spread_policy"] = config_update.spread_policy
+        
+        # Variance Sizing (Tail Risk)
+        if config_update.variance_sizing is not None:
+            db_update["variance_sizing"] = config_update.variance_sizing
+        
         # Store ALL config in database for persistence (not just strategies/asset classes)
         db = get_db()
         await db.user_config.update_one(
