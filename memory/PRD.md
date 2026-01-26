@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 26, 2026 (Session 36)
+## Last Updated: January 26, 2026 (Session 36 - Task 22)
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -8,13 +8,54 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 ## Core Requirements
 - **Multi-layer Architecture**: Data ingestion, AI/ML decision layer, trade execution engine, monitoring/risk management
 - **AI/ML Models**: Volatility Prediction, Sentiment Fusion, Bayesian Outlier Detection, Sharp Trader Detection, Kelly-Sharpe Optimizer
-- **Trading Strategies**: Delta-Neutral Market Making, Volatility Exploitation, Alpha-Directional, Multi-Market Arbitrage
+- **Trading Strategies**: Delta-Neutral Market Making, Volatility Exploitation, Alpha-Directional, Multi-Market Arbitrage, **Gamma Scalping (Whale Zone)**
 - **Performance**: <100ms execution latency, <50ms ML inference, 500+ trades per 10 minutes (configurable)
 - **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters, time-to-expiry awareness**
 - **Two-Speed Hybrid Architecture**: HFT (Fast Path) + Alpha (Slow Path) execution separation, **fully configurable from UI**
 - **Dual-Zone Risk Architecture**: Separate risk logic for Whale Zone (< $0.10) vs Core Zone (>= $0.10)
 
 ## Current Status (January 26, 2026)
+
+### January 26, 2026 - Session 36 (Task 22: Gamma Strategy - COMPLETE)
+
+- ✅ **TASK 22 COMPLETE: Gamma Strategy (Whale Execution Logic)**
+  
+  **Purpose**: Implement isolated execution logic for CONVEXITY_OPPORTUNITY regime. Targets "Out of the Money" (OTM) options priced $0.03-$0.10 using the "Gap vs. Wall" strategy.
+
+  **New File: `/app/backend/trading/gamma_strategy.py`** - Isolated whale zone execution logic
+  
+  **Entry Logic ("Gap vs. Wall")**:
+  - **Gap** (spread > 2 cents): Place limit bid inside the gap (e.g., Bid $0.01 / Ask $0.04 → Bid at $0.02)
+  - **Wall** (spread ≤ 2 cents): Check orderbook depth
+    - If Ask Volume < (Bid Volume × 0.2): Wall is crumbling → **SNIPE** (Market Buy)
+    - Else: Wall is strong → **JOIN** (Limit Bid at best bid)
+
+  **Exit Logic ("Free Roll")**:
+  - **2x Entry (Doubler)**: Sell 50% → recover initial investment
+  - **5x Entry (Moonbag)**: Sell 100% → maximize profit
+  - **0.5x Entry (Stop Loss)**: Sell 100% → cut losses early
+
+  **Class: GammaTrader**
+  - `calculate_orders(market_data, active_positions)` - Entry signal generation
+  - `check_exit_signals(active_positions, current_prices)` - Exit signal generation
+  - Statistics tracking: gap_opportunities, wall_snipes, wall_joins, free_rolls, moonbags, stop_losses
+
+  **Integration with PaperTrader**:
+  - Routes `CONVEXITY_OPPORTUNITY` regime to GammaTrader
+  - Gamma exit signals checked in position monitoring loop
+  - No modifications to existing HFT/Alpha logic (fully isolated)
+
+  **Test Results**: 75/75 tests passed
+  - `test_gamma_strategy.py`: 31 tests (side selection, gap logic, wall logic, exit logic, isolation)
+  - `test_dual_zone_risk.py`: 25 tests (regime classification)
+  - `test_inventory_skew.py`: 19 tests (HFT math)
+
+  **Files Created/Modified**:
+  - `/app/backend/trading/gamma_strategy.py` (NEW - 500+ lines)
+  - `/app/backend/tests/test_gamma_strategy.py` (NEW - 31 tests)
+  - `/app/backend/paper_trading/paper_trader.py` (routing only)
+
+  **ISOLATION VERIFIED**: No changes to `alpha_model.py` or existing HFT logic
 
 ### January 26, 2026 - Session 36 (Task 21: Dual-Zone Risk Architecture - COMPLETE)
 
