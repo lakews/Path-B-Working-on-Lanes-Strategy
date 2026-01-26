@@ -5623,6 +5623,9 @@ class PaperTrader:
                 "rejected_low_liquidity": self._last_quality_stats.get('rejected_low_liquidity', 0),
                 "rejected_no_price": self._last_quality_stats.get('rejected_no_price', 0),
             },
+            # ALPHA MODEL WEIGHTS (Task 19: Dynamic Alpha Tuning)
+            # Shows "Who is driving the car" - sentiment (News Reader) vs RL (Math Geek)
+            "alpha_weights": self.alpha_weights.copy(),
             # Configuration parameters being used
             "config": {
                 "initial_capital": self.initial_capital,
