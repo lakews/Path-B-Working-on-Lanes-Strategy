@@ -373,6 +373,21 @@ class PaperTrader:
         self.max_open_positions = 50
         self.stuck_price_multiplier = 2.0  # Volume multiplier for stuck prices (0.0, 0.5, 1.0)
         
+        # ================================================================
+        # ALPHA MODEL WEIGHTS (Task 19: Dynamic Alpha Tuning)
+        # ================================================================
+        # These control how much each signal source influences the final probability.
+        # Can be updated at runtime via API endpoint POST /api/settings/alpha
+        self.alpha_weights = {
+            'sentiment_weight': 0.50,      # Weight for LLM sentiment signal
+            'rl_weight': 0.60,             # Weight for RL model signal
+            'sharp_weight': 0.30,          # Weight for sharp money signal (future use)
+            'sentiment_neutral_low': 0.45, # Neutral band lower bound
+            'sentiment_neutral_high': 0.55,# Neutral band upper bound
+            'max_sentiment_delta': 2.0,    # Safety cap for sentiment swings
+            'min_rl_confidence': 0.15,     # Minimum RL confidence to act
+        }
+        
         # Maker order executor for spread-aware execution
         self.maker_executor: MakerOrderExecutor = get_maker_executor()
         self.use_maker_execution = True  # Enable maker-first execution strategy
