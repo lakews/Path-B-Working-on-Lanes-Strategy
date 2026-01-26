@@ -1161,23 +1161,13 @@ class PaperTrader:
             spread = best_ask - best_bid
             
             # =============================================================
-            # LIQUIDITY UNLOCK: The Spread Goldilocks Zone
-            # =============================================================
-            # - Too tight (<4%): Not enough profit margin after fees
-            # - Sweet spot (4-30%): Wide enough to profit, narrow enough to be real
-            # - Too wide (>30%): Market is chaotic/zombie
+            # Task 21: Use centralized spread thresholds
+            # - Min scalp spread: 2% (taker threshold)
+            # - Max scalp spread: 12% (zombie threshold)
             
-            MIN_SCALP_SPREAD = 0.04  # 4% minimum spread to scalp
-            MAX_SCALP_SPREAD = 0.30  # 30% maximum (WIDENED from 15%!)
-            MIN_SCALP_VOLUME = 50    # $50 minimum daily volume
-            
-            # Classify spread zone for logging
-            if spread > 0.15:
-                spread_zone = "GOLDEN"  # 15-30%: Fat margin zone
-            elif spread > 0.10:
-                spread_zone = "WIDE"    # 10-15%: Wide but good
-            else:
-                spread_zone = "NORMAL"  # 4-10%: Standard maker
+            MIN_SCALP_SPREAD = SPREAD_TAKER_THRESHOLD   # 2% minimum spread to scalp
+            MAX_SCALP_SPREAD = SPREAD_ZOMBIE_THRESHOLD  # 12% maximum
+            MIN_SCALP_VOLUME = 500                      # $500 minimum daily volume
             
             if not (MIN_SCALP_SPREAD <= spread <= MAX_SCALP_SPREAD):
                 return None  # Spread outside scalp zone
