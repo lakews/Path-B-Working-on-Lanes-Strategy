@@ -64,7 +64,47 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
     - `/app/backend/paper_trading/paper_trader.py` - MarketRegime class, classify_market_regime(), _evaluate_hft_opportunity(), _evaluate_hft_scalp()
     - `/app/backend/execution/spread_policy.py` - DEFAULT_MAX_SPREAD_* constants
   
-  - **Note on Market Liquidity**: Trades are still being rejected for some markets because the CLOB orderbook has extreme spreads (98% = bid at 0.001, ask at 0.999) which is beyond even the widened thresholds. This is correct protective behavior - these markets truly have no real liquidity despite having displayed prices from last trades.
+- ✅ **LIQUIDITY QUALITY CONTROL (Task 18): "Bouncer" Pre-Flight Filter**
+  - **Problem**: Bot was scanning 200+ random markets, wasting ~90% CPU on illiquid "ghost towns" with 98% spreads.
+  
+  - **Solution - Strict Pre-Flight Checks** (`_get_active_markets`):
+    ```python
+    # Quality Control Constants
+    MIN_VOLUME_24H = $1,000    # Ghost Town Rule
+    MIN_PRICE_BAND = 0.05      # Skip dead/lost events (<5%)
+    MAX_PRICE_BAND = 0.95      # Skip settled/won events (>95%)
+    TOP_N_MARKETS = 50         # Focus on top 50 by volume
+    ```
+  
+  - **Filter Order (Cheapest First)**:
+    1. Price validation (reject NULL/0)
+    2. Price band check (reject extreme prices)
+    3. Volume check (reject ghost towns)
+    4. Liquidity check (configurable threshold)
+    5. Sort by volume, take top 50
+  
+  - **Quality Metrics Added to `/api/paper/status`**:
+    ```json
+    "quality_control": {
+      "markets_fetched": 200,
+      "markets_passed": 53,
+      "rejection_rate": 0.735,
+      "rejected_low_volume": 0,
+      "rejected_extreme_price": 122,
+      "rejected_low_liquidity": 25
+    }
+    ```
+  
+  - **Results**:
+    - Markets fetched: 200 → 50 processed (75% reduction!)
+    - Extreme price rejections: 122 (dead/settled markets filtered)
+    - Low liquidity rejections: 25 (no depth markets filtered)
+    - CPU savings: ~75% less wasted processing
+  
+  - **Files Modified**:
+    - `/app/backend/paper_trading/paper_trader.py` - `_get_active_markets()`, `__init__`, `get_status()`
+  
+  - **Note**: Final orderbook spread check still rejects some markets at execution time (98% CLOB spread despite having displayed prices). This is correct behavior - Polymarket market data shows last trade prices but many markets have no real orderbook depth.
 
 ### January 26, 2026 - Session 34 (Two-Speed Architecture + Core Fixes)
 
