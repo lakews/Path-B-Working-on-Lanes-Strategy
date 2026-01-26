@@ -3151,6 +3151,11 @@ const PaperTrading = () => {
             <HftAlphaPerformanceCard executionPathStats={status?.execution_path_stats} showLive={running} />
           )}
 
+          {/* Gamma Strategy Dashboard - Whale Zone Statistics (Task 22) */}
+          {status && (
+            <GammaDashboardCard gammaStats={gammaStats} showLive={running} />
+          )}
+
           {/* Strategy & Asset Class Tables with Totals */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-3">
