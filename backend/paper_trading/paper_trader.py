@@ -1254,9 +1254,8 @@ class PaperTrader:
                     if asset_class in [ac.lower() for ac in self.enabled_asset_classes]:
                         filtered_markets.append(m)
                 
-                logger.debug(f"[ALPHA] Asset class distribution: {asset_class_counts}")
-                logger.debug(f"[ALPHA] Enabled classes: {self.enabled_asset_classes}")
-                logger.debug(f"[ALPHA] Filtered to {len(filtered_markets)} from {len(markets)} markets")
+                logger.info(f"[ALPHA] Asset classes: {asset_class_counts}")
+                logger.info(f"[ALPHA] Filtered to {len(filtered_markets)} from {len(markets)} markets")
                 
                 # Take top N markets by volume
                 filtered_markets = sorted(
