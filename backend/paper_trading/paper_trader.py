@@ -1384,6 +1384,45 @@ class PaperTrader:
                 except Exception as e:
                     logger.debug(f"Could not fetch order book: {e}")
             
+            # =================================================================
+            # MARKET REGIME CLASSIFICATION (EARLY FILTER)
+            # =================================================================
+            # Classify market BEFORE expensive computations (sizing, Bayesian, etc.)
+            # This saves CPU and API calls on dead/illiquid markets.
+            volume_24h = market_data.get('volume_24h', market_data.get('volume', 0)) or 0
+            
+            if order_book_data.get('bids') and order_book_data.get('asks'):
+                bids = order_book_data['bids']
+                asks = order_book_data['asks']
+                best_bid = float(bids[0]['price']) if bids else 0
+                best_ask = float(asks[0]['price']) if asks else 1
+                
+                # Classify the market regime
+                regime, regime_diagnostics = classify_market_regime(
+                    best_bid=best_bid,
+                    best_ask=best_ask,
+                    volume_24h=volume_24h
+                )
+                
+                # Store regime info for later use
+                market_data['regime'] = regime
+                market_data['regime_diagnostics'] = regime_diagnostics
+                
+                # ZOMBIE FILTER: Skip immediately - save all subsequent computation
+                if regime == MarketRegime.ZOMBIE:
+                    reject_reason = regime_diagnostics.get('reject_reason', 'zombie_market')
+                    logger.info(f"[REGIME] ZOMBIE market {market_id[:16]}... - SKIP | {reject_reason}")
+                    track_skip("regime_zombie")
+                    return
+                
+                # Log regime classification
+                spread = best_ask - best_bid
+                logger.debug(f"[REGIME] {regime} | {market_id[:16]}... | spread={spread:.2%} | vol=${volume_24h:.0f}")
+            else:
+                # No orderbook data - can't classify regime, default to TAKER_TIGHT
+                market_data['regime'] = MarketRegime.TAKER_TIGHT
+                market_data['regime_diagnostics'] = {'reason': 'no_orderbook_data'}
+            
             # ADAPTIVE POSITION SIZING - considers liquidity, volume, Kelly, RL confidence
             # Uses self.kelly_fraction and self.kelly_enabled from user config
             sizing_result = self._calculate_position_size(
