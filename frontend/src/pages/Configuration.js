@@ -219,6 +219,13 @@ const Configuration = () => {
         oracle_multipliers: savedConfig.oracle_multipliers ?? prev.oracle_multipliers,
         // Event Caps
         event_caps: savedConfig.event_caps ?? prev.event_caps,
+        // HFT vs Alpha Capital Allocation
+        hft_allocation_pct: savedConfig.hft_allocation_pct ?? prev.hft_allocation_pct,
+        alpha_allocation_pct: savedConfig.alpha_allocation_pct ?? prev.alpha_allocation_pct,
+        hft_max_position_pct: savedConfig.hft_max_position_pct ?? prev.hft_max_position_pct,
+        alpha_max_position_pct: savedConfig.alpha_max_position_pct ?? prev.alpha_max_position_pct,
+        hft_max_positions: savedConfig.hft_max_positions ?? prev.hft_max_positions,
+        alpha_max_positions: savedConfig.alpha_max_positions ?? prev.alpha_max_positions,
       }));
       setLoading(false);
     } catch (e) { 
