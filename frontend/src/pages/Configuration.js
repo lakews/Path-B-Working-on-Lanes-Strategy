@@ -529,7 +529,7 @@ const Configuration = () => {
                   </div>
                   <div>
                     <div className="flex justify-between text-xs text-white/50 mb-1">
-                      <span>Max Positions/Market</span>
+                      <span>Positions Per Market</span>
                       <span className="text-orange-300">{config.hft_max_positions}</span>
                     </div>
                     <input 
@@ -573,7 +573,7 @@ const Configuration = () => {
                   </div>
                   <div>
                     <div className="flex justify-between text-xs text-white/50 mb-1">
-                      <span>Max Positions/Market</span>
+                      <span>Positions Per Market</span>
                       <span className="text-purple-300">{config.alpha_max_positions}</span>
                     </div>
                     <input 
