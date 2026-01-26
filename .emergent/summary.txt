@@ -4,98 +4,99 @@ The user, a Lead HFT System Architect, requested a major overhaul of the APEX TR
 PRODUCT REQUIREMENTS:
 -   **Architectural Split:** Decouple slow LLM/Bayesian analysis from the fast HFT execution loop.
 -   **HFT Microstructure Math:** Implement and make configurable Inventory Skew, Order Flow Imbalance (OFI), and Variance-based Sizing.
--   **Execution Logic:** The bot must trade its own Alpha (), not the market's mid-price. Implement guardrails like a Safety Leash against model hallucination and Hysteresis to prevent order flickering.
--   **Full Configuration via UI:** Make all strategy and risk parameters configurable from the frontend Settings UI.
--   **Dynamic Strategy:** Implement a Market Regime classifier (, , ) to replace simplistic edge logic and adapt to market liquidity conditions.
--   **Paper Trading UI Enhancements:** Add detailed performance breakdowns (HFT vs. Alpha, Realized vs. Unrealized P&L).
--   **Bug Fixes:** Fix critical bugs in P&L calculation, stale data usage, and a systematic bearish bias in the Bayesian model.
+-   **Execution Logic:** The bot must trade its own Alpha (), not the market's mid-price.
+-   **Full Configuration via UI:** Make all strategy and risk parameters configurable from the frontend. This is an ongoing theme, with the latest request (Task 24) focusing on a complete overhaul of the Exit Logic and its corresponding UI.
+-   **Dynamic Strategy:** Implement a Market Regime classifier to adapt to market liquidity.
+-   **Paper Trading UI Enhancements:** Add detailed performance breakdowns.
+-   **Bug Fixes & Data Integrity:** Fix critical bugs in P&L calculation, stale data usage, and ensure correct orderbook data parsing.
+-   **Risk Management:** Centralize all risk, sizing, and exit parameters into a Single Source of Truth, managed via the UI.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack trading application (React + FastAPI) that has been refactored into a Two-Speed architecture. The fast HFT loop and the slow Alpha (LLM/Bayesian) loop now run in parallel using , communicating via a shared  object.
+A full-stack trading application (React + FastAPI) with a functional Two-Speed architecture. The bot is actively and correctly executing paper trades. The project is in a phase of major refactoring to modularize logic and make the entire system configurable via the UI.
 
-The core trading logic has been significantly improved:
--   The bot correctly centers its quotes on its own Alpha ().
--   It uses a Market Regime classifier to filter out illiquid ZOMBIE markets and apply appropriate strategies for wide vs. tight spreads.
--   Execution is optimized with a Safety Leash (to prevent model hallucination) and Quote Hysteresis (to reduce API calls).
--   A critical flaw in the Bayesian model's math (using relative vs. absolute deltas) has been fixed, removing a strong bearish bias.
--   The architecture includes Autonomous Scalping logic in the HFT loop for when no Alpha target is available.
--   The  endpoint exposes detailed health metrics for both loops.
+Key features implemented:
+-   **Task 21 (Dual-Zone Risk Architecture):** Completed. A  file serves as the basis for a Single Source of Truth (SSOT).
+-   **Task 22 (Gamma Strategy):** Completed. A new  module handles Whale Zone trades, with a corresponding Gamma Strategy Dashboard in the UI.
+-   **Task 23 (Unified Portfolio Manager):** Completed. All position sizing logic has been consolidated into a new  and made fully configurable via a new Portfolio Risk tab in the Settings UI. The old  is deprecated.
+
+The system is now structured to have isolated modules for key logic (sizing, specialized trading) which are centrally configured.
 
 **Last working item**:
--   **Last item agent was working:** Finalizing the Two-Speed architecture by implementing the user's three final requests: fixing data blindness in the Alpha loop, enabling autonomous scalping in the HFT loop, and exposing health metrics. While the code was implemented, the agent discovered that the bot was still not trading. The agent was debugging why the Alpha loop was reporting Evaluated: 0 markets, preventing it from generating any trading targets for the HFT loop to act upon.
+-   **Last item agent was working:** Initiating **Task 24: Architect & Implement Alpha-State Exit Engine**. This is a complete overhaul of the exit logic. The agent has laid the foundation by:
+    1.  Adding the new, structured exit configuration dictionaries (, , ) to .
+    2.  Creating a new, empty file  to house the new logic in an isolated module.
+    3.  Creating a corresponding (and currently empty) test file .
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
 -   **Which testing method agent to use?** backend testing agent
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Bot is Not Trading - Alpha Loop Evaluates Zero Markets (P0)**
--   **Issue 2: Bayesian Model Requires Tuning (P1)**
--   **Issue 3: Hardcoded HFT/Alpha Strategy Classification (P1)**
+-   **Issue 1: Bayesian Model Requires Tuning (P2)**
+-   **Issue 2: Hardcoded HFT/Alpha Strategy Classification (P1)**
 
 Issues Detail:
--   **Issue 1: Bot is Not Trading - Alpha Loop Evaluates Zero Markets**
-    -   **Attempted fixes:** The agent confirmed the  loops were running and implemented fixes for data availability in both loops. The agent then tried adding -level logging to trace the market filtering logic in the Alpha loop, but the logs did not appear as expected, indicating the code flow was not reaching those points or was exiting prematurely.
-    -   **Next debug checklist**:
-        1.  In  (), add comprehensive  logging at every filter and return point to identify exactly why markets are being discarded before being counted as evaluated.
-        2.  Log the content of  before the  check to see what  is returning.
-        3.  In , add logging to the Autonomous Scalping  block to see why it's not triggering. Log the  and the result of the  check.
-    -   **Why fix this issue and what will be achieved with the fix?** This is the absolute blocker preventing any trades. Fixing it will enable the bot to generate Alpha targets and execute trades, making the entire Two-Speed architecture functional.
-    -   **Status:** IN PROGRESS
+-   **Issue 1: Bayesian Model Requires Tuning**
+    -   **Attempted fixes:** The weights are exposed via the  endpoint. This is now more of an operational task for the user rather than a development issue.
+    -   **Next debug checklist**: The user can now use the existing API to tune weights based on live trading performance.
+    -   **Why fix this issue and what will be achieved with the fix?** To optimize the bot's profitability.
+    -   **Status:** NOT STARTED (by agent, user can perform this)
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** backend
     -   **Blocked on other issue:** None
--   **Issue 2: Bayesian Model Requires Tuning**
-    -   **Attempted fixes:** The core mathematical bug causing bearish bias was fixed.
-    -   **Next debug checklist**:
-        1.  Review the suggestions in .
-        2.  Expose key model parameters (e.g., , ) to the UI so the user can tune them without code changes.
-        3.  Run the paper trader and analyze the logs to see if the model finds positive edge in liquid () markets.
-    -   **Why fix this issue and what will be achieved with the fix?** The bot may be architecturally sound but will not be profitable without a well-tuned model that can identify real edge.
-    -   **Status:** NOT STARTED
-    -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** backend
-    -   **Blocked on other issue:** Issue 1
--   **Issue 3: Hardcoded HFT/Alpha Strategy Classification**
+-   **Issue 2: Hardcoded HFT/Alpha Strategy Classification**
     -   **Attempted fixes:** None.
     -   **Next debug checklist**:
-        1.  Add a UI section in  for mapping strategies (e.g., ) to a path ('HFT' or 'Alpha').
-        2.  Update  to save and load this new configuration.
-        3.  Modify  in  to use the UI-driven configuration instead of the hardcoded  set.
-    -   **Why fix this issue and what will be achieved with the fix?** This provides the user with full control over capital allocation and performance reporting, aligning with the fully configurable product goal.
+        1.  Add a UI section in  for mapping strategies to a path ('HFT' or 'Alpha').
+        2.  Update  to save and load this configuration.
+        3.  Modify  in  to use the UI-driven configuration.
+    -   **Why fix this issue and what will be achieved with the fix?** Provides the user with full control over capital allocation and performance reporting.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** both
     -   **Blocked on other issue:** None
 
 **In progress Task List**:
--   **Task 1: Debug and Activate Trading Logic**
-    -   **Where to resume:** Continue the debugging process for **Issue 1** in .
-    -   **What will be achieved with this?** A functional trading bot where the Alpha loop successfully evaluates markets and the HFT loop executes trades based on Alpha targets or autonomous scalping logic.
+-   **Task 1: Implement Alpha-State Exit Engine (Task 24 - P0)**
+    -   **Where to resume:**
+        1.  Flesh out the logic for the  class in  according to the hierarchical rules in the prompt (State Check, Global Safety, Whale Zone, Mechanical/Alpha Strategies).
+        2.  Implement the comprehensive unit tests in .
+        3.  Integrate the new  into , completely replacing the old  logic.
+        4.  Purge all legacy exit constants (e.g., ) from the codebase.
+        5.  Build the new Exit Configuration UI tab in , including API endpoints for persistence.
+    -   **What will be achieved with this?** A professional, state-aware, and fully configurable exit management system, replacing the outdated, simplistic logic.
     -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** backend
-    -   **Blocked on something:** This is the primary blocker for the entire system.
+    -   **Should Test frontend/backend/both after fix?** both
+    -   **Blocked on something:** No.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **(P1)** Tune the Bayesian Model parameters (Issue 2).
-    -   **(P1)** Implement configurable HFT/Alpha strategy classification in the UI (Issue 3).
-    -   **(P2)** Add the newly created HFT parameters (, ) to the  UI page.
+    -   **(P1)** Implement configurable HFT/Alpha strategy classification in the UI (Issue 2).
+    -   **(P2)** Add HFT parameters (, ) to the  UI.
 -   **Future Tasks:**
     -   **(P0 - CRITICAL)** Test the fully functional bot in  mode with a small amount of capital.
     -   **(P2)** Pre-populate the RL replay buffer from historical trades on startup.
-    -   **(P3)** Refactor  by breaking out logic into smaller, more manageable modules (e.g., , ).
-    -   **(P3)** AWS Deployment: Clean up heavy ML dependencies.
+    -   **(P3)** Continue refactoring  into smaller modules.
+    -   **(P3)** AWS Deployment: Clean up heavy ML dependencies (, usage: transformers <command> [<args>]
+
+positional arguments:
+  {chat,convert,download,env,run,serve,add-new-model-like,add-fast-image-processor}
+                        transformers command helpers
+    convert             CLI tool to run convert model from original author
+                        checkpoints to Transformers PyTorch checkpoints.
+    run                 Run a pipeline through the CLI
+
+options:
+  -h, --help            show this help message and exit, ).
+    -   **(P3)** Address frontend ESLint warnings.
 
 **Completed work in this session**
--   **P0 Fix: Core Trading Logic:** Refactored  to use the  (Alpha signal) for quoting.
--   **HFT Guardrails & Optimizations:** Implemented Safety Leash to prevent model hallucination and Quote Hysteresis to reduce API calls.
--   **Critical Bayesian Model Fix:** Corrected the math to use **relative log-odds deltas**, fixing a systematic bearish bias.
--   **Market Regime Classifier:** Implemented a system to classify markets as , , or , filtering out illiquid markets early.
--   **Unit Testing:** Created  and added tests for Hysteresis logic.
--   **Full Two-Speed Async Architecture:** Decoupled the HFT and Alpha loops into parallel  tasks in , using a shared context for non-blocking communication. Health metrics for this new architecture are now exposed via the API.
+-   **Task 21: Finalized Dual-Zone Risk Architecture:** Fully implemented, tested with a testing agent, and integrated, handling the  regime correctly.
+-   **Task 22: Implemented Gamma (Whale) Strategy:** Created an isolated  module and a corresponding Gamma Strategy Dashboard on the paper trading UI.
+-   **Task 23: Implemented Unified Portfolio Manager:** A major refactor that consolidated all sizing logic into a new  and deprecated the old .
+-   **Task 23b: Created Portfolio Risk UI:** Built a comprehensive Portfolio Risk tab in the Settings UI, making all sizing parameters (capital allocation, zone caps, strategy math, sector limits) configurable via API.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Heavy ML Dependencies**: , usage: transformers <command> [<args>]
@@ -108,23 +109,19 @@ positional arguments:
     run                 Run a pipeline through the CLI
 
 options:
-  -h, --help            show this help message and exit,  are in  and may not all be necessary, complicating deployment.
--   **Issue 2: Frontend ESLint Warnings**: The frontend has several lint warnings that should be addressed for code quality.
+  -h, --help            show this help message and exit,  in  may complicate deployment.
+-   **Issue 2: Frontend ESLint Warnings**: Present in the frontend codebase.
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork:** Price Fallback Logic ( default).
--   **Recurrence count:** High (in previous forks).
--   **Status:** RESOLVED.
+-   None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Two-Speed Async Architecture:** Decoupling the fast HFT loop from the slow Alpha loop using  and a shared state object (). This is the new core design.
--   **Relative Log-Odds:** The crucial fix to the Bayesian model, where signal deltas are calculated relative to the market price's log-odds, not from an absolute 0.5 anchor.
--   **Market Regimes:** Classifying markets based on liquidity (spread, volume) to apply different trading strategies and filter out ZOMBIE markets.
--   **Quote Hysteresis:** A no-op zone to prevent minor price fluctuations from causing unnecessary cancel/replace API calls.
--   **Safety Leash:** A bounding function that clamps the bot's quotes to a reasonable distance from the market's mid-price to guard against model hallucinations.
+-   **Hierarchical Configuration:** Consolidating all system parameters (risk, sizing, exits) into a single, structured  that loads from a persistent source, making the bot dynamically configurable via API.
+-   **Module Isolation:** Actively breaking up the monolithic  by creating dedicated, single-responsibility modules for key business logic (e.g., , , ).
+-   **Single Source of Truth (SSOT):** The  file has become the definitive source for all configurable parameters, which are then managed through the frontend UI.
 
 **key DB schema**
 -   No changes to the database schema.
@@ -133,58 +130,69 @@ options:
 -   No changes in the core tech stack.
 
 **All files of reference**
--   : The heart of the bot. Massively refactored to implement the full Two-Speed async architecture, market regimes, and the fixed Bayesian model. **This is the primary file to work on.**
--   : Core HFT logic. Contains the Safety Leash and Quote Hysteresis.
--   : New unit test file.
--   : Updated with all recent changes.
+-   : **New file** to contain the hierarchical exit logic (currently empty).
+-   : **Significantly updated** to be the SSOT for all sizing and exit parameters. Now designed to load from a database/file and contains the new exit configuration structure.
+-   : **New file** containing all consolidated position sizing logic.
+-   : **New file** for Whale Zone execution logic.
+-   : The central integration point, which will be updated to use the new .
+-   : The main UI for all settings. It will need a new Exit Configuration tab.
 
 **Areas that need refactoring**:
--   The  file has grown to over 5,000 lines and is becoming monolithic. The core logic components (e.g., Bayesian model, strategy selector, position sizer, async loops) should be broken out into separate, dedicated modules for maintainability.
+-    is the main candidate. The creation of  is the next step in this process.
+-   The old  can be deleted after confirming it's no longer imported anywhere.
 
 **key api endpoints**
--   : This endpoint was updated to include the new Two-Speed architecture health metrics (, , , etc.).
+-   : (New) Manages the unified portfolio risk and sizing parameters.
+-   : (New) Provides data for the Gamma Strategy Dashboard.
+-   **(To be created)** New endpoints for getting and setting the Exit Engine configuration.
 
 **Critical Info for New Agent**
-1.  **MAIN BLOCKER:** The bot is not trading. Your absolute top priority is to debug **Issue 1**. The Two-Speed architecture is in place but is blind because the Alpha loop isn't successfully evaluating markets to create targets, and the HFT scalping isn't triggering. You must trace the data flow in  and  in  to find the filtering or logic error.
-2.  **Two-Speed Architecture is Live:** The bot now runs on two parallel  loops. The fast loop () reads targets from , while the slow loop () writes to it. Do not revert to a single-loop design.
-3.  **Data Reality vs. Code Bugs:** The agent has already fixed numerous code bugs. Be aware that some issues, like a lack of trades, may stem from real market conditions (e.g., all liquid markets having no model edge). The ZOMBIE market filter is an example of correctly handling a data reality issue.
-4.  **Focus on :** Nearly all recent work and the current blocker are located within this single, large file.
+1.  **Your immediate priority is Task 24.** You must implement the Alpha-State Exit Engine. The user has provided a detailed, hierarchical logic flow that must be followed precisely.
+2.  **Follow the established pattern:** The project is moving towards modular, configurable components. For Task 24, this means:
+    -   Implement the logic in the new, isolated .
+    -   Write comprehensive unit tests in .
+    -   Integrate the engine into .
+    -   Build the corresponding UI and API endpoints for full configurability.
+3.  **Purge legacy code.** As you implement the new exit engine, a key part of the task is to find and remove all old, simplistic exit logic and constants (e.g., , ).
+4.  **User Revert:** The user previously asked to revert a change, which the last agent handled correctly. Pay close attention to the latest prompt as the source of truth. The current Task 24 prompt is the correct one to follow.
 
 **documents and test reports created in this job**
 -   
 -   
+-   
+-   
+-    (New, to be implemented)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **user:** Finalize the Two-Speed Architecture with fixes for data blindness, autonomous scalping, and health metrics. (Status: IN PROGRESS).
-2.  **user:** Describe the current order flow between HFT and Alpha strategies. (Status: COMPLETED).
-3.  **user:** Implement Market Regime classifier and replace legacy edge logic. (Status: COMPLETED).
-4.  **user:** The Bayesian math is wrong (absolute vs. relative delta). Refactor it. (Status: COMPLETED).
-5.  **user:** Describe fully how the Bayesian model currently works. (Status: COMPLETED).
-6.  **user:** no trades are being captured. (Status: COMPLETED - Root causes identified and fixed, but now blocked by a new issue).
-7.  **user:** Implement Quote Hysteresis to prevent Order Flickering. (Status: COMPLETED).
-8.  **user:** Implement Safety Leash and create a unit test for Inventory Skew. (Status: COMPLETED).
-9.  **user:** Implement parallel HFT and Alpha execution loops (). (Status: COMPLETED).
-10. **user:** The bot MUST center quotes on , NOT . (Status: COMPLETED).
+1.  **User:** Provided detailed prompt for **Task 24: Alpha-State Exit Engine**. (Status: IN PROGRESS)
+2.  **User:** Asked to revert the previous attempt at Task 24. (Status: COMPLETED)
+3.  **User:** Provided the initial (now outdated) prompt for Task 24. (Status: SUPERSEDED)
+4.  **User:** Asked for a summary of all current exit parameters. (Status: COMPLETED)
+5.  **User:** Requested that all risk/sizing parameters be made configurable in the UI. (Status: COMPLETED via Task 23)
+6.  **User:** Asked for clarification on how Core Zone caps work. (Status: COMPLETED)
+7.  **User:** Provided prompt for **Task 23: Unified Portfolio Manager**. (Status: COMPLETED)
+8.  **User:** Asked for a summary of all exposure limits. (Status: COMPLETED)
+9.  **User:** Suggested adding a Gamma Strategy Dashboard to the UI. (Status: COMPLETED)
+10. **User:** Provided prompt for **Task 22: Gamma Strategy**. (Status: COMPLETED)
 
 **Project Health Check:**
--   **Broken:**
-    -   The core trading functionality is currently inactive. The bot starts, the loops run, but no trades are identified or executed. This is the P0 blocker.
--   **Mocked:**
-    -   The  mode of  simulates trade fills. Live trading is coded but not yet tested.
+-   **Broken:** Nothing is broken. The application is functional.
+-   **Mocked:** The  mode of  simulates trade fills. Live trading is coded but not yet tested.
 
 **3rd Party Integrations**
--   **Polymarket CLOB API:** Integrated via  for real-time order books.
--   **OpenAI GPT-4o-mini:** Used for LLM sentiment analysis via an Emergent Integration within the Alpha loop.
+-   **Polymarket CLOB API:** Integrated via .
+-   **OpenAI GPT-4o-mini:** Used for sentiment analysis.
 
 **Testing status**
--   **Testing agent used after significant changes:** NO
+-   **Testing agent used after significant changes:** YES, for Task 21.
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** []
--   **Known regressions:** The bot went from trading incorrectly (due to the Bayesian bug) to not trading at all. This is a functional regression but an architectural progression, as the underlying system is now more robust but needs debugging to be activated.
+-   **Test files created:** [, , ]
+-   **Known regressions:** None.
 
 **Credentials to test flow:**
 -   **Username:** 
 -   **Password:** 
 
 **What agent forgot to execute**
-The agent has followed the user's instructions diligently. The current non-trading state is not due to a forgotten task, but rather a complex bug that has emerged from the major architectural refactoring of the Two-Speed system. The next step is to debug this new state, not to implement a forgotten feature.</analysis>
+-   The previous agent correctly started Task 24 by creating the necessary files. The full implementation of the logic, tests, and UI for the new Exit Engine is the immediate next step and has not been forgotten.
+-   The task to deprecate/delete  is pending full integration and verification of the new .</analysis>
