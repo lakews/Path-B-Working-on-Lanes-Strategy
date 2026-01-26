@@ -1029,7 +1029,7 @@ class PaperTrader:
         This is "Smart HFT" - we know what Alpha thinks the fair value is,
         so we can post limit orders around that price to capture spread.
         
-        LIQUIDITY UNLOCK v2: Handle MAKER_OPPORTUNITY regime with aggressive penny-ing.
+        Task 21: Simplified to ZOMBIE/MAKER_WIDE/TAKER_TIGHT regimes.
         """
         try:
             market_id = market_data.get('id', '')
