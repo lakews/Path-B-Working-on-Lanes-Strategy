@@ -337,6 +337,39 @@ const Configuration = () => {
       alpha_max_position_pct: 25,
       hft_positions_pct: 5,
       alpha_positions_pct: 2,
+      // Strategy Risk Multipliers
+      strategy_risk_multipliers: {
+        delta_neutral: 1.2,
+        volatility_exploitation: 0.5,
+        alpha_directional: 0.8,
+        arbitrage: 1.1
+      },
+      // Expiry Thresholds
+      expiry_thresholds: {
+        no_entry_hours: 6,
+        high_urgency_hours: 24,
+        medium_urgency_days: 7,
+        normal_days: 30
+      },
+      // Strategy-specific expiry adjustments
+      expiry_strategy_adjustments: {
+        delta_neutral: {
+          disable_within_hours: 48,
+          size_mult_near_expiry: 0.5
+        },
+        volatility_exploitation: {
+          boost_within_days: 7,
+          boost_multiplier: 1.5,
+          disable_within_hours: 6
+        },
+        alpha_directional: {
+          min_confidence_near_expiry: 0.7,
+          disable_within_hours: 6
+        },
+        arbitrage: {
+          disable_within_hours: 6
+        }
+      },
     });
     toast.info('Reset to defaults');
   };
