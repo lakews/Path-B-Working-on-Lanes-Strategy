@@ -585,6 +585,243 @@ const Configuration = () => {
         ))}
       </div>
 
+      {activeTab === 'portfolio' && (
+        <div className="space-y-6">
+          {/* Header with Save and Reset */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Shield className="w-6 h-6 text-cyan-400" />
+                Portfolio Risk Configuration
+              </h2>
+              <p className="text-sm text-white/50 mt-1">Single Source of Truth for ALL sizing parameters</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={resetPortfolioRisk} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white flex items-center gap-2 text-sm">
+                <RefreshCw className="w-4 h-4" />Reset to Defaults
+              </button>
+              <button onClick={savePortfolioRisk} disabled={savingPortfolioRisk} className="px-4 py-2 rounded-lg bg-cyan-500 text-white hover:bg-cyan-600 disabled:opacity-50 flex items-center gap-2 text-sm">
+                <Save className="w-4 h-4" />{savingPortfolioRisk ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+          
+          {/* Capital Allocation */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-green-400" />Capital Allocation
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Deployed Capital %</label>
+                <input type="number" value={portfolioRisk.allocated_capital_pct} onChange={(e) => setPortfolioRisk({...portfolioRisk, allocated_capital_pct: parseFloat(e.target.value)})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="5" min="10" max="100" />
+                <p className="text-[10px] text-white/30 mt-1">% of wallet actively used for trading</p>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Max Open Positions</label>
+                <input type="number" value={portfolioRisk.max_open_positions} onChange={(e) => setPortfolioRisk({...portfolioRisk, max_open_positions: parseInt(e.target.value)})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" min="1" max="200" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Zone Configuration */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Whale Zone */}
+            <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 p-6">
+              <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+                <span className="text-xl">🐋</span>Whale Zone (Price &lt; ${(portfolioRisk.price_zone_threshold * 100).toFixed(0)}¢)
+              </h3>
+              <p className="text-xs text-white/40 mb-4">Cheap assets for convexity/gamma scalping. Uses tick-based spreads.</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Max USD per Trade</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <input type="number" value={portfolioRisk.whale_max_usd} onChange={(e) => setPortfolioRisk({...portfolioRisk, whale_max_usd: parseFloat(e.target.value)})} className="w-full pl-7 pr-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="1" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Max % of Capital</label>
+                  <div className="relative">
+                    <input type="number" value={(portfolioRisk.whale_max_pct * 100).toFixed(1)} onChange={(e) => setPortfolioRisk({...portfolioRisk, whale_max_pct: parseFloat(e.target.value) / 100})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="0.1" min="0.1" max="10" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Max Spread (cents)</label>
+                  <input type="number" value={(portfolioRisk.whale_max_spread_cents * 100).toFixed(0)} onChange={(e) => setPortfolioRisk({...portfolioRisk, whale_max_spread_cents: parseFloat(e.target.value) / 100})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="1" max="10" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Min Liquidity ($)</label>
+                  <input type="number" value={portfolioRisk.whale_min_liquidity} onChange={(e) => setPortfolioRisk({...portfolioRisk, whale_min_liquidity: parseFloat(e.target.value)})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="100" min="100" />
+                </div>
+              </div>
+              
+              <div className="mt-4 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                <p className="text-xs text-white/60">
+                  <strong className="text-indigo-300">Effective Cap:</strong> min(${portfolioRisk.whale_max_usd}, {(portfolioRisk.whale_max_pct * 100).toFixed(1)}% of deployed)
+                </p>
+              </div>
+            </div>
+            
+            {/* Core Zone */}
+            <div className="rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 p-6">
+              <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-cyan-400" />Core Zone (Price ≥ ${(portfolioRisk.price_zone_threshold * 100).toFixed(0)}¢)
+              </h3>
+              <p className="text-xs text-white/40 mb-4">Standard assets for directional Alpha/HFT. Uses percentage spreads.</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Max USD per Trade</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <input type="number" value={portfolioRisk.core_max_usd} onChange={(e) => setPortfolioRisk({...portfolioRisk, core_max_usd: parseFloat(e.target.value)})} className="w-full pl-7 pr-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="10" min="10" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Max % of Capital</label>
+                  <div className="relative">
+                    <input type="number" value={(portfolioRisk.core_max_pct * 100).toFixed(1)} onChange={(e) => setPortfolioRisk({...portfolioRisk, core_max_pct: parseFloat(e.target.value) / 100})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="0.5" min="0.5" max="20" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Taker Spread (Tight)</label>
+                  <input type="number" value={(portfolioRisk.core_taker_spread_pct * 100).toFixed(0)} onChange={(e) => setPortfolioRisk({...portfolioRisk, core_taker_spread_pct: parseFloat(e.target.value) / 100})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="1" max="10" />
+                  <p className="text-[10px] text-white/30">% for Alpha taker</p>
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Maker Spread (Wide)</label>
+                  <input type="number" value={(portfolioRisk.core_maker_spread_pct * 100).toFixed(0)} onChange={(e) => setPortfolioRisk({...portfolioRisk, core_maker_spread_pct: parseFloat(e.target.value) / 100})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="2" max="20" />
+                  <p className="text-[10px] text-white/30">% for HFT maker</p>
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Zombie Spread</label>
+                  <input type="number" value={(portfolioRisk.core_zombie_spread_pct * 100).toFixed(0)} onChange={(e) => setPortfolioRisk({...portfolioRisk, core_zombie_spread_pct: parseFloat(e.target.value) / 100})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="5" max="50" />
+                  <p className="text-[10px] text-white/30">% to skip market</p>
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Min Liquidity ($)</label>
+                  <input type="number" value={portfolioRisk.core_min_liquidity} onChange={(e) => setPortfolioRisk({...portfolioRisk, core_min_liquidity: parseFloat(e.target.value)})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="100" min="100" />
+                </div>
+              </div>
+              
+              <div className="mt-4 p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                <p className="text-xs text-white/60">
+                  <strong className="text-cyan-300">Effective Cap:</strong> min(${portfolioRisk.core_max_usd}, {(portfolioRisk.core_max_pct * 100).toFixed(1)}% of deployed)
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Zone Threshold */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <Sliders className="w-5 h-5 text-amber-400" />Zone Threshold
+            </h3>
+            <div className="flex items-center gap-4">
+              <span className="text-white/60 text-sm">Whale Zone</span>
+              <input type="range" value={portfolioRisk.price_zone_threshold * 100} onChange={(e) => setPortfolioRisk({...portfolioRisk, price_zone_threshold: parseFloat(e.target.value) / 100, whale_price_ceiling: parseFloat(e.target.value) / 100})} className="flex-1 h-2 bg-white/10 rounded-lg" min="5" max="25" step="1" />
+              <span className="text-white font-bold text-xl w-16 text-right">{(portfolioRisk.price_zone_threshold * 100).toFixed(0)}¢</span>
+              <span className="text-white/60 text-sm">Core Zone</span>
+            </div>
+            <p className="text-xs text-white/40 mt-2">Assets priced below this threshold use tick-based spreads (Whale), above use percentage spreads (Core)</p>
+          </div>
+          
+          {/* Strategy Math */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <Brain className="w-5 h-5 text-purple-400" />Strategy Math (Kelly & HFT)
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Kelly Scaling</label>
+                <input type="number" value={portfolioRisk.kelly_scaling_factor} onChange={(e) => setPortfolioRisk({...portfolioRisk, kelly_scaling_factor: parseFloat(e.target.value)})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="0.05" min="0.05" max="1" />
+                <p className="text-[10px] text-white/30">0.25 = Quarter Kelly</p>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Min Kelly</label>
+                <input type="number" value={portfolioRisk.min_kelly_fraction} onChange={(e) => setPortfolioRisk({...portfolioRisk, min_kelly_fraction: parseFloat(e.target.value)})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="0.05" min="0.01" max="0.5" />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Max Kelly</label>
+                <input type="number" value={portfolioRisk.max_kelly_fraction} onChange={(e) => setPortfolioRisk({...portfolioRisk, max_kelly_fraction: parseFloat(e.target.value)})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="0.05" min="0.1" max="1" />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">HFT Unit %</label>
+                <input type="number" value={(portfolioRisk.hft_unit_pct * 100).toFixed(0)} onChange={(e) => setPortfolioRisk({...portfolioRisk, hft_unit_pct: parseFloat(e.target.value) / 100})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="1" max="10" />
+                <p className="text-[10px] text-white/30">% for maker orders</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Liquidity & Exposure */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-blue-400" />Liquidity Constraints
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Max Liquidity Consumption</label>
+                  <div className="flex items-center gap-4">
+                    <input type="range" value={portfolioRisk.max_liquidity_consumption * 100} onChange={(e) => setPortfolioRisk({...portfolioRisk, max_liquidity_consumption: parseFloat(e.target.value) / 100})} className="flex-1 h-2 bg-white/10 rounded-lg" min="1" max="30" step="1" />
+                    <span className="text-white font-bold w-12">{(portfolioRisk.max_liquidity_consumption * 100).toFixed(0)}%</span>
+                  </div>
+                  <p className="text-xs text-white/40 mt-1">Max % of order book depth to consume per trade</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-white/50 mb-1 block">Min Trade ($)</label>
+                    <input type="number" value={portfolioRisk.min_trade_amount} onChange={(e) => setPortfolioRisk({...portfolioRisk, min_trade_amount: parseFloat(e.target.value)})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="1" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/50 mb-1 block">Min Bet Floor ($)</label>
+                    <input type="number" value={portfolioRisk.min_bet_floor} onChange={(e) => setPortfolioRisk({...portfolioRisk, min_bet_floor: parseFloat(e.target.value)})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="1" min="1" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />Exposure Limits
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-white/50 mb-1 block">Max Event Exposure</label>
+                  <div className="flex items-center gap-4">
+                    <input type="range" value={portfolioRisk.max_event_exposure_pct * 100} onChange={(e) => setPortfolioRisk({...portfolioRisk, max_event_exposure_pct: parseFloat(e.target.value) / 100})} className="flex-1 h-2 bg-white/10 rounded-lg" min="5" max="50" step="1" />
+                    <span className="text-white font-bold w-12">{(portfolioRisk.max_event_exposure_pct * 100).toFixed(0)}%</span>
+                  </div>
+                  <p className="text-xs text-white/40 mt-1">Max % of capital per correlated event</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Sector Caps */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-emerald-400" />Sector Allocation Caps
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Object.entries(portfolioRisk.sector_limits || {}).map(([sector, limit]) => (
+                <div key={sector}>
+                  <label className="text-xs text-white/50 mb-1 block capitalize">{sector}</label>
+                  <div className="relative">
+                    <input type="number" value={(limit * 100).toFixed(0)} onChange={(e) => setPortfolioRisk({...portfolioRisk, sector_limits: {...portfolioRisk.sector_limits, [sector]: parseFloat(e.target.value) / 100}})} className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white" step="5" min="5" max="50" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'trading' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="rounded-xl bg-white/5 border border-white/10 p-6">
