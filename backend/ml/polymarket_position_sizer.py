@@ -1,6 +1,20 @@
 """
 Polymarket-Optimized Position Sizing Engine
 
+===========================================================================
+DEPRECATED (Task 23): This module is superseded by:
+  - trading/portfolio_manager.py (Unified Portfolio Manager)
+  - risk_config.py (Single Source of Truth for all constants)
+
+Do NOT use this module for new code. It remains for backward compatibility
+with existing paper_trader.py logic until fully migrated.
+
+Migration Path:
+  from trading.portfolio_manager import get_portfolio_manager
+  pm = get_portfolio_manager()
+  result = pm.calculate_target_size(...)
+===========================================================================
+
 A complete rewrite of position sizing for PREDICTION MARKETS.
 Replaces the incorrect ATR/Standard Kelly approach with:
 
@@ -16,6 +30,7 @@ This engine is designed for continuous trading where sizing must adapt
 to portfolio state (50 trades vs 500 trades).
 """
 import logging
+import warnings
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timezone
 from database import get_db
@@ -26,6 +41,13 @@ from ml.market_classifier import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Emit deprecation warning
+warnings.warn(
+    "polymarket_position_sizer is deprecated. Use trading.portfolio_manager instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
 # =============================================================================
