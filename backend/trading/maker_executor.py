@@ -459,8 +459,9 @@ class MakerOrderExecutor:
             'max_alpha_deviation': self.config.get('max_alpha_deviation', 0.15)
         }
         
+        mid_str = f"{market_mid:.4f}" if market_mid is not None else "N/A"
         logger.debug(
-            f"[QUOTES] Theo={theoretical_price:.4f} | Mid={market_mid:.4f if market_mid else 'N/A'} | "
+            f"[QUOTES] Theo={theoretical_price:.4f} | Mid={mid_str} | "
             f"Skew={price_skew:.4f} | OFI={ofi:.2f} | "
             f"Bid={my_bid_price:.4f} Ask={my_ask_price:.4f} | Clamped={was_clamped}"
         )
