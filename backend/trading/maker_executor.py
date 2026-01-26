@@ -196,7 +196,7 @@ class MakerOrderExecutor:
         self._circuit_breaker_until: Optional[datetime] = None
         
         # Stats tracking
-199|        self.stats = {
+        self.stats = {
             'maker_attempts': 0,
             'maker_fills': 0,
             'taker_attempts': 0,
