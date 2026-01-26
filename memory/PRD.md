@@ -17,6 +17,39 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 26, 2026)
 
+### January 26, 2026 - Session 36 (Task 23b: Configurable Portfolio Risk - COMPLETE)
+
+- ✅ **TASK 23b COMPLETE: All Risk Parameters Now Configurable via Settings UI**
+  
+  **Purpose**: Make ALL sizing and risk parameters configurable from the Settings UI, with current values as defaults and a Reset button.
+
+  **New API Endpoints**:
+  - `GET /api/config/portfolio-risk` - Get current portfolio risk config
+  - `POST /api/config/portfolio-risk` - Save portfolio risk config to DB
+  - `POST /api/config/portfolio-risk/reset` - Reset to defaults
+
+  **New Settings Tab: "Portfolio Risk"**
+  Located as the FIRST tab in Configuration page with sections:
+  1. **Capital Allocation**: Deployed %, Max Open Positions
+  2. **Whale Zone** (🐋): Max USD ($15), Max % (1%), Spread (3¢), Min Liquidity
+  3. **Core Zone** (📈): Max USD ($100), Max % (3%), Taker/Maker/Zombie spreads
+  4. **Zone Threshold**: Slider to adjust $0.10 boundary
+  5. **Strategy Math**: Kelly Scaling (0.25), Min/Max Kelly, HFT Unit %
+  6. **Liquidity Constraints**: Max consumption (10%), Min trade/bet
+  7. **Exposure Limits**: Max Event (15%)
+  8. **Sector Allocation Caps**: All 9 sectors configurable
+
+  **Key Features**:
+  - "Reset to Defaults" button restores all values
+  - "Save Changes" persists to MongoDB
+  - RISK singleton loads from DB on startup
+  - This is now the ONLY source of truth for sizing
+
+  **Files Modified**:
+  - `/app/backend/risk_config.py` - Added DEFAULTS dict, to_dict(), load_from_dict(), reset_to_defaults()
+  - `/app/backend/server.py` - Added 3 new API endpoints
+  - `/app/frontend/src/pages/Configuration.js` - Added Portfolio Risk tab and UI
+
 ### January 26, 2026 - Session 36 (Task 23: Unified Portfolio Manager - COMPLETE)
 
 - ✅ **TASK 23 COMPLETE: Unified Portfolio Manager**
