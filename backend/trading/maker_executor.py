@@ -513,11 +513,39 @@ class MakerOrderExecutor:
                 reason="invalid_orderbook_no_bid_ask"
             )
         
+        # ==========================================================================
+        # CRITICAL: USE THEORETICAL PRICE (ALPHA) AS QUOTE CENTER
+        # ==========================================================================
+        # We trade OUR Alpha signal, not the market mid-price.
+        # If theoretical_price is not provided, fall back to market mid (not ideal).
+        market_mid = (best_bid + best_ask) / 2
+        
+        if theoretical_price is not None:
+            quote_center = theoretical_price
+            logger.info(f"[ALPHA] Using theoretical_price={theoretical_price:.4f} as quote center "
+                       f"(market_mid={market_mid:.4f}, diff={theoretical_price - market_mid:+.4f})")
+        else:
+            quote_center = market_mid
+            logger.warning(f"[ALPHA] No theoretical_price provided, falling back to market_mid={market_mid:.4f}")
+        
+        # Get market_id for inventory tracking
+        market_id = market_data.get('condition_id', market_data.get('market_id', token_id or 'unknown'))
+        
+        # Calculate adjusted quotes using HFT microstructure math
+        # This applies inventory skew and OFI adjustments centered on our Alpha
+        my_bid, my_ask, quote_debug = self.calculate_adjusted_quotes(
+            theoretical_price=quote_center,
+            spread=spread,
+            market_id=market_id,
+            order_book=orderbook
+        )
+        
         spread_pct = spread / max(best_ask, 0.01)
         volume_24h = market_data.get('volume_24h', 0)
         
         logger.info(f"[EXEC] {self.mode.value.upper()} | {side} ${size:.2f} | "
-                   f"Spread: {spread:.4f} ({spread_pct:.2%}) | Edge: {edge:.2%}")
+                   f"Spread: {spread:.4f} ({spread_pct:.2%}) | Edge: {edge:.2%} | "
+                   f"Alpha={quote_center:.4f} | Bid={my_bid:.4f} Ask={my_ask:.4f}")
         
         # Decision tree for execution strategy
         if edge >= self.config['min_edge_for_aggressive_taker']:
@@ -527,10 +555,10 @@ class MakerOrderExecutor:
                 token_id, "high_edge"
             )
         else:
-            # Try maker first
+            # Try maker first - using OUR calculated quotes, not market quotes
             result = await self._try_maker_fill(
-                side, size, best_bid, best_ask, spread, 
-                volume_24h, edge, token_id
+                side, size, my_bid, my_ask, spread, 
+                volume_24h, edge, token_id, market_id
             )
             
             if result.fill_status == FillStatus.UNFILLED:
