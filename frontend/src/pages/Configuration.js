@@ -1140,6 +1140,311 @@ const Configuration = () => {
               </div>
             </div>
           </div>
+
+          {/* HFT Execution Parameters */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">HFT Execution Parameters</h3>
+                  <p className="text-xs text-white/50">Inventory skew and order flow imbalance settings</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setConfig({...config, hft_execution: {
+                  max_inventory_usd: 1000, skew_factor: 0.05, ofi_threshold: 0.6, ofi_adjustment: 0.01, ofi_levels: 3
+                }})}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 text-xs font-medium transition"
+              >
+                Reset to Defaults
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>Max Inventory</span>
+                  <span className="text-orange-300">${config.hft_execution?.max_inventory_usd || 1000}</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={config.hft_execution?.max_inventory_usd || 1000} 
+                  onChange={(e) => setConfig({...config, hft_execution: {...config.hft_execution, max_inventory_usd: parseInt(e.target.value)}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="100" max="10000" step="100" 
+                />
+                <p className="text-xs text-white/40 mt-2">Max USD before full skew</p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>Skew Factor</span>
+                  <span className="text-orange-300">{((config.hft_execution?.skew_factor || 0.05) * 100).toFixed(1)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.hft_execution?.skew_factor || 0.05) * 100} 
+                  onChange={(e) => setConfig({...config, hft_execution: {...config.hft_execution, skew_factor: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="1" max="20" step="0.5" 
+                />
+                <p className="text-xs text-white/40 mt-2">Inventory skew sensitivity</p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>OFI Threshold</span>
+                  <span className="text-orange-300">{((config.hft_execution?.ofi_threshold || 0.6) * 100).toFixed(0)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.hft_execution?.ofi_threshold || 0.6) * 100} 
+                  onChange={(e) => setConfig({...config, hft_execution: {...config.hft_execution, ofi_threshold: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="30" max="90" step="5" 
+                />
+                <p className="text-xs text-white/40 mt-2">Trigger for OFI adjustment</p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>OFI Adjustment</span>
+                  <span className="text-orange-300">{((config.hft_execution?.ofi_adjustment || 0.01) * 100).toFixed(1)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.hft_execution?.ofi_adjustment || 0.01) * 100} 
+                  onChange={(e) => setConfig({...config, hft_execution: {...config.hft_execution, ofi_adjustment: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="0.5" max="5" step="0.5" 
+                />
+                <p className="text-xs text-white/40 mt-2">Price shift on OFI trigger</p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>OFI Book Levels</span>
+                  <span className="text-orange-300">{config.hft_execution?.ofi_levels || 3}</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={config.hft_execution?.ofi_levels || 3} 
+                  onChange={(e) => setConfig({...config, hft_execution: {...config.hft_execution, ofi_levels: parseInt(e.target.value)}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="1" max="10" step="1" 
+                />
+                <p className="text-xs text-white/40 mt-2">Order book depth for OFI</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Spread Policy Parameters */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Spread Policy</h3>
+                  <p className="text-xs text-white/50">Max spreads, fees, and EV calculation parameters</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setConfig({...config, spread_policy: {
+                  max_spread_hft: 0.25, max_spread_alpha: 0.15, max_spread_aggressive: 0.06,
+                  min_spread_maker: 0.005, maker_spread_capture: 0.50, adverse_selection_cost: 0.005, taker_fee: 0.02
+                }})}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 text-xs font-medium transition"
+              >
+                Reset to Defaults
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>Max Spread HFT</span>
+                  <span className="text-blue-300">{((config.spread_policy?.max_spread_hft || 0.25) * 100).toFixed(0)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.spread_policy?.max_spread_hft || 0.25) * 100} 
+                  onChange={(e) => setConfig({...config, spread_policy: {...config.spread_policy, max_spread_hft: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="5" max="50" step="1" 
+                />
+              </div>
+
+              <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>Max Spread Alpha</span>
+                  <span className="text-purple-300">{((config.spread_policy?.max_spread_alpha || 0.15) * 100).toFixed(0)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.spread_policy?.max_spread_alpha || 0.15) * 100} 
+                  onChange={(e) => setConfig({...config, spread_policy: {...config.spread_policy, max_spread_alpha: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="5" max="30" step="1" 
+                />
+              </div>
+
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>Max Aggressive</span>
+                  <span className="text-green-300">{((config.spread_policy?.max_spread_aggressive || 0.06) * 100).toFixed(0)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.spread_policy?.max_spread_aggressive || 0.06) * 100} 
+                  onChange={(e) => setConfig({...config, spread_policy: {...config.spread_policy, max_spread_aggressive: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="1" max="15" step="1" 
+                />
+              </div>
+
+              <div className="p-4 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>Min Spread Maker</span>
+                  <span className="text-cyan-300">{((config.spread_policy?.min_spread_maker || 0.005) * 100).toFixed(1)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.spread_policy?.min_spread_maker || 0.005) * 100} 
+                  onChange={(e) => setConfig({...config, spread_policy: {...config.spread_policy, min_spread_maker: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="0.1" max="2" step="0.1" 
+                />
+              </div>
+
+              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>Spread Capture</span>
+                  <span className="text-amber-300">{((config.spread_policy?.maker_spread_capture || 0.50) * 100).toFixed(0)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.spread_policy?.maker_spread_capture || 0.50) * 100} 
+                  onChange={(e) => setConfig({...config, spread_policy: {...config.spread_policy, maker_spread_capture: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="20" max="80" step="5" 
+                />
+                <p className="text-xs text-white/40 mt-1">% of spread captured as maker</p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>Adverse Selection</span>
+                  <span className="text-red-300">{((config.spread_policy?.adverse_selection_cost || 0.005) * 100).toFixed(1)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.spread_policy?.adverse_selection_cost || 0.005) * 100} 
+                  onChange={(e) => setConfig({...config, spread_policy: {...config.spread_policy, adverse_selection_cost: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="0.1" max="3" step="0.1" 
+                />
+                <p className="text-xs text-white/40 mt-1">Cost of being picked off</p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-pink-500/10 border border-pink-500/20">
+                <div className="flex justify-between text-xs text-white/50 mb-1">
+                  <span>Taker Fee</span>
+                  <span className="text-pink-300">{((config.spread_policy?.taker_fee || 0.02) * 100).toFixed(1)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.spread_policy?.taker_fee || 0.02) * 100} 
+                  onChange={(e) => setConfig({...config, spread_policy: {...config.spread_policy, taker_fee: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="0" max="5" step="0.1" 
+                />
+                <p className="text-xs text-white/40 mt-1">Fee for market orders</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Variance Sizing (Tail Risk) */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Variance Sizing (Tail Risk Kill Switch)</h3>
+                  <p className="text-xs text-white/50">Price thresholds where trading is completely disabled</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setConfig({...config, variance_sizing: { kill_switch_low: 0.03, kill_switch_high: 0.97 }})}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 text-xs font-medium transition"
+              >
+                Reset to Defaults
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                <div className="flex justify-between text-sm text-white/70 mb-2">
+                  <span>Kill Switch LOW</span>
+                  <span className="text-red-400 font-mono text-lg">{((config.variance_sizing?.kill_switch_low || 0.03) * 100).toFixed(0)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.variance_sizing?.kill_switch_low || 0.03) * 100} 
+                  onChange={(e) => setConfig({...config, variance_sizing: {...config.variance_sizing, kill_switch_low: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-2 bg-white/10 rounded-lg" 
+                  min="1" max="10" step="0.5" 
+                />
+                <p className="text-xs text-red-300 mt-2">No trades when price &lt; {((config.variance_sizing?.kill_switch_low || 0.03) * 100).toFixed(0)}%</p>
+                <p className="text-xs text-white/40 mt-1">Protects against lottery ticket losses</p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                <div className="flex justify-between text-sm text-white/70 mb-2">
+                  <span>Kill Switch HIGH</span>
+                  <span className="text-red-400 font-mono text-lg">{((config.variance_sizing?.kill_switch_high || 0.97) * 100).toFixed(0)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={(config.variance_sizing?.kill_switch_high || 0.97) * 100} 
+                  onChange={(e) => setConfig({...config, variance_sizing: {...config.variance_sizing, kill_switch_high: parseFloat(e.target.value) / 100}})} 
+                  className="w-full h-2 bg-white/10 rounded-lg" 
+                  min="90" max="99" step="0.5" 
+                />
+                <p className="text-xs text-red-300 mt-2">No trades when price &gt; {((config.variance_sizing?.kill_switch_high || 0.97) * 100).toFixed(0)}%</p>
+                <p className="text-xs text-white/40 mt-1">Protects against near-certain outcomes</p>
+              </div>
+            </div>
+
+            {/* Visual representation */}
+            <div className="mt-4 p-4 rounded-lg bg-slate-800/50">
+              <p className="text-xs text-white/50 mb-2">Trading Zone Visualization</p>
+              <div className="relative h-8 bg-gradient-to-r from-red-500/30 via-green-500/30 to-red-500/30 rounded-lg overflow-hidden">
+                <div 
+                  className="absolute top-0 bottom-0 left-0 bg-red-500/50" 
+                  style={{width: `${(config.variance_sizing?.kill_switch_low || 0.03) * 100}%`}}
+                />
+                <div 
+                  className="absolute top-0 bottom-0 right-0 bg-red-500/50" 
+                  style={{width: `${(1 - (config.variance_sizing?.kill_switch_high || 0.97)) * 100}%`}}
+                />
+                <div className="absolute inset-0 flex items-center justify-center text-xs text-white/70">
+                  Trading Zone: {((config.variance_sizing?.kill_switch_low || 0.03) * 100).toFixed(0)}% - {((config.variance_sizing?.kill_switch_high || 0.97) * 100).toFixed(0)}%
+                </div>
+              </div>
+              <div className="flex justify-between text-xs text-white/40 mt-1">
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
