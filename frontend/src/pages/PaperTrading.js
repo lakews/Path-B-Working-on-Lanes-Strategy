@@ -2652,11 +2652,11 @@ const PaperTrading = () => {
   };
 
   useEffect(() => {
-    fetchData(); fetchSessions(); fetchRlStats(); fetchOptimizerParams(); fetchAiStats(); fetchCumulativeStats(); fetchExitModeConfig();
+    fetchData(); fetchSessions(); fetchRlStats(); fetchOptimizerParams(); fetchAiStats(); fetchGammaStats(); fetchCumulativeStats(); fetchExitModeConfig();
     const pollingInterval = wsConnected ? 10000 : 5000;
     const interval = setInterval(() => {
       fetchData(); fetchCumulativeStats(); fetchSavedConfig();
-      if (running) { fetchRlStats(); fetchAiStats(); }
+      if (running) { fetchRlStats(); fetchAiStats(); fetchGammaStats(); }
     }, pollingInterval);
     return () => clearInterval(interval);
   }, [fetchData, running, wsConnected, fetchSavedConfig]);
