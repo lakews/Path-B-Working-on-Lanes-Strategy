@@ -1247,10 +1247,16 @@ class PaperTrader:
                 
                 # Filter by asset class first
                 filtered_markets = []
+                asset_class_counts = {}
                 for m in markets:
                     asset_class = m.get('asset_class', m.get('category', 'unknown')).lower()
+                    asset_class_counts[asset_class] = asset_class_counts.get(asset_class, 0) + 1
                     if asset_class in [ac.lower() for ac in self.enabled_asset_classes]:
                         filtered_markets.append(m)
+                
+                logger.debug(f"[ALPHA] Asset class distribution: {asset_class_counts}")
+                logger.debug(f"[ALPHA] Enabled classes: {self.enabled_asset_classes}")
+                logger.debug(f"[ALPHA] Filtered to {len(filtered_markets)} from {len(markets)} markets")
                 
                 # Take top N markets by volume
                 filtered_markets = sorted(
