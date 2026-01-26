@@ -1178,6 +1178,32 @@ class PaperTrader:
                     
                     market_id = market_data.get('id')
                     
+                    # ==========================================================
+                    # FIX: Fetch fresh orderbook (The Brain needs eyes)
+                    # ==========================================================
+                    # Without orderbook data, regime classification defaults to
+                    # TAKER_TIGHT and we miss liquidity information
+                    try:
+                        token_ids = market_data.get('clobTokenIds', market_data.get('tokens', []))
+                        if token_ids and isinstance(token_ids, list) and len(token_ids) > 0:
+                            from data.polymarket_api import PolymarketAPI
+                            async with PolymarketAPI() as api:
+                                # Fetch YES token orderbook
+                                order_book_data = await api.get_order_book(token_ids[0])
+                                if order_book_data.get('bids') and order_book_data.get('asks'):
+                                    market_data['order_book'] = order_book_data
+                                    market_data['order_book_token'] = 'YES'
+                                    
+                                    # Extract best bid/ask for quick access
+                                    bids = order_book_data['bids']
+                                    asks = order_book_data['asks']
+                                    market_data['best_bid'] = float(bids[0]['price']) if bids else 0
+                                    market_data['best_ask'] = float(asks[0]['price']) if asks else 1
+                                    
+                                    logger.debug(f"[ALPHA] Fetched orderbook for {market_id[:16]}...")
+                    except Exception as e:
+                        logger.debug(f"[ALPHA] Could not fetch orderbook for {market_id[:16]}: {e}")
+                    
                     # Run full Alpha analysis (Bayesian, signals, regime)
                     analysis = await self._run_alpha_analysis(market_data)
                     
