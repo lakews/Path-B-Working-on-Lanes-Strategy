@@ -18,6 +18,7 @@ from ml.signal_fusion import SignalFusionEngine
 from ml.social_sentiment import SocialSentimentAnalyzer
 from ml.enhanced_sentiment import get_enhanced_sentiment_analyzer
 from trading.maker_executor import get_maker_executor, MakerOrderExecutor
+from trading.gamma_strategy import get_gamma_trader, GammaTrader, GammaOrderType
 from config import config, QUALITY_FILTERS, SPREAD_RULES, RISK_PARAMS
 import numpy as np
 from threading import Lock
