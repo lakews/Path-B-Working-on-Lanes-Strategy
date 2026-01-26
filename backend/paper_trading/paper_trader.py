@@ -1473,9 +1473,7 @@ class PaperTrader:
             }
             
         except Exception as e:
-            import traceback
-            logger.error(f"[ALPHA-ERROR] Error analyzing market {market_id[:16] if market_id else 'unknown'}: {e}")
-            logger.error(f"[ALPHA-ERROR] Traceback: {traceback.format_exc()}")
+            logger.debug(f"[ALPHA] Error analyzing market: {e}")
             return None
     
     async def _execute_alpha_trade(self, market_data: Dict, analysis: Dict):
