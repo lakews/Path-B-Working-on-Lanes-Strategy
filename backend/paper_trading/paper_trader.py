@@ -498,10 +498,10 @@ class PaperTrader:
             'ofi_levels': 3
         }
         
-        # Spread policy (defaults)
+        # Spread policy (defaults) - LIQUIDITY UNLOCK: Widened HFT spread tolerance
         self.spread_policy_config = {
-            'max_spread_hft': 0.25,
-            'max_spread_alpha': 0.15,
+            'max_spread_hft': 0.35,        # Widened from 0.25 to embrace Golden Zone
+            'max_spread_alpha': 0.20,      # Widened from 0.15 for Alpha trades
             'max_spread_aggressive': 0.06,
             'min_spread_maker': 0.005,
             'maker_spread_capture': 0.50,
