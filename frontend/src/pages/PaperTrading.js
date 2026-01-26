@@ -767,6 +767,231 @@ const HftAlphaPerformanceCard = ({ executionPathStats, showLive = false }) => {
   );
 };
 
+// Gamma Strategy Dashboard - Whale Zone Statistics (Task 22)
+const GammaDashboardCard = ({ gammaStats, showLive = false }) => {
+  if (!gammaStats || !gammaStats.gamma_stats) {
+    return (
+      <div className="rounded-xl bg-gradient-to-br from-slate-900/50 to-slate-800/30 border border-white/10 p-5">
+        <h4 className="text-sm font-semibold text-white/60 mb-3 flex items-center gap-2">
+          <span className="text-xl">🐋</span>
+          Gamma Strategy (Whale Zone)
+        </h4>
+        <p className="text-xs text-white/40">Start trading to see whale zone statistics</p>
+      </div>
+    );
+  }
+
+  const stats = gammaStats.gamma_stats;
+  const summary = gammaStats.summary || {};
+  const config = gammaStats.config || {};
+  const whalePositions = gammaStats.whale_positions || [];
+
+  // Entry breakdown
+  const totalEntries = summary.total_entries || 0;
+  const gapOpps = stats.gap_opportunities || 0;
+  const wallSnipes = stats.wall_snipes || 0;
+  const wallJoins = stats.wall_joins || 0;
+
+  // Exit breakdown
+  const totalExits = summary.total_exits || 0;
+  const freeRolls = stats.free_rolls || 0;
+  const moonbags = stats.moonbags || 0;
+  const stopLosses = stats.stop_losses || 0;
+
+  // Skips
+  const skippedExpensive = stats.skipped_expensive || 0;
+  const skippedMaxPos = stats.skipped_max_position || 0;
+
+  // Calculate percentages for entry pie
+  const entryData = [
+    { name: 'Gap', value: gapOpps, color: '#06b6d4' },
+    { name: 'Snipe', value: wallSnipes, color: '#f59e0b' },
+    { name: 'Join', value: wallJoins, color: '#8b5cf6' },
+  ].filter(d => d.value > 0);
+
+  // Calculate percentages for exit pie
+  const exitData = [
+    { name: 'Free Roll (2x)', value: freeRolls, color: '#10b981' },
+    { name: 'Moonbag (5x)', value: moonbags, color: '#f59e0b' },
+    { name: 'Stop Loss', value: stopLosses, color: '#ef4444' },
+  ].filter(d => d.value > 0);
+
+  return (
+    <div className="rounded-xl bg-gradient-to-br from-indigo-950/30 to-slate-900/50 border border-indigo-500/20 p-5">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+          <span className="text-xl">🐋</span>
+          Gamma Strategy (Whale Zone)
+        </h4>
+        <div className="flex items-center gap-2">
+          {showLive && totalEntries > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />ACTIVE
+            </span>
+          )}
+          <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px]">
+            &lt;${(config.whale_price_ceiling * 100 || 10).toFixed(0)}¢
+          </span>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        {/* Total Orders */}
+        <div className="bg-black/30 rounded-lg p-3 border border-white/5">
+          <p className="text-[10px] text-white/40 mb-1">Orders Generated</p>
+          <p className="text-xl font-bold font-mono text-white">{stats.orders_generated || 0}</p>
+        </div>
+        
+        {/* Whale Positions */}
+        <div className="bg-black/30 rounded-lg p-3 border border-white/5">
+          <p className="text-[10px] text-white/40 mb-1">Whale Positions</p>
+          <p className="text-xl font-bold font-mono text-indigo-400">{summary.whale_positions_count || 0}</p>
+        </div>
+        
+        {/* Whale P&L */}
+        <div className="bg-black/30 rounded-lg p-3 border border-white/5">
+          <p className="text-[10px] text-white/40 mb-1">Whale P&L</p>
+          <p className={`text-xl font-bold font-mono ${(summary.whale_unrealized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {(summary.whale_unrealized_pnl || 0) >= 0 ? '+' : ''}${(summary.whale_unrealized_pnl || 0).toFixed(2)}
+          </p>
+        </div>
+        
+        {/* Max Position */}
+        <div className="bg-black/30 rounded-lg p-3 border border-white/5">
+          <p className="text-[10px] text-white/40 mb-1">Max Position</p>
+          <p className="text-xl font-bold font-mono text-white/70">${config.whale_max_position || 15}</p>
+        </div>
+      </div>
+
+      {/* Entry & Exit Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        {/* Entry Strategies */}
+        <div className="bg-black/20 rounded-lg p-4 border border-white/5">
+          <h5 className="text-xs font-semibold text-white/70 mb-3 flex items-center gap-2">
+            <ArrowUpRight className="w-3 h-3 text-cyan-400" />
+            Entry Strategies ({totalEntries})
+          </h5>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                <span className="text-xs text-white/60">Gap (Bid Inside)</span>
+              </div>
+              <span className="text-sm font-mono text-cyan-400">{gapOpps}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-amber-400" />
+                <span className="text-xs text-white/60">Wall Snipe (Taker)</span>
+              </div>
+              <span className="text-sm font-mono text-amber-400">{wallSnipes}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-violet-400" />
+                <span className="text-xs text-white/60">Wall Join (Maker)</span>
+              </div>
+              <span className="text-sm font-mono text-violet-400">{wallJoins}</span>
+            </div>
+          </div>
+          {/* Progress bar showing distribution */}
+          {totalEntries > 0 && (
+            <div className="mt-3 h-2 bg-white/5 rounded-full overflow-hidden flex">
+              {gapOpps > 0 && <div className="h-full bg-cyan-500" style={{ width: `${(gapOpps / totalEntries) * 100}%` }} />}
+              {wallSnipes > 0 && <div className="h-full bg-amber-500" style={{ width: `${(wallSnipes / totalEntries) * 100}%` }} />}
+              {wallJoins > 0 && <div className="h-full bg-violet-500" style={{ width: `${(wallJoins / totalEntries) * 100}%` }} />}
+            </div>
+          )}
+        </div>
+
+        {/* Exit Strategies */}
+        <div className="bg-black/20 rounded-lg p-4 border border-white/5">
+          <h5 className="text-xs font-semibold text-white/70 mb-3 flex items-center gap-2">
+            <ArrowDownRight className="w-3 h-3 text-rose-400" />
+            Exit Strategies ({totalExits})
+          </h5>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-xs text-white/60">Free Roll (2x)</span>
+              </div>
+              <span className="text-sm font-mono text-emerald-400">{freeRolls}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-amber-400" />
+                <span className="text-xs text-white/60">Moonbag (5x)</span>
+              </div>
+              <span className="text-sm font-mono text-amber-400">{moonbags}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-rose-400" />
+                <span className="text-xs text-white/60">Stop Loss (0.5x)</span>
+              </div>
+              <span className="text-sm font-mono text-rose-400">{stopLosses}</span>
+            </div>
+          </div>
+          {/* Progress bar showing distribution */}
+          {totalExits > 0 && (
+            <div className="mt-3 h-2 bg-white/5 rounded-full overflow-hidden flex">
+              {freeRolls > 0 && <div className="h-full bg-emerald-500" style={{ width: `${(freeRolls / totalExits) * 100}%` }} />}
+              {moonbags > 0 && <div className="h-full bg-amber-500" style={{ width: `${(moonbags / totalExits) * 100}%` }} />}
+              {stopLosses > 0 && <div className="h-full bg-rose-500" style={{ width: `${(stopLosses / totalExits) * 100}%` }} />}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Whale Positions List */}
+      {whalePositions.length > 0 && (
+        <div className="bg-black/20 rounded-lg p-4 border border-white/5">
+          <h5 className="text-xs font-semibold text-white/70 mb-3 flex items-center gap-2">
+            <span className="text-sm">🐋</span>
+            Active Whale Positions ({whalePositions.length})
+          </h5>
+          <div className="space-y-2 max-h-32 overflow-y-auto">
+            {whalePositions.map((pos, idx) => (
+              <div key={idx} className="flex items-center justify-between text-xs bg-white/5 rounded px-2 py-1.5">
+                <div className="flex items-center gap-2">
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${pos.side === 'YES' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                    {pos.side}
+                  </span>
+                  <span className="text-white/60 font-mono">{pos.market_id}...</span>
+                  {pos.free_roll_done && (
+                    <span className="px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[9px]">FR✓</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-white/40 font-mono">${pos.size?.toFixed(2)}</span>
+                  <span className={`font-mono ${(pos.unrealized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {(pos.unrealized_pnl || 0) >= 0 ? '+' : ''}{(pos.unrealized_pnl || 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Skip Stats */}
+      {(skippedExpensive > 0 || skippedMaxPos > 0) && (
+        <div className="mt-3 flex items-center gap-4 text-[10px] text-white/40">
+          {skippedExpensive > 0 && (
+            <span>Skipped (expensive): {skippedExpensive}</span>
+          )}
+          {skippedMaxPos > 0 && (
+            <span>Skipped (max pos): {skippedMaxPos}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Position Card Component with Expiry Indicator
 // Sizing Breakdown Modal - Shows detailed position sizing calculation
 const SizingBreakdownModal = ({ isOpen, position, onClose }) => {
