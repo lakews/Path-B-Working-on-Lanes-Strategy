@@ -1162,6 +1162,92 @@ async def get_config():
             # Event Caps (configurable)
             "event_caps": saved_config.get("event_caps", DEFAULT_EVENT_CAPS) if saved_config else DEFAULT_EVENT_CAPS,
             "event_caps_default": DEFAULT_EVENT_CAPS,
+            
+            # ==============================================================
+            # TWO-SPEED ARCHITECTURE CONFIGURATION (HFT/Alpha)
+            # ==============================================================
+            "hft_allocation_pct": saved_config.get("hft_allocation_pct", 40) if saved_config else 40,
+            "alpha_allocation_pct": saved_config.get("alpha_allocation_pct", 60) if saved_config else 60,
+            "hft_max_position_pct": saved_config.get("hft_max_position_pct", 10) if saved_config else 10,
+            "alpha_max_position_pct": saved_config.get("alpha_max_position_pct", 25) if saved_config else 25,
+            "hft_positions_pct": saved_config.get("hft_positions_pct", 5) if saved_config else 5,
+            "alpha_positions_pct": saved_config.get("alpha_positions_pct", 2) if saved_config else 2,
+            # Strategy Risk Multipliers
+            "strategy_risk_multipliers": saved_config.get("strategy_risk_multipliers", {
+                "delta_neutral": 1.2,
+                "volatility_exploitation": 0.5,
+                "alpha_directional": 0.8,
+                "arbitrage": 1.1
+            }) if saved_config else {
+                "delta_neutral": 1.2,
+                "volatility_exploitation": 0.5,
+                "alpha_directional": 0.8,
+                "arbitrage": 1.1
+            },
+            # Expiry Thresholds
+            "expiry_thresholds": saved_config.get("expiry_thresholds", {
+                "no_entry_hours": 6,
+                "high_urgency_hours": 24,
+                "medium_urgency_days": 7,
+                "normal_days": 30
+            }) if saved_config else {
+                "no_entry_hours": 6,
+                "high_urgency_hours": 24,
+                "medium_urgency_days": 7,
+                "normal_days": 30
+            },
+            # Strategy Expiry Adjustments
+            "expiry_strategy_adjustments": saved_config.get("expiry_strategy_adjustments", {
+                "delta_neutral": {"disable_within_hours": 48, "size_mult_near_expiry": 0.5},
+                "volatility_exploitation": {"boost_within_days": 7, "boost_multiplier": 1.5, "disable_within_hours": 6},
+                "alpha_directional": {"min_confidence_near_expiry": 0.7, "disable_within_hours": 6},
+                "arbitrage": {"disable_within_hours": 6}
+            }) if saved_config else {
+                "delta_neutral": {"disable_within_hours": 48, "size_mult_near_expiry": 0.5},
+                "volatility_exploitation": {"boost_within_days": 7, "boost_multiplier": 1.5, "disable_within_hours": 6},
+                "alpha_directional": {"min_confidence_near_expiry": 0.7, "disable_within_hours": 6},
+                "arbitrage": {"disable_within_hours": 6}
+            },
+            # HFT Execution Parameters
+            "hft_execution": saved_config.get("hft_execution", {
+                "max_inventory_usd": 1000,
+                "skew_factor": 0.05,
+                "ofi_threshold": 0.6,
+                "ofi_adjustment": 0.01,
+                "ofi_levels": 3
+            }) if saved_config else {
+                "max_inventory_usd": 1000,
+                "skew_factor": 0.05,
+                "ofi_threshold": 0.6,
+                "ofi_adjustment": 0.01,
+                "ofi_levels": 3
+            },
+            # Spread Policy
+            "spread_policy": saved_config.get("spread_policy", {
+                "max_spread_hft": 0.25,
+                "max_spread_alpha": 0.15,
+                "max_spread_aggressive": 0.06,
+                "min_spread_maker": 0.005,
+                "maker_spread_capture": 0.50,
+                "adverse_selection_cost": 0.005,
+                "taker_fee": 0.02
+            }) if saved_config else {
+                "max_spread_hft": 0.25,
+                "max_spread_alpha": 0.15,
+                "max_spread_aggressive": 0.06,
+                "min_spread_maker": 0.005,
+                "maker_spread_capture": 0.50,
+                "adverse_selection_cost": 0.005,
+                "taker_fee": 0.02
+            },
+            # Variance Sizing (Tail Risk)
+            "variance_sizing": saved_config.get("variance_sizing", {
+                "kill_switch_low": 0.03,
+                "kill_switch_high": 0.97
+            }) if saved_config else {
+                "kill_switch_low": 0.03,
+                "kill_switch_high": 0.97
+            },
         }
     except Exception as e:
         logger.error(f"Error getting config: {e}")
