@@ -1301,6 +1301,10 @@ class PaperTrader:
                     # Run full Alpha analysis (Bayesian, signals, regime)
                     try:
                         analysis = await self._run_alpha_analysis(market_data)
+                        if analysis:
+                            logger.info(f"[ALPHA] {market_id[:16]}... FV={analysis['fair_value']:.4f} Edge={analysis['edge']:.4f} Should_trade={analysis.get('should_trade')}")
+                        else:
+                            logger.debug(f"[ALPHA] {market_id[:16]}... returned None")
                     except Exception as e:
                         logger.error(f"[ALPHA] Analysis failed for {market_id[:16]}: {e}")
                         analysis = None
