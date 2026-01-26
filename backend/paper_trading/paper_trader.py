@@ -1279,31 +1279,25 @@ class PaperTrader:
             order_book_data = {}  # Full orderbook for maker execution
             if self.use_polymarket_sizer:
                 try:
-                    # Get token ID from market data
+                    # Get token IDs from market data
+                    # token_ids[0] = YES token, token_ids[1] = NO token (Polymarket convention)
                     token_ids = market_data.get('clobTokenIds', market_data.get('tokens', []))
                     if token_ids and isinstance(token_ids, list) and len(token_ids) > 0:
-                        # Import and use the API to fetch order book
+                        # Store token IDs for later orderbook fetch
+                        market_data['token_ids'] = token_ids
+                        
+                        # Import and use the API to fetch order book for sizing liquidity check
+                        # Note: This fetches YES token orderbook - we'll fetch the correct one after sizing
                         from data.polymarket_api import PolymarketAPI
                         async with PolymarketAPI() as api:
                             order_book_data = await api.get_order_book(token_ids[0])
                             order_book_asks = order_book_data.get('asks', [])
-                            # Store full orderbook in market_data for maker execution
+                            # Store for sizing (may be replaced later with correct side's orderbook)
                             if order_book_data.get('bids') and order_book_data.get('asks'):
                                 market_data['order_book'] = order_book_data
+                                market_data['order_book_token'] = 'YES'  # Track which token's orderbook this is
                                 
-                                # EARLY SPREAD FILTER: Reject illiquid markets before wasting resources
-                                bids = order_book_data['bids']
-                                asks = order_book_data['asks']
-                                if bids and asks:
-                                    best_bid = float(bids[0]['price'])
-                                    best_ask = float(asks[0]['price'])
-                                    spread = best_ask - best_bid
-                                    if spread > self.max_spread:
-                                        logger.info(f"[SKIP] Early spread filter: {market_id[:16]} spread={spread:.2%} > max={self.max_spread:.2%}")
-                                        track_skip("spread_too_wide")
-                                        continue
-                                
-                                logger.debug(f"[ORDERBOOK] Fetched {len(order_book_data.get('bids', []))} bids, {len(order_book_data.get('asks', []))} asks for {market_id[:16]}")
+                                logger.debug(f"[ORDERBOOK] Fetched YES token orderbook for sizing: {market_id[:16]}")
                 except Exception as e:
                     logger.debug(f"Could not fetch order book: {e}")
             
