@@ -193,13 +193,18 @@ class StrategyManager:
         alpha_allocation = db_config.get('alpha_allocation_pct', cls.DEFAULT_ALPHA_ALLOCATION_PCT)
         hft_max_pos = db_config.get('hft_max_position_pct', cls.DEFAULT_HFT_MAX_POSITION_PCT)
         alpha_max_pos = db_config.get('alpha_max_position_pct', cls.DEFAULT_ALPHA_MAX_POSITION_PCT)
-        hft_max_positions = db_config.get('hft_max_positions', cls.DEFAULT_HFT_MAX_POSITIONS)
-        alpha_max_positions = db_config.get('alpha_max_positions', cls.DEFAULT_ALPHA_MAX_POSITIONS)
+        
+        # Get positions as % of global max
+        hft_positions_pct = db_config.get('hft_positions_pct', cls.DEFAULT_HFT_POSITIONS_PCT)
+        alpha_positions_pct = db_config.get('alpha_positions_pct', cls.DEFAULT_ALPHA_POSITIONS_PCT)
+        max_open_positions = db_config.get('max_open_positions', cls.DEFAULT_MAX_OPEN_POSITIONS)
         
         logger.info(
             f"Creating StrategyManager from config: "
             f"HFT={hft_allocation}%, Alpha={alpha_allocation}%, "
-            f"Deployed=${deployed_capital:,.0f}"
+            f"Deployed=${deployed_capital:,.0f}, "
+            f"HFT pos/mkt={hft_positions_pct}% of {max_open_positions}, "
+            f"Alpha pos/mkt={alpha_positions_pct}% of {max_open_positions}"
         )
         
         return cls(
@@ -208,8 +213,9 @@ class StrategyManager:
             alpha_allocation_pct=alpha_allocation,
             hft_max_position_pct=hft_max_pos,
             alpha_max_position_pct=alpha_max_pos,
-            hft_max_positions=hft_max_positions,
-            alpha_max_positions=alpha_max_positions,
+            hft_positions_pct=hft_positions_pct,
+            alpha_positions_pct=alpha_positions_pct,
+            max_open_positions=max_open_positions,
             config=db_config
         )
     
