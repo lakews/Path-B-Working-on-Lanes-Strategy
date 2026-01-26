@@ -15,7 +15,32 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 26, 2026)
 
-### January 26, 2026 - Session 34 (P0: Fix Maker Executor Quote Center)
+### January 26, 2026 - Session 34 (Safety Leash + Inventory Skew Tests)
+
+- ✅ **SAFETY LEASH: Anti-Hallucination Protection**
+  - **Problem**: Since the bot now follows Alpha (theoretical_price), we needed protection against model hallucinations that could drift quotes dangerously far from market reality (e.g., bidding 0.99 when market is 0.50).
+  
+  - **Solution**: Added `clamp_to_reality()` function in `maker_executor.py`
+    - New config parameter: `max_alpha_deviation` (default: 0.15 = 15 cents)
+    - Clamps both bid and ask to `[market_mid - deviation, market_mid + deviation]`
+    - Logs warning when safety leash is triggered
+    - Applied in `calculate_adjusted_quotes()` after inventory skew + OFI but before final return
+  
+  - **Files Modified**:
+    - `backend/trading/maker_executor.py` - Added `clamp_to_reality()`, updated `calculate_adjusted_quotes()` to accept `market_mid` and apply clamping
+    - `backend/tests/test_inventory_skew.py` - **NEW FILE** with 11 unit tests
+
+- ✅ **UNIT TESTS: Inventory Skew Verification (11/11 Tests Passing)**
+  - **Test Classes**:
+    - `TestInventorySkew` (4 tests): Verifies skew direction (long→lower quotes, short→higher quotes)
+    - `TestSafetyLeash` (6 tests): Verifies clamping logic including hallucination scenario
+    - `TestIntegration` (1 test): Verifies skew + safety leash work correctly together
+  
+  - **Key Test**: `test_safety_leash_hallucination_scenario`
+    - Alpha = 0.99 (hallucinated), Market = 0.50 (reality)
+    - Pre-clamp: bid=0.97, ask=0.999
+    - Post-clamp: bid=0.645, ask=0.655
+    - Improvement: >0.30 on both bid and ask
 
 - ✅ **P0 CRITICAL FIX: Maker Executor Uses Theoretical Price (Alpha) for Quotes**
   - **Problem**: `maker_executor.py` was using `market_mid_price` (best_bid/best_ask) as the center for quote generation, instead of the `theoretical_price` (Alpha signal from Bayesian posterior). The bot was trading market prices, not its own Alpha.
