@@ -3198,6 +3198,71 @@ async def get_paper_positions():
     
     return {"positions": paper_trader.get_positions()}
 
+@api_router.get("/paper/gamma-stats")
+async def get_gamma_stats():
+    """Get Gamma Strategy (Whale Zone) statistics"""
+    global paper_trader
+    
+    if not paper_trader:
+        return {
+            "gamma_stats": {
+                "orders_generated": 0,
+                "gap_opportunities": 0,
+                "wall_snipes": 0,
+                "wall_joins": 0,
+                "free_rolls": 0,
+                "moonbags": 0,
+                "stop_losses": 0,
+                "skipped_expensive": 0,
+                "skipped_max_position": 0,
+            },
+            "config": {
+                "whale_price_ceiling": 0.10,
+                "whale_max_position": 15.0,
+                "whale_max_spread_cents": 0.03,
+            },
+            "message": "No active session - showing defaults"
+        }
+    
+    try:
+        gamma_stats = paper_trader.gamma_trader.get_stats()
+        
+        # Calculate additional metrics
+        total_entries = gamma_stats.get('gap_opportunities', 0) + gamma_stats.get('wall_snipes', 0) + gamma_stats.get('wall_joins', 0)
+        total_exits = gamma_stats.get('free_rolls', 0) + gamma_stats.get('moonbags', 0) + gamma_stats.get('stop_losses', 0)
+        
+        # Calculate whale zone positions
+        whale_positions = []
+        whale_pnl = 0.0
+        for pos_id, pos in paper_trader.paper_positions.items():
+            strategy = pos.get('strategy', '')
+            if strategy in ['gamma_scalp', 'hft_gamma_scalp', 'whale', 'gamma']:
+                whale_positions.append({
+                    'market_id': pos.get('market_id', '')[:16],
+                    'side': pos.get('side'),
+                    'entry_price': pos.get('entry_price'),
+                    'current_price': pos.get('current_price'),
+                    'size': pos.get('size'),
+                    'unrealized_pnl': pos.get('unrealized_pnl', 0),
+                    'free_roll_done': pos.get('free_roll_done', False),
+                })
+                whale_pnl += pos.get('unrealized_pnl', 0)
+        
+        return {
+            "gamma_stats": gamma_stats,
+            "summary": {
+                "total_entries": total_entries,
+                "total_exits": total_exits,
+                "whale_positions_count": len(whale_positions),
+                "whale_unrealized_pnl": round(whale_pnl, 2),
+            },
+            "whale_positions": whale_positions,
+            "config": gamma_stats.get('config', {}),
+        }
+    except Exception as e:
+        logger.error(f"Error getting gamma stats: {e}")
+        return {"error": str(e), "gamma_stats": {}}
+
 @api_router.get("/paper/exit-mode")
 async def get_paper_exit_mode():
     """Get current exit mode (dynamic or simple)"""
