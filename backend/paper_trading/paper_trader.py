@@ -153,19 +153,31 @@ def get_strategy_context() -> StrategyContext:
 # Categorize markets by liquidity profile to apply appropriate trading strategies
 
 class MarketRegime:
-    """Market regime enumeration for liquidity-aware trading."""
-    ZOMBIE = "ZOMBIE"           # Dead/illiquid (>12%) - skip entirely
-    MAKER_WIDE = "MAKER_WIDE"   # Wide spread (2-12%) - maker strategy, post inside spread
-    TAKER_TIGHT = "TAKER_TIGHT" # Tight spread (<2%) - can cross spread if edge high
+    """Market regime enumeration for dual-zone trading (Task 21)."""
+    # Zone 1: Convexity (Whale Zone - prices < $0.10)
+    CONVEXITY_OPPORTUNITY = "CONVEXITY_OPPORTUNITY"  # Cheap asset, tight tick spread
+    
+    # Zone 2: Core (Standard Zone - prices >= $0.10)
+    TAKER_TIGHT = "TAKER_TIGHT"     # Tight % spread (<2%), safe for taker
+    MAKER_WIDE = "MAKER_WIDE"       # Wide % spread (2-12%), maker opportunity
+    
+    # Invalid
+    ZOMBIE = "ZOMBIE"               # Dead/illiquid, skip
 
-# Import spread rules from centralized config (Task 21: Single Source of Truth)
-from config import SPREAD_RULES, QUALITY_FILTERS, RISK_PARAMS
+# Import from Single Source of Truth (Task 21: Dual-Zone Risk Architecture)
+from risk_config import (
+    RISK, 
+    classify_market_regime,
+    get_zone_parameters,
+    is_spread_acceptable,
+    MarketRegime as RiskMarketRegime
+)
 
-# Use centralized thresholds
-SPREAD_ZOMBIE_THRESHOLD = SPREAD_RULES['ZOMBIE_THRESHOLD']      # 12%
-SPREAD_MAKER_THRESHOLD = SPREAD_RULES['MAKER_THRESHOLD']        # 10%
-SPREAD_TAKER_THRESHOLD = SPREAD_RULES['TAKER_THRESHOLD']        # 2%
-MIN_VOLUME_24H = QUALITY_FILTERS['MIN_VOLUME_24H']              # $1000
+# Re-export for backwards compatibility
+SPREAD_ZOMBIE_THRESHOLD = RISK.CORE_ZOMBIE_SPREAD_PCT
+SPREAD_MAKER_THRESHOLD = RISK.CORE_MAKER_SPREAD_PCT
+SPREAD_TAKER_THRESHOLD = RISK.CORE_TAKER_SPREAD_PCT
+MIN_VOLUME_24H = RISK.CORE_MIN_VOLUME_24H
 
 def classify_market_regime(
     best_bid: float,
