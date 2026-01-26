@@ -23,27 +23,33 @@ class TradeType(Enum):
 # ============================================================================
 # DEFAULT SPREAD CONSTANTS (can be overridden by config)
 # ============================================================================
-
-# Maximum spread thresholds by strategy type
-# LIQUIDITY UNLOCK: Widened to embrace the Golden Zone (15-30% spreads)
-DEFAULT_MAX_SPREAD_HFT = 0.35           # 35% - WIDENED: HFT embraces Golden Zone spreads
-DEFAULT_MAX_SPREAD_ALPHA = 0.20         # 20% - WIDENED: Alpha can trade wider spreads with edge
-DEFAULT_MAX_SPREAD_AGGRESSIVE = 0.06    # 6% - For aggressive taker entries
+# Task 21: Import from centralized config for Single Source of Truth
+try:
+    from config import SPREAD_RULES, RISK_PARAMS
+    DEFAULT_MAX_SPREAD_HFT = SPREAD_RULES['MAX_SPREAD_HFT']          # 12%
+    DEFAULT_MAX_SPREAD_ALPHA = SPREAD_RULES['MAX_SPREAD_ALPHA']      # 5%
+    DEFAULT_MAX_SPREAD_AGGRESSIVE = SPREAD_RULES['MAX_SPREAD_AGGRESSIVE']  # 3%
+    DEFAULT_MIN_SPREAD_MAKER = SPREAD_RULES['MIN_SPREAD_MAKER']      # 0.5%
+    DEFAULT_TAKER_FEE = RISK_PARAMS['TAKER_FEE']                     # 2%
+    DEFAULT_MAKER_FEE = RISK_PARAMS['MAKER_FEE']                     # 0%
+    DEFAULT_ADVERSE_SELECTION_COST = RISK_PARAMS['ADVERSE_SELECTION_COST']  # 0.5%
+    DEFAULT_MAKER_SPREAD_CAPTURE_PCT = RISK_PARAMS['MAKER_SPREAD_CAPTURE']  # 50%
+except ImportError:
+    # Fallback to hardcoded values if config not available
+    DEFAULT_MAX_SPREAD_HFT = 0.12           # 12% - Max for HFT maker orders
+    DEFAULT_MAX_SPREAD_ALPHA = 0.05         # 5% - Max for Alpha directional trades
+    DEFAULT_MAX_SPREAD_AGGRESSIVE = 0.03    # 3% - For aggressive taker entries
+    DEFAULT_MIN_SPREAD_MAKER = 0.005        # 0.5% - Minimum for maker profitability
+    DEFAULT_TAKER_FEE = 0.02                # 2% taker fee
+    DEFAULT_MAKER_FEE = 0.0                 # No maker fee on Polymarket
+    DEFAULT_ADVERSE_SELECTION_COST = 0.005  # 0.5% adverse selection cost
+    DEFAULT_MAKER_SPREAD_CAPTURE_PCT = 0.50 # 50% spread capture
 
 # Minimum spread thresholds (below this, market is too tight for profit)
-DEFAULT_MIN_SPREAD_MAKER = 0.005        # 0.5% - Minimum for maker profitability
 MIN_SPREAD_FOR_EDGE = 0.01              # 1% - Minimum spread to have edge as maker
 
 # Grid search bounds for strategy tuning
-SPREAD_GRID_VALUES = [0.03, 0.05, 0.07]  # Real-world Polymarket spread range
-
-# Fee structure (Polymarket)
-DEFAULT_MAKER_FEE = 0.0                 # No maker fee on Polymarket
-DEFAULT_TAKER_FEE = 0.02                # 2% taker fee (embedded in spread)
-
-# Spread capture assumptions
-DEFAULT_MAKER_SPREAD_CAPTURE_PCT = 0.50  # Assume we capture 50% of spread as maker
-DEFAULT_ADVERSE_SELECTION_COST = 0.005   # 0.5% adverse selection cost per trade
+SPREAD_GRID_VALUES = [0.01, 0.02, 0.03, 0.05]  # Real-world Polymarket spread range
 
 
 # Module-level variables that can be updated from config
