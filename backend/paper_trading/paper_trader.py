@@ -2164,6 +2164,22 @@ class PaperTrader:
                 
                 # Use the actual fill price from maker execution
                 actual_entry_price = execution_result.fill_price
+                
+                # ==========================================================================
+                # SANITY CHECK: Validate entry price is reasonable
+                # ==========================================================================
+                # For NO positions, if YES price is very low (<5%), we're buying NO very expensive (>95%)
+                # This is usually a bad trade unless we have very high confidence
+                if side == 'NO' and actual_entry_price < 0.05:
+                    no_price = 1 - actual_entry_price
+                    logger.warning(f"[ENTRY-WARN] Buying NO at ${no_price:.4f} (YES=${actual_entry_price:.4f}) - expensive NO entry!")
+                elif side == 'YES' and actual_entry_price > 0.95:
+                    logger.warning(f"[ENTRY-WARN] Buying YES at ${actual_entry_price:.4f} - expensive YES entry!")
+                
+                # Validate fill price is not at extreme (suspicious data)
+                if actual_entry_price < 0.01 or actual_entry_price > 0.99:
+                    logger.warning(f"[ENTRY-SUSPICIOUS] Fill price {actual_entry_price:.4f} is at extreme - may be bad data")
+                
                 logger.info(f"[MAKER] Executed as {execution_result.order_type.value} @ {actual_entry_price:.4f}")
             
             # Extract expiry info from sizing breakdown
