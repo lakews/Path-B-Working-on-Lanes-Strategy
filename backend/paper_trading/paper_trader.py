@@ -433,6 +433,62 @@ class PaperTrader:
                     # Update event caps in sizer
                     self.polymarket_sizer.event_config.update(self.event_caps)
                 
+                # ==============================================================
+                # TWO-SPEED ARCHITECTURE CONFIGURATION (HFT/Alpha)
+                # ==============================================================
+                
+                # Store full config for components that need it
+                self.config = user_config
+                
+                # HFT vs Alpha capital allocation
+                if "hft_allocation_pct" in user_config:
+                    self.hft_allocation_pct = float(user_config["hft_allocation_pct"])
+                if "alpha_allocation_pct" in user_config:
+                    self.alpha_allocation_pct = float(user_config["alpha_allocation_pct"])
+                if "hft_max_position_pct" in user_config:
+                    self.hft_max_position_pct = float(user_config["hft_max_position_pct"])
+                if "alpha_max_position_pct" in user_config:
+                    self.alpha_max_position_pct = float(user_config["alpha_max_position_pct"])
+                if "hft_positions_pct" in user_config:
+                    self.hft_positions_pct = float(user_config["hft_positions_pct"])
+                if "alpha_positions_pct" in user_config:
+                    self.alpha_positions_pct = float(user_config["alpha_positions_pct"])
+                
+                # Strategy Risk Multipliers - update position sizer
+                if "strategy_risk_multipliers" in user_config:
+                    self.strategy_risk_multipliers = user_config["strategy_risk_multipliers"]
+                    # Update legacy position sizer with new strategy risk multipliers
+                    if hasattr(self, 'position_sizer') and self.position_sizer:
+                        self.position_sizer.update_config({'strategy_risk_multipliers': self.strategy_risk_multipliers})
+                
+                # Expiry thresholds
+                if "expiry_thresholds" in user_config:
+                    self.expiry_thresholds_config = user_config["expiry_thresholds"]
+                if "expiry_strategy_adjustments" in user_config:
+                    self.expiry_strategy_adjustments = user_config["expiry_strategy_adjustments"]
+                
+                # HFT Execution parameters - update maker executor
+                if "hft_execution" in user_config:
+                    self.hft_execution = user_config["hft_execution"]
+                    # Update maker executor with HFT config
+                    if hasattr(self, 'maker_executor') and self.maker_executor:
+                        from trading.maker_executor import _merge_hft_config, DEFAULT_CONFIG
+                        merged = _merge_hft_config(DEFAULT_CONFIG, user_config)
+                        self.maker_executor.config.update(merged)
+                        logger.info(f"  HFT Execution: inventory=${self.hft_execution.get('max_inventory_usd', 1000)}, skew={self.hft_execution.get('skew_factor', 0.05):.1%}")
+                
+                # Spread policy - update centralized spread constants
+                if "spread_policy" in user_config:
+                    self.spread_policy_config = user_config["spread_policy"]
+                    from execution.spread_policy import update_spread_policy_from_config
+                    update_spread_policy_from_config(user_config)
+                    logger.info(f"  Spread Policy: HFT={self.spread_policy_config.get('max_spread_hft', 0.25):.0%}, Alpha={self.spread_policy_config.get('max_spread_alpha', 0.15):.0%}")
+                
+                # Variance sizing thresholds - store for use in position sizing
+                if "variance_sizing" in user_config:
+                    self.variance_sizing_config = user_config["variance_sizing"]
+                    logger.info(f"  Variance Sizing: Kill switch {self.variance_sizing_config.get('kill_switch_low', 0.03):.0%}-{self.variance_sizing_config.get('kill_switch_high', 0.97):.0%}")
+                
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
                 self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
