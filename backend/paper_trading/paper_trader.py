@@ -3920,6 +3920,91 @@ class PaperTrader:
                 'gross_loss': gross_loss
             }
         
+        # ==============================================================
+        # TWO-SPEED ARCHITECTURE: HFT vs ALPHA BREAKDOWN
+        # ==============================================================
+        # HFT Path: delta_neutral, volatility_exploitation (fast, reactive)
+        # Alpha Path: alpha_directional, arbitrage (slower, ML-driven)
+        HFT_STRATEGIES = {'delta_neutral', 'volatility_exploitation'}
+        ALPHA_STRATEGIES = {'alpha_directional', 'arbitrage'}
+        
+        # Aggregate by execution path
+        hft_stats = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
+        alpha_stats = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
+        
+        for strategy, stats in self.strategy_stats.items():
+            if strategy in HFT_STRATEGIES:
+                hft_stats['trades'] += stats.get('trades', 0)
+                hft_stats['wins'] += stats.get('wins', 0)
+                hft_stats['pnl'] += stats.get('pnl', 0)
+                hft_stats['gross_profit'] += stats.get('gross_profit', 0)
+                hft_stats['gross_loss'] += stats.get('gross_loss', 0)
+            elif strategy in ALPHA_STRATEGIES:
+                alpha_stats['trades'] += stats.get('trades', 0)
+                alpha_stats['wins'] += stats.get('wins', 0)
+                alpha_stats['pnl'] += stats.get('pnl', 0)
+                alpha_stats['gross_profit'] += stats.get('gross_profit', 0)
+                alpha_stats['gross_loss'] += stats.get('gross_loss', 0)
+        
+        # Calculate HFT/Alpha capital allocation
+        hft_capital = self.deployed_capital * (self.hft_allocation_pct / 100)
+        alpha_capital = self.deployed_capital * (self.alpha_allocation_pct / 100)
+        
+        # Calculate deployed capital by path (from open positions)
+        hft_deployed = sum(
+            p.get('size', 0) for p in self.paper_positions.values()
+            if p.get('strategy') in HFT_STRATEGIES
+        )
+        alpha_deployed = sum(
+            p.get('size', 0) for p in self.paper_positions.values()
+            if p.get('strategy') in ALPHA_STRATEGIES
+        )
+        
+        # Calculate unrealized P&L by path
+        hft_unrealized = sum(
+            p.get('unrealized_pnl', 0) for p in self.paper_positions.values()
+            if p.get('strategy') in HFT_STRATEGIES
+        )
+        alpha_unrealized = sum(
+            p.get('unrealized_pnl', 0) for p in self.paper_positions.values()
+            if p.get('strategy') in ALPHA_STRATEGIES
+        )
+        
+        execution_path_stats = {
+            'hft': {
+                'name': 'HFT (Fast Path)',
+                'strategies': list(HFT_STRATEGIES),
+                'allocated_capital': round(hft_capital, 2),
+                'deployed_capital': round(hft_deployed, 2),
+                'utilization_pct': round((hft_deployed / hft_capital * 100) if hft_capital > 0 else 0, 1),
+                'realized_pnl': round(hft_stats['pnl'], 2),
+                'unrealized_pnl': round(hft_unrealized, 2),
+                'total_pnl': round(hft_stats['pnl'] + hft_unrealized, 2),
+                'return_pct': round((hft_stats['pnl'] / hft_capital * 100) if hft_capital > 0 else 0, 2),
+                'total_return_pct': round(((hft_stats['pnl'] + hft_unrealized) / hft_capital * 100) if hft_capital > 0 else 0, 2),
+                'trades': hft_stats['trades'],
+                'wins': hft_stats['wins'],
+                'win_rate': round(hft_stats['wins'] / hft_stats['trades'] * 100 if hft_stats['trades'] > 0 else 0, 1),
+                'profit_factor': round(hft_stats['gross_profit'] / hft_stats['gross_loss'] if hft_stats['gross_loss'] > 0 else (2.0 if hft_stats['gross_profit'] > 0 else 0), 2)
+            },
+            'alpha': {
+                'name': 'Alpha (Slow Path)',
+                'strategies': list(ALPHA_STRATEGIES),
+                'allocated_capital': round(alpha_capital, 2),
+                'deployed_capital': round(alpha_deployed, 2),
+                'utilization_pct': round((alpha_deployed / alpha_capital * 100) if alpha_capital > 0 else 0, 1),
+                'realized_pnl': round(alpha_stats['pnl'], 2),
+                'unrealized_pnl': round(alpha_unrealized, 2),
+                'total_pnl': round(alpha_stats['pnl'] + alpha_unrealized, 2),
+                'return_pct': round((alpha_stats['pnl'] / alpha_capital * 100) if alpha_capital > 0 else 0, 2),
+                'total_return_pct': round(((alpha_stats['pnl'] + alpha_unrealized) / alpha_capital * 100) if alpha_capital > 0 else 0, 2),
+                'trades': alpha_stats['trades'],
+                'wins': alpha_stats['wins'],
+                'win_rate': round(alpha_stats['wins'] / alpha_stats['trades'] * 100 if alpha_stats['trades'] > 0 else 0, 1),
+                'profit_factor': round(alpha_stats['gross_profit'] / alpha_stats['gross_loss'] if alpha_stats['gross_loss'] > 0 else (2.0 if alpha_stats['gross_profit'] > 0 else 0), 2)
+            }
+        }
+        
         # Calculate asset class results with profit factors
         asset_class_results = {}
         for asset_class, stats in self.asset_class_stats.items():
