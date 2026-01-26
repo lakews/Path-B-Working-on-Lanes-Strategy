@@ -298,8 +298,8 @@ const Configuration = () => {
       alpha_allocation_pct: 60,
       hft_max_position_pct: 10,
       alpha_max_position_pct: 25,
-      hft_max_positions: 3,
-      alpha_max_positions: 1,
+      hft_positions_pct: 5,
+      alpha_positions_pct: 2,
     });
     toast.info('Reset to defaults');
   };
