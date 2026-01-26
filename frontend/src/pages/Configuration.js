@@ -397,6 +397,29 @@ const Configuration = () => {
           disable_within_hours: 6
         }
       },
+      // HFT Execution Parameters
+      hft_execution: {
+        max_inventory_usd: 1000,
+        skew_factor: 0.05,
+        ofi_threshold: 0.6,
+        ofi_adjustment: 0.01,
+        ofi_levels: 3
+      },
+      // Spread Policy
+      spread_policy: {
+        max_spread_hft: 0.25,
+        max_spread_alpha: 0.15,
+        max_spread_aggressive: 0.06,
+        min_spread_maker: 0.005,
+        maker_spread_capture: 0.50,
+        adverse_selection_cost: 0.005,
+        taker_fee: 0.02
+      },
+      // Variance Sizing
+      variance_sizing: {
+        kill_switch_low: 0.03,
+        kill_switch_high: 0.97
+      },
     });
     toast.info('Reset to defaults');
   };
