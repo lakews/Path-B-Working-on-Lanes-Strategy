@@ -109,7 +109,7 @@ DEFAULT_CONFIG = {
     'min_orderbook_depth_usd': 100,     # Minimum depth required to trade
     
     # ==========================================================================
-    # HFT MICROSTRUCTURE PARAMETERS
+    # HFT MICROSTRUCTURE PARAMETERS (defaults - can be overridden by config)
     # ==========================================================================
     
     # Inventory Skew Configuration
@@ -121,6 +121,27 @@ DEFAULT_CONFIG = {
     'ofi_adjustment': 0.01,             # Price adjustment amount when OFI triggered
     'ofi_levels': 3,                    # Number of order book levels to analyze
 }
+
+
+def _merge_hft_config(base_config: dict, user_config: dict) -> dict:
+    """Merge HFT execution parameters from user config into base config."""
+    merged = base_config.copy()
+    
+    # Check if user has hft_execution settings
+    hft_exec = user_config.get('hft_execution', {})
+    if hft_exec:
+        if 'max_inventory_usd' in hft_exec:
+            merged['max_inventory_usd'] = hft_exec['max_inventory_usd']
+        if 'skew_factor' in hft_exec:
+            merged['skew_factor'] = hft_exec['skew_factor']
+        if 'ofi_threshold' in hft_exec:
+            merged['ofi_threshold'] = hft_exec['ofi_threshold']
+        if 'ofi_adjustment' in hft_exec:
+            merged['ofi_adjustment'] = hft_exec['ofi_adjustment']
+        if 'ofi_levels' in hft_exec:
+            merged['ofi_levels'] = hft_exec['ofi_levels']
+    
+    return merged
 
 
 class MakerOrderExecutor:
