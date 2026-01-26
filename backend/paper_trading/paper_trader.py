@@ -1430,6 +1430,19 @@ class PaperTrader:
                             # DO NOT execute directly - HFT will pick up the target
                             continue
                         
+                        # CONVEXITY_OPPORTUNITY: Whale Zone - delegate to HFT for gamma scalping
+                        # While Alpha CAN execute here, HFT's smaller, faster trades
+                        # are better suited for the volatility accumulation strategy
+                        if regime == MarketRegime.CONVEXITY_OPPORTUNITY:
+                            if analysis.get('should_trade') and analysis.get('edge', 0) > 0.003:
+                                alpha_triggered += 1  # Count for stats
+                                logger.info(
+                                    f"🐋 [ALPHA WHALE] {market_id[:16]}... FV={analysis['fair_value']:.4f} "
+                                    f"Edge={analysis['edge']:.2%} | Regime={regime} → Delegated to HFT for gamma scalp"
+                                )
+                            # Delegate to HFT for whale zone trading
+                            continue
+                        
                         # TAKER_TIGHT: Execute Alpha trade directly (spread < 2%)
                         if not skip_new_entries and market_id not in self.paper_positions:
                             if analysis.get('should_trade') and analysis.get('edge', 0) > 0.01:
