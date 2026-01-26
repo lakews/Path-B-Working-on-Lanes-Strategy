@@ -785,6 +785,314 @@ const Configuration = () => {
         </div>
       )}
 
+      {/* Strategy Risk Tab - Per-Strategy Risk Limits */}
+      {activeTab === 'strategy_risk' && (
+        <div className="space-y-6">
+          {/* Strategy Risk Multipliers */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                  <Scale className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Strategy Position Sizing Multipliers</h3>
+                  <p className="text-xs text-white/50">Adjust position size based on strategy risk profile</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setConfig({...config, strategy_risk_multipliers: {
+                  delta_neutral: 1.2, volatility_exploitation: 0.5, alpha_directional: 0.8, arbitrage: 1.1
+                }})}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 text-xs font-medium transition"
+              >
+                Reset to Defaults
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(config.strategy_risk_multipliers || {}).map(([strategy, mult]) => {
+                const colors = {
+                  delta_neutral: 'cyan',
+                  volatility_exploitation: 'purple',
+                  alpha_directional: 'amber',
+                  arbitrage: 'emerald'
+                };
+                const descriptions = {
+                  delta_neutral: 'Low risk market making - can size up',
+                  volatility_exploitation: 'High risk volatility plays - size down',
+                  alpha_directional: 'Medium risk directional trades',
+                  arbitrage: 'Low risk spread capture'
+                };
+                const color = colors[strategy] || 'gray';
+                return (
+                  <div key={strategy} className={`p-4 rounded-lg bg-${color}-500/10 border border-${color}-500/20`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-${color}-400 font-medium text-sm capitalize`}>{strategy.replace('_', ' ')}</span>
+                      <span className={`text-${color}-300 font-mono text-lg`}>{(mult || 1).toFixed(2)}x</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={(mult || 1) * 100} 
+                      onChange={(e) => setConfig({...config, strategy_risk_multipliers: {...config.strategy_risk_multipliers, [strategy]: parseFloat(e.target.value) / 100}})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="10" max="200" step="5" 
+                    />
+                    <p className="text-xs text-white/40 mt-2">{descriptions[strategy]}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Expiry Thresholds */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Expiry Thresholds</h3>
+                  <p className="text-xs text-white/50">Control trading behavior as markets approach expiry</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setConfig({...config, expiry_thresholds: {
+                  no_entry_hours: 6, high_urgency_hours: 24, medium_urgency_days: 7, normal_days: 30
+                }})}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 text-xs font-medium transition"
+              >
+                Reset to Defaults
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-red-400 font-medium text-sm">No Entry Window</span>
+                  <span className="text-red-300 font-mono">{config.expiry_thresholds?.no_entry_hours || 6}h</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={config.expiry_thresholds?.no_entry_hours || 6} 
+                  onChange={(e) => setConfig({...config, expiry_thresholds: {...config.expiry_thresholds, no_entry_hours: parseInt(e.target.value)}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="1" max="48" step="1" 
+                />
+                <p className="text-xs text-white/40 mt-2">No new entries within X hours of expiry</p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-orange-400 font-medium text-sm">High Urgency</span>
+                  <span className="text-orange-300 font-mono">{config.expiry_thresholds?.high_urgency_hours || 24}h</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={config.expiry_thresholds?.high_urgency_hours || 24} 
+                  onChange={(e) => setConfig({...config, expiry_thresholds: {...config.expiry_thresholds, high_urgency_hours: parseInt(e.target.value)}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="6" max="72" step="1" 
+                />
+                <p className="text-xs text-white/40 mt-2">Tighten exits within X hours</p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-yellow-400 font-medium text-sm">Medium Urgency</span>
+                  <span className="text-yellow-300 font-mono">{config.expiry_thresholds?.medium_urgency_days || 7}d</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={config.expiry_thresholds?.medium_urgency_days || 7} 
+                  onChange={(e) => setConfig({...config, expiry_thresholds: {...config.expiry_thresholds, medium_urgency_days: parseInt(e.target.value)}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="1" max="30" step="1" 
+                />
+                <p className="text-xs text-white/40 mt-2">Boost volatility strategy within X days</p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-green-400 font-medium text-sm">Normal Trading</span>
+                  <span className="text-green-300 font-mono">{config.expiry_thresholds?.normal_days || 30}d+</span>
+                </div>
+                <input 
+                  type="range" 
+                  value={config.expiry_thresholds?.normal_days || 30} 
+                  onChange={(e) => setConfig({...config, expiry_thresholds: {...config.expiry_thresholds, normal_days: parseInt(e.target.value)}})} 
+                  className="w-full h-1.5 bg-white/10 rounded-lg" 
+                  min="7" max="90" step="1" 
+                />
+                <p className="text-xs text-white/40 mt-2">Normal trading beyond X days</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Strategy-Specific Expiry Adjustments */}
+          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                  <Crosshair className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Strategy Expiry Adjustments</h3>
+                  <p className="text-xs text-white/50">Per-strategy behavior near market expiry</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setConfig({...config, expiry_strategy_adjustments: {
+                  delta_neutral: { disable_within_hours: 48, size_mult_near_expiry: 0.5 },
+                  volatility_exploitation: { boost_within_days: 7, boost_multiplier: 1.5, disable_within_hours: 6 },
+                  alpha_directional: { min_confidence_near_expiry: 0.7, disable_within_hours: 6 },
+                  arbitrage: { disable_within_hours: 6 }
+                }})}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 text-xs font-medium transition"
+              >
+                Reset to Defaults
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Delta Neutral */}
+              <div className="p-4 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                <h4 className="text-cyan-400 font-medium text-sm mb-3">Delta Neutral</h4>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Disable within</span>
+                      <span className="text-cyan-300">{config.expiry_strategy_adjustments?.delta_neutral?.disable_within_hours || 48}h</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={config.expiry_strategy_adjustments?.delta_neutral?.disable_within_hours || 48} 
+                      onChange={(e) => setConfig({...config, expiry_strategy_adjustments: {...config.expiry_strategy_adjustments, delta_neutral: {...(config.expiry_strategy_adjustments?.delta_neutral || {}), disable_within_hours: parseInt(e.target.value)}}})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="6" max="168" step="6" 
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Size multiplier near expiry</span>
+                      <span className="text-cyan-300">{(config.expiry_strategy_adjustments?.delta_neutral?.size_mult_near_expiry || 0.5).toFixed(2)}x</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={(config.expiry_strategy_adjustments?.delta_neutral?.size_mult_near_expiry || 0.5) * 100} 
+                      onChange={(e) => setConfig({...config, expiry_strategy_adjustments: {...config.expiry_strategy_adjustments, delta_neutral: {...(config.expiry_strategy_adjustments?.delta_neutral || {}), size_mult_near_expiry: parseFloat(e.target.value) / 100}}})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="10" max="100" step="5" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Volatility Exploitation */}
+              <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                <h4 className="text-purple-400 font-medium text-sm mb-3">Volatility Exploitation</h4>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Boost within</span>
+                      <span className="text-purple-300">{config.expiry_strategy_adjustments?.volatility_exploitation?.boost_within_days || 7}d</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={config.expiry_strategy_adjustments?.volatility_exploitation?.boost_within_days || 7} 
+                      onChange={(e) => setConfig({...config, expiry_strategy_adjustments: {...config.expiry_strategy_adjustments, volatility_exploitation: {...(config.expiry_strategy_adjustments?.volatility_exploitation || {}), boost_within_days: parseInt(e.target.value)}}})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="1" max="30" step="1" 
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Boost multiplier</span>
+                      <span className="text-purple-300">{(config.expiry_strategy_adjustments?.volatility_exploitation?.boost_multiplier || 1.5).toFixed(2)}x</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={(config.expiry_strategy_adjustments?.volatility_exploitation?.boost_multiplier || 1.5) * 100} 
+                      onChange={(e) => setConfig({...config, expiry_strategy_adjustments: {...config.expiry_strategy_adjustments, volatility_exploitation: {...(config.expiry_strategy_adjustments?.volatility_exploitation || {}), boost_multiplier: parseFloat(e.target.value) / 100}}})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="100" max="300" step="10" 
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Disable within</span>
+                      <span className="text-purple-300">{config.expiry_strategy_adjustments?.volatility_exploitation?.disable_within_hours || 6}h</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={config.expiry_strategy_adjustments?.volatility_exploitation?.disable_within_hours || 6} 
+                      onChange={(e) => setConfig({...config, expiry_strategy_adjustments: {...config.expiry_strategy_adjustments, volatility_exploitation: {...(config.expiry_strategy_adjustments?.volatility_exploitation || {}), disable_within_hours: parseInt(e.target.value)}}})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="1" max="48" step="1" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Alpha Directional */}
+              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <h4 className="text-amber-400 font-medium text-sm mb-3">Alpha Directional</h4>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Min confidence near expiry</span>
+                      <span className="text-amber-300">{((config.expiry_strategy_adjustments?.alpha_directional?.min_confidence_near_expiry || 0.7) * 100).toFixed(0)}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={(config.expiry_strategy_adjustments?.alpha_directional?.min_confidence_near_expiry || 0.7) * 100} 
+                      onChange={(e) => setConfig({...config, expiry_strategy_adjustments: {...config.expiry_strategy_adjustments, alpha_directional: {...(config.expiry_strategy_adjustments?.alpha_directional || {}), min_confidence_near_expiry: parseFloat(e.target.value) / 100}}})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="50" max="95" step="5" 
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Disable within</span>
+                      <span className="text-amber-300">{config.expiry_strategy_adjustments?.alpha_directional?.disable_within_hours || 6}h</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={config.expiry_strategy_adjustments?.alpha_directional?.disable_within_hours || 6} 
+                      onChange={(e) => setConfig({...config, expiry_strategy_adjustments: {...config.expiry_strategy_adjustments, alpha_directional: {...(config.expiry_strategy_adjustments?.alpha_directional || {}), disable_within_hours: parseInt(e.target.value)}}})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="1" max="48" step="1" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Arbitrage */}
+              <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <h4 className="text-emerald-400 font-medium text-sm mb-3">Arbitrage</h4>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Disable within</span>
+                      <span className="text-emerald-300">{config.expiry_strategy_adjustments?.arbitrage?.disable_within_hours || 6}h</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={config.expiry_strategy_adjustments?.arbitrage?.disable_within_hours || 6} 
+                      onChange={(e) => setConfig({...config, expiry_strategy_adjustments: {...config.expiry_strategy_adjustments, arbitrage: {...(config.expiry_strategy_adjustments?.arbitrage || {}), disable_within_hours: parseInt(e.target.value)}}})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="1" max="48" step="1" 
+                    />
+                  </div>
+                  <p className="text-xs text-white/40">Arbitrage stays active longest - guaranteed resolution</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Position Sizer Tab - NEW */}
       {activeTab === 'sizer' && (
         <div className="space-y-6">
