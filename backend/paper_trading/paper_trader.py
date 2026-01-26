@@ -154,17 +154,18 @@ def get_strategy_context() -> StrategyContext:
 
 class MarketRegime:
     """Market regime enumeration for liquidity-aware trading."""
-    ZOMBIE = "ZOMBIE"                   # Dead/illiquid (>30%) - skip entirely
-    MAKER_OPPORTUNITY = "MAKER_OPPORTUNITY"  # Fat spreads (15-30%) - aggressive liquidity provision
-    MAKER_WIDE = "MAKER_WIDE"           # Wide spread (4-15%) - standard maker, post inside spread
-    TAKER_TIGHT = "TAKER_TIGHT"         # Tight spread (<4%) - can cross spread if edge high
+    ZOMBIE = "ZOMBIE"           # Dead/illiquid (>12%) - skip entirely
+    MAKER_WIDE = "MAKER_WIDE"   # Wide spread (2-12%) - maker strategy, post inside spread
+    TAKER_TIGHT = "TAKER_TIGHT" # Tight spread (<2%) - can cross spread if edge high
 
-# Regime classification thresholds (in probability space, not cents)
-# LIQUIDITY UNLOCK: Widened ZOMBIE threshold from 15% to 30% to embrace wide spreads
-SPREAD_ZOMBIE_THRESHOLD = 0.30     # > 30% spread = zombie market (too chaotic even for us)
-SPREAD_OPPORTUNITY_THRESHOLD = 0.15 # > 15% spread = fat margin opportunity (NEW: The Golden Zone)
-SPREAD_WIDE_THRESHOLD = 0.04       # > 4% spread = wide, standard maker
-MIN_VOLUME_24H = 50.0              # $50 minimum daily volume (lowered for more markets)
+# Import spread rules from centralized config (Task 21: Single Source of Truth)
+from config import SPREAD_RULES, QUALITY_FILTERS
+
+# Use centralized thresholds
+SPREAD_ZOMBIE_THRESHOLD = SPREAD_RULES['ZOMBIE_THRESHOLD']      # 12%
+SPREAD_MAKER_THRESHOLD = SPREAD_RULES['MAKER_THRESHOLD']        # 10%
+SPREAD_TAKER_THRESHOLD = SPREAD_RULES['TAKER_THRESHOLD']        # 2%
+MIN_VOLUME_24H = QUALITY_FILTERS['MIN_VOLUME_24H']              # $1000
 
 def classify_market_regime(
     best_bid: float,
