@@ -5250,6 +5250,16 @@ class PaperTrader:
             "enabled_asset_classes": self.enabled_asset_classes,
             "continuous_mode": self.continuous_mode,
             "graceful_stop": self.graceful_stop,
+            # =============================================================
+            # TWO-SPEED ARCHITECTURE: Health Metrics
+            # =============================================================
+            "two_speed_architecture": {
+                "active_regime": "HYBRID_PARALLEL",  # Both loops running
+                "hft_loop_active": self.running,
+                "alpha_loop_active": self.running,
+                "alpha_targets_count": len(self.strategy_context.get_all_targets()) if hasattr(self, 'strategy_context') else 0,
+                "bridge_stats": self.strategy_context.get_stats() if hasattr(self, 'strategy_context') else {},
+            },
             # Configuration parameters being used
             "config": {
                 "initial_capital": self.initial_capital,
