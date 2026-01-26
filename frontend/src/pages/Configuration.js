@@ -443,6 +443,146 @@ const Configuration = () => {
               <div className="flex justify-between"><span className="text-sm text-white/60">Deployed</span><span className="text-xl font-bold text-blue-400">${deployedCapital.toFixed(2)}</span></div>
             </div>
           </div>
+
+          {/* HFT vs Alpha Capital Allocation - Two Speed Architecture */}
+          <div className="lg:col-span-2 rounded-xl bg-gradient-to-br from-orange-500/10 to-purple-500/10 border border-orange-500/30 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500/30 to-purple-500/30 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Two-Speed Architecture</h3>
+                <p className="text-xs text-white/50">Split capital between HFT (Fast) and Alpha (Slow) paths</p>
+              </div>
+            </div>
+            
+            {/* Main Allocation Slider */}
+            <div className="mb-6">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-orange-400 font-medium flex items-center gap-1"><Flame className="w-4 h-4" /> HFT (Fast Path)</span>
+                <span className="text-purple-400 font-medium flex items-center gap-1"><Snowflake className="w-4 h-4" /> Alpha (Slow Path)</span>
+              </div>
+              <div className="relative">
+                <input 
+                  type="range" 
+                  value={config.hft_allocation_pct || 40} 
+                  onChange={(e) => {
+                    const hft = parseInt(e.target.value);
+                    setConfig({...config, hft_allocation_pct: hft, alpha_allocation_pct: 100 - hft});
+                  }} 
+                  className="w-full h-3 bg-gradient-to-r from-orange-500/30 to-purple-500/30 rounded-lg appearance-none cursor-pointer" 
+                  min="0" max="100" step="5" 
+                />
+                <div className="flex justify-between mt-1">
+                  <span className="text-orange-400 font-bold text-lg">{config.hft_allocation_pct}%</span>
+                  <span className="text-purple-400 font-bold text-lg">{config.alpha_allocation_pct}%</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-5 gap-2 mt-3">
+                {[{hft: 0, label: 'Alpha Only'}, {hft: 25, label: '25/75'}, {hft: 40, label: '40/60'}, {hft: 60, label: '60/40'}, {hft: 100, label: 'HFT Only'}].map(({hft, label}) => (
+                  <button 
+                    key={hft} 
+                    onClick={() => setConfig({...config, hft_allocation_pct: hft, alpha_allocation_pct: 100 - hft})} 
+                    className={`px-2 py-1 rounded-lg text-xs font-medium transition ${config.hft_allocation_pct === hft ? 'bg-gradient-to-r from-orange-500 to-purple-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* HFT and Alpha Details Side by Side */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* HFT Column */}
+              <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Flame className="w-4 h-4 text-orange-400" />
+                  <span className="text-orange-400 font-semibold text-sm">HFT Path (Fast)</span>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-white/50 mb-1">Capital</p>
+                    <p className="text-lg font-bold text-orange-400">${(deployedCapital * (config.hft_allocation_pct || 40) / 100).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Max Position %</span>
+                      <span className="text-orange-300">{config.hft_max_position_pct}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={config.hft_max_position_pct || 10} 
+                      onChange={(e) => setConfig({...config, hft_max_position_pct: parseInt(e.target.value)})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="5" max="25" step="5" 
+                    />
+                    <p className="text-xs text-white/40 mt-1">Max: ${(deployedCapital * (config.hft_allocation_pct || 40) / 100 * (config.hft_max_position_pct || 10) / 100).toFixed(2)}/trade</p>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Max Positions/Market</span>
+                      <span className="text-orange-300">{config.hft_max_positions}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={config.hft_max_positions || 3} 
+                      onChange={(e) => setConfig({...config, hft_max_positions: parseInt(e.target.value)})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="1" max="10" step="1" 
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 p-2 rounded bg-orange-500/10 text-xs text-orange-300">
+                  <p>Market making, inventory skew, OFI-based quotes</p>
+                </div>
+              </div>
+
+              {/* Alpha Column */}
+              <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Snowflake className="w-4 h-4 text-purple-400" />
+                  <span className="text-purple-400 font-semibold text-sm">Alpha Path (Slow)</span>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-white/50 mb-1">Capital</p>
+                    <p className="text-lg font-bold text-purple-400">${(deployedCapital * (config.alpha_allocation_pct || 60) / 100).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Max Position %</span>
+                      <span className="text-purple-300">{config.alpha_max_position_pct}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={config.alpha_max_position_pct || 25} 
+                      onChange={(e) => setConfig({...config, alpha_max_position_pct: parseInt(e.target.value)})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="10" max="50" step="5" 
+                    />
+                    <p className="text-xs text-white/40 mt-1">Max: ${(deployedCapital * (config.alpha_allocation_pct || 60) / 100 * (config.alpha_max_position_pct || 25) / 100).toFixed(2)}/trade</p>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                      <span>Max Positions/Market</span>
+                      <span className="text-purple-300">{config.alpha_max_positions}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      value={config.alpha_max_positions || 1} 
+                      onChange={(e) => setConfig({...config, alpha_max_positions: parseInt(e.target.value)})} 
+                      className="w-full h-1.5 bg-white/10 rounded-lg" 
+                      min="1" max="5" step="1" 
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 p-2 rounded bg-purple-500/10 text-xs text-purple-300">
+                  <p>ML/LLM sentiment, Bayesian posterior, directional</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="lg:col-span-2 rounded-xl bg-slate-800/50 border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Capital Summary</h3>
             <div className="grid grid-cols-4 gap-4">
