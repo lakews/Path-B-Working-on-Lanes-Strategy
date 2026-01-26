@@ -460,8 +460,8 @@ const Configuration = () => {
             <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-start gap-2">
               <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-blue-300">
-                <strong>Per-Market Limits</strong> below control positions within each market. 
-                <strong> Global Total</strong> in Market Selection tab limits overall portfolio.
+                <strong>Per-Market Limits</strong> control positions within each market. 
+                <strong> Global Caps</strong> (Risk tab: {config.max_position_size_pct}% = ${maxPositionValue.toFixed(2)}/trade, Market Selection: {config.max_open_positions} total) override strategy limits.
               </p>
             </div>
             
