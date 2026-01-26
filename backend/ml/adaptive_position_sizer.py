@@ -40,8 +40,8 @@ class AdaptivePositionSizer:
         'science': 0.8,     # Less liquid, more volatile
     }
     
-    # Strategy risk multipliers
-    STRATEGY_RISK = {
+    # Default Strategy risk multipliers (can be overridden by config)
+    DEFAULT_STRATEGY_RISK = {
         'delta_neutral': 1.2,        # Low risk, can size up
         'volatility_exploitation': 0.5,  # High risk, size down
         'alpha_directional': 0.8,    # Medium risk
@@ -52,8 +52,12 @@ class AdaptivePositionSizer:
     MIN_LIQUIDITY_FOR_FULL_SIZE = 10000  # $10K daily volume for full position
     MIN_LIQUIDITY_FOR_TRADE = 500        # Won't trade below $500 volume
     
-    def __init__(self, db=None):
+    def __init__(self, db=None, config: Optional[Dict] = None):
         self.db = db or get_db()
+        self.config = config or {}
+        
+        # Strategy risk multipliers - use config if available, else defaults
+        self.strategy_risk = self.config.get('strategy_risk_multipliers', self.DEFAULT_STRATEGY_RISK)
         
         # Learned parameters (loaded from DB, updated by RL)
         self.learned_params = {
@@ -70,6 +74,12 @@ class AdaptivePositionSizer:
         # Track learning progress
         self.learning_updates = 0
         self.last_learn_time = None
+    
+    def update_config(self, config: Dict):
+        """Update configuration (called when settings change)."""
+        self.config = config
+        self.strategy_risk = config.get('strategy_risk_multipliers', self.DEFAULT_STRATEGY_RISK)
+        logger.info(f"AdaptivePositionSizer config updated: strategy_risk={self.strategy_risk}")
     
     async def load_learned_params(self):
         """Load learned parameters from database"""
