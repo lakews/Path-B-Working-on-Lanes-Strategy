@@ -3,26 +3,34 @@ APEX TRADER - Risk Configuration (Single Source of Truth)
 =========================================================
 
 Task 21: Dual-Zone Risk Architecture
+Task 23: Unified Portfolio Manager - Consolidated ALL sizing constants here
 
-This file defines ALL risk parameters for the trading system.
-No other file should contain hardcoded spread/risk values.
+This file defines ALL risk and sizing parameters for the trading system.
+No other file should contain hardcoded spread/risk/sizing values.
 
 Two Trading Zones with Different Physics:
 1. CONVEXITY ZONE ($0.01-$0.09): Tick-based spreads for Gamma Scalping
 2. CORE ZONE ($0.10+): Percentage-based spreads for Directional Alpha
 
 Usage:
-    from risk_config import RiskConfig, classify_market_regime
+    from risk_config import RISK, MarketRegime, classify_market_regime
 """
 
 from typing import Tuple, Dict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
 class RiskConfig:
     """
-    Single Source of Truth for all risk parameters.
+    Single Source of Truth for ALL risk and sizing parameters.
+    
+    Hierarchy of Safety:
+    1. Allocated Capital (virtual sub-account)
+    2. Price Zones (hard override based on price)
+    3. Strategy Regime (Alpha/HFT/Gamma)
+    4. Liquidity (never consume >10% of depth)
+    5. Exposure (sector and event caps)
     
     Two distinct trading zones with different risk physics:
     - Whale Zone: Cheap assets where we accumulate convexity
@@ -30,15 +38,26 @@ class RiskConfig:
     """
     
     # =========================================================================
-    # GLOBAL SAFETY PARAMETERS
+    # CAPITAL ALLOCATION (Task 23)
     # =========================================================================
-    STOP_LOSS_PCT: float = 0.15           # 15% stop loss per trade
-    MAX_DRAWDOWN_PCT: float = 5.0         # 5% max portfolio drawdown
-    KILL_SWITCH_LOW: float = 0.03         # Don't trade below 3 cents
-    KILL_SWITCH_HIGH: float = 0.97        # Don't trade above 97 cents
+    ALLOCATED_CAPITAL_PCT: float = 80.0    # 80% of wallet is "deployed"
+    CASH_BUFFER_PCT: float = 5.0           # 5% reserve for gas/fees
     
     # =========================================================================
-    # ZONE 1: CONVEXITY / WHALE ZONE ($0.01 - $0.09)
+    # GLOBAL SAFETY PARAMETERS
+    # =========================================================================
+    STOP_LOSS_PCT: float = 0.15            # 15% stop loss per trade
+    MAX_DRAWDOWN_PCT: float = 5.0          # 5% max portfolio drawdown
+    KILL_SWITCH_LOW: float = 0.03          # Don't trade below 3 cents
+    KILL_SWITCH_HIGH: float = 0.97         # Don't trade above 97 cents
+    
+    # =========================================================================
+    # ZONE THRESHOLD
+    # =========================================================================
+    PRICE_ZONE_THRESHOLD: float = 0.10     # Below = Whale, Above = Core
+    
+    # =========================================================================
+    # ZONE 1: CONVEXITY / WHALE ZONE ($0.03 - $0.09)
     # =========================================================================
     # Strategy: Volatility Accumulation / Gamma Scalping
     # Logic: Percentage spreads are IRRELEVANT here. We care about absolute ticks.
@@ -48,12 +67,21 @@ class RiskConfig:
     #   - Tick spread = 3 cents (actually tradeable)
     #   - If this goes to $0.50, we make 25x on a 3 cent risk
     
-    WHALE_PRICE_CEILING: float = 0.10     # Prices below this are "Whale Zone"
-    WHALE_MAX_SPREAD_CENTS: float = 0.03  # Max 3 cent absolute spread allowed
-    WHALE_MIN_LIQUIDITY: float = 500.0    # Lower liquidity threshold ($500)
-    WHALE_MIN_VOLUME_24H: float = 500.0   # Lower volume threshold ($500)
-    WHALE_MAX_POSITION: float = 15.0      # Smaller $ position for high-vol plays
-    WHALE_MAX_POSITION_PCT: float = 1.0   # Max 1% of capital per whale trade
+    WHALE_PRICE_CEILING: float = 0.10      # Prices below this are "Whale Zone"
+    WHALE_MAX_SPREAD_CENTS: float = 0.03   # Max 3 cent absolute spread allowed
+    WHALE_MIN_LIQUIDITY: float = 500.0     # Lower liquidity threshold ($500)
+    WHALE_MIN_VOLUME_24H: float = 500.0    # Lower volume threshold ($500)
+    WHALE_MAX_USD: float = 15.0            # HARD CAP: $15 per whale trade
+    WHALE_MAX_PCT: float = 0.01            # HARD CAP: 1% of deployed capital
+    
+    # Aliases for backward compatibility
+    @property
+    def WHALE_MAX_POSITION(self) -> float:
+        return self.WHALE_MAX_USD
+    
+    @property
+    def WHALE_MAX_POSITION_PCT(self) -> float:
+        return self.WHALE_MAX_PCT * 100  # Return as percentage (1.0)
     
     # =========================================================================
     # ZONE 2: CORE ALPHA ZONE ($0.10+)
@@ -65,28 +93,96 @@ class RiskConfig:
     #   - Tick spread = 2 cents
     #   - Percentage spread = 4% (acceptable for maker)
     
-    CORE_TAKER_SPREAD_PCT: float = 0.02   # < 2%: Safe to Take Liquidity (Alpha)
-    CORE_MAKER_SPREAD_PCT: float = 0.10   # 2% - 10%: Safe to Make Liquidity (HFT)
-    CORE_ZOMBIE_SPREAD_PCT: float = 0.12  # > 12%: Market is dead
-    CORE_MIN_LIQUIDITY: float = 1000.0    # Higher liquidity threshold ($1K)
-    CORE_MIN_VOLUME_24H: float = 1000.0   # Higher volume threshold ($1K)
-    CORE_MAX_POSITION: float = 100.0      # Standard $ position for directional
-    CORE_MAX_POSITION_PCT: float = 3.0    # Max 3% of capital per core trade
+    CORE_TAKER_SPREAD_PCT: float = 0.02    # < 2%: Safe to Take Liquidity (Alpha)
+    CORE_MAKER_SPREAD_PCT: float = 0.10    # 2% - 10%: Safe to Make Liquidity (HFT)
+    CORE_ZOMBIE_SPREAD_PCT: float = 0.12   # > 12%: Market is dead
+    CORE_MIN_LIQUIDITY: float = 1000.0     # Higher liquidity threshold ($1K)
+    CORE_MIN_VOLUME_24H: float = 1000.0    # Higher volume threshold ($1K)
+    CORE_MAX_USD: float = 100.0            # HARD CAP: $100 per core trade
+    CORE_MAX_PCT: float = 0.03             # HARD CAP: 3% of deployed capital
+    
+    # Aliases for backward compatibility
+    @property
+    def CORE_MAX_POSITION(self) -> float:
+        return self.CORE_MAX_USD
+    
+    @property
+    def CORE_MAX_POSITION_PCT(self) -> float:
+        return self.CORE_MAX_PCT * 100  # Return as percentage (3.0)
+    
+    # =========================================================================
+    # STRATEGY MATH (Task 23)
+    # =========================================================================
+    KELLY_SCALING_FACTOR: float = 0.25     # Quarter Kelly (conservative)
+    MIN_KELLY_FRACTION: float = 0.10       # Floor for Kelly
+    MAX_KELLY_FRACTION: float = 0.50       # Ceiling for Kelly
+    HFT_UNIT_PCT: float = 0.02             # Maker orders = 2% of deployed
+    
+    # Aliases for backward compatibility
+    @property
+    def KELLY_FRACTION(self) -> float:
+        return self.KELLY_SCALING_FACTOR
+    
+    # =========================================================================
+    # LIQUIDITY CONSTRAINTS (Task 23)
+    # =========================================================================
+    MAX_LIQUIDITY_CONSUMPTION: float = 0.10  # Never take >10% of order book depth
+    
+    # =========================================================================
+    # EXPOSURE LIMITS (Task 23)
+    # =========================================================================
+    MAX_EVENT_EXPOSURE_PCT: float = 0.15   # Max 15% per correlated event
+    
+    # =========================================================================
+    # SECTOR CAPS (Task 23 - Consolidated from polymarket_position_sizer.py)
+    # =========================================================================
+    SECTOR_LIMITS: Dict[str, float] = field(default_factory=lambda: {
+        'politics': 0.25,       # 25% max in politics
+        'sports': 0.30,         # 30% max in sports
+        'crypto': 0.20,         # 20% max in crypto
+        'finance': 0.20,        # 20% max in finance
+        'entertainment': 0.15,  # 15% max in entertainment
+        'science': 0.15,        # 15% max in science
+        'conflict': 0.10,       # 10% max in war/conflict
+        'social': 0.10,         # 10% max in social/tweets
+        'unknown': 0.15,        # 15% default for uncategorized
+    })
+    
+    # =========================================================================
+    # TRADE FILTERS
+    # =========================================================================
+    MIN_TRADE_AMOUNT: float = 2.0          # Dust filter: minimum $2 trade
+    MIN_BET_FLOOR: float = 5.0             # Practical minimum: $5
     
     # =========================================================================
     # FEE STRUCTURE (Polymarket)
     # =========================================================================
-    TAKER_FEE: float = 0.02               # 2% taker fee
-    MAKER_FEE: float = 0.00               # No maker fee
-    ADVERSE_SELECTION_COST: float = 0.005 # 0.5% adverse selection
-    MAKER_SPREAD_CAPTURE: float = 0.50    # Assume 50% spread capture as maker
+    TAKER_FEE: float = 0.02                # 2% taker fee
+    MAKER_FEE: float = 0.00                # No maker fee
+    ADVERSE_SELECTION_COST: float = 0.005  # 0.5% adverse selection
+    MAKER_SPREAD_CAPTURE: float = 0.50     # Assume 50% spread capture as maker
     
     # =========================================================================
     # QUALITY FILTERS (Pre-Flight)
     # =========================================================================
-    MIN_PRICE_BAND: float = 0.03          # Skip if price < 3% (kill switch)
-    MAX_PRICE_BAND: float = 0.97          # Skip if price > 97% (kill switch)
-    TOP_N_MARKETS: int = 50               # Process top 50 by volume
+    MIN_PRICE_BAND: float = 0.03           # Skip if price < 3% (kill switch)
+    MAX_PRICE_BAND: float = 0.97           # Skip if price > 97% (kill switch)
+    TOP_N_MARKETS: int = 50                # Process top 50 by volume
+    
+    # =========================================================================
+    # POSITION SIZER CONFIG (from polymarket_position_sizer.py)
+    # =========================================================================
+    UTILIZATION_EXPONENT: float = 1.5      # Brake exponent
+    UTILIZATION_HARD_STOP: float = 0.95    # Stop at 95% utilization
+    EDGE_RETENTION_PCT: float = 0.20       # Allow 20% edge erosion from slippage
+    TIME_PENALTY_MAX_DAYS: int = 90        # 90 days = max penalty
+    TIME_PENALTY_FLOOR: float = 0.50       # Minimum 0.5x for long-dated bets
+    EVENT_SIMILARITY_THRESHOLD: float = 0.60  # Word overlap for same event
+    
+    # =========================================================================
+    # CONCURRENT POSITION LIMITS
+    # =========================================================================
+    MAX_OPEN_POSITIONS: int = 50           # Max concurrent positions
 
 
 # Global instance
@@ -191,7 +287,7 @@ def classify_market_regime(
         
         # CONVEXITY OPPORTUNITY: Cheap asset with tight tick spread
         diagnostics['strategy'] = 'gamma_scalp'
-        diagnostics['max_position'] = RISK.WHALE_MAX_POSITION
+        diagnostics['max_position'] = RISK.WHALE_MAX_USD
         return MarketRegime.CONVEXITY_OPPORTUNITY, diagnostics
     
     # =========================================================================
@@ -221,12 +317,12 @@ def classify_market_regime(
     # MAKER_WIDE: Wide spread (2-12%), maker opportunity
     if spread_pct > RISK.CORE_TAKER_SPREAD_PCT:
         diagnostics['strategy'] = 'maker_limit_order'
-        diagnostics['max_position'] = RISK.CORE_MAX_POSITION
+        diagnostics['max_position'] = RISK.CORE_MAX_USD
         return MarketRegime.MAKER_WIDE, diagnostics
     
     # TAKER_TIGHT: Tight spread (<2%), safe to cross
     diagnostics['strategy'] = 'taker_directional'
-    diagnostics['max_position'] = RISK.CORE_MAX_POSITION
+    diagnostics['max_position'] = RISK.CORE_MAX_USD
     return MarketRegime.TAKER_TIGHT, diagnostics
 
 
@@ -245,8 +341,8 @@ def get_zone_parameters(mid_price: float) -> Dict:
             'zone': 'WHALE',
             'min_liquidity': RISK.WHALE_MIN_LIQUIDITY,
             'min_volume': RISK.WHALE_MIN_VOLUME_24H,
-            'max_position': RISK.WHALE_MAX_POSITION,
-            'max_position_pct': RISK.WHALE_MAX_POSITION_PCT,
+            'max_position': RISK.WHALE_MAX_USD,
+            'max_position_pct': RISK.WHALE_MAX_PCT,
             'spread_type': 'absolute_cents',
             'max_spread': RISK.WHALE_MAX_SPREAD_CENTS,
         }
@@ -255,8 +351,8 @@ def get_zone_parameters(mid_price: float) -> Dict:
             'zone': 'CORE',
             'min_liquidity': RISK.CORE_MIN_LIQUIDITY,
             'min_volume': RISK.CORE_MIN_VOLUME_24H,
-            'max_position': RISK.CORE_MAX_POSITION,
-            'max_position_pct': RISK.CORE_MAX_POSITION_PCT,
+            'max_position': RISK.CORE_MAX_USD,
+            'max_position_pct': RISK.CORE_MAX_PCT,
             'spread_type': 'percentage',
             'max_spread': RISK.CORE_MAKER_SPREAD_PCT,
         }
@@ -291,3 +387,8 @@ def is_spread_acceptable(
     if spread_pct <= max_spread:
         return True, f"core_zone: pct_spread {spread_pct:.2%} <= {max_spread:.0%}"
     return False, f"core_zone: pct_spread {spread_pct:.2%} > {max_spread:.0%}"
+
+
+def get_deployed_capital(wallet_balance: float) -> float:
+    """Calculate deployed capital from wallet balance."""
+    return wallet_balance * (RISK.ALLOCATED_CAPITAL_PCT / 100)
