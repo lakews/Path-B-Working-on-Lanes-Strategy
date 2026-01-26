@@ -128,11 +128,11 @@ class TestMarketRegimeClassification:
     # =========================================================================
     
     def test_core_zone_taker_tight(self):
-        """Standard asset with tight % spread = TAKER_TIGHT."""
-        # Price: $0.50, Spread: 1% (tight)
+        """Standard asset with tight % spread = TAKER_TIGHT (< 2%)."""
+        # Price: $0.50, Spread: ~1% (strictly less than 2%)
         regime, diag = classify_market_regime(
-            best_bid=0.495, 
-            best_ask=0.505, 
+            best_bid=0.4975, 
+            best_ask=0.5025, 
             volume_24h=5000.0
         )
         assert regime == MarketRegime.TAKER_TIGHT
@@ -140,11 +140,11 @@ class TestMarketRegimeClassification:
         assert diag['strategy'] == 'taker_directional'
     
     def test_core_zone_maker_wide(self):
-        """Standard asset with moderate % spread = MAKER_WIDE."""
-        # Price: $0.50, Spread: 6% (wide but tradeable)
+        """Standard asset with moderate % spread = MAKER_WIDE (2-12%)."""
+        # Price: $0.50, Spread: ~6% (within 2-12% range)
         regime, diag = classify_market_regime(
-            best_bid=0.47, 
-            best_ask=0.53, 
+            best_bid=0.485, 
+            best_ask=0.515, 
             volume_24h=5000.0
         )
         assert regime == MarketRegime.MAKER_WIDE
@@ -152,15 +152,35 @@ class TestMarketRegimeClassification:
         assert diag['strategy'] == 'maker_limit_order'
     
     def test_core_zone_zombie(self):
-        """Standard asset with very wide % spread = ZOMBIE."""
-        # Price: $0.50, Spread: 20% (dead)
+        """Standard asset with very wide % spread = ZOMBIE (> 12%)."""
+        # Price: $0.50, Spread: 15% (dead)
         regime, diag = classify_market_regime(
-            best_bid=0.40, 
-            best_ask=0.60, 
+            best_bid=0.4625, 
+            best_ask=0.5375, 
             volume_24h=5000.0
         )
         assert regime == MarketRegime.ZOMBIE
         assert 'spread' in diag.get('reject_reason', '').lower()
+    
+    def test_core_zone_boundary_taker_maker(self):
+        """Exactly 2% spread should be MAKER_WIDE (boundary case)."""
+        # Price: $0.50, Spread: 2% exactly
+        regime, diag = classify_market_regime(
+            best_bid=0.495, 
+            best_ask=0.505, 
+            volume_24h=5000.0
+        )
+        assert regime == MarketRegime.MAKER_WIDE  # 2% is >= threshold
+    
+    def test_core_zone_boundary_maker_zombie(self):
+        """Exactly 12% spread should be MAKER_WIDE (boundary case)."""
+        # Price: $0.50, Spread: 12% exactly
+        regime, diag = classify_market_regime(
+            best_bid=0.47, 
+            best_ask=0.53, 
+            volume_24h=5000.0
+        )
+        assert regime == MarketRegime.MAKER_WIDE  # 12% is NOT > zombie threshold
     
     def test_core_zone_low_volume(self):
         """Standard asset with low volume = ZOMBIE."""
