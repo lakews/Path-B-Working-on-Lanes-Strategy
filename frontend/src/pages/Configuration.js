@@ -77,7 +77,14 @@ const Configuration = () => {
     event_caps: {
       max_event_exposure_pct: 0.15,
       similarity_threshold: 0.60
-    }
+    },
+    // HFT vs Alpha Capital Allocation (Two-Speed Architecture)
+    hft_allocation_pct: 40,       // % of deployed capital to HFT path
+    alpha_allocation_pct: 60,     // % of deployed capital to Alpha path
+    hft_max_position_pct: 10,     // Max position size as % of HFT capital
+    alpha_max_position_pct: 25,   // Max position size as % of Alpha capital
+    hft_max_positions: 3,         // Max positions per market for HFT
+    alpha_max_positions: 1,       // Max positions per market for Alpha
   });
   const [oracleMultipliersDefault, setOracleMultipliersDefault] = useState({});
   const [eventCapsDefault, setEventCapsDefault] = useState({
