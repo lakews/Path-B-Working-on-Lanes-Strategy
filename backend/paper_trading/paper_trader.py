@@ -2202,11 +2202,13 @@ class PaperTrader:
                     return
                 
                 # Execute with maker-first strategy
+                # CRITICAL: Pass theoretical_price so maker quotes are centered on our Alpha
                 execution_result = await self.maker_executor.execute_order(
                     side=side,
                     size=size,
                     market_data=market_data,
-                    edge=edge
+                    edge=edge,
+                    theoretical_price=theoretical_price  # Alpha signal from Bayesian posterior
                 )
                 
                 # Check if order was filled
