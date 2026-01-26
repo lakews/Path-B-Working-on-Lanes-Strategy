@@ -4,19 +4,24 @@ from datetime import datetime, timezone, timedelta
 from database import get_db
 import numpy as np
 
+# Import centralized spread constants
+from execution.spread_policy import MAX_SPREAD_HFT, MIN_SPREAD_MAKER, SPREAD_GRID_VALUES
+
 logger = logging.getLogger(__name__)
 
 class SpreadCalibrator:
     """Dynamic spread adjustment based on market conditions
     Adjusts spread size according to volatility and liquidity
     Target: Maximize profits during favorable conditions
+    
+    NOTE: Uses centralized spread policy constants from execution/spread_policy.py
     """
     
     def __init__(self):
         self.db = get_db()
         self.base_spread = 0.02  # 2% base spread
-        self.min_spread = 0.005  # 0.5% minimum
-        self.max_spread = 0.25   # 25% maximum - calibrated for real-world Polymarket liquidity
+        self.min_spread = MIN_SPREAD_MAKER  # Use centralized constant
+        self.max_spread = MAX_SPREAD_HFT    # Use centralized constant (25%)
         self.volatility_threshold = 0.5
         self.liquidity_threshold = 10000
         
