@@ -625,13 +625,20 @@ class MakerOrderExecutor:
         market_id = market_data.get('condition_id', market_data.get('market_id', token_id or 'unknown'))
         
         # Calculate adjusted quotes using HFT microstructure math
-        # This applies inventory skew and OFI adjustments centered on our Alpha
+        # This applies inventory skew, OFI adjustments, and safety leash centered on our Alpha
         my_bid, my_ask, quote_debug = self.calculate_adjusted_quotes(
             theoretical_price=quote_center,
             spread=spread,
             market_id=market_id,
-            order_book=orderbook
+            order_book=orderbook,
+            market_mid=market_mid  # For safety leash clamping
         )
+        
+        # Log if safety leash was triggered
+        if quote_debug.get('safety_leash_triggered'):
+            logger.warning(f"[SAFETY-LEASH] Quotes clamped for {market_id[:16]}... | "
+                          f"Alpha={quote_center:.4f} Mid={market_mid:.4f} | "
+                          f"Deviation limit={quote_debug.get('max_alpha_deviation', 0.15):.2f}")
         
         spread_pct = spread / max(best_ask, 0.01)
         volume_24h = market_data.get('volume_24h', 0)
