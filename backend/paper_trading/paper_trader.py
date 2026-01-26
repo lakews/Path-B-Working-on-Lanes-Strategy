@@ -1918,12 +1918,14 @@ class PaperTrader:
             asks = []
             try:
                 token_ids = market_data.get('token_ids', [])
-                if token_ids and self.clob_api:
-                    fresh_orderbook = await self.clob_api.get_order_book(token_ids[0])
-                    bids = fresh_orderbook.get('bids', [])
-                    asks = fresh_orderbook.get('asks', [])
-                    if bids and asks:
-                        logger.debug(f"[EXIT-OB] Fresh orderbook: bid={bids[0]['price']}, ask={asks[0]['price']}, current_yes={current_price}")
+                if token_ids:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        fresh_orderbook = await api.get_order_book(token_ids[0])
+                        bids = fresh_orderbook.get('bids', [])
+                        asks = fresh_orderbook.get('asks', [])
+                        if bids and asks:
+                            logger.debug(f"[EXIT-OB] Fresh orderbook: bid={bids[0]['price']}, ask={asks[0]['price']}, current_yes={current_price}")
             except Exception as e:
                 logger.debug(f"[EXIT-OB] Could not fetch fresh orderbook: {e}")
             
