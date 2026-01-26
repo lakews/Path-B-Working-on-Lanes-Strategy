@@ -5469,6 +5469,17 @@ class PaperTrader:
                 "alpha_targets_count": len(self.strategy_context.get_all_targets()) if hasattr(self, 'strategy_context') else 0,
                 "bridge_stats": self.strategy_context.get_stats() if hasattr(self, 'strategy_context') else {},
             },
+            # QUALITY CONTROL: Market filtering metrics (Task 18)
+            # =============================================================
+            "quality_control": {
+                "markets_fetched": self._last_quality_stats.get('total_fetched', 0),
+                "markets_passed": self._last_quality_stats.get('passed_quality', 0),
+                "rejection_rate": round(1 - (self._last_quality_stats.get('passed_quality', 0) / max(self._last_quality_stats.get('total_fetched', 1), 1)), 3),
+                "rejected_low_volume": self._last_quality_stats.get('rejected_low_volume', 0),
+                "rejected_extreme_price": self._last_quality_stats.get('rejected_extreme_price', 0),
+                "rejected_low_liquidity": self._last_quality_stats.get('rejected_low_liquidity', 0),
+                "rejected_no_price": self._last_quality_stats.get('rejected_no_price', 0),
+            },
             # Configuration parameters being used
             "config": {
                 "initial_capital": self.initial_capital,
