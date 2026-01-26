@@ -330,16 +330,17 @@ class AdaptivePositionSizer:
         Returns:
             Tuple of (adjusted_size, debug_info)
         """
-        # 1. Hard Kill Switch at extremes
+        # 1. Hard Kill Switch at extremes (configurable thresholds)
         # Don't trade at extreme prices - too risky
-        if current_price < 0.03 or current_price > 0.97:
+        if current_price < self.kill_switch_low or current_price > self.kill_switch_high:
             return 0.0, {
                 'kill_switch': True,
-                'reason': f'price_extreme_{current_price:.3f}',
+                'reason': f'price_extreme_{current_price:.3f}_outside_{self.kill_switch_low:.0%}-{self.kill_switch_high:.0%}',
                 'variance': 0.0,
                 'multiplier': 0.0,
                 'base_size': base_size,
-                'final_size': 0.0
+                'final_size': 0.0,
+                'thresholds': {'low': self.kill_switch_low, 'high': self.kill_switch_high}
             }
         
         # 2. Calculate Bernoulli variance: p * (1 - p)
@@ -363,7 +364,8 @@ class AdaptivePositionSizer:
             'variance': variance,
             'multiplier': size_multiplier,
             'base_size': base_size,
-            'final_size': final_size
+            'final_size': final_size,
+            'thresholds': {'low': self.kill_switch_low, 'high': self.kill_switch_high}
         }
         
         logger.debug(
