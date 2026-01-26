@@ -558,7 +558,7 @@ const Configuration = () => {
                       value={config.alpha_max_position_pct || 25} 
                       onChange={(e) => setConfig({...config, alpha_max_position_pct: parseInt(e.target.value)})} 
                       className="w-full h-1.5 bg-white/10 rounded-lg" 
-                      min="10" max="50" step="5" 
+                      min="1" max="100" step="1" 
                     />
                     <p className="text-xs text-white/40 mt-1">Max: ${(deployedCapital * (config.alpha_allocation_pct || 60) / 100 * (config.alpha_max_position_pct || 25) / 100).toFixed(2)}/trade</p>
                   </div>
@@ -572,7 +572,7 @@ const Configuration = () => {
                       value={config.alpha_max_positions || 1} 
                       onChange={(e) => setConfig({...config, alpha_max_positions: parseInt(e.target.value)})} 
                       className="w-full h-1.5 bg-white/10 rounded-lg" 
-                      min="1" max="5" step="1" 
+                      min="1" max="20" step="1" 
                     />
                   </div>
                 </div>
