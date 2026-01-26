@@ -25,8 +25,9 @@ class TradeType(Enum):
 # ============================================================================
 
 # Maximum spread thresholds by strategy type
-DEFAULT_MAX_SPREAD_HFT = 0.25           # 25% - HFT can work with wider spreads using inventory skew
-DEFAULT_MAX_SPREAD_ALPHA = 0.15         # 15% - Alpha needs tighter spreads for directional edge
+# LIQUIDITY UNLOCK: Widened to embrace the Golden Zone (15-30% spreads)
+DEFAULT_MAX_SPREAD_HFT = 0.35           # 35% - WIDENED: HFT embraces Golden Zone spreads
+DEFAULT_MAX_SPREAD_ALPHA = 0.20         # 20% - WIDENED: Alpha can trade wider spreads with edge
 DEFAULT_MAX_SPREAD_AGGRESSIVE = 0.06    # 6% - For aggressive taker entries
 
 # Minimum spread thresholds (below this, market is too tight for profit)
