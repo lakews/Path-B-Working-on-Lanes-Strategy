@@ -85,8 +85,9 @@ class StrategyManager:
     DEFAULT_ALPHA_ALLOCATION_PCT = 60  # 60% of capital to Alpha
     DEFAULT_HFT_MAX_POSITION_PCT = 10  # 10% per position for HFT
     DEFAULT_ALPHA_MAX_POSITION_PCT = 25  # 25% per position for Alpha
-    DEFAULT_HFT_MAX_POSITIONS = 3      # 3 positions per market for HFT
-    DEFAULT_ALPHA_MAX_POSITIONS = 1    # 1 position per market for Alpha
+    DEFAULT_HFT_POSITIONS_PCT = 5      # 5% of global max for HFT per market
+    DEFAULT_ALPHA_POSITIONS_PCT = 2    # 2% of global max for Alpha per market
+    DEFAULT_MAX_OPEN_POSITIONS = 50    # Global total positions
     
     def __init__(
         self,
@@ -95,8 +96,9 @@ class StrategyManager:
         alpha_allocation_pct: float,
         hft_max_position_pct: float = DEFAULT_HFT_MAX_POSITION_PCT,
         alpha_max_position_pct: float = DEFAULT_ALPHA_MAX_POSITION_PCT,
-        hft_max_positions: int = DEFAULT_HFT_MAX_POSITIONS,
-        alpha_max_positions: int = DEFAULT_ALPHA_MAX_POSITIONS,
+        hft_positions_pct: float = DEFAULT_HFT_POSITIONS_PCT,
+        alpha_positions_pct: float = DEFAULT_ALPHA_POSITIONS_PCT,
+        max_open_positions: int = DEFAULT_MAX_OPEN_POSITIONS,
         config: Optional[Dict] = None
     ):
         """
@@ -108,8 +110,9 @@ class StrategyManager:
             alpha_allocation_pct: Percentage allocated to Alpha (0 to 100)
             hft_max_position_pct: Max position size as % of HFT capital
             alpha_max_position_pct: Max position size as % of Alpha capital
-            hft_max_positions: Max positions per market for HFT
-            alpha_max_positions: Max positions per market for Alpha
+            hft_positions_pct: % of global max positions for HFT per market
+            alpha_positions_pct: % of global max positions for Alpha per market
+            max_open_positions: Global total max positions
             config: Optional configuration overrides
         """
         # Convert percentages to decimals if needed
@@ -121,6 +124,10 @@ class StrategyManager:
             hft_max_position_pct /= 100
         if alpha_max_position_pct > 1:
             alpha_max_position_pct /= 100
+        if hft_positions_pct > 1:
+            hft_positions_pct /= 100
+        if alpha_positions_pct > 1:
+            alpha_positions_pct /= 100
         
         # Validate allocations
         if hft_allocation_pct + alpha_allocation_pct > 1.0:
@@ -134,8 +141,12 @@ class StrategyManager:
         self.alpha_allocation_pct = alpha_allocation_pct
         self.hft_max_position_pct = hft_max_position_pct
         self.alpha_max_position_pct = alpha_max_position_pct
-        self.hft_max_positions = hft_max_positions
-        self.alpha_max_positions = alpha_max_positions
+        self.max_open_positions = max_open_positions
+        
+        # Calculate per-market positions from percentage of global max
+        self.hft_max_positions = max(1, round(max_open_positions * hft_positions_pct))
+        self.alpha_max_positions = max(1, round(max_open_positions * alpha_positions_pct))
+        
         self.config = config or {}
         
         # Calculate capital allocations
