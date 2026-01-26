@@ -15,52 +15,56 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 26, 2026)
 
-### January 26, 2026 - Session 35 (CRITICAL BUG FIX: Alpha Loop Parameter Mismatch)
+### January 26, 2026 - Session 35 (CRITICAL BUG FIX + Liquidity Unlock)
 
 - ✅ **P0 CRITICAL FIX: Missing `sharp_alignment` Parameter in `_run_alpha_analysis`**
   - **Problem**: The Alpha loop was reporting "Evaluated: 0" markets despite processing 20 markets per cycle. No targets were being generated, and no trades were being triggered. The Two-Speed architecture was running but completely blind.
   
-  - **Root Cause**: The `_run_alpha_analysis` function called `_calculate_model_probability()` without providing the required `sharp_alignment` parameter:
-    ```python
-    # BROKEN - missing sharp_alignment
-    model_result = self._calculate_model_probability(
-        yes_price=yes_price,
-        sentiment=signals.get('sentiment', 0.5),
-        rl_action=rl_action,
-        rl_confidence=rl_confidence,
-        return_diagnostics=True
-    )
-    ```
+  - **Root Cause**: The `_run_alpha_analysis` function called `_calculate_model_probability()` without providing the required `sharp_alignment` parameter.
     
-  - **Solution**: Added the missing `sharp_alignment` parameter to the function call:
-    ```python
-    # FIXED - all required parameters provided
-    model_result = self._calculate_model_probability(
-        sentiment=signals.get('sentiment', 0.5),
-        sharp_alignment=signals.get('sharp_alignment', 0.5),
-        rl_confidence=rl_confidence,
-        yes_price=yes_price,
-        rl_action=rl_action,
-        return_diagnostics=True
-    )
-    ```
+  - **Solution**: Added the missing `sharp_alignment` parameter to the function call.
   
   - **Files Modified**: `/app/backend/paper_trading/paper_trader.py` (line ~1413)
   
   - **Evidence Working**:
     ```
-    [ALPHA #1] COMPLETE | Evaluated: 20, Triggered: 6, Targets: 20
-    [ALPHA] 0x43ec78527bd98a... FV=0.7306 Edge=0.0544 Should_trade=True
-    [ALPHA TRADE] NO $100.00 in 0x43ec78527bd98a... | Edge: 5.44%
+    Before: [ALPHA #1] COMPLETE | Evaluated: 0, Triggered: 0, Targets: 0
+    After:  [ALPHA #1] COMPLETE | Evaluated: 20, Triggered: 7, Targets: 20
+    ```
+
+- ✅ **LIQUIDITY UNLOCK: Widen ZOMBIE Threshold & Embrace Wide Spreads**
+  - **Problem**: The ZOMBIE threshold (15%) was rejecting profitable market-making opportunities in wide-spread markets.
+  
+  - **Solution - New Regime Classification**:
+    ```
+    ZOMBIE:            Spread > 30%   (Too chaotic/illiquid even for us)
+    MAKER_OPPORTUNITY: Spread 15-30%  (The Golden Zone! Fat margins)
+    MAKER_WIDE:        Spread 4-15%   (Standard market making)
+    TAKER_TIGHT:       Spread < 4%    (High liquidity, can cross spread)
     ```
   
-  - **Two-Speed Architecture Now Fully Operational**:
-    - Alpha Loop: Evaluates 20 markets/cycle, triggers 5-6 trades/cycle
-    - HFT Loop: 38% hit rate on Alpha targets (was 0%)
-    - Alpha Updates: 20+ per cycle (was 0)
-    - Bridge functioning correctly
+  - **Spread Policy Updates**:
+    - `DEFAULT_MAX_SPREAD_HFT`: 25% → 35%
+    - `DEFAULT_MAX_SPREAD_ALPHA`: 15% → 20%
+    - `self.max_spread`: 25% → 35%
   
-  - **Note on Trade Execution**: Trades are correctly being rejected at execution layer due to wide orderbook spreads (98% spread in illiquid markets). This is CORRECT behavior - the bot protects itself from illiquid markets.
+  - **HFT Golden Zone Handling** (`_evaluate_hft_opportunity`):
+    - When `regime == MAKER_OPPORTUNITY`:
+      - Front-run best bid with penny-ing: `my_bid = best_bid + 0.001`
+      - Safety clamp: Don't bid higher than Alpha's fair value
+      - Larger position sizing (2.5% vs 2%, cap $60 vs $50)
+      - Implied edge = spread capture potential
+  
+  - **HFT Scalp Zone Widened** (`_evaluate_hft_scalp`):
+    - `MAX_SCALP_SPREAD`: 15% → 30%
+    - Added `spread_zone` classification: GOLDEN (15-30%), WIDE (10-15%), NORMAL (4-10%)
+    - Larger sizing in Golden Zone (2% vs 1%, cap $25 vs $15)
+  
+  - **Files Modified**:
+    - `/app/backend/paper_trading/paper_trader.py` - MarketRegime class, classify_market_regime(), _evaluate_hft_opportunity(), _evaluate_hft_scalp()
+    - `/app/backend/execution/spread_policy.py` - DEFAULT_MAX_SPREAD_* constants
+  
+  - **Note on Market Liquidity**: Trades are still being rejected for some markets because the CLOB orderbook has extreme spreads (98% = bid at 0.001, ask at 0.999) which is beyond even the widened thresholds. This is correct protective behavior - these markets truly have no real liquidity despite having displayed prices from last trades.
 
 ### January 26, 2026 - Session 34 (Two-Speed Architecture + Core Fixes)
 
