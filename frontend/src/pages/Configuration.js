@@ -147,6 +147,46 @@ const Configuration = () => {
     max_event_exposure_pct: 0.15,
     similarity_threshold: 0.60
   });
+  
+  // Portfolio Risk Config (Task 23b) - Single Source of Truth
+  const [portfolioRisk, setPortfolioRisk] = useState({
+    // Capital Allocation
+    allocated_capital_pct: 80,
+    // Zone Threshold
+    price_zone_threshold: 0.10,
+    // Whale Zone (< $0.10)
+    whale_max_usd: 15,
+    whale_max_pct: 0.01,
+    whale_max_spread_cents: 0.03,
+    whale_min_liquidity: 500,
+    // Core Zone (>= $0.10)
+    core_max_usd: 100,
+    core_max_pct: 0.03,
+    core_taker_spread_pct: 0.02,
+    core_maker_spread_pct: 0.10,
+    core_zombie_spread_pct: 0.12,
+    core_min_liquidity: 1000,
+    // Strategy Math
+    kelly_scaling_factor: 0.25,
+    min_kelly_fraction: 0.10,
+    max_kelly_fraction: 0.50,
+    hft_unit_pct: 0.02,
+    // Liquidity & Exposure
+    max_liquidity_consumption: 0.10,
+    max_event_exposure_pct: 0.15,
+    // Sector Limits
+    sector_limits: {
+      politics: 0.25, sports: 0.30, crypto: 0.20, finance: 0.20,
+      entertainment: 0.15, science: 0.15, conflict: 0.10, social: 0.10
+    },
+    // Trade Filters
+    min_trade_amount: 2,
+    min_bet_floor: 5,
+    max_open_positions: 50,
+  });
+  const [portfolioRiskDefaults, setPortfolioRiskDefaults] = useState({});
+  const [savingPortfolioRisk, setSavingPortfolioRisk] = useState(false);
+  
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
