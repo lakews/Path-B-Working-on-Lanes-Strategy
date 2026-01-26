@@ -304,6 +304,63 @@ class MakerOrderExecutor:
         
         return price_skew
     
+    def clamp_to_reality(
+        self,
+        my_bid: float,
+        my_ask: float,
+        market_mid: float,
+        deviation_limit: float = None
+    ) -> Tuple[float, float, bool]:
+        """
+        SAFETY LEASH: Prevents the Alpha model from forcing quotes too far 
+        from liquidity, protecting against model hallucinations.
+        
+        If theoretical_price is 0.99 but market_mid is 0.50, something is wrong.
+        This function clamps quotes to stay within deviation_limit of reality.
+        
+        Args:
+            my_bid: Calculated bid price (from Alpha + skew + OFI)
+            my_ask: Calculated ask price (from Alpha + skew + OFI)
+            market_mid: Current market mid-price (average of best bid/ask)
+            deviation_limit: Max allowed deviation from market_mid (default: config value)
+            
+        Returns:
+            (safe_bid, safe_ask, was_clamped)
+        """
+        if deviation_limit is None:
+            deviation_limit = self.config.get('max_alpha_deviation', 0.15)
+        
+        upper_bound = market_mid + deviation_limit
+        lower_bound = market_mid - deviation_limit
+        
+        # Ensure bounds are valid prices
+        upper_bound = min(upper_bound, 0.999)
+        lower_bound = max(lower_bound, 0.001)
+        
+        original_bid = my_bid
+        original_ask = my_ask
+        
+        # 1. Clamp Bid - want to bid high, but not insanely high
+        safe_bid = min(my_bid, upper_bound)
+        safe_bid = max(safe_bid, lower_bound)
+        
+        # 2. Clamp Ask - want to ask low, but not insanely low  
+        safe_ask = min(my_ask, upper_bound)
+        safe_ask = max(safe_ask, lower_bound)
+        
+        # Check if clamping occurred
+        was_clamped = (safe_bid != original_bid) or (safe_ask != original_ask)
+        
+        if was_clamped:
+            logger.warning(
+                f"[SAFETY-LEASH] Alpha deviation clamped! "
+                f"Original: bid={original_bid:.4f} ask={original_ask:.4f} | "
+                f"Clamped: bid={safe_bid:.4f} ask={safe_ask:.4f} | "
+                f"Market mid={market_mid:.4f} ± {deviation_limit:.2f}"
+            )
+        
+        return safe_bid, safe_ask, was_clamped
+    
     def calculate_adjusted_quotes(
         self,
         theoretical_price: float,
