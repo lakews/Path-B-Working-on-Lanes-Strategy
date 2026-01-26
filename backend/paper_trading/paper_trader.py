@@ -5029,24 +5029,20 @@ class PaperTrader:
     
     async def _get_active_markets(self) -> List[Dict]:
         """
-        Get active markets with STRICT quality filters.
+        Get active markets with DUAL-ZONE quality filters.
         
-        LIQUIDITY QUALITY CONTROL (Task 18):
-        - Pre-flight checks eliminate "Ghost Town" markets early
-        - Only high-volume, active markets reach Alpha and HFT logic
-        - Reduces CPU waste by ~90% compared to naive scanning
+        Task 21: Dual-Zone Risk Architecture
+        - WHALE ZONE (price < $0.10): Lower volume threshold, tick-based spread
+        - CORE ZONE (price >= $0.10): Higher volume threshold, percentage spread
         
         Uses WebSocket service for real-time data when available,
         falls back to REST API polling when WebSocket is unavailable.
         """
         try:
             # ================================================================
-            # QUALITY CONTROL CONSTANTS
+            # QUALITY CONTROL - From risk_config.py (Single Source of Truth)
             # ================================================================
-            MIN_VOLUME_24H = 1000.0      # $1K minimum daily volume (Ghost Town Rule)
-            MIN_PRICE_BAND = 0.05        # Skip if price < 5% (likely dead/lost)
-            MAX_PRICE_BAND = 0.95        # Skip if price > 95% (likely settled/won)
-            TOP_N_MARKETS = 50           # Only process top 50 by volume
+            TOP_N_MARKETS = RISK.TOP_N_MARKETS
             
             live_markets = []
             data_source = "REST"
@@ -5060,6 +5056,8 @@ class PaperTrader:
                 'rejected_low_liquidity': 0,
                 'rejected_no_price': 0,
                 'passed_quality': 0,
+                'whale_zone_count': 0,
+                'core_zone_count': 0,
             }
             
             # Try WebSocket service first for faster, real-time data
