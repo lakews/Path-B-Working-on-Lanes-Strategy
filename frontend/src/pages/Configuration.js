@@ -286,6 +286,10 @@ const Configuration = () => {
         strategy_risk_multipliers: savedConfig.strategy_risk_multipliers ?? prev.strategy_risk_multipliers,
         expiry_thresholds: savedConfig.expiry_thresholds ?? prev.expiry_thresholds,
         expiry_strategy_adjustments: savedConfig.expiry_strategy_adjustments ?? prev.expiry_strategy_adjustments,
+        // HFT/Alpha Execution
+        hft_execution: savedConfig.hft_execution ?? prev.hft_execution,
+        spread_policy: savedConfig.spread_policy ?? prev.spread_policy,
+        variance_sizing: savedConfig.variance_sizing ?? prev.variance_sizing,
       }));
       setLoading(false);
     } catch (e) { 
