@@ -15,7 +15,45 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 26, 2026)
 
-### January 26, 2026 - Session 34 (Safety Leash + Hysteresis + Tests)
+### January 26, 2026 - Session 34 (Two-Speed Architecture + Core Fixes)
+
+- ✅ **TWO-SPEED ARCHITECTURE: Parallel HFT/Alpha Loops**
+  - **Problem**: Single linear loop bottlenecked HFT execution behind slow LLM/Bayesian processing
+  
+  - **Solution**: Decoupled into two concurrent asyncio loops:
+    - **HFT Loop** (`_run_hft_loop`): Fast (0.5s cycle), microstructure only, no LLM
+    - **Alpha Loop** (`_run_alpha_loop`): Slow (30s cycle), full Bayesian/LLM analysis
+    - **StrategyContext**: Thread-safe shared state (the "bridge")
+      - Alpha writes: `context.update_target(market_id, fair_value, regime)`
+      - HFT reads: `context.get_target(market_id)` → smart quoting OR pure scalp
+  
+  - **Architecture Flow**:
+    ```
+    asyncio.gather(
+        _run_hft_loop(),       # Fast: 0.5s, microstructure
+        _run_alpha_loop(),     # Slow: 30s, Bayesian/LLM
+        _position_monitoring_loop(),
+        _learning_loop(),
+        _emergency_stoploss_task()
+    )
+    ```
+  
+  - **Evidence Working**:
+    ```
+    [ALPHA #3] COMPLETE | Evaluated: 0, Targets: 0, Cycle: 6.3s
+    [HFT #200] Evaluated: 50, Triggered: 0, Alpha Hits: 0.0%
+    ```
+
+- ✅ **MARKET REGIME CLASSIFICATION**
+  - `ZOMBIE`: spread >15% → Skip immediately
+  - `MAKER_WIDE`: spread 4-15% → Lower edge (0.5%)
+  - `TAKER_TIGHT`: spread <4% → Standard edge (1%)
+  - Early filter saves CPU on dead markets
+
+- ✅ **BAYESIAN MODEL FIX: Relative Log-Odds**
+  - Fixed sentiment delta to be relative to market, not absolute
+  - Before: sentiment=0.40 always negative delta (bearish bias)
+  - After: sentiment=0.40 with market=0.10 → positive delta (correct!)
 
 - ✅ **QUOTE HYSTERESIS: Smart Order Updates (Order Flickering Prevention)**
   - **Problem**: Without hysteresis, every small price change triggers a cancel/replace cycle, wasting API rate limits and losing queue priority on the exchange.
