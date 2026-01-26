@@ -514,22 +514,63 @@ const ResetButton = ({ onClick, label = "Reset" }) => (
 );
 
 // Metric Card Component
-const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = "cyan", valueColor, subtitleColor }) => (
-  <div className={`rounded-xl bg-gradient-to-br from-${color}-500/10 to-${color}-600/5 border border-${color}-500/20 p-4`}>
-    <div className="flex items-center justify-between mb-2">
-      <span className="text-xs text-white/60 uppercase tracking-wider">{title}</span>
-      {Icon && <Icon className={`w-4 h-4 text-${color}-400`} />}
+// Redesigned MetricCard with overflow handling and improved typography
+const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = "cyan", valueColor, subtitleColor, large = false }) => (
+  <div className={`rounded-xl bg-gradient-to-br from-${color}-500/10 to-${color}-600/5 border border-${color}-500/20 p-4 min-w-0 overflow-hidden ${large ? 'col-span-2' : ''}`}>
+    <div className="flex items-center justify-between mb-2 min-w-0">
+      <span className="text-[10px] sm:text-xs text-white/50 uppercase tracking-wider truncate">{title}</span>
+      {Icon && <Icon className={`w-4 h-4 flex-shrink-0 text-${color}-400/70`} />}
     </div>
-    <div className="flex items-end gap-2">
-      <span className={`text-2xl font-bold ${valueColor || 'text-white'}`}>{value}</span>
+    <div className="flex flex-col min-w-0">
+      <span className={`text-lg sm:text-xl lg:text-2xl font-bold font-mono tracking-tight truncate ${valueColor || 'text-white'}`}>
+        {value}
+      </span>
       {trend !== undefined && (
-        <span className={`text-sm flex items-center ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-          {trend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-          {Math.abs(trend).toFixed(1)}%
+        <span className={`text-xs font-mono flex items-center mt-1 ${trend >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+          {trend >= 0 ? <ArrowUpRight className="w-3 h-3 flex-shrink-0" /> : <ArrowDownRight className="w-3 h-3 flex-shrink-0" />}
+          <span className="truncate">{Math.abs(trend).toFixed(1)}%</span>
         </span>
       )}
     </div>
-    {subtitle && <p className={`text-xs mt-1 ${subtitleColor || 'text-white/40'}`}>{subtitle}</p>}
+    {subtitle && <p className={`text-[10px] sm:text-xs mt-1.5 truncate ${subtitleColor || 'text-white/40'}`}>{subtitle}</p>}
+  </div>
+);
+
+// Compact P&L Card for the breakdown display
+const PnLBreakdownCard = ({ realized, unrealized, realizedPct, unrealizedPct, isPositive }) => (
+  <div className={`rounded-xl border p-4 min-w-0 overflow-hidden col-span-2 sm:col-span-1 ${
+    isPositive 
+      ? 'bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20' 
+      : 'bg-gradient-to-br from-rose-500/10 to-rose-600/5 border-rose-500/20'
+  }`}>
+    <div className="flex items-center justify-between mb-3 min-w-0">
+      <span className="text-[10px] sm:text-xs uppercase tracking-wider text-white/50">P&L Breakdown</span>
+      <TrendingUp className={`w-4 h-4 flex-shrink-0 ${isPositive ? 'text-emerald-400/60' : 'text-rose-400/60'}`} />
+    </div>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <span className="text-[10px] sm:text-xs text-white/50 flex-shrink-0">Realized</span>
+        <div className="text-right min-w-0 flex items-baseline gap-1">
+          <span className={`text-sm font-bold font-mono truncate ${realized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {realized >= 0 ? '+' : '-'}${Math.abs(realized).toFixed(2)}
+          </span>
+          <span className={`text-[10px] font-mono ${realizedPct >= 0 ? 'text-emerald-400/60' : 'text-rose-400/60'}`}>
+            ({realizedPct >= 0 ? '+' : ''}{realizedPct.toFixed(1)}%)
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <span className="text-[10px] sm:text-xs text-white/50 flex-shrink-0">Unrealized</span>
+        <div className="text-right min-w-0 flex items-baseline gap-1">
+          <span className={`text-sm font-bold font-mono truncate ${unrealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {unrealized >= 0 ? '+' : '-'}${Math.abs(unrealized).toFixed(2)}
+          </span>
+          <span className={`text-[10px] font-mono ${unrealizedPct >= 0 ? 'text-emerald-400/60' : 'text-rose-400/60'}`}>
+            ({unrealizedPct >= 0 ? '+' : ''}{unrealizedPct.toFixed(1)}%)
+          </span>
+        </div>
+      </div>
+    </div>
   </div>
 );
 
