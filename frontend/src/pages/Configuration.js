@@ -83,8 +83,8 @@ const Configuration = () => {
     alpha_allocation_pct: 60,     // % of deployed capital to Alpha path
     hft_max_position_pct: 10,     // Max position size as % of HFT capital
     alpha_max_position_pct: 25,   // Max position size as % of Alpha capital
-    hft_max_positions: 3,         // Max positions per market for HFT
-    alpha_max_positions: 1,       // Max positions per market for Alpha
+    hft_positions_pct: 5,         // % of global max positions for HFT per market
+    alpha_positions_pct: 2,       // % of global max positions for Alpha per market
   });
   const [oracleMultipliersDefault, setOracleMultipliersDefault] = useState({});
   const [eventCapsDefault, setEventCapsDefault] = useState({
