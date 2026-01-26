@@ -422,8 +422,8 @@ class AdaptivePositionSizer:
         # ========== FACTOR 6: Asset Class Risk ==========
         asset_mult = self.ASSET_CLASS_RISK.get(asset_class.lower() if asset_class else 'finance', 1.0)
         
-        # ========== FACTOR 7: Strategy Risk ==========
-        strat_mult = self.STRATEGY_RISK.get(strategy, 1.0)
+        # ========== FACTOR 7: Strategy Risk (from config) ==========
+        strat_mult = self.strategy_risk.get(strategy, 1.0)
         
         # ========== FACTOR 8: Signal Strength ==========
         sentiment = signals.get('sentiment', 0.5)
