@@ -159,7 +159,7 @@ class MarketRegime:
     TAKER_TIGHT = "TAKER_TIGHT" # Tight spread (<2%) - can cross spread if edge high
 
 # Import spread rules from centralized config (Task 21: Single Source of Truth)
-from config import SPREAD_RULES, QUALITY_FILTERS
+from config import SPREAD_RULES, QUALITY_FILTERS, RISK_PARAMS
 
 # Use centralized thresholds
 SPREAD_ZOMBIE_THRESHOLD = SPREAD_RULES['ZOMBIE_THRESHOLD']      # 12%
