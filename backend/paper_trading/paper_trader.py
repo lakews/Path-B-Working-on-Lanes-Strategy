@@ -1436,7 +1436,31 @@ class PaperTrader:
                         )
                         targets_updated += 1
                         
+                        # =============================================================
+                        # REGIME-SPECIFIC EXECUTION RULES (Task 17 Refined)
+                        # =============================================================
+                        # "Yellow Light" for Alpha on wide spreads:
+                        # - Analyze the market ✓ (done above)
+                        # - Update HFT targets ✓ (done above)
+                        # - But DON'T execute Taker trade (spread would kill edge)
+                        # - Instead, let HFT post Maker orders
+                        
+                        regime = analysis.get('regime', MarketRegime.TAKER_TIGHT)
+                        
+                        if regime in [MarketRegime.MAKER_OPPORTUNITY, MarketRegime.MAKER_WIDE]:
+                            # GUARDRAIL: Wide spread detected - delegate to HFT
+                            if analysis.get('should_trade') and analysis.get('edge', 0) > 0.01:
+                                alpha_triggered += 1  # Count as triggered for stats
+                                logger.info(
+                                    f"⚠️ [ALPHA DELEGATE] {market_id[:16]}... FV={analysis['fair_value']:.4f} "
+                                    f"Edge={analysis['edge']:.2%} | Regime={regime} (spread too wide for Taker) "
+                                    f"→ Delegated to HFT for Maker execution"
+                                )
+                            # DO NOT execute directly - HFT will pick up the target
+                            continue
+                        
                         # Execute Alpha trade if conditions met and not in graceful stop
+                        # (Only for TAKER_TIGHT regime where crossing spread is profitable)
                         if not skip_new_entries and market_id not in self.paper_positions:
                             if analysis.get('should_trade') and analysis.get('edge', 0) > 0.01:
                                 alpha_triggered += 1
