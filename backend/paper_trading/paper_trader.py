@@ -1302,8 +1302,7 @@ class PaperTrader:
                     'edge': opportunity['edge'],
                     'fair_value': opportunity.get('fair_value'),
                     'regime': regime,
-                    'spread_zone': spread_zone,
-                    'delegated_from_alpha': strategy in ['hft_golden_penny', 'hft_smart'],
+                    'delegated_from_alpha': strategy in ['hft_maker', 'hft_taker'],
                 }
             )
             
