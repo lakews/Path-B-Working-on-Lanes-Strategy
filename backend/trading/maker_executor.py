@@ -146,6 +146,8 @@ def _merge_hft_config(base_config: dict, user_config: dict) -> dict:
             merged['ofi_adjustment'] = hft_exec['ofi_adjustment']
         if 'ofi_levels' in hft_exec:
             merged['ofi_levels'] = hft_exec['ofi_levels']
+        if 'max_alpha_deviation' in hft_exec:
+            merged['max_alpha_deviation'] = hft_exec['max_alpha_deviation']
     
     return merged
 
