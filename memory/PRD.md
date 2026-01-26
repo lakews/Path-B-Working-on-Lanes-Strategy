@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 26, 2026
+## Last Updated: January 26, 2026 (Session 36)
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -12,8 +12,63 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Performance**: <100ms execution latency, <50ms ML inference, 500+ trades per 10 minutes (configurable)
 - **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters, time-to-expiry awareness**
 - **Two-Speed Hybrid Architecture**: HFT (Fast Path) + Alpha (Slow Path) execution separation, **fully configurable from UI**
+- **Dual-Zone Risk Architecture**: Separate risk logic for Whale Zone (< $0.10) vs Core Zone (>= $0.10)
 
 ## Current Status (January 26, 2026)
+
+### January 26, 2026 - Session 36 (Task 21: Dual-Zone Risk Architecture - COMPLETE)
+
+- ✅ **TASK 21 COMPLETE: Dual-Zone Risk Architecture**
+  
+  **Purpose**: Centralize all risk parameters into a Single Source of Truth (`risk_config.py`) and implement a dual-zone trading system that handles cheap assets ($0.01-$0.10) differently from standard assets ($0.10+).
+
+  **Key Changes**:
+  
+  1. **New File: `/app/backend/risk_config.py`** - Single Source of Truth for all risk parameters
+     ```python
+     @dataclass
+     class RiskConfig:
+         # Global Safety
+         KILL_SWITCH_LOW: 0.03    # Don't trade below 3 cents
+         KILL_SWITCH_HIGH: 0.97   # Don't trade above 97 cents
+         
+         # Whale Zone ($0.01-$0.10) - Tick-based spreads
+         WHALE_PRICE_CEILING: 0.10
+         WHALE_MAX_SPREAD_CENTS: 0.03  # Max 3 cent spread
+         WHALE_MAX_POSITION: 15.0      # $15 max position
+         
+         # Core Zone ($0.10+) - Percentage-based spreads
+         CORE_TAKER_SPREAD_PCT: 0.02   # < 2% = TAKER_TIGHT
+         CORE_MAKER_SPREAD_PCT: 0.10   # 2-10% = MAKER_WIDE
+         CORE_ZOMBIE_SPREAD_PCT: 0.12  # > 12% = ZOMBIE
+     ```
+
+  2. **Market Regime Classification** (4 regimes):
+     - `CONVEXITY_OPPORTUNITY`: Whale zone, tight tick spread → gamma scalping
+     - `TAKER_TIGHT`: Core zone, < 2% spread → Alpha can cross spread
+     - `MAKER_WIDE`: Core zone, 2-12% spread → HFT posts limit orders
+     - `ZOMBIE`: Dead market → skip entirely
+
+  3. **HFT Loop Updates** (`paper_trader.py`):
+     - Added `CONVEXITY_OPPORTUNITY` handling with `hft_gamma_scalp` strategy
+     - Uses `RISK.WHALE_MAX_POSITION` ($15) for whale zone sizing
+     - Tighter edge threshold (0.3%) for whale zone opportunities
+
+  4. **Alpha Loop Updates** (`paper_trader.py`):
+     - Delegates whale zone markets to HFT for gamma scalping
+     - Logs whale zone delegations with 🐋 emoji
+
+  **Test Results**: 79/79 tests passed
+  - `test_dual_zone_risk.py`: 25 tests (regime classification, zone parameters)
+  - `test_iteration32_dual_zone_risk.py`: 35 tests (API endpoints, integration)
+  - `test_inventory_skew.py`: 19 tests (HFT math, hysteresis)
+
+  **Bug Fixed**: Missing import `QUALITY_FILTERS, SPREAD_RULES, RISK_PARAMS` in `paper_trader.py`
+
+  **Files Modified**:
+  - `/app/backend/risk_config.py` (new)
+  - `/app/backend/paper_trading/paper_trader.py`
+  - `/app/backend/tests/test_dual_zone_risk.py` (new)
 
 ### January 26, 2026 - Session 35 (CRITICAL BUG FIX + Liquidity Unlock)
 
