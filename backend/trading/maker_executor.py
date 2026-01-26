@@ -961,6 +961,15 @@ class MakerOrderExecutor:
         
         logger.debug(f"[MAKER] {side} order @ {limit_price:.4f} (our_bid={my_bid:.4f}, our_ask={my_ask:.4f})")
         
+        # Record active order for hysteresis tracking BEFORE execution
+        if market_id:
+            self.record_active_order(
+                market_id=market_id,
+                side=side,
+                price=limit_price,
+                size=size
+            )
+        
         if self.mode == ExecutionMode.LIVE and self._clob_client and token_id:
             # LIVE: Place real limit order
             result = await self._execute_maker_live(
@@ -972,9 +981,10 @@ class MakerOrderExecutor:
                 side, size, limit_price, spread, volume_24h
             )
         
-        # Update inventory on successful fill
+        # Update inventory and clear active order on successful fill
         if result.is_success and market_id:
             self.update_inventory(market_id, side, size, is_entry=True)
+            self.clear_active_order(market_id, side)  # Order filled, remove from tracking
         
         return result
     
