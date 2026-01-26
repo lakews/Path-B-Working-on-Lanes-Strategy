@@ -503,15 +503,15 @@ class PaperTrader:
             'ofi_levels': 3
         }
         
-        # Spread policy (defaults) - LIQUIDITY UNLOCK: Widened HFT spread tolerance
+        # Spread policy (from centralized config - Task 21)
         self.spread_policy_config = {
-            'max_spread_hft': 0.35,        # Widened from 0.25 to embrace Golden Zone
-            'max_spread_alpha': 0.20,      # Widened from 0.15 for Alpha trades
-            'max_spread_aggressive': 0.06,
-            'min_spread_maker': 0.005,
-            'maker_spread_capture': 0.50,
-            'adverse_selection_cost': 0.005,
-            'taker_fee': 0.02
+            'max_spread_hft': SPREAD_RULES.get('MAX_SPREAD_HFT', 0.12),
+            'max_spread_alpha': SPREAD_RULES.get('MAX_SPREAD_ALPHA', 0.05),
+            'max_spread_aggressive': SPREAD_RULES.get('MAX_SPREAD_AGGRESSIVE', 0.03),
+            'min_spread_maker': SPREAD_RULES.get('MIN_SPREAD_MAKER', 0.005),
+            'maker_spread_capture': RISK_PARAMS.get('MAKER_SPREAD_CAPTURE', 0.50),
+            'adverse_selection_cost': RISK_PARAMS.get('ADVERSE_SELECTION_COST', 0.005),
+            'taker_fee': RISK_PARAMS.get('TAKER_FEE', 0.02)
         }
         
         # Variance sizing (defaults)
