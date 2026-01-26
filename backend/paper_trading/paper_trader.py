@@ -1290,6 +1290,19 @@ class PaperTrader:
                             # Store full orderbook in market_data for maker execution
                             if order_book_data.get('bids') and order_book_data.get('asks'):
                                 market_data['order_book'] = order_book_data
+                                
+                                # EARLY SPREAD FILTER: Reject illiquid markets before wasting resources
+                                bids = order_book_data['bids']
+                                asks = order_book_data['asks']
+                                if bids and asks:
+                                    best_bid = float(bids[0]['price'])
+                                    best_ask = float(asks[0]['price'])
+                                    spread = best_ask - best_bid
+                                    if spread > self.max_spread:
+                                        logger.info(f"[SKIP] Early spread filter: {market_id[:16]} spread={spread:.2%} > max={self.max_spread:.2%}")
+                                        track_skip("spread_too_wide")
+                                        continue
+                                
                                 logger.debug(f"[ORDERBOOK] Fetched {len(order_book_data.get('bids', []))} bids, {len(order_book_data.get('asks', []))} asks for {market_id[:16]}")
                 except Exception as e:
                     logger.debug(f"Could not fetch order book: {e}")
