@@ -1471,6 +1471,12 @@ class PaperTrader:
                         
                         regime = analysis.get('regime', MarketRegime.TAKER_TIGHT)
                         
+                        # ZOMBIE: Market is dead - skip entirely
+                        if regime == MarketRegime.ZOMBIE:
+                            logger.debug(f"🚫 [ALPHA SKIP] {market_id[:16]}... ZOMBIE market - no execution")
+                            continue
+                        
+                        # MAKER zones: Delegate to HFT for liquidity posting
                         if regime in [MarketRegime.MAKER_OPPORTUNITY, MarketRegime.MAKER_WIDE]:
                             # GUARDRAIL: Wide spread detected - delegate to HFT
                             if analysis.get('should_trade') and analysis.get('edge', 0) > 0.01:
