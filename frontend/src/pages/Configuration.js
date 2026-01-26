@@ -292,7 +292,14 @@ const Configuration = () => {
       event_caps: {
         max_event_exposure_pct: 0.15,
         similarity_threshold: 0.60
-      }
+      },
+      // HFT vs Alpha Capital Allocation
+      hft_allocation_pct: 40,
+      alpha_allocation_pct: 60,
+      hft_max_position_pct: 10,
+      alpha_max_position_pct: 25,
+      hft_max_positions: 3,
+      alpha_max_positions: 1,
     });
     toast.info('Reset to defaults');
   };
