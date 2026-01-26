@@ -4259,9 +4259,9 @@ class PaperTrader:
         # Clamp to valid probability
         p_rl = max(1e-9, min(1 - 1e-9, p_rl))
         
-        # RL contributes if it has a direction and confidence
-        RL_WEIGHT = 0.60  # Boosted from 0.40 to overcome 2% fee spread
-        MIN_RL_CONFIDENCE = 0.15
+        # Use dynamic weights from self.alpha_weights (Task 19: Dynamic Alpha Tuning)
+        RL_WEIGHT = self.alpha_weights.get('rl_weight', 0.60)
+        MIN_RL_CONFIDENCE = self.alpha_weights.get('min_rl_confidence', 0.15)
         
         is_rl_neutral = (not is_buy and not is_sell) or rl_confidence < MIN_RL_CONFIDENCE
         
