@@ -35,9 +35,9 @@ class MarketRegime:
     TAKER_TIGHT = "TAKER_TIGHT" # Tight spread (<5c) - can cross spread if edge high
 
 # Regime classification thresholds (in probability space, not cents)
-SPREAD_ZOMBIE_THRESHOLD = 0.20     # > 20% spread = zombie market (was 99% before!)
-SPREAD_WIDE_THRESHOLD = 0.05       # > 5% spread = wide, maker-only
-MIN_VOLUME_24H = 100.0             # $100 minimum daily volume
+SPREAD_ZOMBIE_THRESHOLD = 0.15     # > 15% spread = zombie market (very illiquid)
+SPREAD_WIDE_THRESHOLD = 0.04       # > 4% spread = wide, maker-only
+MIN_VOLUME_24H = 50.0              # $50 minimum daily volume (lowered for more markets)
 
 def classify_market_regime(
     best_bid: float,
