@@ -157,6 +157,13 @@ def _merge_hft_config(base_config: dict, user_config: dict) -> dict:
             merged['ofi_levels'] = hft_exec['ofi_levels']
         if 'max_alpha_deviation' in hft_exec:
             merged['max_alpha_deviation'] = hft_exec['max_alpha_deviation']
+        # Hysteresis parameters
+        if 'min_tick_change' in hft_exec:
+            merged['min_tick_change'] = hft_exec['min_tick_change']
+        if 'min_size_change' in hft_exec:
+            merged['min_size_change'] = hft_exec['min_size_change']
+        if 'hysteresis_enabled' in hft_exec:
+            merged['hysteresis_enabled'] = hft_exec['hysteresis_enabled']
     
     return merged
 
