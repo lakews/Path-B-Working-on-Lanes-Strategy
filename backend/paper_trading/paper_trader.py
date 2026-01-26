@@ -179,71 +179,8 @@ SPREAD_MAKER_THRESHOLD = RISK.CORE_MAKER_SPREAD_PCT
 SPREAD_TAKER_THRESHOLD = RISK.CORE_TAKER_SPREAD_PCT
 MIN_VOLUME_24H = RISK.CORE_MIN_VOLUME_24H
 
-def classify_market_regime(
-    best_bid: float,
-    best_ask: float,
-    volume_24h: float = 0
-) -> Tuple[str, Dict]:
-    """
-    Classify market into trading regime based on liquidity profile.
-    
-    Task 21: Simplified regime classification with tightened thresholds.
-    Now that orderbook data is accurate (0.1-2% spreads), we use professional limits.
-    
-    Regimes (from widest to tightest spread):
-    - ZOMBIE: Spread > 12%. Market is dead/illiquid. Skip entirely.
-    - MAKER_WIDE: Spread 2-12%. Maker opportunity zone. Post limit orders.
-    - TAKER_TIGHT: Spread < 2%. High liquidity. Can cross spread if edge sufficient.
-    
-    Args:
-        best_bid: Best bid price (0-1)
-        best_ask: Best ask price (0-1)
-        volume_24h: 24-hour trading volume in USD
-        
-    Returns:
-        (regime, diagnostics_dict)
-    """
-    spread = best_ask - best_bid
-    mid_price = (best_bid + best_ask) / 2
-    spread_pct = spread / max(mid_price, 0.01)  # Spread as % of mid
-    
-    diagnostics = {
-        'best_bid': round(best_bid, 4),
-        'best_ask': round(best_ask, 4),
-        'spread': round(spread, 4),
-        'spread_pct': round(spread_pct, 4),
-        'volume_24h': round(volume_24h, 2),
-        'thresholds': {
-            'zombie': SPREAD_ZOMBIE_THRESHOLD,
-            'maker': SPREAD_MAKER_THRESHOLD,
-            'taker': SPREAD_TAKER_THRESHOLD,
-            'min_volume': MIN_VOLUME_24H,
-        }
-    }
-    
-    # REGIME 1: ZOMBIE (> 12% spread)
-    # Market is dead or has no real liquidity. Skip entirely.
-    if spread > SPREAD_ZOMBIE_THRESHOLD:
-        diagnostics['reject_reason'] = f'spread {spread:.2%} > zombie {SPREAD_ZOMBIE_THRESHOLD:.0%}'
-        return MarketRegime.ZOMBIE, diagnostics
-    
-    # Volume check
-    if volume_24h < MIN_VOLUME_24H:
-        diagnostics['reject_reason'] = f'volume ${volume_24h:.0f} < min ${MIN_VOLUME_24H:.0f}'
-        return MarketRegime.ZOMBIE, diagnostics
-    
-    # REGIME 2: MAKER_WIDE (2-12% spread)
-    # Good opportunity for maker orders. Post limit orders inside the spread.
-    if spread > SPREAD_TAKER_THRESHOLD:
-        diagnostics['strategy'] = 'maker_inside_spread'
-        diagnostics['min_edge_required'] = 0.005  # 0.5% edge for maker
-        return MarketRegime.MAKER_WIDE, diagnostics
-    
-    # REGIME 3: TAKER_TIGHT (< 2% spread)
-    # High liquidity. Can cross spread if edge > spread + fees.
-    diagnostics['strategy'] = 'taker_if_edge'
-    diagnostics['min_edge_required'] = 0.01  # 1% edge for taker (need to cover spread)
-    return MarketRegime.TAKER_TIGHT, diagnostics
+# Note: classify_market_regime is now imported from risk_config.py
+# The function supports dual-zone architecture (Whale Zone + Core Zone)
 
 
 # Callback for WebSocket broadcasting (set by server.py)
