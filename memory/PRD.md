@@ -11,9 +11,39 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Trading Strategies**: Delta-Neutral Market Making, Volatility Exploitation, Alpha-Directional, Multi-Market Arbitrage
 - **Performance**: <100ms execution latency, <50ms ML inference, 500+ trades per 10 minutes (configurable)
 - **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters, time-to-expiry awareness**
-- **Two-Speed Hybrid Architecture**: HFT (Fast Path) + Alpha (Slow Path) execution separation
+- **Two-Speed Hybrid Architecture**: HFT (Fast Path) + Alpha (Slow Path) execution separation, **fully configurable from UI**
 
 ## Current Status (January 26, 2026)
+
+### January 26, 2026 - Session 33 (P0: Complete Configurable HFT/Alpha Risk Limits)
+
+- ✅ **P0 COMPLETE: UI-Configurable Two-Speed Architecture Parameters**
+  - **Test Results**: 15/15 backend tests passed (100%), all frontend UI elements functional
+  
+  - **Backend Changes**:
+    - Updated `server.py` - Added 12 new fields to `TradingConfig` Pydantic model for Two-Speed Architecture
+    - Updated `get_config` endpoint - Returns all new fields with sensible defaults
+    - Updated `update_config` endpoint - Persists all new fields to MongoDB
+    - Updated `paper_trading/paper_trader.py`:
+      - `_load_user_config()` now loads HFT/Alpha capital allocation, strategy risk multipliers, expiry thresholds, HFT execution params, spread policy, and variance sizing from DB
+      - Calls `update_spread_policy_from_config()` when spread policy config is loaded
+      - Updates `AdaptivePositionSizer` with variance sizing thresholds
+      - Updates `MakerOrderExecutor` with HFT execution config
+    - Updated `ml/adaptive_position_sizer.py`:
+      - `__init__` and `update_config` now handle variance sizing config
+      - `calculate_variance_sizing()` uses configurable `kill_switch_low` and `kill_switch_high` thresholds
+    - `execution/spread_policy.py` - `update_spread_policy_from_config()` already implemented (just needed to be called)
+  
+  - **Frontend - Strategy Risk Tab** (`Configuration.js`):
+    - **Strategy Position Sizing Multipliers**: Sliders for delta_neutral, volatility_exploitation, alpha_directional, arbitrage
+    - **Expiry Thresholds**: No Entry Window (hours), High Urgency (hours), Medium Urgency (days), Normal Trading (days)
+    - **Strategy Expiry Adjustments**: Per-strategy settings (disable_within_hours, boost_multiplier, min_confidence_near_expiry)
+    - **HFT Execution Parameters**: Max Inventory ($), Skew Factor (%), OFI Threshold (%), OFI Adjustment (%), OFI Book Levels
+    - **Spread Policy**: Max Spread HFT/Alpha/Aggressive, Min Spread Maker, Spread Capture %, Adverse Selection %, Taker Fee %
+    - **Variance Sizing (Tail Risk Kill Switch)**: Kill Switch LOW/HIGH with Trading Zone visualization
+    - **Reset to Defaults** buttons for each section
+  
+  - **UI is now the Single Source of Truth** for all risk parameters
 
 ### January 26, 2026 - Session 32 (Two-Speed Hybrid Architecture)
 
