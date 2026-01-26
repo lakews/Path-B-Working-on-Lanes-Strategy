@@ -2343,13 +2343,33 @@ class PaperTrader:
                 # Use orderbook prices - more accurate than midpoint
                 best_bid = float(bids[0]['price'])
                 best_ask = float(asks[0]['price'])
-                if side == 'YES':
+                
+                # SANITY CHECK: Verify orderbook makes sense
+                spread = best_ask - best_bid
+                if spread < 0 or spread > 0.50:
+                    logger.warning(f"[EXIT-WARN] Suspicious orderbook: bid={best_bid}, ask={best_ask}, spread={spread}")
+                    # Fall back to midpoint
+                    exit_yes_price = current_yes_price
+                elif side == 'YES':
                     # Selling YES = hitting bid
                     exit_yes_price = best_bid
                 else:
                     # Selling NO = buying YES = hitting ask
                     exit_yes_price = best_ask
-                logger.debug(f"[EXIT] Using orderbook price: bid={best_bid}, ask={best_ask}, exit_yes={exit_yes_price}")
+                
+                # Additional sanity check: exit price should be close to current price
+                price_diff = abs(exit_yes_price - current_yes_price)
+                if price_diff > 0.10:  # More than 10% difference is suspicious
+                    logger.warning(f"[EXIT-WARN] Exit price {exit_yes_price:.4f} differs significantly from current {current_yes_price:.4f}")
+                    # Use current price as fallback for safety
+                    if side == 'YES':
+                        exit_yes_price = current_yes_price - 0.01  # Conservative sell
+                    else:
+                        exit_yes_price = current_yes_price + 0.01  # Conservative buy YES
+                    exit_yes_price = max(0.001, min(0.999, exit_yes_price))
+                    logger.info(f"[EXIT] Using conservative exit price: {exit_yes_price:.4f}")
+                
+                logger.debug(f"[EXIT] Orderbook: bid={best_bid}, ask={best_ask}, exit_yes={exit_yes_price}")
             else:
                 # No orderbook - use midpoint with conservative spread estimate
                 spread_estimate = 0.02
