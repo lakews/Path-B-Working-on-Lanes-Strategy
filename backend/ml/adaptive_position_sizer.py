@@ -59,6 +59,11 @@ class AdaptivePositionSizer:
         # Strategy risk multipliers - use config if available, else defaults
         self.strategy_risk = self.config.get('strategy_risk_multipliers', self.DEFAULT_STRATEGY_RISK)
         
+        # Variance sizing thresholds - use config if available, else defaults
+        variance_config = self.config.get('variance_sizing', {})
+        self.kill_switch_low = variance_config.get('kill_switch_low', 0.03)  # Default 3%
+        self.kill_switch_high = variance_config.get('kill_switch_high', 0.97)  # Default 97%
+        
         # Learned parameters (loaded from DB, updated by RL)
         self.learned_params = {
             'strategy_win_rates': {},
@@ -77,9 +82,16 @@ class AdaptivePositionSizer:
     
     def update_config(self, config: Dict):
         """Update configuration (called when settings change)."""
-        self.config = config
-        self.strategy_risk = config.get('strategy_risk_multipliers', self.DEFAULT_STRATEGY_RISK)
-        logger.info(f"AdaptivePositionSizer config updated: strategy_risk={self.strategy_risk}")
+        self.config.update(config)
+        self.strategy_risk = self.config.get('strategy_risk_multipliers', self.DEFAULT_STRATEGY_RISK)
+        
+        # Update variance sizing thresholds
+        variance_config = self.config.get('variance_sizing', {})
+        self.kill_switch_low = variance_config.get('kill_switch_low', self.kill_switch_low)
+        self.kill_switch_high = variance_config.get('kill_switch_high', self.kill_switch_high)
+        
+        logger.info(f"AdaptivePositionSizer config updated: strategy_risk={self.strategy_risk}, "
+                   f"variance_kill_switch={self.kill_switch_low:.0%}-{self.kill_switch_high:.0%}")
     
     async def load_learned_params(self):
         """Load learned parameters from database"""
