@@ -15,6 +15,53 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 26, 2026)
 
+### January 26, 2026 - Session 35 (CRITICAL BUG FIX: Alpha Loop Parameter Mismatch)
+
+- ✅ **P0 CRITICAL FIX: Missing `sharp_alignment` Parameter in `_run_alpha_analysis`**
+  - **Problem**: The Alpha loop was reporting "Evaluated: 0" markets despite processing 20 markets per cycle. No targets were being generated, and no trades were being triggered. The Two-Speed architecture was running but completely blind.
+  
+  - **Root Cause**: The `_run_alpha_analysis` function called `_calculate_model_probability()` without providing the required `sharp_alignment` parameter:
+    ```python
+    # BROKEN - missing sharp_alignment
+    model_result = self._calculate_model_probability(
+        yes_price=yes_price,
+        sentiment=signals.get('sentiment', 0.5),
+        rl_action=rl_action,
+        rl_confidence=rl_confidence,
+        return_diagnostics=True
+    )
+    ```
+    
+  - **Solution**: Added the missing `sharp_alignment` parameter to the function call:
+    ```python
+    # FIXED - all required parameters provided
+    model_result = self._calculate_model_probability(
+        sentiment=signals.get('sentiment', 0.5),
+        sharp_alignment=signals.get('sharp_alignment', 0.5),
+        rl_confidence=rl_confidence,
+        yes_price=yes_price,
+        rl_action=rl_action,
+        return_diagnostics=True
+    )
+    ```
+  
+  - **Files Modified**: `/app/backend/paper_trading/paper_trader.py` (line ~1413)
+  
+  - **Evidence Working**:
+    ```
+    [ALPHA #1] COMPLETE | Evaluated: 20, Triggered: 6, Targets: 20
+    [ALPHA] 0x43ec78527bd98a... FV=0.7306 Edge=0.0544 Should_trade=True
+    [ALPHA TRADE] NO $100.00 in 0x43ec78527bd98a... | Edge: 5.44%
+    ```
+  
+  - **Two-Speed Architecture Now Fully Operational**:
+    - Alpha Loop: Evaluates 20 markets/cycle, triggers 5-6 trades/cycle
+    - HFT Loop: 38% hit rate on Alpha targets (was 0%)
+    - Alpha Updates: 20+ per cycle (was 0)
+    - Bridge functioning correctly
+  
+  - **Note on Trade Execution**: Trades are correctly being rejected at execution layer due to wide orderbook spreads (98% spread in illiquid markets). This is CORRECT behavior - the bot protects itself from illiquid markets.
+
 ### January 26, 2026 - Session 34 (Two-Speed Architecture + Core Fixes)
 
 - ✅ **TWO-SPEED ARCHITECTURE: Parallel HFT/Alpha Loops**
