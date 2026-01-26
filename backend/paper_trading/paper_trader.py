@@ -4828,6 +4828,52 @@ class PaperTrader:
                     
                     self.unrealized_pnl = round(total_unrealized, 2)
                     
+                    # =========================================================
+                    # GAMMA EXIT SIGNALS (Task 22)
+                    # =========================================================
+                    # Check for Free Roll / Moonbag / Stop Loss on whale positions
+                    try:
+                        gamma_market_prices = {}
+                        for m in markets:
+                            mid = m.get('id')
+                            if mid:
+                                gamma_market_prices[mid] = {
+                                    'best_bid': float(m.get('yes_price', 0) or 0),
+                                    'best_ask': float(m.get('yes_price', 0) or 0) + 0.01,
+                                    'yes_price': float(m.get('yes_price', 0) or 0),
+                                    'no_price': 1 - float(m.get('yes_price', 0) or 0),
+                                }
+                        
+                        exit_orders = self.gamma_trader.check_exit_signals(
+                            active_positions=self.paper_positions,
+                            current_market_prices=gamma_market_prices
+                        )
+                        
+                        for exit_order in exit_orders:
+                            if exit_order.position_id in self.paper_positions:
+                                position = self.paper_positions[exit_order.position_id]
+                                logger.info(
+                                    f"🐋 [GAMMA EXIT] {exit_order.reason.value} | "
+                                    f"Market: {exit_order.market_id[:16]}... | "
+                                    f"Selling ${exit_order.size:.2f}"
+                                )
+                                
+                                # Execute exit (simplified - mark position for exit)
+                                if exit_order.reason.value == 'free_roll':
+                                    # Mark free roll as done, reduce position
+                                    position['free_roll_done'] = True
+                                    position['size'] = position['size'] - exit_order.size
+                                    self.current_capital += exit_order.size * exit_order.price
+                                else:
+                                    # Full exit (moonbag or stop_loss)
+                                    await self._close_position(
+                                        exit_order.market_id,
+                                        exit_order.price,
+                                        f"gamma_{exit_order.reason.value}"
+                                    )
+                    except Exception as e:
+                        logger.debug(f"[GAMMA] Exit signal check error: {e}")
+                    
                     # Calculate DEPLOYED capital (sum of position sizes)
                     deployed_capital = sum(p.get('size', 0) for p in self.paper_positions.values())
                     
