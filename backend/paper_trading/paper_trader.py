@@ -1294,7 +1294,11 @@ class PaperTrader:
                         logger.debug(f"[ALPHA] Could not fetch orderbook for {market_id[:16]}: {e}")
                     
                     # Run full Alpha analysis (Bayesian, signals, regime)
-                    analysis = await self._run_alpha_analysis(market_data)
+                    try:
+                        analysis = await self._run_alpha_analysis(market_data)
+                    except Exception as e:
+                        logger.error(f"[ALPHA] Analysis failed for {market_id[:16]}: {e}")
+                        analysis = None
                     
                     if analysis:
                         alpha_evaluated += 1
