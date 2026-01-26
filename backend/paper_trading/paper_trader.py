@@ -1461,14 +1461,16 @@ class PaperTrader:
         if urgency in ['expired', 'critical']:
             return {'should_trade': False, 'size_multiplier': 0.0, 'reason': f'too_close_to_expiry_{hours:.1f}h'}
         
-        adjustments = self.EXPIRY_STRATEGY_ADJUSTMENTS.get(strategy, {})
+        # Get strategy-specific adjustments from config
+        all_adjustments = self._get_expiry_strategy_adjustments()
+        adjustments = all_adjustments.get(strategy, {})
         
         # Check strategy-specific disable threshold
         disable_hours = adjustments.get('disable_within_hours', 6)
         if hours <= disable_hours:
             return {'should_trade': False, 'size_multiplier': 0.0, 'reason': f'{strategy}_disabled_within_{disable_hours}h'}
         
-        # Delta-neutral specific: disable within 48h
+        # Delta-neutral specific: disable within configured hours (default 48h)
         if strategy == 'delta_neutral' and hours <= adjustments.get('disable_within_hours', 48):
             return {'should_trade': False, 'size_multiplier': 0.0, 'reason': 'delta_neutral_too_close'}
         
