@@ -20,8 +20,132 @@ from ml.enhanced_sentiment import get_enhanced_sentiment_analyzer
 from trading.maker_executor import get_maker_executor, MakerOrderExecutor
 from config import config
 import numpy as np
+from threading import Lock
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# TWO-SPEED ARCHITECTURE: SHARED STATE MANAGEMENT
+# =============================================================================
+# The "Bridge" between HFT (Fast Path) and Alpha (Slow Path) loops
+# - Alpha Loop WRITES theoretical prices and analysis
+# - HFT Loop READS and uses them for quote generation
+
+class StrategyContext:
+    """
+    Thread-safe shared state between HFT and Alpha loops.
+    
+    Alpha Loop writes:
+        context.update_target(market_id, fair_value, regime, confidence)
+    
+    HFT Loop reads:
+        target = context.get_target(market_id)
+        if target:
+            # Use Alpha's fair value for smart quoting
+        else:
+            # Pure scalp mode (market microstructure only)
+    """
+    
+    def __init__(self):
+        self._lock = Lock()
+        self._targets: Dict[str, Dict] = {}  # market_id -> {fair_value, regime, confidence, timestamp}
+        self._stats = {
+            'alpha_updates': 0,
+            'hft_reads': 0,
+            'hft_hits': 0,  # Found Alpha target
+            'hft_misses': 0,  # No Alpha target, pure scalp
+        }
+        self._last_alpha_cycle = None
+        self._last_hft_cycle = None
+    
+    def update_target(self, market_id: str, fair_value: float, regime: str, 
+                      confidence: float = 1.0, signals: Dict = None):
+        """
+        Alpha Loop: Write a new fair value target for a market.
+        
+        Args:
+            market_id: Market identifier
+            fair_value: Bayesian model probability (theoretical price)
+            regime: Market regime (ZOMBIE, MAKER_WIDE, TAKER_TIGHT)
+            confidence: Model confidence (0-1)
+            signals: Additional signal data
+        """
+        with self._lock:
+            self._targets[market_id] = {
+                'fair_value': fair_value,
+                'regime': regime,
+                'confidence': confidence,
+                'signals': signals or {},
+                'timestamp': datetime.now(timezone.utc),
+            }
+            self._stats['alpha_updates'] += 1
+    
+    def get_target(self, market_id: str) -> Optional[Dict]:
+        """
+        HFT Loop: Read the current fair value target for a market.
+        
+        Returns:
+            Target dict if available, None if no Alpha analysis yet
+        """
+        with self._lock:
+            self._stats['hft_reads'] += 1
+            target = self._targets.get(market_id)
+            if target:
+                self._stats['hft_hits'] += 1
+                # Check staleness - Alpha targets older than 5 min are stale
+                age = (datetime.now(timezone.utc) - target['timestamp']).total_seconds()
+                if age > 300:  # 5 minutes
+                    target['stale'] = True
+                else:
+                    target['stale'] = False
+            else:
+                self._stats['hft_misses'] += 1
+            return target
+    
+    def clear_target(self, market_id: str):
+        """Remove a market's target (e.g., after position closed)."""
+        with self._lock:
+            if market_id in self._targets:
+                del self._targets[market_id]
+    
+    def get_all_targets(self) -> Dict[str, Dict]:
+        """Get snapshot of all current targets."""
+        with self._lock:
+            return dict(self._targets)
+    
+    def get_stats(self) -> Dict:
+        """Get bridge statistics."""
+        with self._lock:
+            hit_rate = self._stats['hft_hits'] / max(1, self._stats['hft_reads'])
+            return {
+                **self._stats,
+                'hit_rate': round(hit_rate, 3),
+                'active_targets': len(self._targets),
+                'last_alpha_cycle': self._last_alpha_cycle,
+                'last_hft_cycle': self._last_hft_cycle,
+            }
+    
+    def record_alpha_cycle(self):
+        """Record when Alpha loop completed a cycle."""
+        with self._lock:
+            self._last_alpha_cycle = datetime.now(timezone.utc)
+    
+    def record_hft_cycle(self):
+        """Record when HFT loop completed a cycle."""
+        with self._lock:
+            self._last_hft_cycle = datetime.now(timezone.utc)
+
+
+# Global strategy context (singleton)
+_strategy_context: Optional[StrategyContext] = None
+
+def get_strategy_context() -> StrategyContext:
+    """Get or create the global strategy context."""
+    global _strategy_context
+    if _strategy_context is None:
+        _strategy_context = StrategyContext()
+    return _strategy_context
+
 
 # =============================================================================
 # MARKET REGIME CLASSIFICATION
