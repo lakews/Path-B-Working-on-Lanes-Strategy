@@ -3407,6 +3407,216 @@ async def reset_portfolio_risk_config():
             content={"success": False, "error": str(e)}
         )
 
+
+# ============================================================================
+# EXIT ENGINE CONFIGURATION API (Task 24: Alpha-State Exit Engine)
+# ============================================================================
+
+@api_router.get("/config/exit-engine")
+async def get_exit_engine_config():
+    """
+    Get Exit Engine configuration - Global Settings, Strategy Config, Asset Modifiers, Whale Zone.
+    """
+    from risk_config import (
+        EXIT_GLOBAL_SETTINGS,
+        EXIT_STRATEGY_CONFIG,
+        EXIT_ALPHA_ASSET_MODIFIERS,
+        EXIT_WHALE_ZONE,
+        get_exit_config,
+    )
+    
+    try:
+        db = get_db()
+        
+        # Load from database if exists
+        saved_config = await db.exit_engine_config.find_one({"type": "exit_engine"})
+        
+        if saved_config:
+            # Remove MongoDB _id
+            saved_config.pop('_id', None)
+            saved_config.pop('type', None)
+            return {
+                "success": True,
+                "config": saved_config,
+                "defaults": get_exit_config(),
+                "source": "database"
+            }
+        
+        # Return defaults
+        return {
+            "success": True,
+            "config": get_exit_config(),
+            "defaults": get_exit_config(),
+            "source": "defaults"
+        }
+    except Exception as e:
+        logger.error(f"Error getting exit engine config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+
+@api_router.post("/config/exit-engine")
+async def update_exit_engine_config(config: dict):
+    """
+    Update Exit Engine configuration.
+    
+    Expected structure:
+    {
+        "global": {...},
+        "strategies": {...},
+        "alpha_modifiers": {...},
+        "whale_zone": {...}
+    }
+    """
+    from risk_config import (
+        EXIT_GLOBAL_SETTINGS,
+        EXIT_STRATEGY_CONFIG,
+        EXIT_ALPHA_ASSET_MODIFIERS,
+        EXIT_WHALE_ZONE,
+    )
+    from trading.exit_engine import get_exit_engine
+    
+    try:
+        db = get_db()
+        
+        # Update in-memory configurations
+        if 'global' in config:
+            EXIT_GLOBAL_SETTINGS.update(config['global'])
+        if 'strategies' in config:
+            for strat, params in config['strategies'].items():
+                if strat in EXIT_STRATEGY_CONFIG:
+                    EXIT_STRATEGY_CONFIG[strat].update(params)
+        if 'alpha_modifiers' in config:
+            for asset, mods in config['alpha_modifiers'].items():
+                if asset in EXIT_ALPHA_ASSET_MODIFIERS:
+                    EXIT_ALPHA_ASSET_MODIFIERS[asset].update(mods)
+        if 'whale_zone' in config:
+            EXIT_WHALE_ZONE.update(config['whale_zone'])
+        
+        # Update the singleton exit engine instance
+        exit_engine = get_exit_engine()
+        exit_engine.global_settings = dict(EXIT_GLOBAL_SETTINGS)
+        exit_engine.strategy_config = dict(EXIT_STRATEGY_CONFIG)
+        exit_engine.alpha_modifiers = dict(EXIT_ALPHA_ASSET_MODIFIERS)
+        exit_engine.whale_zone = dict(EXIT_WHALE_ZONE)
+        
+        # Persist to database
+        save_data = {
+            "type": "exit_engine",
+            "global": dict(EXIT_GLOBAL_SETTINGS),
+            "strategies": {k: dict(v) for k, v in EXIT_STRATEGY_CONFIG.items()},
+            "alpha_modifiers": {k: dict(v) for k, v in EXIT_ALPHA_ASSET_MODIFIERS.items()},
+            "whale_zone": dict(EXIT_WHALE_ZONE),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.exit_engine_config.update_one(
+            {"type": "exit_engine"},
+            {"$set": save_data},
+            upsert=True
+        )
+        
+        logger.info(f"[EXIT-CONFIG] Updated exit engine configuration")
+        
+        return {
+            "success": True,
+            "message": "Exit engine configuration updated",
+            "config": {
+                "global": dict(EXIT_GLOBAL_SETTINGS),
+                "strategies": {k: dict(v) for k, v in EXIT_STRATEGY_CONFIG.items()},
+                "alpha_modifiers": {k: dict(v) for k, v in EXIT_ALPHA_ASSET_MODIFIERS.items()},
+                "whale_zone": dict(EXIT_WHALE_ZONE),
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error updating exit engine config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+
+@api_router.post("/config/exit-engine/reset")
+async def reset_exit_engine_config():
+    """
+    Reset Exit Engine configuration to defaults.
+    """
+    from risk_config import (
+        EXIT_GLOBAL_SETTINGS,
+        EXIT_STRATEGY_CONFIG,
+        EXIT_ALPHA_ASSET_MODIFIERS,
+        EXIT_WHALE_ZONE,
+        get_exit_config,
+    )
+    from trading.exit_engine import get_exit_engine
+    
+    try:
+        db = get_db()
+        
+        # Reset to defaults (reimport fresh)
+        default_config = get_exit_config()
+        
+        # Update in-memory (clear and reset)
+        EXIT_GLOBAL_SETTINGS.clear()
+        EXIT_GLOBAL_SETTINGS.update(default_config['global'])
+        
+        EXIT_STRATEGY_CONFIG.clear()
+        EXIT_STRATEGY_CONFIG.update(default_config['strategies'])
+        
+        EXIT_ALPHA_ASSET_MODIFIERS.clear()
+        EXIT_ALPHA_ASSET_MODIFIERS.update(default_config['alpha_modifiers'])
+        
+        EXIT_WHALE_ZONE.clear()
+        EXIT_WHALE_ZONE.update(default_config['whale_zone'])
+        
+        # Update singleton
+        exit_engine = get_exit_engine()
+        exit_engine.global_settings = dict(EXIT_GLOBAL_SETTINGS)
+        exit_engine.strategy_config = dict(EXIT_STRATEGY_CONFIG)
+        exit_engine.alpha_modifiers = dict(EXIT_ALPHA_ASSET_MODIFIERS)
+        exit_engine.whale_zone = dict(EXIT_WHALE_ZONE)
+        
+        # Delete from database
+        await db.exit_engine_config.delete_one({"type": "exit_engine"})
+        
+        logger.info("[EXIT-CONFIG] Reset exit engine configuration to defaults")
+        
+        return {
+            "success": True,
+            "config": default_config,
+            "message": "Exit engine configuration reset to defaults"
+        }
+    except Exception as e:
+        logger.error(f"Error resetting exit engine config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+
+@api_router.get("/exit-engine/stats")
+async def get_exit_engine_stats():
+    """
+    Get Exit Engine runtime statistics.
+    """
+    from trading.exit_engine import get_exit_engine
+    
+    try:
+        exit_engine = get_exit_engine()
+        return {
+            "success": True,
+            "stats": exit_engine.get_stats()
+        }
+    except Exception as e:
+        logger.error(f"Error getting exit engine stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+
 # ============================================================================
 # ALPHA MODEL WEIGHTS API (Task 19: Dynamic Alpha Tuning)
 # ============================================================================
