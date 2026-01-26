@@ -1039,9 +1039,11 @@ class PaperTrader:
         """
         Evaluate pure scalping opportunity (no Alpha target available).
         
-        This is "Blind HFT" - we don't have Alpha's opinion, so we only
-        trade if there's obvious microstructure opportunity (tight spread,
-        high volume, clear momentum).
+        This is "Autonomous HFT" - we don't have Alpha's opinion, so we trade
+        pure market microstructure when the spread is juicy enough.
+        
+        Strategy: "Penny-ing" - place limit buy at best_bid + 0.001 to front-run
+        existing orders and capture spread when filled.
         """
         try:
             market_id = market_data.get('id', '')
@@ -1053,17 +1055,88 @@ class PaperTrader:
             
             yes_price = float(yes_price)
             
-            # For pure scalp, we need high volume and clear price levels
-            if volume_24h < 500:  # Need decent volume for scalping
-                return None
+            # Get orderbook data for spread calculation
+            best_bid = market_data.get('best_bid', 0)
+            best_ask = market_data.get('best_ask', 0)
+            
+            # If no orderbook data, try to extract from nested structure
+            if best_bid == 0 or best_ask == 0:
+                order_book = market_data.get('order_book', {})
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
+                if bids and asks:
+                    best_bid = float(bids[0]['price'])
+                    best_ask = float(asks[0]['price'])
+                else:
+                    return None  # No orderbook data, can't scalp
+            
+            spread = best_ask - best_bid
+            
+            # =============================================================
+            # SCALP LOGIC: Trade when spread is in the "Goldilocks Zone"
+            # =============================================================
+            # - Too tight (<4%): Not enough profit margin after fees
+            # - Too wide (>15%): Market is illiquid/dangerous
+            # - Just right (4-15%): Wide enough to profit, tight enough to be real
+            
+            MIN_SCALP_SPREAD = 0.04  # 4% minimum spread to scalp
+            MAX_SCALP_SPREAD = 0.15  # 15% maximum (avoid zombies)
+            MIN_SCALP_VOLUME = 100   # $100 minimum daily volume
+            
+            if not (MIN_SCALP_SPREAD <= spread <= MAX_SCALP_SPREAD):
+                return None  # Spread outside scalp zone
+            
+            if volume_24h < MIN_SCALP_VOLUME:
+                return None  # Not enough volume
             
             # Check for stuck prices (avoid)
             if abs(yes_price - 0.5) < 0.02:
-                return None
+                return None  # Price too close to 0.5, likely stuck
             
-            # For now, disable pure scalp (wait for Alpha guidance)
-            # This can be enabled later with more sophisticated microstructure logic
-            return None
+            # Safety: Check we don't already have a position in this market
+            if market_id in self.paper_positions:
+                return None  # Already have position
+            
+            # Check capital availability
+            current_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+            available_capital = self.deployed_capital - current_deployed
+            if available_capital < 10:
+                return None  # Not enough capital
+            
+            # =============================================================
+            # PENNY-ING STRATEGY: Front-run the best bid by 1 tick
+            # =============================================================
+            # Place limit buy at best_bid + 0.001 to get queue priority
+            scalp_price = best_bid + 0.001
+            
+            # Calculate implied edge from spread capture
+            # If we buy at scalp_price and sell at best_ask, our edge is:
+            implied_edge = (best_ask - scalp_price) / scalp_price
+            
+            # Minimum position size for scalping (small, fast)
+            scalp_size = min(
+                available_capital * 0.01,  # Max 1% per scalp
+                15.0,                       # Cap at $15 per scalp
+                self.max_position_size * 0.3  # 30% of normal max
+            )
+            scalp_size = max(scalp_size, 5.0)  # Minimum $5
+            
+            logger.info(
+                f"⚡ [HFT SCALP] Opportunity in {market_id[:16]}... | "
+                f"Spread: {spread:.2%} | Bid: {best_bid:.4f} → Scalp: {scalp_price:.4f} | "
+                f"Implied Edge: {implied_edge:.2%}"
+            )
+            
+            return {
+                'should_trade': True,
+                'side': 'YES',  # Scalping = buying YES at penny above bid
+                'size': scalp_size,
+                'edge': implied_edge,
+                'scalp_price': scalp_price,
+                'spread': spread,
+                'strategy': 'hft_scalp_autonomous',
+                'regime': MarketRegime.MAKER_WIDE,  # Scalping is maker strategy
+            }
             
         except Exception as e:
             logger.debug(f"[HFT] Error evaluating scalp: {e}")
