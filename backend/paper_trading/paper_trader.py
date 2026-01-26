@@ -3057,6 +3057,11 @@ class PaperTrader:
                 sizing_result['sizing_breakdown']['rl_confidence'] = rl_confidence
                 sizing_result['sizing_breakdown']['model_probability'] = model_probability
                 
+                # Add regime info for debugging and UI
+                sizing_result['sizing_breakdown']['market_regime'] = regime
+                sizing_result['sizing_breakdown']['execution_strategy'] = execution_strategy
+                sizing_result['sizing_breakdown']['min_edge_required'] = min_edge
+                
                 # Add probability model diagnostics for UI panel
                 sizing_result['sizing_breakdown']['probability_diagnostics'] = model_diagnostics
                 
