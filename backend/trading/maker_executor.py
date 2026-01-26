@@ -163,6 +163,12 @@ class MakerOrderExecutor:
             'circuit_breaker_trips': 0,
         }
         
+        # ==========================================================================
+        # HFT INVENTORY TRACKING
+        # ==========================================================================
+        # Track inventory per market (positive = long, negative = short)
+        self._inventory: Dict[str, float] = {}  # market_id -> position in USD
+        
         logger.info(f"MakerOrderExecutor initialized in {mode.value} mode")
     
     async def initialize(self):
