@@ -147,13 +147,49 @@ class PolymarketAPI:
             return None
     
     async def get_order_book(self, token_id: str) -> Dict[str, Any]:
-        """Fetch order book for a token from CLOB"""
+        """
+        Fetch order book for a token from CLOB.
+        
+        CRITICAL FIX (Task 20): Polymarket CLOB returns orderbook with:
+        - BIDS sorted ASCENDING (lowest first) - needs reversal
+        - ASKS sorted DESCENDING (highest first) - needs reversal
+        
+        We normalize to standard format:
+        - BIDS: sorted DESCENDING (best/highest bid first)
+        - ASKS: sorted ASCENDING (best/lowest ask first)
+        """
         try:
             url = f"{self.clob_url}/book"
             params = {"token_id": token_id}
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:
-                    return await response.json()
+                    raw_book = await response.json()
+                    
+                    # CRITICAL: Normalize orderbook sorting
+                    bids = raw_book.get('bids', [])
+                    asks = raw_book.get('asks', [])
+                    
+                    # Sort bids DESCENDING by price (highest bid first = best bid)
+                    if bids:
+                        bids = sorted(bids, key=lambda x: float(x['price']), reverse=True)
+                    
+                    # Sort asks ASCENDING by price (lowest ask first = best ask)
+                    if asks:
+                        asks = sorted(asks, key=lambda x: float(x['price']), reverse=False)
+                    
+                    # Return normalized book
+                    raw_book['bids'] = bids
+                    raw_book['asks'] = asks
+                    
+                    # Log if we found good liquidity
+                    if bids and asks:
+                        best_bid = float(bids[0]['price'])
+                        best_ask = float(asks[0]['price'])
+                        spread = best_ask - best_bid
+                        if spread < 0.05:  # Less than 5% spread
+                            logger.debug(f"[CLOB] Good liquidity: bid={best_bid:.4f} ask={best_ask:.4f} spread={spread:.2%}")
+                    
+                    return raw_book
                 return {"bids": [], "asks": []}
         except Exception as e:
             logger.error(f"Error fetching order book: {e}")
