@@ -2802,7 +2802,7 @@ const PaperTrading = () => {
           {status && (
             <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
               <MetricCard title="Capital" value={`$${(status.current_capital || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`} subtitle={`Initial: $${(status.initial_capital || 10000).toLocaleString()}`} icon={Wallet} color="blue" />
-              <MetricCard title="Total P&L" value={`${(status.combined_pnl || status.total_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(status.combined_pnl || status.total_pnl || 0).toFixed(2)}`} subtitle={`Realized: $${(status.total_pnl || 0).toFixed(2)}`} trend={status.combined_pnl_pct || status.total_pnl_pct} icon={DollarSign} color={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "green" : "red"} />
+              <MetricCard title="Total P&L" value={`${(status.combined_pnl || status.total_pnl || 0) >= 0 ? '+' : '-'}$${Math.abs(status.combined_pnl || status.total_pnl || 0).toFixed(2)}`} subtitle={`Realized: ${(status.total_pnl || 0) >= 0 ? '+' : '-'}$${Math.abs(status.total_pnl || 0).toFixed(2)}`} trend={status.combined_pnl_pct || status.total_pnl_pct} icon={DollarSign} color={(status.combined_pnl || status.total_pnl || 0) >= 0 ? "green" : "red"} />
               <MetricCard title="Win Rate" value={`${((status.win_rate || 0) * 100).toFixed(1)}%`} subtitle={`${status.winning_trades || 0}/${status.total_trades || 0} wins`} icon={Target} color="cyan" />
               <MetricCard title="Total Trades" value={status.total_trades || 0} icon={Activity} color="purple" />
               <MetricCard title="Open Positions" value={status.open_positions ?? positions.length ?? 0} icon={Layers} color="orange" />
