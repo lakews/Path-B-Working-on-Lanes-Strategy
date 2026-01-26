@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 26, 2026 (Session 36 - Task 23)
+## Last Updated: January 26, 2026 (Session 37 - Task 24)
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -14,8 +14,66 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Two-Speed Hybrid Architecture**: HFT (Fast Path) + Alpha (Slow Path) execution separation, **fully configurable from UI**
 - **Dual-Zone Risk Architecture**: Separate risk logic for Whale Zone (< $0.10) vs Core Zone (>= $0.10)
 - **Unified Portfolio Manager**: Single entry point for ALL position sizing decisions
+- **Alpha-State Exit Engine**: Hierarchical exit logic respecting State → Strategy → Asset Class → Zone
 
 ## Current Status (January 26, 2026)
+
+### January 26, 2026 - Session 37 (Task 24: Alpha-State Exit Engine - COMPLETE)
+
+- ✅ **TASK 24 COMPLETE: Alpha-State Exit Engine**
+  
+  **Purpose**: Complete overhaul of the Exit Logic subsystem. The old system used generic parameters (STOP_LOSS_PCT) that failed to capture the nuance of Prediction Markets. New system is a Hierarchical Engine respecting: State (Active vs Free Ride), Strategy (Mechanical vs Alpha), Asset Class (wide/tight stops), Zone (Whale vs Core).
+
+  **New File: `/app/backend/trading/exit_engine.py`**
+  - `ExitEngine` class - Hierarchical exit logic with state machine
+  - `ExitAction` enum: HOLD, CLOSE_ALL, FREE_ROLL
+  - `ExitReason` enum: Multiple reasons for each action
+  - `ExitDecision` dataclass: Full audit trail of exit decisions
+  - `get_exit_engine()` singleton accessor
+
+  **Exit Logic Hierarchy (Strict Order)**:
+  1. **FREE_RIDE State**: House money - floor $0.02, ceiling $0.98
+  2. **Global Safety (Pre-Flight)**: Wick filter (max spread), Expiry guard (force close losing trades near expiry)
+  3. **Whale Zone (<$0.10)**: Uses price MULTIPLES not percentages - 0.5x stop, 2x free roll, 5x moonbag
+  4. **Mechanical Strategies (Arb/Delta)**: Direct TP/SL percentages, time limits
+  5. **Alpha Strategies**: Asset-class modifiers applied to base values
+
+  **Asset Class Modifiers (Alpha Strategy)**:
+  | Asset | Profit × | SL × | Time × | Trailing | Thesis Fail | Zombie |
+  |-------|----------|------|--------|----------|-------------|--------|
+  | Politics | 1.2 | 1.0 | 3.0 | ✓ | ✓ | ✗ |
+  | Finance | 1.0 | 1.2 | 1.0 | ✓ | ✓ | ✗ |
+  | Crypto | 1.5 | 1.5 | 0.5 | ✓ | ✓ | ✗ |
+  | Sports | 1.0 | 1.5 | 0.25 | ✗ | ✗ | ✓ |
+  | Entertainment | 2.0 | 0.8 | 2.0 | ✗ | ✗ | ✓ |
+  | Science | 2.0 | 0.5 | 5.0 | ✗ | ✗ | ✓ |
+
+  **New API Endpoints**:
+  - `GET /api/config/exit-engine` - Get current exit engine config
+  - `POST /api/config/exit-engine` - Save exit engine config to DB
+  - `POST /api/config/exit-engine/reset` - Reset to defaults
+  - `GET /api/exit-engine/stats` - Get runtime statistics
+
+  **New Settings Tab: "Exit Engine"** (Second tab in Configuration page)
+  Sections:
+  1. **Stats Banner**: Total Checks, Holds, Close All, Free Rolls, Whale Exits, Thesis Fails
+  2. **Global Safety Settings**: Whale Threshold, Max Spread %, Expiry Guard, Min Trade Size, Free Ride Floor/Ceiling
+  3. **Whale Zone Rules** (🐋): Stop Loss (0.5x), Free Roll (2x), Sell %, Moonbag (5x)
+  4. **Mechanical Strategies**: Arbitrage, Delta Neutral with TP%/SL%/Max Hours
+  5. **Alpha Directional Base**: Profit Trigger %, Base SL %, Base Max Hours
+  6. **Alpha Asset Modifiers Matrix**: Editable table with all 6 asset classes
+
+  **Test Results**: 48/48 tests passed
+  - `test_exits.py`: 32 unit tests (all exit scenarios)
+  - `test_exit_engine_api.py`: 16 API tests
+
+  **Files Created/Modified**:
+  - `/app/backend/trading/exit_engine.py` (NEW - 700+ lines)
+  - `/app/backend/risk_config.py` (UPDATED - Added EXIT_* dicts, get_exit_config())
+  - `/app/backend/server.py` (UPDATED - Added 4 new API endpoints)
+  - `/app/frontend/src/pages/Configuration.js` (UPDATED - Added Exit Engine tab)
+  - `/app/backend/tests/test_exits.py` (NEW - 32 tests)
+  - `/app/backend/tests/test_exit_engine_api.py` (NEW - 16 tests)
 
 ### January 26, 2026 - Session 36 (Task 23b: Configurable Portfolio Risk - COMPLETE)
 
