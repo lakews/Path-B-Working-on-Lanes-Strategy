@@ -1005,11 +1005,47 @@ class PaperTrader:
             spread = best_ask - best_bid if (best_bid > 0 and best_ask > 0) else 0
             
             # =================================================================
-            # REGIME-SPECIFIC STRATEGIES (Task 21: Simplified to 3 regimes)
+            # REGIME-SPECIFIC STRATEGIES (Task 21: Dual-Zone Architecture)
             # =================================================================
+            # Zone 1: CONVEXITY_OPPORTUNITY (Whale Zone - price < $0.10)
+            # Zone 2: TAKER_TIGHT, MAKER_WIDE (Core Zone - price >= $0.10)
+            # Skip: ZOMBIE
             
             # Skip zombie markets
             if regime == MarketRegime.ZOMBIE:
+                return None
+            
+            # CONVEXITY_OPPORTUNITY: Whale Zone - cheap assets with tight tick spread
+            # Strategy: Aggressive accumulation for gamma/convexity upside
+            if regime == MarketRegime.CONVEXITY_OPPORTUNITY:
+                if best_bid <= 0 or best_ask <= 0:
+                    return None  # Need orderbook
+                
+                # Calculate edge - in whale zone, use tighter edge threshold
+                edge = fair_value - yes_price
+                min_whale_edge = 0.003  # 0.3% edge for whale zone (tighter threshold)
+                
+                if abs(edge) > min_whale_edge:
+                    side = 'YES' if edge > 0 else 'NO'
+                    
+                    # Whale zone: Use RISK.WHALE_MAX_POSITION from config
+                    from risk_config import RISK
+                    whale_size = min(
+                        available_capital * 0.01,  # Max 1% per whale trade
+                        RISK.WHALE_MAX_POSITION,   # $15 max from config
+                        15.0
+                    )
+                    
+                    return {
+                        'should_trade': True,
+                        'side': side,
+                        'size': whale_size,
+                        'edge': abs(edge),
+                        'fair_value': fair_value,
+                        'strategy': 'hft_gamma_scalp',
+                        'regime': regime,
+                        'zone': 'WHALE',
+                    }
                 return None
             
             # MAKER_WIDE: Spread 2-12% - Maker opportunity
