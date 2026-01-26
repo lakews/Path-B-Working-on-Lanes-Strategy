@@ -3511,13 +3511,13 @@ class PaperTrader:
                         position['shares'] = round(shares, 2)
                         position['current_value'] = round(current_value, 2)
                         position['unrealized_pnl'] = round(unrealized, 2)
-                        position['unrealized_pnl_pct'] = round((unrealized / size) * 100, 2) if size > 0 else 0
+                        position['unrealized_pnl_pct'] = round(unrealized / size, 4) if size > 0 else 0  # Store as decimal (e.g., -0.279 not -27.9)
                         
                         # Track max drawdown for this position (for reward shaping)
                         current_pnl_pct = position['unrealized_pnl_pct']
                         if current_pnl_pct < 0:
                             # Position is underwater - track how bad it got
-                            current_drawdown = abs(current_pnl_pct)
+                            current_drawdown = abs(current_pnl_pct) * 100  # Convert to percentage for display
                             if current_drawdown > position.get('max_drawdown_pct', 0):
                                 position['max_drawdown_pct'] = round(current_drawdown, 2)
                         
