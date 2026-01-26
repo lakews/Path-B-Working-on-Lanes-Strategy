@@ -126,6 +126,15 @@ DEFAULT_CONFIG = {
     # ==========================================================================
     # Prevents Alpha model from forcing quotes too far from market reality
     'max_alpha_deviation': 0.15,        # Maximum deviation from market mid (15 cents)
+    
+    # ==========================================================================
+    # QUOTE HYSTERESIS: Prevent Order Flickering
+    # ==========================================================================
+    # Only update orders if price/size changes significantly
+    # Preserves API rate limits and queue priority on the exchange
+    'min_tick_change': 0.003,           # Min price change to trigger order update (0.3 cents)
+    'min_size_change': 5.0,             # Min size change ($) to trigger order update
+    'hysteresis_enabled': True,         # Enable/disable hysteresis checks
 }
 
 
