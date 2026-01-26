@@ -456,6 +456,15 @@ const Configuration = () => {
               </div>
             </div>
             
+            {/* Info note about per-market vs global */}
+            <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-start gap-2">
+              <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-blue-300">
+                <strong>Per-Market Limits</strong> below control positions within each market. 
+                <strong> Global Total</strong> in Market Selection tab limits overall portfolio.
+              </p>
+            </div>
+            
             {/* Main Allocation Slider */}
             <div className="mb-6">
               <div className="flex justify-between text-sm mb-2">
