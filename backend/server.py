@@ -3548,40 +3548,76 @@ async def reset_exit_engine_config():
         EXIT_STRATEGY_CONFIG,
         EXIT_ALPHA_ASSET_MODIFIERS,
         EXIT_WHALE_ZONE,
-        get_exit_config,
     )
     from trading.exit_engine import get_exit_engine
+    import copy
     
     try:
         db = get_db()
         
-        # Reset to defaults (reimport fresh)
-        default_config = get_exit_config()
+        # Define hardcoded defaults (since module-level dicts may be mutated)
+        DEFAULT_GLOBAL = {
+            'whale_threshold_price': 0.10,
+            'max_spread_pct': 0.10,
+            'expiry_guard_hours': 2.0,
+            'min_trade_size_usd': 2.00,
+            'free_ride_floor': 0.02,
+            'free_ride_ceiling': 0.98,
+        }
+        DEFAULT_STRATEGIES = {
+            'arbitrage': {'type': 'mechanical', 'action': 'CLOSE_ALL', 'tp_pct': 0.02, 'sl_pct': 0.02, 'max_hours': 6},
+            'delta_neutral': {'type': 'mechanical', 'action': 'CLOSE_ALL', 'tp_pct': 0.015, 'sl_pct': 0.015, 'max_hours': 4},
+            'volatility_exploitation': {'type': 'mechanical', 'action': 'CLOSE_ALL', 'tp_pct': 0.05, 'sl_pct': 0.05, 'max_hours': 24},
+            'alpha_directional': {'type': 'complex', 'action': 'FREE_ROLL', 'profit_trigger_pct': 0.30, 'base_sl_pct': 0.15, 'base_max_hours': 72},
+            'gamma_scalp': {'type': 'whale', 'action': 'GAMMA_EXIT', 'stop_multiple': 0.50, 'free_roll_multiple': 2.0, 'moonbag_multiple': 5.0, 'max_hours': 168},
+        }
+        DEFAULT_ALPHA_MODIFIERS = {
+            'politics': {'profit_mult': 1.2, 'sl_mult': 1.0, 'time_mult': 3.0, 'use_trailing': True, 'use_thesis_fail': True, 'allow_zombie': False},
+            'finance': {'profit_mult': 1.0, 'sl_mult': 1.2, 'time_mult': 1.0, 'use_trailing': True, 'use_thesis_fail': True, 'allow_zombie': False},
+            'crypto': {'profit_mult': 1.5, 'sl_mult': 1.5, 'time_mult': 0.5, 'use_trailing': True, 'use_thesis_fail': True, 'allow_zombie': False},
+            'sports': {'profit_mult': 1.0, 'sl_mult': 1.5, 'time_mult': 0.25, 'use_trailing': False, 'use_thesis_fail': False, 'allow_zombie': True},
+            'entertainment': {'profit_mult': 2.0, 'sl_mult': 0.8, 'time_mult': 2.0, 'use_trailing': False, 'use_thesis_fail': False, 'allow_zombie': True},
+            'science': {'profit_mult': 2.0, 'sl_mult': 0.5, 'time_mult': 5.0, 'use_trailing': False, 'use_thesis_fail': False, 'allow_zombie': True},
+            'default': {'profit_mult': 1.0, 'sl_mult': 1.0, 'time_mult': 1.0, 'use_trailing': True, 'use_thesis_fail': True, 'allow_zombie': False},
+        }
+        DEFAULT_WHALE_ZONE = {
+            'stop_loss_multiple': 0.50,
+            'free_roll_multiple': 2.0,
+            'free_roll_sell_pct': 0.50,
+            'moonbag_multiple': 5.0,
+        }
         
-        # Update in-memory (clear and reset)
+        # Update in-memory (clear and reset from hardcoded defaults)
         EXIT_GLOBAL_SETTINGS.clear()
-        EXIT_GLOBAL_SETTINGS.update(default_config['global'])
+        EXIT_GLOBAL_SETTINGS.update(copy.deepcopy(DEFAULT_GLOBAL))
         
         EXIT_STRATEGY_CONFIG.clear()
-        EXIT_STRATEGY_CONFIG.update(default_config['strategies'])
+        EXIT_STRATEGY_CONFIG.update(copy.deepcopy(DEFAULT_STRATEGIES))
         
         EXIT_ALPHA_ASSET_MODIFIERS.clear()
-        EXIT_ALPHA_ASSET_MODIFIERS.update(default_config['alpha_modifiers'])
+        EXIT_ALPHA_ASSET_MODIFIERS.update(copy.deepcopy(DEFAULT_ALPHA_MODIFIERS))
         
         EXIT_WHALE_ZONE.clear()
-        EXIT_WHALE_ZONE.update(default_config['whale_zone'])
+        EXIT_WHALE_ZONE.update(copy.deepcopy(DEFAULT_WHALE_ZONE))
         
         # Update singleton
         exit_engine = get_exit_engine()
-        exit_engine.global_settings = dict(EXIT_GLOBAL_SETTINGS)
-        exit_engine.strategy_config = dict(EXIT_STRATEGY_CONFIG)
-        exit_engine.alpha_modifiers = dict(EXIT_ALPHA_ASSET_MODIFIERS)
-        exit_engine.whale_zone = dict(EXIT_WHALE_ZONE)
+        exit_engine.global_settings = copy.deepcopy(DEFAULT_GLOBAL)
+        exit_engine.strategy_config = copy.deepcopy(DEFAULT_STRATEGIES)
+        exit_engine.alpha_modifiers = copy.deepcopy(DEFAULT_ALPHA_MODIFIERS)
+        exit_engine.whale_zone = copy.deepcopy(DEFAULT_WHALE_ZONE)
         
         # Delete from database
         await db.exit_engine_config.delete_one({"type": "exit_engine"})
         
         logger.info("[EXIT-CONFIG] Reset exit engine configuration to defaults")
+        
+        default_config = {
+            'global': DEFAULT_GLOBAL,
+            'strategies': DEFAULT_STRATEGIES,
+            'alpha_modifiers': DEFAULT_ALPHA_MODIFIERS,
+            'whale_zone': DEFAULT_WHALE_ZONE,
+        }
         
         return {
             "success": True,
