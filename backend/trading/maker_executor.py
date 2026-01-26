@@ -648,32 +648,49 @@ class MakerOrderExecutor:
         self,
         side: str,
         size: float,
-        best_bid: float,
-        best_ask: float,
+        my_bid: float,
+        my_ask: float,
         spread: float,
         volume_24h: float,
         edge: float,
         token_id: Optional[str],
+        market_id: str = None,
     ) -> ExecutionResult:
-        """Attempt maker order execution."""
+        """
+        Attempt maker order execution using Alpha-adjusted quotes.
+        
+        CRITICAL: my_bid and my_ask are calculated from theoretical_price (Alpha),
+        NOT from the market's best bid/ask. We quote our own Alpha, adjusted by
+        inventory skew and OFI.
+        """
         self.stats['maker_attempts'] += 1
         
-        # Determine our limit price
+        # Determine our limit price from OUR calculated quotes
+        # When buying YES, we place a bid at our calculated bid price
+        # When buying NO (selling YES), we place an ask at our calculated ask price
         if side == 'YES':
-            limit_price = best_bid  # We bid at best bid
+            limit_price = my_bid  # Our bid price (centered on Alpha)
         else:
-            limit_price = best_ask  # We ask at best ask
+            limit_price = my_ask  # Our ask price (centered on Alpha)
+        
+        logger.debug(f"[MAKER] {side} order @ {limit_price:.4f} (our_bid={my_bid:.4f}, our_ask={my_ask:.4f})")
         
         if self.mode == ExecutionMode.LIVE and self._clob_client and token_id:
             # LIVE: Place real limit order
-            return await self._execute_maker_live(
+            result = await self._execute_maker_live(
                 side, size, limit_price, spread, token_id
             )
         else:
             # PAPER: Simulate maker fill
-            return await self._simulate_maker_fill(
+            result = await self._simulate_maker_fill(
                 side, size, limit_price, spread, volume_24h
             )
+        
+        # Update inventory on successful fill
+        if result.is_success and market_id:
+            self.update_inventory(market_id, side, size, is_entry=True)
+        
+        return result
     
     async def _execute_maker_live(
         self,
