@@ -15,6 +15,33 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 26, 2026)
 
+### January 26, 2026 - Session 34 (P0: Fix Maker Executor Quote Center)
+
+- ✅ **P0 CRITICAL FIX: Maker Executor Uses Theoretical Price (Alpha) for Quotes**
+  - **Problem**: `maker_executor.py` was using `market_mid_price` (best_bid/best_ask) as the center for quote generation, instead of the `theoretical_price` (Alpha signal from Bayesian posterior). The bot was trading market prices, not its own Alpha.
+  
+  - **Root Cause**: The `calculate_adjusted_quotes()` method was implemented but NEVER called in the execution flow. `_try_maker_fill()` directly used `best_bid`/`best_ask` from the orderbook.
+  
+  - **Solution**:
+    - **`maker_executor.py`**:
+      - Added `theoretical_price` parameter to `execute_order()` method
+      - Now calls `calculate_adjusted_quotes()` using `theoretical_price` as the center
+      - Falls back to market mid-price only if `theoretical_price` is not provided (with warning)
+      - Updated `_try_maker_fill()` to use Alpha-calculated `my_bid`/`my_ask` prices
+      - Added inventory tracking update on successful fills
+      - Added detailed logging: `[ALPHA] Using theoretical_price=X as quote center (market_mid=Y, diff=Z)`
+    
+    - **`paper_trading/paper_trader.py`**:
+      - Added logic in `_execute_paper_entry()` to extract `theoretical_price` from:
+        - Primary: `sizing_breakdown['probability_diagnostics']['final_probability']` (raw Bayesian posterior)
+        - Fallback: `sizing_breakdown['model_probability']` with transformation for NO bets
+      - Passes `theoretical_price` to `maker_executor.execute_order()`
+      - Added `theoretical_price`, `market_price`, and `alpha_diff` to position's `execution_info`
+  
+  - **Key Principle Enforced**: The bot now trades its **own Alpha signal** (adjusted by inventory skew and OFI), not the market's mid-price. This aligns with the "Two-Speed" architecture design where:
+    - **Slow Path** generates Alpha (Bayesian posterior probability)
+    - **Fast Path** executes trades centered on that Alpha, with HFT adjustments
+
 ### January 26, 2026 - Session 33 (P0: Complete Configurable HFT/Alpha Risk Limits)
 
 - ✅ **P0 COMPLETE: UI-Configurable Two-Speed Architecture Parameters**
