@@ -120,6 +120,12 @@ DEFAULT_CONFIG = {
     'ofi_threshold': 0.6,               # Threshold to trigger OFI adjustment
     'ofi_adjustment': 0.01,             # Price adjustment amount when OFI triggered
     'ofi_levels': 3,                    # Number of order book levels to analyze
+    
+    # ==========================================================================
+    # SAFETY LEASH: Anti-Hallucination Protection
+    # ==========================================================================
+    # Prevents Alpha model from forcing quotes too far from market reality
+    'max_alpha_deviation': 0.15,        # Maximum deviation from market mid (15 cents)
 }
 
 
