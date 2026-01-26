@@ -1072,6 +1072,7 @@ class PaperTrader:
         This is "Autonomous HFT" - we don't have Alpha's opinion, so we trade
         pure market microstructure when the spread is juicy enough.
         
+        LIQUIDITY UNLOCK v2: Embrace wide spreads as the Golden Zone!
         Strategy: "Penny-ing" - place limit buy at best_bid + 0.001 to front-run
         existing orders and capture spread when filled.
         """
@@ -1103,15 +1104,23 @@ class PaperTrader:
             spread = best_ask - best_bid
             
             # =============================================================
-            # SCALP LOGIC: Trade when spread is in the "Goldilocks Zone"
+            # LIQUIDITY UNLOCK: The Spread Goldilocks Zone
             # =============================================================
             # - Too tight (<4%): Not enough profit margin after fees
-            # - Too wide (>15%): Market is illiquid/dangerous
-            # - Just right (4-15%): Wide enough to profit, tight enough to be real
+            # - Sweet spot (4-30%): Wide enough to profit, narrow enough to be real
+            # - Too wide (>30%): Market is chaotic/zombie
             
             MIN_SCALP_SPREAD = 0.04  # 4% minimum spread to scalp
-            MAX_SCALP_SPREAD = 0.15  # 15% maximum (avoid zombies)
-            MIN_SCALP_VOLUME = 100   # $100 minimum daily volume
+            MAX_SCALP_SPREAD = 0.30  # 30% maximum (WIDENED from 15%!)
+            MIN_SCALP_VOLUME = 50    # $50 minimum daily volume
+            
+            # Classify spread zone for logging
+            if spread > 0.15:
+                spread_zone = "GOLDEN"  # 15-30%: Fat margin zone
+            elif spread > 0.10:
+                spread_zone = "WIDE"    # 10-15%: Wide but good
+            else:
+                spread_zone = "NORMAL"  # 4-10%: Standard maker
             
             if not (MIN_SCALP_SPREAD <= spread <= MAX_SCALP_SPREAD):
                 return None  # Spread outside scalp zone
@@ -1134,28 +1143,49 @@ class PaperTrader:
                 return None  # Not enough capital
             
             # =============================================================
-            # PENNY-ING STRATEGY: Front-run the best bid by 1 tick
+            # PENNY-ING STRATEGY: Front-run the best bid
             # =============================================================
             # Place limit buy at best_bid + 0.001 to get queue priority
+            # In wide spread markets, this captures the fat margin
             scalp_price = best_bid + 0.001
+            
+            # Safety clamp: Don't buy higher than mid-price
+            mid_price = (best_bid + best_ask) / 2
+            if scalp_price > mid_price:
+                scalp_price = mid_price - 0.001  # Stay on bid side
             
             # Calculate implied edge from spread capture
             # If we buy at scalp_price and sell at best_ask, our edge is:
             implied_edge = (best_ask - scalp_price) / scalp_price
             
-            # Minimum position size for scalping (small, fast)
-            scalp_size = min(
-                available_capital * 0.01,  # Max 1% per scalp
-                15.0,                       # Cap at $15 per scalp
-                self.max_position_size * 0.3  # 30% of normal max
-            )
+            # Position sizing based on spread zone (larger in Golden Zone)
+            if spread_zone == "GOLDEN":
+                # Fat margins = can take bigger position
+                scalp_size = min(
+                    available_capital * 0.02,  # Max 2% per golden scalp
+                    25.0,                       # Cap at $25 per scalp
+                    self.max_position_size * 0.4  # 40% of normal max
+                )
+            else:
+                # Standard sizing
+                scalp_size = min(
+                    available_capital * 0.01,  # Max 1% per scalp
+                    15.0,                       # Cap at $15 per scalp
+                    self.max_position_size * 0.3  # 30% of normal max
+                )
             scalp_size = max(scalp_size, 5.0)  # Minimum $5
             
             logger.info(
-                f"⚡ [HFT SCALP] Opportunity in {market_id[:16]}... | "
+                f"⚡ [HFT SCALP {spread_zone}] Opportunity in {market_id[:16]}... | "
                 f"Spread: {spread:.2%} | Bid: {best_bid:.4f} → Scalp: {scalp_price:.4f} | "
                 f"Implied Edge: {implied_edge:.2%}"
             )
+            
+            # Determine regime based on spread
+            if spread > SPREAD_OPPORTUNITY_THRESHOLD:
+                regime = MarketRegime.MAKER_OPPORTUNITY
+            else:
+                regime = MarketRegime.MAKER_WIDE
             
             return {
                 'should_trade': True,
@@ -1164,8 +1194,9 @@ class PaperTrader:
                 'edge': implied_edge,
                 'scalp_price': scalp_price,
                 'spread': spread,
+                'spread_zone': spread_zone,
                 'strategy': 'hft_scalp_autonomous',
-                'regime': MarketRegime.MAKER_WIDE,  # Scalping is maker strategy
+                'regime': regime,
             }
             
         except Exception as e:
