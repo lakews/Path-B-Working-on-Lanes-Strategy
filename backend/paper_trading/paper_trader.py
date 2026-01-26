@@ -1304,11 +1304,9 @@ class PaperTrader:
                         if analysis:
                             logger.info(f"[ALPHA] {market_id[:16]}... FV={analysis['fair_value']:.4f} Edge={analysis['edge']:.4f} Should_trade={analysis.get('should_trade')}")
                         else:
-                            logger.info(f"[ALPHA] {market_id[:16]}... returned None from analysis")
+                            logger.debug(f"[ALPHA] {market_id[:16]}... returned None")
                     except Exception as e:
-                        import traceback
                         logger.error(f"[ALPHA] Analysis failed for {market_id[:16]}: {e}")
-                        logger.error(f"[ALPHA] Traceback: {traceback.format_exc()}")
                         analysis = None
                     
                     if analysis:
