@@ -385,6 +385,14 @@ class PaperTrader:
         }
         
         # ============================================
+        # EXIT ENGINE (Task 24: Alpha-State Exit Engine)
+        # ============================================
+        # Hierarchical exit logic: State → Strategy → Asset Class → Zone
+        # Replaces legacy use_dynamic_exit toggle with sophisticated engine
+        self.exit_engine: ExitEngine = get_exit_engine()
+        self.use_exit_engine = True  # Toggle: True = new ExitEngine, False = legacy logic
+        
+        # ============================================
         # POSITION SIZING MODE CONFIGURATION
         # ============================================
         # When True: Use NEW Polymarket-optimized sizer (Binary Kelly, Utilization Brake, etc.)
