@@ -142,13 +142,14 @@ class RLAdaptiveEngine:
                 logger.debug("[RL-STATE] Missing price data - returning zero state")
                 return np.zeros(self.n_states, dtype=np.float32)
             
+            # Use RISK anchors for normalization (Task 26: Unified SSOT)
             state = np.array([
                 float(yes_price),
                 signals.get('volatility', 0.5),  # Signal defaults are OK - they're neutral
                 signals.get('sentiment', 0.5),
                 signals.get('sharp_alignment', 0.5),
-                min(market_data.get('liquidity', 0) / 100000, 1.0),
-                min(market_data.get('volume', 0) / 50000, 1.0),
+                min(market_data.get('liquidity', 0) / self.risk_config.NORM_LIQUIDITY_ANCHOR, 1.0),
+                min(market_data.get('volume', 0) / self.risk_config.NORM_VOLUME_ANCHOR, 1.0),
                 self._calculate_time_to_expiry(market_data),
                 self._get_portfolio_exposure()
             ], dtype=np.float32)
