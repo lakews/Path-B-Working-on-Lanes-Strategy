@@ -397,7 +397,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 ### January 26, 2026 - Session 35 (CRITICAL BUG FIX + Liquidity Unlock)
 
 - ✅ **P0 CRITICAL FIX: Missing `sharp_alignment` Parameter in `_run_alpha_analysis`**
-  - **Problem**: The Alpha loop was reporting "Evaluated: 0" markets despite processing 20 markets per cycle. No targets were being generated, and no trades were being triggered. The Two-Speed architecture was running but completely blind.
+  - **Problem**: The Alpha loop was reporting "Evaluated: 0" markets despite processing 20 markets per cycle. No targets were being generated, and no trades were being triggered. The Three-Speed architecture was running but completely blind.
   
   - **Root Cause**: The `_run_alpha_analysis` function called `_calculate_model_probability()` without providing the required `sharp_alignment` parameter.
     
@@ -607,7 +607,7 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
     Spread 1.00 (5.88%) → ALPHA TRADE executed (within limits)
     ```
 
-### January 26, 2026 - Session 34 (Two-Speed Architecture + Core Fixes)
+### January 26, 2026 - Session 34 (Three-Speed Architecture + Core Fixes)
 
 - ✅ **TWO-SPEED ARCHITECTURE: Parallel HFT/Alpha Loops**
   - **Problem**: Single linear loop bottlenecked HFT execution behind slow LLM/Bayesian processing
@@ -713,17 +713,17 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
       - Passes `theoretical_price` to `maker_executor.execute_order()`
       - Added `theoretical_price`, `market_price`, and `alpha_diff` to position's `execution_info`
   
-  - **Key Principle Enforced**: The bot now trades its **own Alpha signal** (adjusted by inventory skew and OFI), not the market's mid-price. This aligns with the "Two-Speed" architecture design where:
+  - **Key Principle Enforced**: The bot now trades its **own Alpha signal** (adjusted by inventory skew and OFI), not the market's mid-price. This aligns with the "Three-Speed" architecture design where:
     - **Slow Path** generates Alpha (Bayesian posterior probability)
     - **Fast Path** executes trades centered on that Alpha, with HFT adjustments
 
 ### January 26, 2026 - Session 33 (P0: Complete Configurable HFT/Alpha Risk Limits)
 
-- ✅ **P0 COMPLETE: UI-Configurable Two-Speed Architecture Parameters**
+- ✅ **P0 COMPLETE: UI-Configurable Three-Speed Architecture Parameters**
   - **Test Results**: 15/15 backend tests passed (100%), all frontend UI elements functional
   
   - **Backend Changes**:
-    - Updated `server.py` - Added 12 new fields to `TradingConfig` Pydantic model for Two-Speed Architecture
+    - Updated `server.py` - Added 12 new fields to `TradingConfig` Pydantic model for Three-Speed Architecture
     - Updated `get_config` endpoint - Returns all new fields with sensible defaults
     - Updated `update_config` endpoint - Persists all new fields to MongoDB
     - Updated `paper_trading/paper_trader.py`:
@@ -762,9 +762,9 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
       - LIVE badge when session is running
     - Displays strategies mapped to each path (e.g., "volatility_exploitation, delta_neutral" for HFT)
 
-### January 26, 2026 - Session 32 (Two-Speed Hybrid Architecture)
+### January 26, 2026 - Session 32 (Three-Speed Hybrid Architecture)
 
-- ✅ **MAJOR REFACTOR: Two-Speed Hybrid Architecture**
+- ✅ **MAJOR REFACTOR: Three-Speed Hybrid Architecture**
   - **Phase 1: Architectural Split**
     - Created `backend/trading/strategy_manager.py` - Capital allocation between HFT (40%) and Alpha (60%) strategies
     - Created `backend/execution/async_signal_cache.py` - LLM calls run in background, execution loop reads cache instantly
