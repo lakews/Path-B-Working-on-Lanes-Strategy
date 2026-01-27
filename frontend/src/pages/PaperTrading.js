@@ -2641,6 +2641,13 @@ const PaperTrading = () => {
     try { const r = await axios.get(`${API}/paper/cumulative-stats`); setCumulativeStats(r.data); } catch (e) {}
   };
 
+  const fetchLaneAnalytics = async () => {
+    try { 
+      const r = await axios.get(`${API}/analytics`); 
+      setLaneAnalytics(r.data?.lane_performance || null); 
+    } catch (e) {}
+  };
+
   const fetchSessions = async () => {
     try { const r = await axios.get(`${API}/paper/sessions?limit=20`); setSessions(r.data?.sessions || []); } catch (e) {}
   };
