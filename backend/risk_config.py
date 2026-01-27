@@ -620,6 +620,12 @@ class RiskConfig:
         """Reset all values to defaults."""
         self.ALLOCATED_CAPITAL_PCT = DEFAULTS['ALLOCATED_CAPITAL_PCT']
         self.CASH_BUFFER_PCT = DEFAULTS['CASH_BUFFER_PCT']
+        
+        # Strategy Capital Allocation (Three-Speed Architecture - Task 25)
+        self.HFT_ALLOCATION_PCT = DEFAULTS['HFT_ALLOCATION_PCT']
+        self.ALPHA_ALLOCATION_PCT = DEFAULTS['ALPHA_ALLOCATION_PCT']
+        self.GAMMA_ALLOCATION_PCT = DEFAULTS['GAMMA_ALLOCATION_PCT']
+        
         self.STOP_LOSS_PCT = DEFAULTS['STOP_LOSS_PCT']
         self.MAX_DRAWDOWN_PCT = DEFAULTS['MAX_DRAWDOWN_PCT']
         self.KILL_SWITCH_LOW = DEFAULTS['KILL_SWITCH_LOW']
@@ -652,7 +658,7 @@ class RiskConfig:
         self.ADVERSE_SELECTION_COST = DEFAULTS['ADVERSE_SELECTION_COST']
         self.MAKER_SPREAD_CAPTURE = DEFAULTS['MAKER_SPREAD_CAPTURE']
         self.MAX_OPEN_POSITIONS = DEFAULTS['MAX_OPEN_POSITIONS']
-        logger.info("[RISK] Reset all parameters to defaults")
+        logger.info("[RISK] Reset all parameters to defaults (including Three-Speed allocation)")
 
 
 # Global instance
