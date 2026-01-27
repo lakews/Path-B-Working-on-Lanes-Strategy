@@ -172,16 +172,18 @@ class TestAPIPortfolioRiskEndpoint:
     """Test GET /api/config/portfolio-risk returns all new Task 26 parameters"""
     
     def test_api_returns_hft_liquidity_params(self):
-        """API should return hft_min_liquidity and hft_min_volume_24h"""
+        """API should return hft_min_liquidity and hft_min_volume_24h in config"""
         response = requests.get(f"{BASE_URL}/api/config/portfolio-risk")
         assert response.status_code == 200, f"API returned {response.status_code}"
         
         data = response.json()
+        # API returns nested structure with 'config' and 'defaults' keys
+        config = data.get('config', data)  # Fallback to data if no 'config' key
         
-        assert 'hft_min_liquidity' in data, "Missing hft_min_liquidity in API response"
-        assert 'hft_min_volume_24h' in data, "Missing hft_min_volume_24h in API response"
-        assert data['hft_min_liquidity'] == 10000.0, f"hft_min_liquidity should be 10000, got {data['hft_min_liquidity']}"
-        assert data['hft_min_volume_24h'] == 5000.0, f"hft_min_volume_24h should be 5000, got {data['hft_min_volume_24h']}"
+        assert 'hft_min_liquidity' in config, "Missing hft_min_liquidity in API response"
+        assert 'hft_min_volume_24h' in config, "Missing hft_min_volume_24h in API response"
+        assert config['hft_min_liquidity'] == 10000.0, f"hft_min_liquidity should be 10000, got {config['hft_min_liquidity']}"
+        assert config['hft_min_volume_24h'] == 5000.0, f"hft_min_volume_24h should be 5000, got {config['hft_min_volume_24h']}"
     
     def test_api_returns_alpha_liquidity_params(self):
         """API should return alpha_core_liquidity, alpha_whale_liquidity, etc."""
@@ -189,16 +191,17 @@ class TestAPIPortfolioRiskEndpoint:
         assert response.status_code == 200
         
         data = response.json()
+        config = data.get('config', data)
         
-        assert 'alpha_core_liquidity' in data, "Missing alpha_core_liquidity"
-        assert 'alpha_whale_liquidity' in data, "Missing alpha_whale_liquidity"
-        assert 'alpha_core_volume' in data, "Missing alpha_core_volume"
-        assert 'alpha_whale_volume' in data, "Missing alpha_whale_volume"
+        assert 'alpha_core_liquidity' in config, "Missing alpha_core_liquidity"
+        assert 'alpha_whale_liquidity' in config, "Missing alpha_whale_liquidity"
+        assert 'alpha_core_volume' in config, "Missing alpha_core_volume"
+        assert 'alpha_whale_volume' in config, "Missing alpha_whale_volume"
         
-        assert data['alpha_core_liquidity'] == 1000.0
-        assert data['alpha_whale_liquidity'] == 500.0
-        assert data['alpha_core_volume'] == 1000.0
-        assert data['alpha_whale_volume'] == 500.0
+        assert config['alpha_core_liquidity'] == 1000.0
+        assert config['alpha_whale_liquidity'] == 500.0
+        assert config['alpha_core_volume'] == 1000.0
+        assert config['alpha_whale_volume'] == 500.0
     
     def test_api_returns_gamma_liquidity_params(self):
         """API should return gamma_min_liquidity and gamma_min_volume_24h"""
@@ -206,12 +209,13 @@ class TestAPIPortfolioRiskEndpoint:
         assert response.status_code == 200
         
         data = response.json()
+        config = data.get('config', data)
         
-        assert 'gamma_min_liquidity' in data, "Missing gamma_min_liquidity"
-        assert 'gamma_min_volume_24h' in data, "Missing gamma_min_volume_24h"
+        assert 'gamma_min_liquidity' in config, "Missing gamma_min_liquidity"
+        assert 'gamma_min_volume_24h' in config, "Missing gamma_min_volume_24h"
         
-        assert data['gamma_min_liquidity'] == 250.0
-        assert data['gamma_min_volume_24h'] == 250.0
+        assert config['gamma_min_liquidity'] == 250.0
+        assert config['gamma_min_volume_24h'] == 250.0
     
     def test_api_returns_analysis_thresholds(self):
         """API should return analysis thresholds (sharp_detection, hot_market, norm_anchors)"""
@@ -219,24 +223,25 @@ class TestAPIPortfolioRiskEndpoint:
         assert response.status_code == 200
         
         data = response.json()
+        config = data.get('config', data)
         
         # Data cleaning thresholds
-        assert 'data_cleaning_min_liquidity' in data, "Missing data_cleaning_min_liquidity"
-        assert 'data_cleaning_min_volume' in data, "Missing data_cleaning_min_volume"
-        assert data['data_cleaning_min_liquidity'] == 250.0
-        assert data['data_cleaning_min_volume'] == 250.0
+        assert 'data_cleaning_min_liquidity' in config, "Missing data_cleaning_min_liquidity"
+        assert 'data_cleaning_min_volume' in config, "Missing data_cleaning_min_volume"
+        assert config['data_cleaning_min_liquidity'] == 250.0
+        assert config['data_cleaning_min_volume'] == 250.0
         
         # Feature triggers
-        assert 'sharp_detection_min_volume' in data, "Missing sharp_detection_min_volume"
-        assert 'hot_market_volume_threshold' in data, "Missing hot_market_volume_threshold"
-        assert data['sharp_detection_min_volume'] == 25000.0
-        assert data['hot_market_volume_threshold'] == 50000.0
+        assert 'sharp_detection_min_volume' in config, "Missing sharp_detection_min_volume"
+        assert 'hot_market_volume_threshold' in config, "Missing hot_market_volume_threshold"
+        assert config['sharp_detection_min_volume'] == 25000.0
+        assert config['hot_market_volume_threshold'] == 50000.0
         
         # Normalization anchors
-        assert 'norm_liquidity_anchor' in data, "Missing norm_liquidity_anchor"
-        assert 'norm_volume_anchor' in data, "Missing norm_volume_anchor"
-        assert data['norm_liquidity_anchor'] == 50000.0
-        assert data['norm_volume_anchor'] == 50000.0
+        assert 'norm_liquidity_anchor' in config, "Missing norm_liquidity_anchor"
+        assert 'norm_volume_anchor' in config, "Missing norm_volume_anchor"
+        assert config['norm_liquidity_anchor'] == 50000.0
+        assert config['norm_volume_anchor'] == 50000.0
 
 
 class TestDefaultsValues:
