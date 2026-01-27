@@ -1568,6 +1568,22 @@ class PaperTrader:
                 'effective_spread_bps': effective_spread_bps,
                 'quoted_bid': my_bid,
                 'quoted_ask': my_ask,
+                # Polymarket compliance fields
+                'order_qty': order_qty,
+                'tick_aligned': True,
+                'bounds_checked': True,
+            }
+            
+            # =============================================================
+            # TRACK ACTIVE ORDER (for Hysteresis/Lifecycle Management)
+            # =============================================================
+            self.active_orders[market_id] = {
+                'price': entry_price,
+                'size': scalp_size,
+                'side': side,
+                'timestamp': datetime.now(timezone.utc),
+                'ai_price': fair_value,
+                'order_qty': order_qty,
             }
             
             # =============================================================
