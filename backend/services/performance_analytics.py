@@ -74,6 +74,7 @@ class PerformanceAnalytics:
                 "unrealized_pnl": 0.0,
                 "strategy_performance": {},
                 "asset_class_performance": {},
+                "lane_performance": {},  # Three-Speed: HFT/ALPHA/GAMMA breakdown
                 "portfolio_volatility": 0.0,
                 "sortino_ratio": 0.0,
                 "profit_factor": 0.0,
