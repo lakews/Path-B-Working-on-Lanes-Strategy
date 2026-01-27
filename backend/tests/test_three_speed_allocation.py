@@ -6,7 +6,21 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+# Read from frontend env or use localhost for test
+def get_base_url():
+    """Get base URL for API testing."""
+    # First try frontend env file
+    try:
+        with open('/app/frontend/.env', 'r') as f:
+            for line in f:
+                if line.startswith('REACT_APP_BACKEND_URL='):
+                    return line.split('=', 1)[1].strip().rstrip('/')
+    except:
+        pass
+    # Fallback to localhost
+    return 'http://localhost:8001'
+
+BASE_URL = get_base_url()
 
 class TestThreeSpeedAllocationAPI:
     """Test Three-Speed Capital Allocation API endpoints"""
