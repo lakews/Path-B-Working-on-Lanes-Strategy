@@ -28,6 +28,9 @@ class PerformanceAnalytics:
             # Asset class metrics (by category)
             asset_class_metrics = await self._calculate_asset_class_metrics(trades)
             
+            # Lane metrics (HFT/ALPHA/GAMMA) - Three-Speed Architecture
+            lane_metrics = self._calculate_lane_metrics(trades)
+            
             # Portfolio volatility
             portfolio_volatility = await self._calculate_portfolio_volatility()
             
