@@ -202,7 +202,10 @@ class TestTradeHistoryAPI:
             for trade in trades[:5]:
                 # Check required fields exist
                 assert "entry_price" in trade or "price" in trade, "Missing entry price field"
-                assert "pnl" in trade, "Missing pnl field"
+                # PnL fields only exist for exit/closed trades, not entry trades
+                trade_type = trade.get("type", "")
+                if trade_type == "exit" or trade.get("status") == "closed":
+                    assert "pnl" in trade or "realized_pnl" in trade, "Missing pnl field for closed trade"
 
 
 if __name__ == "__main__":
