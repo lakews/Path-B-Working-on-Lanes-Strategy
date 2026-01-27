@@ -15,12 +15,15 @@ class MultiMarketArbitrageStrategy:
     Detects price discrepancies across similar markets
     Target: Risk-free profit from market inefficiencies
     
-    Strategy Type: HFT (requires high liquidity for sub-second execution)
+    Strategy Type: ALPHA (Jan 2026 Refactor)
+    - Moved from HFT to ALPHA: Requires cross-market validation
+    - Similar-market detection is too slow for sub-second HFT execution
+    - Better suited for Alpha's analysis-based approach
     """
     
     def __init__(self):
         self.db = get_db()
-        self.type = 'HFT'  # Three-Speed Architecture: Requires strict liquidity ($10k+)
+        self.type = 'ALPHA'  # Jan 2026: Moved from HFT (too slow for micro-scalper)
         # Import RISK for centralized thresholds
         from risk_config import RISK
         self.signal_fusion = SignalFusionEngine()
