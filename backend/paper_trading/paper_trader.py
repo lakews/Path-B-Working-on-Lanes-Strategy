@@ -3855,6 +3855,11 @@ class PaperTrader:
             if strategy in self.strategy_equity:
                 self.strategy_equity[strategy] += pnl
             
+            # Update lane equity for Three-Speed equity curve (Task 29)
+            strategy_lane = RISK.get_strategy_path(strategy)
+            if strategy_lane in self.lane_equity:
+                self.lane_equity[strategy_lane] += pnl
+            
             # Update asset class stats with full metrics
             if asset_class not in self.asset_class_stats:
                 self.asset_class_stats[asset_class] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
