@@ -306,10 +306,14 @@ class PaperTrader:
         self.max_drawdown_pct = 5.0
         self.trades_per_10min = 500
         
-        # Market selection thresholds (from centralized config - Task 21)
-        self.min_liquidity = QUALITY_FILTERS.get('MIN_LIQUIDITY', 100.0)
-        self.max_liquidity = QUALITY_FILTERS.get('MAX_LIQUIDITY', 1000000.0)
-        self.min_volume_24h = QUALITY_FILTERS.get('MIN_VOLUME_24H', 1000.0)
+        # ================================================================
+        # LEGACY PURGE (Task 27): Removed QUALITY_FILTERS dependency
+        # All liquidity/volume checks now go through RISK.get_thresholds()
+        # These remain only as fallback safety nets
+        # ================================================================
+        self.min_liquidity = RISK.GAMMA_MIN_LIQUIDITY  # System floor (lowest possible)
+        self.max_liquidity = RISK.MAX_LIQUIDITY_CAP    # Wash trading filter
+        self.min_volume_24h = RISK.GAMMA_MIN_VOLUME_24H  # System floor
         self.max_spread = SPREAD_RULES.get('MAX_SPREAD_ALPHA', 0.05)  # Tightened to 5% (was 35%)
         self.max_open_positions = 50
         self.stuck_price_multiplier = 2.0  # Volume multiplier for stuck prices (0.0, 0.5, 1.0)
