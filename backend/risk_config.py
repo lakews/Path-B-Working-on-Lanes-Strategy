@@ -331,6 +331,11 @@ class RiskConfig:
     ALLOCATED_CAPITAL_PCT: float = DEFAULTS['ALLOCATED_CAPITAL_PCT']
     CASH_BUFFER_PCT: float = DEFAULTS['CASH_BUFFER_PCT']
     
+    # Strategy Capital Allocation (Three-Speed Architecture - Task 25)
+    HFT_ALLOCATION_PCT: float = DEFAULTS['HFT_ALLOCATION_PCT']
+    ALPHA_ALLOCATION_PCT: float = DEFAULTS['ALPHA_ALLOCATION_PCT']
+    GAMMA_ALLOCATION_PCT: float = DEFAULTS['GAMMA_ALLOCATION_PCT']
+    
     # =========================================================================
     # GLOBAL SAFETY PARAMETERS
     # =========================================================================
