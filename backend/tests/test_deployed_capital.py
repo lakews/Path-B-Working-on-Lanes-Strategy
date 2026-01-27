@@ -21,7 +21,7 @@ import sys
 # Add backend to path for direct imports
 sys.path.insert(0, '/app/backend')
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+from tests.conftest import API_BASE_URL as BASE_URL
 
 # Default config values for verification
 DEFAULT_INITIAL_CAPITAL = 10000.0

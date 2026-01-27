@@ -11,7 +11,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+from tests.conftest import API_BASE_URL as BASE_URL
 AUTH = ('admin', 'apex2026!')
 
 class TestSessionTradesAPI:

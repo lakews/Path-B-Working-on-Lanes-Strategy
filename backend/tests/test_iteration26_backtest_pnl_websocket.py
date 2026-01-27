@@ -17,7 +17,7 @@ import json
 import inspect
 from datetime import datetime, timezone
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+from tests.conftest import API_BASE_URL as BASE_URL
 
 # ============================================================================
 # BACKEND HEALTH AND STARTUP TESTS

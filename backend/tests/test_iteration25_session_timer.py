@@ -12,7 +12,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+from tests.conftest import API_BASE_URL as BASE_URL
 
 # Auth config for protected endpoints
 AUTH = ('admin', 'apex2026!')
