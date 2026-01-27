@@ -66,6 +66,7 @@ class Trade(BaseModel):
     total_cost: float
     fee: float
     strategy: StrategyType
+    strategy_lane: str = "ALPHA"  # Three-Speed: HFT, ALPHA, or GAMMA (default ALPHA for safety)
     execution_latency_ms: float
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
