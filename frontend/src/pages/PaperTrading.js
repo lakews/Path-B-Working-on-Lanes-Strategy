@@ -2794,6 +2794,11 @@ const PaperTrading = () => {
     return equityCurve.map(point => ({
       ...point,
       total_equity: initialCapital + (point.pnl || 0),
+      // Three-Speed Lane P&L
+      hft_pnl: point.hft_pnl || 0,
+      alpha_lane_pnl: point.alpha_lane_pnl || 0,
+      gamma_pnl: point.gamma_pnl || 0,
+      // Legacy strategy breakdown (kept for backward compat)
       delta_neutral_pnl: point.delta_neutral_pnl || 0,
       volatility_pnl: point.volatility_pnl || 0,
       alpha_pnl: point.alpha_pnl || 0,
