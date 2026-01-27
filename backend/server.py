@@ -966,9 +966,18 @@ def categorize_market(question: str) -> str:
     else:
         return "finance"
 
-@api_router.get("/analytics")
+@api_router.get("/analytics", response_model=ComprehensiveMetricsResponse)
 async def get_analytics():
-    """Get comprehensive performance analytics"""
+    """
+    Get comprehensive performance analytics.
+    
+    Returns detailed metrics including:
+    - Overall performance (PnL, win rate, trades)
+    - Strategy breakdown
+    - Asset class breakdown
+    - **Lane breakdown (HFT, ALPHA, GAMMA)** - Three-Speed Architecture
+    - Advanced metrics (Sortino, profit factor, etc.)
+    """
     global analytics_engine
     
     try:
