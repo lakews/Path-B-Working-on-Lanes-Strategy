@@ -3913,6 +3913,9 @@ class PaperTrader:
             self.closed_trades.append(closed_trade)
             
             # Log trade with hold time
+            # Determine strategy lane (HFT/ALPHA/GAMMA) from strategy name
+            strategy_lane = RISK.get_strategy_path(strategy)
+            
             trade_log = {
                 "trade_id": str(uuid.uuid4()),
                 "session_id": self.session_id,
@@ -3929,6 +3932,7 @@ class PaperTrader:
                 "pnl_pct": pnl_pct,
                 "hold_time_seconds": hold_time_seconds,
                 "strategy": strategy,
+                "strategy_lane": strategy_lane,  # Three-Speed: HFT, ALPHA, or GAMMA
                 "asset_class": asset_class,
                 "exit_reason": exit_reason,
                 "reward_signal": reward,
