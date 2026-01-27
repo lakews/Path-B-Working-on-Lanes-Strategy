@@ -21,6 +21,10 @@ class SignalFusionEngine:
         self.bayesian_outlier = BayesianOutlierDetector()
         self.sharp_detector = SharpDetector()
         
+        # Import RISK for normalization (Task 26: Unified SSOT)
+        from risk_config import RISK
+        self.risk_config = RISK
+        
         # Only init sentiment analyzer if not in backtest mode (LLM calls are slow)
         if not backtest_mode:
             self.sentiment_analyzer = SentimentAnalyzer()
