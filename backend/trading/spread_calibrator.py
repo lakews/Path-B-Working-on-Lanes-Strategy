@@ -19,11 +19,13 @@ class SpreadCalibrator:
     
     def __init__(self):
         self.db = get_db()
+        # Import RISK for centralized thresholds
+        from risk_config import RISK
         self.base_spread = 0.02  # 2% base spread
         self.min_spread = MIN_SPREAD_MAKER  # Use centralized constant
         self.max_spread = MAX_SPREAD_HFT    # Use centralized constant (25%)
         self.volatility_threshold = 0.5
-        self.liquidity_threshold = 10000
+        self.liquidity_threshold = RISK.HFT_MIN_LIQUIDITY  # Task 27: Use SSOT
         
     async def calculate_optimal_spread(
         self,
