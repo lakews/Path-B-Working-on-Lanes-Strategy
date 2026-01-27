@@ -533,6 +533,13 @@ class PaperTrader:
             'arbitrage': 0.0
         }
         
+        # Three-Speed Lane Equity Tracking (Task 29)
+        self.lane_equity: Dict[str, float] = {
+            'HFT': 0.0,
+            'ALPHA': 0.0,
+            'GAMMA': 0.0
+        }
+        
         # Quality Control Stats (Task 18)
         self._last_quality_stats: Dict = {
             'total_fetched': 0,
