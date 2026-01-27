@@ -29,6 +29,10 @@ class RLAdaptiveEngine:
         self.db = get_db()
         self.use_dqn = use_dqn
         
+        # Import RISK for normalization anchors (Task 26: Unified SSOT)
+        from risk_config import RISK
+        self.risk_config = RISK
+        
         # State space dimensions
         self.state_features = [
             'price', 'volatility', 'sentiment', 'sharp_alignment',
