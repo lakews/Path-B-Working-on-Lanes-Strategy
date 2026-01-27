@@ -153,6 +153,10 @@ const Configuration = () => {
   const [portfolioRisk, setPortfolioRisk] = useState({
     // Capital Allocation
     allocated_capital_pct: 80,
+    // Three-Speed Capital Allocation (Task 25)
+    hft_allocation_pct: 35,
+    alpha_allocation_pct: 55,
+    gamma_allocation_pct: 10,
     // Zone Threshold
     price_zone_threshold: 0.10,
     // Whale Zone (< $0.10)
