@@ -261,12 +261,12 @@ class HFTStressTest:
         
         baseline_spreads = self.spreads_used.copy()
         
-        # Phase 2: Price spikes +1%
-        spike_price = BASE_PRICE * 1.01
-        for i in range(5):
+        # Phase 2: Price spikes +5% (more extreme to trigger vol detection)
+        spike_price = BASE_PRICE * 1.05
+        for i in range(10):  # More ticks to build volatility history
             market_data = {
                 'id': TEST_MARKET_ID,
-                'yes_price': spike_price,
+                'yes_price': spike_price + (i * 0.002),  # Vary slightly
                 'best_bid': spike_price - 0.005,
                 'best_ask': spike_price + 0.005,
             }
@@ -275,12 +275,12 @@ class HFTStressTest:
                 trades_attempted += 1
             time.sleep(0.01)
         
-        # Phase 3: Price crashes -2% (back to -1% net)
-        crash_price = BASE_PRICE * 0.99
-        for i in range(5):
+        # Phase 3: Price crashes -10% (extreme whipsaw)
+        crash_price = BASE_PRICE * 0.90
+        for i in range(10):
             market_data = {
                 'id': TEST_MARKET_ID,
-                'yes_price': crash_price,
+                'yes_price': crash_price - (i * 0.002),  # Continue falling
                 'best_bid': crash_price - 0.005,
                 'best_ask': crash_price + 0.005,
             }
