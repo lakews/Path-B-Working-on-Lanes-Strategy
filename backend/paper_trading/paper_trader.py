@@ -3212,8 +3212,10 @@ class PaperTrader:
                     shares_sold = sell_size / yes_entry_price
                     exit_value = shares_sold * current_price
                     realized_pnl = exit_value - sell_size
+                    pnl_pct = realized_pnl / sell_size if sell_size > 0 else 0
                 else:
                     realized_pnl = 0
+                    pnl_pct = 0
             else:
                 no_entry_price = 1 - yes_entry_price
                 no_exit_price = 1 - current_price
@@ -3221,8 +3223,10 @@ class PaperTrader:
                     shares_sold = sell_size / no_entry_price
                     exit_value = shares_sold * no_exit_price
                     realized_pnl = exit_value - sell_size
+                    pnl_pct = realized_pnl / sell_size if sell_size > 0 else 0
                 else:
                     realized_pnl = 0
+                    pnl_pct = 0
             
             # Update position
             position['size'] = remaining_size
@@ -3239,22 +3243,28 @@ class PaperTrader:
             self.paper_realized_pnl += realized_pnl
             self.paper_trades_today += 1
             
-            # Record partial trade
-            await self._record_paper_trade(
-                market_id=market_id,
-                market_data=market_data,
-                side=side,
-                entry_price=position['entry_price'],
-                exit_price=current_price,
-                size=sell_size,
-                strategy=position.get('strategy', 'unknown'),
-                pnl=realized_pnl,
-                entry_time=position.get('entry_time'),
-                exit_reason=f"partial_{reason}",
-                is_partial=True
-            )
+            # Record partial trade to database
+            trade_log = {
+                'market_id': market_id,
+                'question': market_data.get('question', 'Unknown'),
+                'side': side,
+                'size': sell_size,
+                'entry_price': position['entry_price'],
+                'exit_price': current_price,
+                'pnl': realized_pnl,
+                'pnl_pct': pnl_pct,
+                'strategy': position.get('strategy', 'unknown'),
+                'asset_class': position.get('asset_class', 'unknown'),
+                'exit_reason': f"partial_{reason}",
+                'entry_time': position.get('entry_time'),
+                'exit_time': datetime.now(timezone.utc).isoformat(),
+                'is_partial': True,
+                'remaining_size': remaining_size,
+                'original_size': original_size,
+            }
+            await self.db.paper_trades.insert_one(trade_log)
             
-            logger.info(f"📊 PARTIAL EXIT: {market_id[:16]} | Sold {sell_pct:.0%} (${sell_size:.2f}) | P&L: ${realized_pnl:.2f} | Remaining: ${remaining_size:.2f}")
+            logger.info(f"📊 PARTIAL EXIT: {market_id[:16]} | Sold {sell_pct:.0%} (${sell_size:.2f}) | P&L: ${realized_pnl:.2f} ({pnl_pct:.1%}) | Remaining: ${remaining_size:.2f}")
             
         except Exception as e:
             logger.error(f"Error in partial exit: {e}", exc_info=True)
