@@ -561,7 +561,7 @@ def run_stress_tests() -> bool:
     # Check telemetry stats
     telemetry = get_telemetry_service()
     stats = telemetry.get_stats()
-    print(f"\n📊 Telemetry Stats:")
+    print("\n📊 Telemetry Stats:")
     print(f"   Total logged: {stats['total_logged']}")
     print(f"   Total written: {stats['total_written']}")
     print(f"   File: {stats['current_file']}")
