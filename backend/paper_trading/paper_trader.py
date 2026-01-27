@@ -21,6 +21,7 @@ from trading.maker_executor import get_maker_executor, MakerOrderExecutor
 from trading.gamma_strategy import get_gamma_trader, GammaTrader, GammaOrderType
 from trading.exit_engine import get_exit_engine, ExitEngine, ExitAction, ExitReason
 from services.hft_context import get_hft_context, get_volatility_calculator, HFTContext, VolatilityCalculator, ContextStatus
+from services.telemetry import get_telemetry_service, create_decision_snapshot
 from config import config, SPREAD_RULES, RISK_PARAMS
 import numpy as np
 from threading import Lock
