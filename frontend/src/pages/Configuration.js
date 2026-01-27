@@ -78,9 +78,10 @@ const Configuration = () => {
       max_event_exposure_pct: 0.15,
       similarity_threshold: 0.60
     },
-    // HFT vs Alpha Capital Allocation (Two-Speed Architecture)
-    hft_allocation_pct: 40,       // % of deployed capital to HFT path
-    alpha_allocation_pct: 60,     // % of deployed capital to Alpha path
+    // HFT vs Alpha vs Gamma Capital Allocation (Three-Speed Architecture - Task 25)
+    hft_allocation_pct: 35,        // % of deployed capital to HFT path
+    alpha_allocation_pct: 55,      // % of deployed capital to Alpha path
+    gamma_allocation_pct: 10,      // % of deployed capital to Gamma (whale zone)
     hft_max_position_pct: 10,     // Max position size as % of HFT capital
     alpha_max_position_pct: 25,   // Max position size as % of Alpha capital
     hft_positions_pct: 5,         // % of global max positions for HFT per market
