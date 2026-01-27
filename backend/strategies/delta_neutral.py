@@ -111,7 +111,7 @@ class DeltaNeutralStrategy:
                 bias = 0.0
                 confidence = self.default_confidence
                 fair_value = yes_price
-                logger.debug(f"[DELTA-NEUTRAL] No HFTContext - using neutral defaults")
+                logger.debug("[DELTA-NEUTRAL] No HFTContext - using neutral defaults")
             
             # =============================================================
             # BIAS-AWARE HEDGE LOGIC
