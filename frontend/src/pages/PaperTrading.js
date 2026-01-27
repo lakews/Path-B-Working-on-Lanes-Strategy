@@ -3187,7 +3187,7 @@ const PaperTrading = () => {
               </div>
               <div className="rounded-xl bg-white/5 border border-white/10 p-6">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <LineChartIcon className="w-5 h-5 text-cyan-400" />Equity Curve
+                  <LineChartIcon className="w-5 h-5 text-cyan-400" />Equity Curve by Lane
                   <span className="text-xs text-white/40">(Total starts at ${initialCapital.toLocaleString()})</span>
                 </h3>
                 <div className="h-64">
@@ -3204,10 +3204,9 @@ const PaperTrading = () => {
                       />
                       <Legend wrapperStyle={{ fontSize: '10px' }} />
                       <Line type="monotone" dataKey="total_equity" name="Total Equity" stroke="#ffffff" strokeWidth={3} dot={false} />
-                      <Line type="monotone" dataKey="delta_neutral_pnl" name="Delta-Neutral" stroke="#06b6d4" strokeWidth={1.5} dot={false} />
-                      <Line type="monotone" dataKey="volatility_pnl" name="Volatility" stroke="#8b5cf6" strokeWidth={1.5} dot={false} />
-                      <Line type="monotone" dataKey="alpha_pnl" name="Alpha" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
-                      <Line type="monotone" dataKey="arbitrage_pnl" name="Arbitrage" stroke="#10b981" strokeWidth={1.5} dot={false} />
+                      <Line type="monotone" dataKey="hft_pnl" name="HFT (35%)" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="alpha_lane_pnl" name="Alpha (55%)" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="gamma_pnl" name="Gamma (10%)" stroke="#8b5cf6" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
