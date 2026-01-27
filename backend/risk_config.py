@@ -529,6 +529,58 @@ class RiskConfig:
     MAX_OPEN_POSITIONS: int = DEFAULTS['MAX_OPEN_POSITIONS']
     
     # =========================================================================
+    # STRATEGY-BASED THRESHOLD LOOKUP (Task 26: Unified SSOT)
+    # =========================================================================
+    
+    def get_thresholds(self, strategy_type: str, price: float = 0.5) -> tuple:
+        """
+        Returns (min_liquidity, min_volume) based on Strategy Path + Price.
+        
+        Args:
+            strategy_type: 'HFT', 'ALPHA', 'GAMMA', or specific strategy name
+            price: Current market price (used for ALPHA zone splitting)
+            
+        Returns:
+            Tuple of (min_liquidity, min_volume) for the strategy
+        """
+        # Normalize strategy type
+        st = (strategy_type or 'ALPHA').upper()
+        
+        # Map specific strategies to paths
+        HFT_STRATEGIES = {'HFT', 'ARBITRAGE', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER'}
+        GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY'}
+        
+        # Check for HFT path
+        if st in HFT_STRATEGIES or st.startswith('HFT'):
+            return self.HFT_MIN_LIQUIDITY, self.HFT_MIN_VOLUME_24H
+        
+        # Check for GAMMA path
+        if st in GAMMA_STRATEGIES or st.startswith('GAMMA'):
+            return self.GAMMA_MIN_LIQUIDITY, self.GAMMA_MIN_VOLUME_24H
+        
+        # Default to ALPHA path - splits by price
+        if price < self.PRICE_ZONE_THRESHOLD:
+            return self.ALPHA_WHALE_LIQUIDITY, self.ALPHA_WHALE_VOLUME
+        return self.ALPHA_CORE_LIQUIDITY, self.ALPHA_CORE_VOLUME
+    
+    def get_strategy_path(self, strategy_name: str) -> str:
+        """
+        Determine the capital allocation path for a given strategy.
+        
+        Returns: 'HFT', 'ALPHA', or 'GAMMA'
+        """
+        st = (strategy_name or '').upper()
+        
+        HFT_STRATEGIES = {'HFT', 'ARBITRAGE', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER'}
+        GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY'}
+        
+        if st in HFT_STRATEGIES or st.startswith('HFT'):
+            return 'HFT'
+        if st in GAMMA_STRATEGIES or st.startswith('GAMMA'):
+            return 'GAMMA'
+        return 'ALPHA'
+    
+    # =========================================================================
     # DATABASE PERSISTENCE
     # =========================================================================
     
@@ -543,6 +595,25 @@ class RiskConfig:
             'hft_allocation_pct': self.HFT_ALLOCATION_PCT,
             'alpha_allocation_pct': self.ALPHA_ALLOCATION_PCT,
             'gamma_allocation_pct': self.GAMMA_ALLOCATION_PCT,
+            
+            # Strategy-Based Liquidity & Volume (Task 26)
+            'hft_min_liquidity': self.HFT_MIN_LIQUIDITY,
+            'hft_min_volume_24h': self.HFT_MIN_VOLUME_24H,
+            'alpha_core_liquidity': self.ALPHA_CORE_LIQUIDITY,
+            'alpha_whale_liquidity': self.ALPHA_WHALE_LIQUIDITY,
+            'alpha_core_volume': self.ALPHA_CORE_VOLUME,
+            'alpha_whale_volume': self.ALPHA_WHALE_VOLUME,
+            'gamma_min_liquidity': self.GAMMA_MIN_LIQUIDITY,
+            'gamma_min_volume_24h': self.GAMMA_MIN_VOLUME_24H,
+            'max_liquidity_cap': self.MAX_LIQUIDITY_CAP,
+            'full_size_liquidity_threshold': self.FULL_SIZE_LIQUIDITY_THRESHOLD,
+            'data_cleaning_min_liquidity': self.DATA_CLEANING_MIN_LIQUIDITY,
+            'data_cleaning_min_volume': self.DATA_CLEANING_MIN_VOLUME,
+            'sharp_detection_min_volume': self.SHARP_DETECTION_MIN_VOLUME,
+            'hot_market_volume_threshold': self.HOT_MARKET_VOLUME_THRESHOLD,
+            'norm_liquidity_anchor': self.NORM_LIQUIDITY_ANCHOR,
+            'norm_volume_anchor': self.NORM_VOLUME_ANCHOR,
+            'spread_adjustment_tiers': self.SPREAD_ADJUSTMENT_TIERS,
             
             # Safety
             'stop_loss_pct': self.STOP_LOSS_PCT,
