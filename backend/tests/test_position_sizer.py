@@ -406,6 +406,16 @@ class TestModelProbabilityEnsemble:
         """Create a minimal PaperTrader instance for testing probability calculation."""
         from paper_trading.paper_trader import PaperTrader
         pt = PaperTrader.__new__(PaperTrader)
+        # Initialize required attributes that _calculate_model_probability needs
+        pt.alpha_weights = {
+            'sentiment_weight': 0.50,
+            'rl_weight': 0.60,
+            'sharp_weight': 0.30,
+            'sentiment_neutral_low': 0.45,
+            'sentiment_neutral_high': 0.55,
+            'max_sentiment_delta': 2.0,
+            'min_rl_confidence': 0.15,
+        }
         return pt
     
     def test_probability_never_exceeds_one(self, paper_trader_mock):
