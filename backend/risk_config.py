@@ -670,6 +670,10 @@ def get_defaults() -> Dict:
     return {
         'allocated_capital_pct': DEFAULTS['ALLOCATED_CAPITAL_PCT'],
         'cash_buffer_pct': DEFAULTS['CASH_BUFFER_PCT'],
+        # Strategy Capital Allocation (Three-Speed Architecture - Task 25)
+        'hft_allocation_pct': DEFAULTS['HFT_ALLOCATION_PCT'],
+        'alpha_allocation_pct': DEFAULTS['ALPHA_ALLOCATION_PCT'],
+        'gamma_allocation_pct': DEFAULTS['GAMMA_ALLOCATION_PCT'],
         'stop_loss_pct': DEFAULTS['STOP_LOSS_PCT'],
         'max_drawdown_pct': DEFAULTS['MAX_DRAWDOWN_PCT'],
         'kill_switch_low': DEFAULTS['KILL_SWITCH_LOW'],
