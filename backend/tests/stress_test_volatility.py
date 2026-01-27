@@ -346,15 +346,15 @@ class HFTStressTest:
         Test: Stale AI data (bullish bias=1.0) while price crashes.
         
         Expected behavior:
-        - Bot must reject trades if AI timestamp > 5 mins stale
+        - Bot must reject trades if AI timestamp > 10 mins stale
         - Even with strong bullish signal, stale data = no trade
         """
         self.setup()
         logger.info("\n⏰ SCENARIO: THE LATENCY TRAP")
         logger.info("   Stale bullish signal + price crash")
         
-        # Set up STALE AI context (simulate 7 minutes old)
-        old_timestamp = time.time() - 420  # 7 minutes ago
+        # Set up STALE AI context (simulate 12 minutes old - beyond 10 min threshold)
+        old_timestamp = time.time() - 720  # 12 minutes ago (> MAX_CONTEXT_AGE_SECONDS)
         
         params = MarketParams(
             market_id=TEST_MARKET_ID,
@@ -364,7 +364,7 @@ class HFTStressTest:
             max_inventory_skew=0.3,
             reference_volatility=BASE_VOLATILITY,
             status=ContextStatus.ACTIVE,
-            timestamp=old_timestamp,  # STALE!
+            timestamp=old_timestamp,  # STALE! (> 10 min)
             confidence=0.9,
         )
         
