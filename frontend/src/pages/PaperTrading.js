@@ -3167,48 +3167,53 @@ const PaperTrading = () => {
 
           {/* Lane Performance Cards - Three-Speed Analytics */}
           <LanePerformance 
-            data={status?.lane_equity ? {
-              HFT: {
-                total_pnl: status.lane_equity.HFT || 0,
-                total_trades: status?.execution_path_stats?.hft?.trades || 0,
-                win_rate: status?.execution_path_stats?.hft?.trades > 0 
-                  ? ((status?.execution_path_stats?.hft?.wins || 0) / status.execution_path_stats.hft.trades) * 100 
-                  : 0,
-                wins: status?.execution_path_stats?.hft?.wins || 0,
-                losses: (status?.execution_path_stats?.hft?.trades || 0) - (status?.execution_path_stats?.hft?.wins || 0),
-                total_volume: status?.execution_path_stats?.hft?.volume || 0,
-                avg_pnl_per_trade: status?.execution_path_stats?.hft?.trades > 0 
-                  ? (status.lane_equity.HFT || 0) / status.execution_path_stats.hft.trades 
-                  : 0
-              },
-              ALPHA: {
-                total_pnl: status.lane_equity.ALPHA || 0,
-                total_trades: status?.execution_path_stats?.alpha?.trades || 0,
-                win_rate: status?.execution_path_stats?.alpha?.trades > 0 
-                  ? ((status?.execution_path_stats?.alpha?.wins || 0) / status.execution_path_stats.alpha.trades) * 100 
-                  : 0,
-                wins: status?.execution_path_stats?.alpha?.wins || 0,
-                losses: (status?.execution_path_stats?.alpha?.trades || 0) - (status?.execution_path_stats?.alpha?.wins || 0),
-                total_volume: status?.execution_path_stats?.alpha?.volume || 0,
-                avg_pnl_per_trade: status?.execution_path_stats?.alpha?.trades > 0 
-                  ? (status.lane_equity.ALPHA || 0) / status.execution_path_stats.alpha.trades 
-                  : 0
-              },
-              GAMMA: {
-                total_pnl: status.lane_equity.GAMMA || 0,
-                total_trades: status?.execution_path_stats?.gamma?.trades || 0,
-                win_rate: status?.execution_path_stats?.gamma?.trades > 0 
-                  ? ((status?.execution_path_stats?.gamma?.wins || 0) / status.execution_path_stats.gamma.trades) * 100 
-                  : 0,
-                wins: status?.execution_path_stats?.gamma?.wins || 0,
-                losses: (status?.execution_path_stats?.gamma?.trades || 0) - (status?.execution_path_stats?.gamma?.wins || 0),
-                total_volume: status?.execution_path_stats?.gamma?.volume || 0,
-                avg_pnl_per_trade: status?.execution_path_stats?.gamma?.trades > 0 
-                  ? (status.lane_equity.GAMMA || 0) / status.execution_path_stats.gamma.trades 
-                  : 0
-              }
-            } : null}
-            isLoading={!status}
+            data={
+              // Use live status.lane_equity if available, otherwise fall back to database analytics
+              (status?.lane_equity?.HFT || status?.lane_equity?.ALPHA || status?.lane_equity?.GAMMA) 
+                ? {
+                    HFT: {
+                      total_pnl: status.lane_equity.HFT || 0,
+                      total_trades: status?.execution_path_stats?.hft?.trades || 0,
+                      win_rate: status?.execution_path_stats?.hft?.trades > 0 
+                        ? ((status?.execution_path_stats?.hft?.wins || 0) / status.execution_path_stats.hft.trades) * 100 
+                        : 0,
+                      wins: status?.execution_path_stats?.hft?.wins || 0,
+                      losses: (status?.execution_path_stats?.hft?.trades || 0) - (status?.execution_path_stats?.hft?.wins || 0),
+                      total_volume: status?.execution_path_stats?.hft?.volume || 0,
+                      avg_pnl_per_trade: status?.execution_path_stats?.hft?.trades > 0 
+                        ? (status.lane_equity.HFT || 0) / status.execution_path_stats.hft.trades 
+                        : 0
+                    },
+                    ALPHA: {
+                      total_pnl: status.lane_equity.ALPHA || 0,
+                      total_trades: status?.execution_path_stats?.alpha?.trades || 0,
+                      win_rate: status?.execution_path_stats?.alpha?.trades > 0 
+                        ? ((status?.execution_path_stats?.alpha?.wins || 0) / status.execution_path_stats.alpha.trades) * 100 
+                        : 0,
+                      wins: status?.execution_path_stats?.alpha?.wins || 0,
+                      losses: (status?.execution_path_stats?.alpha?.trades || 0) - (status?.execution_path_stats?.alpha?.wins || 0),
+                      total_volume: status?.execution_path_stats?.alpha?.volume || 0,
+                      avg_pnl_per_trade: status?.execution_path_stats?.alpha?.trades > 0 
+                        ? (status.lane_equity.ALPHA || 0) / status.execution_path_stats.alpha.trades 
+                        : 0
+                    },
+                    GAMMA: {
+                      total_pnl: status.lane_equity.GAMMA || 0,
+                      total_trades: status?.execution_path_stats?.gamma?.trades || 0,
+                      win_rate: status?.execution_path_stats?.gamma?.trades > 0 
+                        ? ((status?.execution_path_stats?.gamma?.wins || 0) / status.execution_path_stats.gamma.trades) * 100 
+                        : 0,
+                      wins: status?.execution_path_stats?.gamma?.wins || 0,
+                      losses: (status?.execution_path_stats?.gamma?.trades || 0) - (status?.execution_path_stats?.gamma?.wins || 0),
+                      total_volume: status?.execution_path_stats?.gamma?.volume || 0,
+                      avg_pnl_per_trade: status?.execution_path_stats?.gamma?.trades > 0 
+                        ? (status.lane_equity.GAMMA || 0) / status.execution_path_stats.gamma.trades 
+                        : 0
+                    }
+                  }
+                : laneAnalytics  // Fall back to database analytics
+            }
+            isLoading={!status && !laneAnalytics}
           />
 
           {/* Gamma Strategy Dashboard - Whale Zone Statistics (Task 22) */}
