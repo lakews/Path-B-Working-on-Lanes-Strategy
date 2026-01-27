@@ -16,7 +16,32 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Unified Portfolio Manager**: Single entry point for ALL position sizing decisions
 - **Alpha-State Exit Engine**: Hierarchical exit logic respecting State → Strategy → Asset Class → Zone
 
-## Current Status (January 26, 2026)
+## Current Status (January 27, 2026)
+
+### January 27, 2026 - Session 37 (Task 24: Exit Engine INTEGRATION - COMPLETE)
+
+- ✅ **TASK 24 INTEGRATION COMPLETE: Exit Engine Now Active in Paper Trading**
+  
+  **Integration Changes**:
+  - ExitEngine now imported and initialized in `paper_trader.py`
+  - New `_evaluate_exit()` method uses ExitEngine for all exit decisions
+  - Legacy exit logic preserved as `_legacy_evaluate_exit()` for fallback
+  - Toggle `use_exit_engine` (default: True) switches between new and legacy
+  - Partial exits (FREE_ROLL) implemented with `_execute_paper_partial_exit()`
+  - Trade status tracking: ACTIVE → FREE_RIDE when principal sold
+  - Peak price tracking for trailing stops
+
+  **New API Endpoint**:
+  - `POST /api/exit-engine/toggle` - Switch between ExitEngine and legacy mode
+
+  **Legacy "Exit Parameters" Tab Deprecated**:
+  - Amber deprecation banner added with link to new Exit Engine tab
+  - Old dynamic/simple exit logic still available but marked legacy
+
+  **Files Modified**:
+  - `/app/backend/paper_trading/paper_trader.py` (UPDATED - ExitEngine integration)
+  - `/app/backend/server.py` (UPDATED - Added toggle endpoint, stats enhancement)
+  - `/app/frontend/src/pages/Configuration.js` (UPDATED - Deprecation banner on Exit Parameters tab)
 
 ### January 26, 2026 - Session 37 (Task 24: Alpha-State Exit Engine - COMPLETE)
 
