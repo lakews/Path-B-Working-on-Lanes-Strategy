@@ -169,6 +169,61 @@ class PerformanceAnalytics:
             logger.error(f"Error calculating strategy metrics: {e}")
             return {}
     
+    def _calculate_lane_metrics(self, trades: List[Dict]) -> Dict[str, Dict]:
+        """
+        Aggregates performance metrics by Risk Lane (HFT/ALPHA/GAMMA).
+        
+        Three-Speed Architecture breakdown:
+        - HFT: High-frequency market making (35% allocation)
+        - ALPHA: Directional alpha plays (55% allocation)
+        - GAMMA: Moonshot/whale plays (10% allocation)
+        
+        Returns: { 'HFT': {'total_pnl': 100.0, 'win_rate': 65.0, 'total_trades': 50}, ... }
+        """
+        try:
+            lane_stats = {}
+            
+            for trade in trades:
+                # Default to ALPHA if lane is missing (Legacy safety)
+                lane = trade.get('strategy_lane') or 'ALPHA'
+                
+                if lane not in lane_stats:
+                    lane_stats[lane] = {'pnl': 0.0, 'wins': 0, 'count': 0, 'volume': 0.0}
+                
+                # Extract PnL - check multiple possible field names
+                pnl = float(trade.get('pnl', 0.0) or trade.get('realized_pnl', 0.0) or 0.0)
+                
+                # Extract trade size/volume
+                size = float(trade.get('size', 0.0) or trade.get('amount', 0.0) or 0.0)
+                price = float(trade.get('price', 0.0) or trade.get('entry_price', 0.0) or 0.0)
+                
+                lane_stats[lane]['pnl'] += pnl
+                lane_stats[lane]['count'] += 1
+                lane_stats[lane]['volume'] += (size * price) if size and price else size
+                
+                if pnl > 0:
+                    lane_stats[lane]['wins'] += 1
+            
+            # Finalize Calculations (Win Rates)
+            results = {}
+            for lane, stats in lane_stats.items():
+                total = stats['count']
+                results[lane] = {
+                    'total_pnl': round(stats['pnl'], 2),
+                    'total_trades': total,
+                    'win_rate': round((stats['wins'] / total) * 100, 2) if total > 0 else 0.0,
+                    'wins': stats['wins'],
+                    'losses': total - stats['wins'],
+                    'total_volume': round(stats['volume'], 2),
+                    'avg_pnl_per_trade': round(stats['pnl'] / total, 2) if total > 0 else 0.0
+                }
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error calculating lane metrics: {e}")
+            return {}
+    
     async def _calculate_asset_class_metrics(self, trades: List[Dict]) -> Dict:
         """Calculate win rate and performance by asset class (market category)"""
         try:
