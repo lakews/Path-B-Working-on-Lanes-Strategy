@@ -165,17 +165,27 @@ RISK_PARAMS = {
 
 
 # ============================================================================
-# QUALITY FILTERS - Pre-Flight Market Checks
+# QUALITY FILTERS - DEPRECATED (Task 27: Legacy Purge)
+# ============================================================================
+# WARNING: These values are DEPRECATED. Use risk_config.py instead.
+# Kept temporarily for backward compatibility - will be removed in future version.
+#
+# NEW SSOT MAPPING:
+#   QUALITY_FILTERS['MIN_LIQUIDITY']  -> RISK.get_thresholds(strategy, price)[0]
+#   QUALITY_FILTERS['MIN_VOLUME_24H'] -> RISK.get_thresholds(strategy, price)[1]
+#   QUALITY_FILTERS['MAX_LIQUIDITY']  -> RISK.MAX_LIQUIDITY_CAP
+#
+# DO NOT ADD NEW REFERENCES TO THIS DICT
 # ============================================================================
 
-QUALITY_FILTERS = {
-    'MIN_VOLUME_24H': 1000.0,      # $1K minimum daily volume
-    'MIN_LIQUIDITY': 100.0,        # $100 minimum liquidity
-    'MAX_LIQUIDITY': 1000000.0,    # $1M maximum (avoid manipulation)
-    'MIN_PRICE_BAND': 0.05,        # Skip if price < 5% (dead/lost event)
-    'MAX_PRICE_BAND': 0.95,        # Skip if price > 95% (settled event)
-    'TOP_N_MARKETS': 50,           # Only process top 50 by volume
-}
+# QUALITY_FILTERS = {
+#     'MIN_VOLUME_24H': 1000.0,      # DEPRECATED: Use RISK.get_thresholds()
+#     'MIN_LIQUIDITY': 100.0,        # DEPRECATED: Use RISK.get_thresholds()
+#     'MAX_LIQUIDITY': 1000000.0,    # DEPRECATED: Use RISK.MAX_LIQUIDITY_CAP
+#     'MIN_PRICE_BAND': 0.05,        # Still valid - not in risk_config
+#     'MAX_PRICE_BAND': 0.95,        # Still valid - not in risk_config
+#     'TOP_N_MARKETS': 50,           # Still valid - not in risk_config
+# }
 
 
 # ============================================================================
