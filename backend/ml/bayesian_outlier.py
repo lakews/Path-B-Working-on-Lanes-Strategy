@@ -271,10 +271,10 @@ class BayesianOutlierDetector:
         return min(max(fair_value, 0.01), 0.99)
     
     def _calculate_likelihood(self, price_deviation: float, volume: float, liquidity: float) -> float:
-        """Calculate likelihood of mispricing"""
+        """Calculate likelihood of mispricing - using RISK anchors (Task 26)"""
         deviation_factor = min(price_deviation / 0.3, 1.0)
-        volume_factor = min(volume / 10000, 1.0)
-        liquidity_factor = min(liquidity / 50000, 1.0)
+        volume_factor = min(volume / self.risk_config.NORM_VOLUME_ANCHOR, 1.0)
+        liquidity_factor = min(liquidity / self.risk_config.NORM_LIQUIDITY_ANCHOR, 1.0)
         
         likelihood = (deviation_factor * 0.6) + (1 - volume_factor) * 0.2 + (1 - liquidity_factor) * 0.2
         return min(max(likelihood, 0.0), 1.0)
