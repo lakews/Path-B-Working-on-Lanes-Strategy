@@ -233,6 +233,10 @@ class HFTContext:
         """
         Convenience method to update from Alpha analysis result.
         
+        Implements CONFIDENCE SCALING (Phase 4 Optimization):
+        - If volatility is extreme, reduce directional conviction
+        - Forces HFT to rely more on wide spreads than directional bets
+        
         Args:
             market_id: Market identifier
             analysis: Result dict from _run_alpha_analysis()
@@ -246,7 +250,7 @@ class HFTContext:
         # Extract fair value
         fair_value = analysis.get("fair_value", 0.5)
         
-        # Calculate bias from signals
+        # Calculate base bias from signals
         signals = analysis.get("signals", {})
         sentiment = signals.get("sentiment", 0.5)
         bayesian_posterior = signals.get("bayesian_posterior", 0.5)
@@ -255,18 +259,60 @@ class HFTContext:
         # 0.5 sentiment = 0 bias (neutral)
         # 0.0 sentiment = -1 bias (strong bear)
         # 1.0 sentiment = +1 bias (strong bull)
-        bias = (sentiment - 0.5) * 2
+        raw_bias = (sentiment - 0.5) * 2
         
         # Blend with bayesian posterior
         bayesian_bias = (bayesian_posterior - 0.5) * 2
-        bias = (bias * 0.6) + (bayesian_bias * 0.4)
+        raw_bias = (raw_bias * 0.6) + (bayesian_bias * 0.4)
+        
+        # =============================================================
+        # PHASE 4: CONFIDENCE SCALING
+        # =============================================================
+        # If volatility is extreme, reduce directional conviction
+        # This forces HFT to rely more on wide spreads than directional bets
+        #
+        # Formula: Bias = Raw_Bias * (1 - (current_vol / max_historical_vol))
+        #
+        # When vol is normal (10% of max): scaling = 0.9, bias mostly preserved
+        # When vol is 50% of max: scaling = 0.5, bias halved
+        # When vol is extreme (100% of max): scaling = 0, bias = 0 (pure spread)
+        
+        current_volatility = signals.get("volatility", 0.01)
+        
+        # Historical max volatility thresholds by market type
+        # These represent "panic mode" volatility levels
+        MAX_HISTORICAL_VOLATILITY = 0.15  # 15% is extreme for prediction markets
+        
+        # Calculate volatility ratio (clamped to [0, 1])
+        vol_ratio = min(1.0, current_volatility / MAX_HISTORICAL_VOLATILITY)
+        
+        # Confidence scaling factor: high vol = low conviction
+        # Use sqrt to make scaling more gradual (not linear)
+        # vol_ratio=0.1 → scaling=0.68 (preserved)
+        # vol_ratio=0.5 → scaling=0.29 (reduced)
+        # vol_ratio=1.0 → scaling=0 (neutral)
+        vol_scaling = 1.0 - (vol_ratio ** 0.5)  # Square root for gradual decay
+        
+        # Apply confidence scaling to bias
+        scaled_bias = raw_bias * vol_scaling
+        
+        # Also scale confidence itself
+        raw_confidence = analysis.get("confidence", 0.5)
+        scaled_confidence = raw_confidence * (0.5 + vol_scaling * 0.5)  # Min 50% confidence
         
         # Clamp to valid range
-        bias = max(-1.0, min(1.0, bias))
+        bias = max(-1.0, min(1.0, scaled_bias))
         
-        # Extract volatility
-        reference_volatility = signals.get("volatility", 0.1)
-        confidence = analysis.get("confidence", 0.5)
+        # Log if significant scaling occurred
+        if abs(raw_bias - bias) > 0.1:
+            logger.debug(
+                f"[HFT-CTX] Confidence scaling: raw_bias={raw_bias:+.2f} → "
+                f"scaled_bias={bias:+.2f} (vol_ratio={vol_ratio:.2f})"
+            )
+        
+        # Extract volatility for reference
+        reference_volatility = current_volatility
+        confidence = scaled_confidence
         regime = analysis.get("regime", "TAKER_TIGHT")
         
         return self.update(
