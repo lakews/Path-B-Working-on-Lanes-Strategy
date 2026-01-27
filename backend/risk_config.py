@@ -572,11 +572,11 @@ class RiskConfig:
         st = (strategy_name or '').upper()
         
         HFT_STRATEGIES = {'HFT', 'ARBITRAGE', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER'}
-        GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY'}
+        GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY', 'VOLATILITY_EXPLOITATION'}
         
         if st in HFT_STRATEGIES or st.startswith('HFT'):
             return 'HFT'
-        if st in GAMMA_STRATEGIES or st.startswith('GAMMA'):
+        if st in GAMMA_STRATEGIES or st.startswith('GAMMA') or st.startswith('VOLATILITY'):
             return 'GAMMA'
         return 'ALPHA'
     
