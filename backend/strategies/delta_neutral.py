@@ -103,14 +103,12 @@ class DeltaNeutralStrategy:
             if params and params.status == ContextStatus.ACTIVE:
                 bias = params.bias
                 confidence = params.confidence
-                fair_value = params.fair_value
-                logger.debug(f"[DELTA-NEUTRAL] Using HFTContext: bias={bias:+.2f}, conf={confidence:.2f}")
+                logger.debug(f"[DELTA-NEUTRAL] Using HFTContext: bias={bias:+.2f}, conf={confidence:.2f}, fv={params.fair_value:.4f}")
             else:
                 # No context available - use neutral defaults
                 # Delta-neutral is less sensitive to direction, so this is acceptable
                 bias = 0.0
                 confidence = self.default_confidence
-                fair_value = yes_price
                 logger.debug("[DELTA-NEUTRAL] No HFTContext - using neutral defaults")
             
             # =============================================================
