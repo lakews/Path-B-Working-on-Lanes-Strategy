@@ -3248,6 +3248,9 @@ class PaperTrader:
             self.paper_trades_today += 1
             
             # Record partial trade to database
+            # Determine strategy lane for partial exit
+            strategy_lane = RISK.get_strategy_path(position.get('strategy', 'unknown'))
+            
             trade_log = {
                 'market_id': market_id,
                 'question': market_data.get('question', 'Unknown'),
@@ -3258,6 +3261,7 @@ class PaperTrader:
                 'pnl': realized_pnl,
                 'pnl_pct': pnl_pct,
                 'strategy': position.get('strategy', 'unknown'),
+                'strategy_lane': strategy_lane,  # Three-Speed: HFT, ALPHA, or GAMMA
                 'asset_class': position.get('asset_class', 'unknown'),
                 'exit_reason': f"partial_{reason}",
                 'entry_time': position.get('entry_time'),
