@@ -126,7 +126,7 @@ def test_risk_decision_matrix(scenario, price, liquidity, volume, strat_type, ex
 
 class TestDataCleanerAlignment:
     """
-    Verifies that the Data Cleaner (BayesianOutlier) is aligned with
+    Verifies that the Data Cleaner (BayesianOutlierDetector) is aligned with
     the lowest possible system floor (Gamma).
     
     Critical: If the cleaner is too strict, we blind the AI to valid trades.
@@ -134,9 +134,9 @@ class TestDataCleanerAlignment:
     
     def test_cleaner_accepts_gamma_trades(self):
         """Data cleaner MUST accept valid Gamma trades ($300)."""
-        from ml.bayesian_outlier import BayesianOutlier
+        from ml.bayesian_outlier import BayesianOutlierDetector
         
-        cleaner = BayesianOutlier()
+        cleaner = BayesianOutlierDetector()
         
         # Gamma floor is $250, so $300 should be accepted
         assert cleaner.min_liquidity <= 300.0, (
@@ -148,9 +148,9 @@ class TestDataCleanerAlignment:
     
     def test_cleaner_rejects_noise(self):
         """Data cleaner MUST reject system noise ($50)."""
-        from ml.bayesian_outlier import BayesianOutlier
+        from ml.bayesian_outlier import BayesianOutlierDetector
         
-        cleaner = BayesianOutlier()
+        cleaner = BayesianOutlierDetector()
         
         # $50 is trash data, must be rejected
         assert 50.0 < cleaner.min_liquidity, (
@@ -162,9 +162,9 @@ class TestDataCleanerAlignment:
     
     def test_cleaner_uses_gamma_floor(self):
         """Data cleaner threshold should equal Gamma floor (SSOT alignment)."""
-        from ml.bayesian_outlier import BayesianOutlier
+        from ml.bayesian_outlier import BayesianOutlierDetector
         
-        cleaner = BayesianOutlier()
+        cleaner = BayesianOutlierDetector()
         
         # Must be aligned with RISK.DATA_CLEANING_MIN_LIQUIDITY
         assert cleaner.min_liquidity == RISK.DATA_CLEANING_MIN_LIQUIDITY, (
