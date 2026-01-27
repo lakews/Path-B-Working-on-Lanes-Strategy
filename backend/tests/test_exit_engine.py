@@ -254,17 +254,22 @@ class TestDustFilter:
         self.engine = ExitEngine()
     
     def test_dust_full_close(self):
-        """Small position at profit should close all (no partial)."""
+        """Small position at profit should close all (no partial).
+        
+        To trigger dust filter, principal must be < $2.00 min trade.
+        With +40% PnL, principal = position / 1.40
+        So position of $2.50 gives principal of $1.79, below $2.00 min.
+        """
         decision = self.engine.check_exit(
             strategy='alpha_directional',
             asset_class='default',
             entry_price=0.50,
             current_price=0.70,  # +40% gain (above 30% target)
-            position_size_usd=3.0,  # Small position
+            position_size_usd=2.50,  # Small position - principal would be $1.79
             duration_hours=10,
         )
         
-        # Principal sell would be ~$2.14, below $2 min
+        # Principal sell would be ~$1.79, below $2 min
         # Should close all instead
         assert decision.action == ExitAction.CLOSE_ALL
         assert decision.reason == ExitReason.TAKE_PROFIT
