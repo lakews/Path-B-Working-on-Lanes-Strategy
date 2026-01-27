@@ -25,10 +25,11 @@ logger = logging.getLogger(__name__)
 # DEFAULT CONFIGURATION (Can be updated at runtime)
 # ==============================================================================
 
+# Note: hot_market_volume_threshold now loaded from RISK config (Task 26)
 DEFAULT_CONFIG = {
     'hot_market_ttl_seconds': 600,        # 10 minutes for high-volume markets
     'cold_market_ttl_seconds': 3600,      # 60 minutes for low-volume markets
-    'hot_market_volume_threshold': 50000, # $50,000 in 24h volume
+    'hot_market_volume_threshold': 50000, # Default - will be overridden by RISK
     'llm_timeout_seconds': 10.0,
     'estimated_cost_per_call': 0.002,     # ~$0.002 per GPT-4o-mini call
 }
@@ -49,6 +50,14 @@ class SmartLLMCache:
     def __init__(self):
         self._cache: Dict[str, Dict] = {}
         self._config = DEFAULT_CONFIG.copy()
+        
+        # Load hot market threshold from RISK (Task 26: Unified SSOT)
+        try:
+            from risk_config import RISK
+            self._config['hot_market_volume_threshold'] = RISK.HOT_MARKET_VOLUME_THRESHOLD
+        except ImportError:
+            pass  # Use default
+        
         self._stats = {
             'hits': 0,
             'misses': 0,
