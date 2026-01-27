@@ -36,6 +36,12 @@ DEFAULTS = {
     'ALLOCATED_CAPITAL_PCT': 80.0,
     'CASH_BUFFER_PCT': 5.0,
     
+    # Strategy Capital Allocation (Three-Speed Architecture - Task 25)
+    # Split deployed capital across HFT, Alpha, and Gamma paths
+    'HFT_ALLOCATION_PCT': 35.0,      # % of deployed capital to HFT (market making)
+    'ALPHA_ALLOCATION_PCT': 55.0,    # % of deployed capital to Alpha (directional)
+    'GAMMA_ALLOCATION_PCT': 10.0,    # % of deployed capital to Gamma (whale zone lottery)
+    
     # Global Safety
     'STOP_LOSS_PCT': 0.15,
     'MAX_DRAWDOWN_PCT': 5.0,
