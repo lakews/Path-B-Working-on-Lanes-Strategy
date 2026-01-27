@@ -542,6 +542,22 @@ class PaperTrader:
             'GAMMA': 0.0
         }
         
+        # =============================================================
+        # HFT ACTIVE ORDER TRACKING (Polymarket Compliance - Jan 2026)
+        # =============================================================
+        # Track active orders for lifecycle management and hysteresis
+        # Key: market_id -> {'price': float, 'size': float, 'side': str, 
+        #                    'timestamp': datetime, 'order_id': str, 'ai_price': float}
+        self.active_orders: Dict[str, Dict] = {}
+        
+        # Polymarket Microstructure Constants
+        self.TICK_SIZE = 0.01           # $0.01 tick grid
+        self.MIN_PRICE = 0.05           # Kill zone lower bound
+        self.MAX_PRICE = 0.95           # Kill zone upper bound
+        self.MIN_SPREAD_TICKS = 2       # Minimum 2 cents spread
+        self.ORDER_STALE_SECONDS = 120  # Refresh orders after 2 minutes
+        self.HYSTERESIS_THRESHOLD = 0.01  # 1 cent drift tolerance (anti-churn)
+        
         # Quality Control Stats (Task 18)
         self._last_quality_stats: Dict = {
             'total_fetched': 0,
