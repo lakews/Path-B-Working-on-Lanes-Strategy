@@ -138,8 +138,8 @@ class ComprehensiveMetricsResponse(BaseModel):
     # Metadata
     timestamp: Optional[str] = Field(default=None, description="ISO timestamp of calculation")
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "total_trades": 100,
                 "overall_win_rate": 55.0,
@@ -175,3 +175,4 @@ class ComprehensiveMetricsResponse(BaseModel):
                 }
             }
         }
+    }
