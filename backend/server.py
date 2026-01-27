@@ -16,6 +16,7 @@ from database import connect_db, close_db, get_db
 from config import config
 from trading_bot import ApexTrader
 from services.performance_analytics import PerformanceAnalytics
+from schemas.analytics import ComprehensiveMetricsResponse, LaneMetric
 from backtest.backtest_engine import BacktestEngine
 from data.historical_collector import HistoricalDataCollector
 from ml.rl_engine import RLAdaptiveEngine
