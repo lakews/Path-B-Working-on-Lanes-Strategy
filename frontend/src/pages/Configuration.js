@@ -705,6 +705,160 @@ const Configuration = () => {
             </div>
           </div>
           
+          {/* Three-Speed Capital Allocation (Task 25) */}
+          <div className="rounded-xl bg-gradient-to-br from-orange-500/10 via-purple-500/10 to-green-500/10 border border-orange-500/30 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500/30 via-purple-500/30 to-green-500/30 flex items-center justify-center">
+                  <Layers className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Three-Speed Capital Allocation</h3>
+                  <p className="text-xs text-white/50">Split deployed capital across HFT, Alpha, and Gamma paths</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setPortfolioRisk({...portfolioRisk, hft_allocation_pct: 35, alpha_allocation_pct: 55, gamma_allocation_pct: 10})}
+                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white text-xs flex items-center gap-1"
+              >
+                <RefreshCw className="w-3 h-3" /> Reset to 35/55/10
+              </button>
+            </div>
+            
+            {/* Visual Bar */}
+            <div className="mb-4">
+              <div className="flex h-8 rounded-lg overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold"
+                  style={{width: `${portfolioRisk.hft_allocation_pct || 35}%`}}
+                >
+                  {(portfolioRisk.hft_allocation_pct || 35) >= 15 && `HFT ${portfolioRisk.hft_allocation_pct || 35}%`}
+                </div>
+                <div 
+                  className="bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold"
+                  style={{width: `${portfolioRisk.alpha_allocation_pct || 55}%`}}
+                >
+                  {(portfolioRisk.alpha_allocation_pct || 55) >= 15 && `Alpha ${portfolioRisk.alpha_allocation_pct || 55}%`}
+                </div>
+                <div 
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white text-xs font-bold"
+                  style={{width: `${portfolioRisk.gamma_allocation_pct || 10}%`}}
+                >
+                  {(portfolioRisk.gamma_allocation_pct || 10) >= 10 && `🐋 ${portfolioRisk.gamma_allocation_pct || 10}%`}
+                </div>
+              </div>
+            </div>
+            
+            {/* Input Controls */}
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Flame className="w-4 h-4 text-orange-400" />
+                  <span className="text-orange-400 font-semibold text-sm">HFT (Fast)</span>
+                </div>
+                <input 
+                  type="number" 
+                  value={portfolioRisk.hft_allocation_pct || 35} 
+                  onChange={(e) => {
+                    const hft = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                    const remaining = 100 - hft;
+                    const alphaRatio = (portfolioRisk.alpha_allocation_pct || 55) / ((portfolioRisk.alpha_allocation_pct || 55) + (portfolioRisk.gamma_allocation_pct || 10));
+                    setPortfolioRisk({
+                      ...portfolioRisk, 
+                      hft_allocation_pct: hft,
+                      alpha_allocation_pct: Math.round(remaining * alphaRatio),
+                      gamma_allocation_pct: Math.round(remaining * (1 - alphaRatio))
+                    });
+                  }}
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-center"
+                  min="0" max="100"
+                />
+                <p className="text-xs text-orange-300 mt-2 text-center">
+                  ${((portfolioRisk.allocated_capital_pct / 100) * 1000 * (portfolioRisk.hft_allocation_pct || 35) / 100).toFixed(0)}/k
+                </p>
+              </div>
+              
+              <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Snowflake className="w-4 h-4 text-purple-400" />
+                  <span className="text-purple-400 font-semibold text-sm">Alpha (Slow)</span>
+                </div>
+                <input 
+                  type="number" 
+                  value={portfolioRisk.alpha_allocation_pct || 55} 
+                  onChange={(e) => {
+                    const alpha = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                    const remaining = 100 - alpha;
+                    const hftRatio = (portfolioRisk.hft_allocation_pct || 35) / ((portfolioRisk.hft_allocation_pct || 35) + (portfolioRisk.gamma_allocation_pct || 10));
+                    setPortfolioRisk({
+                      ...portfolioRisk, 
+                      alpha_allocation_pct: alpha,
+                      hft_allocation_pct: Math.round(remaining * hftRatio),
+                      gamma_allocation_pct: Math.round(remaining * (1 - hftRatio))
+                    });
+                  }}
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-center"
+                  min="0" max="100"
+                />
+                <p className="text-xs text-purple-300 mt-2 text-center">
+                  ${((portfolioRisk.allocated_capital_pct / 100) * 1000 * (portfolioRisk.alpha_allocation_pct || 55) / 100).toFixed(0)}/k
+                </p>
+              </div>
+              
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">🐋</span>
+                  <span className="text-green-400 font-semibold text-sm">Gamma (Whale)</span>
+                </div>
+                <input 
+                  type="number" 
+                  value={portfolioRisk.gamma_allocation_pct || 10} 
+                  onChange={(e) => {
+                    const gamma = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                    const remaining = 100 - gamma;
+                    const hftRatio = (portfolioRisk.hft_allocation_pct || 35) / ((portfolioRisk.hft_allocation_pct || 35) + (portfolioRisk.alpha_allocation_pct || 55));
+                    setPortfolioRisk({
+                      ...portfolioRisk, 
+                      gamma_allocation_pct: gamma,
+                      hft_allocation_pct: Math.round(remaining * hftRatio),
+                      alpha_allocation_pct: Math.round(remaining * (1 - hftRatio))
+                    });
+                  }}
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-center"
+                  min="0" max="100"
+                />
+                <p className="text-xs text-green-300 mt-2 text-center">
+                  ${((portfolioRisk.allocated_capital_pct / 100) * 1000 * (portfolioRisk.gamma_allocation_pct || 10) / 100).toFixed(0)}/k
+                </p>
+              </div>
+            </div>
+            
+            {/* Validation & Info */}
+            {((portfolioRisk.hft_allocation_pct || 35) + (portfolioRisk.alpha_allocation_pct || 55) + (portfolioRisk.gamma_allocation_pct || 10)) !== 100 && (
+              <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/30 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+                <span className="text-sm text-red-300">
+                  Allocations must sum to 100%. Current: {(portfolioRisk.hft_allocation_pct || 35) + (portfolioRisk.alpha_allocation_pct || 55) + (portfolioRisk.gamma_allocation_pct || 10)}%
+                </span>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-3 gap-4 text-xs text-white/50 mt-4">
+              <div className="text-center">
+                <p className="text-orange-300 font-medium">Market Making</p>
+                <p>Inventory skew, OFI quotes</p>
+              </div>
+              <div className="text-center">
+                <p className="text-purple-300 font-medium">Directional</p>
+                <p>Bayesian signals, sentiment</p>
+              </div>
+              <div className="text-center">
+                <p className="text-green-300 font-medium">Lottery Tickets</p>
+                <p>2x-5x targets, high risk</p>
+              </div>
+            </div>
+          </div>
+          
           {/* Zone Configuration */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Whale Zone */}
