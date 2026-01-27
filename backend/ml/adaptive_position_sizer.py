@@ -48,13 +48,18 @@ class AdaptivePositionSizer:
         'arbitrage': 1.1,            # Low risk, slight increase
     }
     
-    # Minimum liquidity thresholds (in USD volume)
-    MIN_LIQUIDITY_FOR_FULL_SIZE = 10000  # $10K daily volume for full position
-    MIN_LIQUIDITY_FOR_TRADE = 500        # Won't trade below $500 volume
+    # Note: Liquidity thresholds are now managed by risk_config.RISK (Task 26)
+    # These are DEPRECATED fallbacks - always use RISK.get_thresholds() instead
+    MIN_LIQUIDITY_FOR_FULL_SIZE = 10000  # DEPRECATED: Use RISK.FULL_SIZE_LIQUIDITY_THRESHOLD
+    MIN_LIQUIDITY_FOR_TRADE = 500        # DEPRECATED: Use RISK.get_thresholds()
     
     def __init__(self, db=None, config: Optional[Dict] = None):
         self.db = db or get_db()
         self.config = config or {}
+        
+        # Import RISK for strategy-based thresholds (Task 26)
+        from risk_config import RISK
+        self.risk_config = RISK
         
         # Strategy risk multipliers - use config if available, else defaults
         self.strategy_risk = self.config.get('strategy_risk_multipliers', self.DEFAULT_STRATEGY_RISK)
