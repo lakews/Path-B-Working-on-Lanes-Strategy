@@ -548,14 +548,14 @@ class RiskConfig:
         
         # Map specific strategies to paths
         HFT_STRATEGIES = {'HFT', 'ARBITRAGE', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER'}
-        GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY'}
+        GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY', 'VOLATILITY_EXPLOITATION'}
         
         # Check for HFT path
         if st in HFT_STRATEGIES or st.startswith('HFT'):
             return self.HFT_MIN_LIQUIDITY, self.HFT_MIN_VOLUME_24H
         
         # Check for GAMMA path
-        if st in GAMMA_STRATEGIES or st.startswith('GAMMA'):
+        if st in GAMMA_STRATEGIES or st.startswith('GAMMA') or st.startswith('VOLATILITY'):
             return self.GAMMA_MIN_LIQUIDITY, self.GAMMA_MIN_VOLUME_24H
         
         # Default to ALPHA path - splits by price
