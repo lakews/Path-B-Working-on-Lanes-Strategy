@@ -197,11 +197,11 @@ class BayesianOutlierDetector:
             volume = market_data.get('volume', 0)
             liquidity = market_data.get('liquidity', 0)
             
-            # Calculate features
+            # Calculate features - use RISK anchors for normalization (Task 26)
             avg_price = np.mean(historical_prices[-5:])
             price_deviation = abs(current_price - avg_price) / (avg_price + 1e-6)
-            volume_zscore = (volume - 5000) / 10000  # Rough normalization
-            liquidity_zscore = (liquidity - 25000) / 50000
+            volume_zscore = (volume - self.risk_config.NORM_VOLUME_ANCHOR / 10) / (self.risk_config.NORM_VOLUME_ANCHOR / 5)
+            liquidity_zscore = (liquidity - self.risk_config.NORM_LIQUIDITY_ANCHOR / 2) / self.risk_config.NORM_LIQUIDITY_ANCHOR
             spread = abs(current_price + no_price - 1.0)
             price_velocity = (current_price - historical_prices[-5]) / 5 if len(historical_prices) >= 5 else 0
             
