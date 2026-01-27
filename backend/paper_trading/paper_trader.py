@@ -1419,6 +1419,26 @@ class PaperTrader:
             my_bid = skewed_mid * (1 - effective_spread)
             my_ask = skewed_mid * (1 + effective_spread)
             
+            # =============================================================
+            # POLYMARKET COMPLIANCE: TICK GRID & BOUNDS ENFORCEMENT
+            # =============================================================
+            # 1. Round to tick grid ($0.01)
+            my_bid = self._round_to_tick(my_bid)
+            my_ask = self._round_to_tick(my_ask)
+            
+            # 2. Clamp to kill zone bounds [$0.05, $0.95]
+            my_bid = self._clamp_to_bounds(my_bid)
+            my_ask = self._clamp_to_bounds(my_ask)
+            
+            # 3. Enforce minimum spread (2 ticks = $0.02)
+            my_bid, my_ask = self._enforce_min_spread(my_bid, my_ask)
+            
+            # =============================================================
+            # PRUNE STALE ORDERS (Anti-Churn with Hysteresis)
+            # =============================================================
+            ai_price = fair_value  # Use AI fair value for drift calculation
+            prune_stats = self._prune_stale_orders(market_id, ai_price)
+            
             # Determine trade direction based on opportunity
             # If market best_ask < our_bid → We want to BUY (market is cheap)
             # If market best_bid > our_ask → We want to SELL (market is expensive)
@@ -1433,7 +1453,7 @@ class PaperTrader:
                 # Market is cheaper than we're willing to pay
                 should_trade = True
                 side = 'YES'
-                entry_price = best_ask
+                entry_price = self._round_to_tick(best_ask)  # Tick-aligned entry
                 edge = (my_bid - best_ask) / best_ask
             
             # Check for SELL opportunity (if we have inventory)
@@ -1451,7 +1471,7 @@ class PaperTrader:
                 # Fair value says market is underpriced and we're bullish
                 should_trade = True
                 side = 'YES'
-                entry_price = best_ask
+                entry_price = self._round_to_tick(best_ask)  # Tick-aligned entry
                 edge = fv_edge
             
             if not should_trade:
@@ -1491,18 +1511,32 @@ class PaperTrader:
                 return None
             
             # =============================================================
-            # CALCULATE POSITION SIZE
+            # CALCULATE POSITION SIZE (USD → Integer Shares)
             # =============================================================
             # Size based on confidence and edge
             confidence_mult = min(1.0, params.confidence * 1.5)  # Scale up with confidence
             edge_mult = min(1.0, edge * 20)  # Scale with edge (5% edge = 100%)
             
-            scalp_size = min(
+            scalp_size_usd = min(
                 available_capital * 0.02 * confidence_mult * edge_mult,  # Max 2% * multipliers
                 25.0,  # Cap at $25 per scalp
                 self.max_position_size * 0.4  # 40% of normal max
             )
-            scalp_size = max(scalp_size, 5.0)  # Minimum $5
+            scalp_size_usd = max(scalp_size_usd, 5.0)  # Minimum $5
+            
+            # =============================================================
+            # POLYMARKET COMPLIANCE: INTEGER SHARE CONVERSION
+            # =============================================================
+            # Polymarket uses integer contracts - convert USD to shares
+            order_qty = self._calculate_order_qty(scalp_size_usd, entry_price)
+            
+            # Dust Guard: Don't trade if quantity rounds to 0
+            if order_qty < 1:
+                logger.debug(f"[HFT] Dust guard: order_qty={order_qty} (size=${scalp_size_usd:.2f} @ ${entry_price:.2f})")
+                return None
+            
+            # Recalculate actual USD size from integer quantity
+            scalp_size = order_qty * entry_price
             
             # Determine regime
             if market_spread > SPREAD_TAKER_THRESHOLD:
@@ -1514,7 +1548,8 @@ class PaperTrader:
                 f"🧠 [HFT SMART] {market_id[:16]}... | "
                 f"FV={fair_value:.4f} Bias={bias:+.2f} | "
                 f"Spread={effective_spread_bps}bps (vol×{vol_multiplier:.1f}) | "
-                f"Edge={edge:.2%} | Side={side} ${scalp_size:.2f}"
+                f"Edge={edge:.2%} | Side={side} | "
+                f"Qty={order_qty} @ ${entry_price:.2f} = ${scalp_size:.2f}"
             )
             
             # Build opportunity dict
