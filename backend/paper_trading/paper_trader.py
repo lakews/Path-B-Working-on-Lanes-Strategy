@@ -3635,6 +3635,9 @@ class PaperTrader:
             self.asset_class_stats[asset_class]['trades'] += 1
             
             # Log trade with sentiment breakdown
+            # Determine strategy lane (HFT/ALPHA/GAMMA) from strategy name
+            strategy_lane = RISK.get_strategy_path(strategy)
+            
             trade_log = {
                 "trade_id": position['position_id'],
                 "session_id": self.session_id,
@@ -3647,6 +3650,7 @@ class PaperTrader:
                 "entry_price": display_entry_price,  # Display price for the side traded
                 "yes_entry_price": actual_entry_price,  # Keep YES price for reference
                 "strategy": strategy,
+                "strategy_lane": strategy_lane,  # Three-Speed: HFT, ALPHA, or GAMMA
                 "asset_class": asset_class,
                 "rl_action": rl_action,
                 "rl_confidence": rl_confidence,
