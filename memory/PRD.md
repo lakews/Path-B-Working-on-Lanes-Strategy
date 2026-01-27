@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 27, 2026 (Session 38 - Test Suite Fix)
+## Last Updated: January 27, 2026 (Session 38 - Strategy Tagging & Legacy Purge)
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -11,12 +11,45 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Trading Strategies**: Delta-Neutral Market Making, Volatility Exploitation, Alpha-Directional, Multi-Market Arbitrage, **Gamma Scalping (Whale Zone)**
 - **Performance**: <100ms execution latency, <50ms ML inference, 500+ trades per 10 minutes (configurable)
 - **Risk Management**: Kelly Criterion position sizing (capped at 3%), configurable max drawdown limit, **fully configurable exit parameters, time-to-expiry awareness**
-- **Two-Speed Hybrid Architecture**: HFT (Fast Path) + Alpha (Slow Path) execution separation, **fully configurable from UI**
+- **Three-Speed Hybrid Architecture**: HFT (35%) + Alpha (55%) + Gamma (10%) capital allocation
 - **Dual-Zone Risk Architecture**: Separate risk logic for Whale Zone (< $0.10) vs Core Zone (>= $0.10)
 - **Unified Portfolio Manager**: Single entry point for ALL position sizing decisions
 - **Alpha-State Exit Engine**: Hierarchical exit logic respecting State → Strategy → Asset Class → Zone
 
 ## Current Status (January 27, 2026)
+
+### January 27, 2026 - Session 38 (Task 27: Strategy Tagging & Legacy Purge - COMPLETE)
+
+- ✅ **TASK 27 COMPLETE: Strategy Activation & Legacy Cleanup**
+
+  **Strategy Tagging (Three-Speed Activation)**:
+  | Strategy | Type | Liquidity Requirement |
+  |----------|------|----------------------|
+  | AlphaDirectionalStrategy | `ALPHA` | $1,000 (core) / $500 (whale) |
+  | MultiMarketArbitrageStrategy | `HFT` | $10,000 |
+  | DeltaNeutralStrategy | `HFT` | $10,000 |
+  | VolatilityExploitationStrategy | `GAMMA` | $250 |
+
+  **Legacy Purge**:
+  - ❌ Removed `QUALITY_FILTERS` from `config.py` (deprecated)
+  - ❌ Removed `QUALITY_FILTERS` import from `paper_trader.py`
+  - ✅ Updated `spread_calibrator.py` to use `RISK.HFT_MIN_LIQUIDITY`
+  - ✅ Updated `arbitrage.py` to use `RISK.HFT_MIN_VOLUME_24H`
+
+  **Risk SSOT Behavioral Test Suite**:
+  - Created `/app/backend/tests/integration/test_risk_ssot_behavior.py` (42 tests)
+  - Validates all 4 scenarios: Gamma Moonshot, HFT Scalp, Alpha Whale, System Noise
+
+  **Files Modified**:
+  - `/app/backend/strategies/alpha_directional.py` - Added `self.type = 'ALPHA'`
+  - `/app/backend/strategies/arbitrage.py` - Added `self.type = 'HFT'`
+  - `/app/backend/strategies/delta_neutral.py` - Added `self.type = 'HFT'`
+  - `/app/backend/strategies/volatility_exploitation.py` - Added `self.type = 'GAMMA'`
+  - `/app/backend/config.py` - Deprecated `QUALITY_FILTERS`
+  - `/app/backend/paper_trading/paper_trader.py` - Removed `QUALITY_FILTERS` dependency
+  - `/app/backend/trading/spread_calibrator.py` - Use RISK for liquidity threshold
+
+  **Final Test Results**: 548 passed, 1 skipped, 0 failed
 
 ### January 27, 2026 - Session 38 (Test Suite Fixes - COMPLETE)
 
@@ -31,21 +64,6 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   6. **`test_get_markets_returns_price_source`** - Fixed test to properly simulate WebSocket state
   7. **`test_session_61302050_has_correct_trade_count`** - Made data-independent
   8. **`test_trades_have_required_fields`** - Fixed: PnL only checked for exit trades (not entry trades)
-
-  **Files Modified**:
-  - `/app/backend/tests/test_position_sizer.py` - Fixed fixture & updated assertions
-  - `/app/backend/tests/test_exit_engine.py` - Fixed dust filter test
-  - `/app/backend/tests/test_websocket_token_mapping.py` - Added async markers
-  - `/app/backend/tests/conftest.py` - NEW: Shared API URL configuration
-  - `/app/backend/tests/test_three_speed_allocation.py` - Use conftest
-  - `/app/backend/tests/test_task26_unified_ssot.py` - Use conftest
-  - `/app/backend/tests/test_iteration27_websocket_verification.py` - Fixed test logic
-  - `/app/backend/tests/test_pnl_fixes.py` - Made data-independent, fixed PnL assertion
-  - 13 other test files updated to use conftest
-
-  **Final Test Results**: 506 passed, 1 skipped, 0 failed
-
-### January 27, 2026 - Session 37 (Task 26: Unified SSOT Refactor - COMPLETE)
 
 - ✅ **TASK 26 COMPLETE: Unified Strategy-Based SSOT for Liquidity/Volume**
   
