@@ -42,6 +42,50 @@ DEFAULTS = {
     'ALPHA_ALLOCATION_PCT': 55.0,    # % of deployed capital to Alpha (directional)
     'GAMMA_ALLOCATION_PCT': 10.0,    # % of deployed capital to Gamma (whale zone lottery)
     
+    # =========================================================================
+    # STRATEGY-BASED LIQUIDITY & VOLUME FILTERS (Task 26: Unified SSOT)
+    # =========================================================================
+    
+    # 1. HFT ZONE (Market Making / Arb) - 35% Allocation
+    # Strict High-Liquidity Filters. Requires deep books to quote safely.
+    'HFT_MIN_LIQUIDITY': 10000.0,
+    'HFT_MIN_VOLUME_24H': 5000.0,
+    
+    # 2. ALPHA ZONE (Directional / Core) - 55% Allocation
+    # Standard directional trading. Logic splits by Price Tier.
+    'ALPHA_CORE_LIQUIDITY': 1000.0,   # Price >= $0.10
+    'ALPHA_WHALE_LIQUIDITY': 500.0,   # Price < $0.10
+    'ALPHA_CORE_VOLUME': 1000.0,
+    'ALPHA_WHALE_VOLUME': 500.0,
+    
+    # 3. GAMMA ZONE (High Vol / Moonshots) - 10% Allocation
+    # Lowest floors. Designed for max volatility/lotto plays.
+    'GAMMA_MIN_LIQUIDITY': 250.0,     # Absolute System Floor
+    'GAMMA_MIN_VOLUME_24H': 250.0,
+    
+    # 4. SAFETY CAPS (Global)
+    'MAX_LIQUIDITY_CONSUMPTION': 0.10,  # Max 10% depth usage per trade
+    'MAX_LIQUIDITY_CAP': 1000000.0,     # Wash trading / anomaly filter
+    'FULL_SIZE_LIQUIDITY_THRESHOLD': 10000.0,  # Liq required for 100% size
+    
+    # 5. ANALYSIS & INTELLIGENCE (The Brain)
+    # Data Cleaning: Uses GAMMA (Lowest) limits so AI learns from ALL executed trades
+    'DATA_CLEANING_MIN_LIQUIDITY': 250.0,  # Same as GAMMA
+    'DATA_CLEANING_MIN_VOLUME': 250.0,
+    
+    # Feature Triggers
+    'SHARP_DETECTION_MIN_VOLUME': 25000.0,
+    'HOT_MARKET_VOLUME_THRESHOLD': 50000.0,
+    
+    # Normalization Anchors (Global Scaling for RL/ML)
+    'NORM_LIQUIDITY_ANCHOR': 50000.0,
+    'NORM_VOLUME_ANCHOR': 50000.0,
+    'SPREAD_ADJUSTMENT_TIERS': [1000, 5000, 10000, 20000],
+    
+    # =========================================================================
+    # LEGACY ZONE PARAMETERS (Kept for backward compatibility)
+    # =========================================================================
+    
     # Global Safety
     'STOP_LOSS_PCT': 0.15,
     'MAX_DRAWDOWN_PCT': 5.0,
@@ -51,20 +95,20 @@ DEFAULTS = {
     # Zone Threshold
     'PRICE_ZONE_THRESHOLD': 0.10,
     
-    # Whale Zone
+    # Whale Zone (Legacy - now part of ALPHA_WHALE_*)
     'WHALE_PRICE_CEILING': 0.10,
     'WHALE_MAX_SPREAD_CENTS': 0.03,
-    'WHALE_MIN_LIQUIDITY': 500.0,
-    'WHALE_MIN_VOLUME_24H': 500.0,
+    'WHALE_MIN_LIQUIDITY': 500.0,     # Deprecated: Use ALPHA_WHALE_LIQUIDITY
+    'WHALE_MIN_VOLUME_24H': 500.0,    # Deprecated: Use ALPHA_WHALE_VOLUME
     'WHALE_MAX_USD': 15.0,
     'WHALE_MAX_PCT': 0.01,
     
-    # Core Zone
+    # Core Zone (Legacy - now part of ALPHA_CORE_*)
     'CORE_TAKER_SPREAD_PCT': 0.02,
     'CORE_MAKER_SPREAD_PCT': 0.10,
     'CORE_ZOMBIE_SPREAD_PCT': 0.12,
-    'CORE_MIN_LIQUIDITY': 1000.0,
-    'CORE_MIN_VOLUME_24H': 1000.0,
+    'CORE_MIN_LIQUIDITY': 1000.0,     # Deprecated: Use ALPHA_CORE_LIQUIDITY
+    'CORE_MIN_VOLUME_24H': 1000.0,    # Deprecated: Use ALPHA_CORE_VOLUME
     'CORE_MAX_USD': 100.0,
     'CORE_MAX_PCT': 0.03,
     
@@ -73,9 +117,6 @@ DEFAULTS = {
     'MIN_KELLY_FRACTION': 0.10,
     'MAX_KELLY_FRACTION': 0.50,
     'HFT_UNIT_PCT': 0.02,
-    
-    # Liquidity
-    'MAX_LIQUIDITY_CONSUMPTION': 0.10,
     
     # Exposure
     'MAX_EVENT_EXPOSURE_PCT': 0.15,
