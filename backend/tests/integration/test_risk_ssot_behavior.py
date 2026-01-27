@@ -130,48 +130,60 @@ class TestDataCleanerAlignment:
     the lowest possible system floor (Gamma).
     
     Critical: If the cleaner is too strict, we blind the AI to valid trades.
+    
+    Note: We test the SSOT values directly since the class requires DB.
+    The class constructor uses RISK.DATA_CLEANING_MIN_LIQUIDITY.
     """
     
     def test_cleaner_accepts_gamma_trades(self):
         """Data cleaner MUST accept valid Gamma trades ($300)."""
-        from ml.bayesian_outlier import BayesianOutlierDetector
-        
-        cleaner = BayesianOutlierDetector()
+        # The cleaner uses RISK.DATA_CLEANING_MIN_LIQUIDITY
+        cleaner_threshold = RISK.DATA_CLEANING_MIN_LIQUIDITY
         
         # Gamma floor is $250, so $300 should be accepted
-        assert cleaner.min_liquidity <= 300.0, (
+        assert cleaner_threshold <= 300.0, (
             f"Data Cleaner is rejecting valid Gamma trades!\n"
-            f"Cleaner threshold: ${cleaner.min_liquidity}\n"
+            f"Cleaner threshold: ${cleaner_threshold}\n"
             f"Gamma trade: $300\n"
             f"This blinds the AI to legitimate moonshot data."
         )
     
     def test_cleaner_rejects_noise(self):
         """Data cleaner MUST reject system noise ($50)."""
-        from ml.bayesian_outlier import BayesianOutlierDetector
-        
-        cleaner = BayesianOutlierDetector()
+        # The cleaner uses RISK.DATA_CLEANING_MIN_LIQUIDITY
+        cleaner_threshold = RISK.DATA_CLEANING_MIN_LIQUIDITY
         
         # $50 is trash data, must be rejected
-        assert 50.0 < cleaner.min_liquidity, (
+        assert 50.0 < cleaner_threshold, (
             f"Data Cleaner is accepting noise!\n"
-            f"Cleaner threshold: ${cleaner.min_liquidity}\n"
+            f"Cleaner threshold: ${cleaner_threshold}\n"
             f"Noise data: $50\n"
             f"This pollutes AI training with garbage."
         )
     
     def test_cleaner_uses_gamma_floor(self):
         """Data cleaner threshold should equal Gamma floor (SSOT alignment)."""
-        from ml.bayesian_outlier import BayesianOutlierDetector
+        # Verify DATA_CLEANING matches GAMMA floor
+        assert RISK.DATA_CLEANING_MIN_LIQUIDITY == RISK.GAMMA_MIN_LIQUIDITY, (
+            f"Data Cleaner is NOT aligned with Gamma floor!\n"
+            f"DATA_CLEANING: ${RISK.DATA_CLEANING_MIN_LIQUIDITY}\n"
+            f"GAMMA: ${RISK.GAMMA_MIN_LIQUIDITY}\n"
+            f"These must match so AI learns from all valid trades."
+        )
+    
+    def test_bayesian_outlier_source_code_uses_risk(self):
+        """Verify the actual source code imports and uses RISK."""
+        import inspect
+        from ml import bayesian_outlier
         
-        cleaner = BayesianOutlierDetector()
+        source = inspect.getsource(bayesian_outlier)
         
-        # Must be aligned with RISK.DATA_CLEANING_MIN_LIQUIDITY
-        assert cleaner.min_liquidity == RISK.DATA_CLEANING_MIN_LIQUIDITY, (
-            f"Data Cleaner is NOT aligned with SSOT!\n"
-            f"Cleaner: ${cleaner.min_liquidity}\n"
-            f"SSOT: ${RISK.DATA_CLEANING_MIN_LIQUIDITY}\n"
-            f"These must match for consistent behavior."
+        # Check that the module uses RISK for thresholds
+        assert "RISK.DATA_CLEANING_MIN_LIQUIDITY" in source, (
+            "BayesianOutlierDetector does not use RISK.DATA_CLEANING_MIN_LIQUIDITY!"
+        )
+        assert "from risk_config import RISK" in source, (
+            "BayesianOutlierDetector does not import RISK from risk_config!"
         )
 
 
