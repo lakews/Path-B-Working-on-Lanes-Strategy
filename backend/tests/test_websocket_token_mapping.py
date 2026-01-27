@@ -12,6 +12,7 @@ This script:
 import asyncio
 import sys
 import os
+import pytest
 
 # Add backend to path
 sys.path.insert(0, '/app/backend')
@@ -19,6 +20,8 @@ sys.path.insert(0, '/app/backend')
 from services.realtime_market_service import get_realtime_market_service, RealTimeMarketService
 from data.polymarket_api import PolymarketAPI
 
+
+@pytest.mark.asyncio
 async def test_token_mapping():
     """Test that token mapping is correctly populated before WebSocket starts."""
     print("\n" + "="*60)
@@ -65,6 +68,7 @@ async def test_token_mapping():
     return True
 
 
+@pytest.mark.asyncio
 async def test_price_accuracy():
     """Compare WebSocket prices with REST API prices for a few markets."""
     print("\n" + "="*60)
@@ -145,6 +149,7 @@ async def test_price_accuracy():
     return True
 
 
+@pytest.mark.asyncio
 async def test_yes_no_conversion():
     """Test that NO token prices are correctly converted to YES prices."""
     print("\n" + "="*60)
