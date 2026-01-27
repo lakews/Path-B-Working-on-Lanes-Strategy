@@ -17,6 +17,10 @@ class SharpDetector:
         self.min_trades = 10
         self.tracking_window = timedelta(days=7)
         
+        # Import RISK for volume threshold (Task 26: Unified SSOT)
+        from risk_config import RISK
+        self.risk_config = RISK
+        
     async def identify_sharp_traders(self):
         """Identify sharp traders from recent activity"""
         try:
