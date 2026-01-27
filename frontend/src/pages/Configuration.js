@@ -2955,6 +2955,20 @@ const Configuration = () => {
       {/* Exit Parameters Tab */}
       {activeTab === 'exits' && (
         <div className="space-y-6">
+          {/* DEPRECATION BANNER */}
+          <div className="rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-6 h-6 text-amber-400 flex-shrink-0" />
+              <div>
+                <h3 className="text-amber-300 font-semibold">Legacy Exit Parameters (Deprecated)</h3>
+                <p className="text-sm text-white/70 mt-1">
+                  This tab uses the old exit logic. For the new hierarchical exit system with asset-class modifiers, 
+                  please use the <button onClick={() => setActiveTab('exit_engine')} className="text-cyan-400 underline hover:text-cyan-300">Exit Engine</button> tab instead.
+                </p>
+              </div>
+            </div>
+          </div>
+          
           {/* Exit Mode Toggle - Dynamic vs Simple */}
           <div className="rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 p-6">
             <div className="flex items-center justify-between mb-4">
