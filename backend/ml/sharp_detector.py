@@ -103,7 +103,7 @@ class SharpDetector:
         return (final_price - entry_price) * volume
     
     def _is_sharp_trader(self, stats: Dict) -> bool:
-        """Determine if trader qualifies as sharp"""
+        """Determine if trader qualifies as sharp - uses RISK threshold (Task 26)"""
         win_rate = stats.get('win_rate', 0)
         volume = stats.get('total_volume', 0)
         num_trades = stats.get('num_trades', 0)
@@ -111,7 +111,7 @@ class SharpDetector:
         
         return (
             win_rate >= self.sharp_threshold and
-            volume >= 100000 and
+            volume >= self.risk_config.SHARP_DETECTION_MIN_VOLUME and
             num_trades >= self.min_trades and
             concentration <= 2
         )
