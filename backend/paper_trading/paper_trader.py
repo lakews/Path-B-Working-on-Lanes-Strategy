@@ -1423,7 +1423,7 @@ class PaperTrader:
                     if analysis:
                         alpha_evaluated += 1
                         
-                        # Update StrategyContext for HFT loop
+                        # Update StrategyContext for HFT loop (legacy)
                         self.strategy_context.update_target(
                             market_id=market_id,
                             fair_value=analysis['fair_value'],
@@ -1432,6 +1432,16 @@ class PaperTrader:
                             signals=analysis.get('signals', {})
                         )
                         targets_updated += 1
+                        
+                        # =============================================================
+                        # NEW: Update HFT Context (Async-Skewed-Adaptive Architecture)
+                        # =============================================================
+                        # The HFT loop will read this non-blocking for smart execution
+                        try:
+                            hft_ctx = get_hft_context()
+                            hft_ctx.update_from_analysis(market_id, analysis)
+                        except Exception as e:
+                            logger.debug(f"[ALPHA] Could not update HFT context: {e}")
                         
                         # =============================================================
                         # REGIME-SPECIFIC EXECUTION RULES (Task 17 Refined)
