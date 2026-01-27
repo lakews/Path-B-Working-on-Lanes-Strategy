@@ -20,8 +20,12 @@ class BayesianOutlierDetector:
     def __init__(self):
         self.db = get_db()
         self.prior_mispricing = 0.15
-        self.min_liquidity = 1000
-        self.min_volume = 500
+        
+        # Import RISK for data cleaning thresholds (Task 26: Unified SSOT)
+        from risk_config import RISK
+        self.risk_config = RISK
+        self.min_liquidity = RISK.DATA_CLEANING_MIN_LIQUIDITY  # Uses GAMMA floor so AI learns from ALL trades
+        self.min_volume = RISK.DATA_CLEANING_MIN_VOLUME
         
         # ML models
         self.isolation_forest: Optional[IsolationForest] = None
