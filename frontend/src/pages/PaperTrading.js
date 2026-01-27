@@ -3182,7 +3182,7 @@ const PaperTrading = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-white/60">Equity by Strategy</span>
+                <span className="text-sm text-white/60">Equity by Lane (HFT/Alpha/Gamma)</span>
                 <ResetButton onClick={handleResetLiveSession} label="Reset" />
               </div>
               <div className="rounded-xl bg-white/5 border border-white/10 p-6">
