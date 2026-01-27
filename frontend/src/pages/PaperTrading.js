@@ -2491,6 +2491,7 @@ const PaperTrading = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const [savedConfig, setSavedConfig] = useState(null);
   const [liveSessionDuration, setLiveSessionDuration] = useState(0);  // Live timer in seconds
+  const [laneAnalytics, setLaneAnalytics] = useState(null);  // Lane Analytics from DB (Task 29)
   
   // Modal states
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
