@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 27, 2026 (Session 39 - Zero-Latency Forensic Telemetry)
+## Last Updated: January 27, 2026 (Session 39 - Polymarket Compliance Patch)
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -16,17 +16,61 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Unified Portfolio Manager**: Single entry point for ALL position sizing decisions
 - **Alpha-State Exit Engine**: Hierarchical exit logic respecting State → Strategy → Asset Class → Zone
 - **Async-Skewed-Adaptive HFT**: AI-guided execution with real-time volatility adaptation
-- **Zero-Latency Telemetry**: Non-blocking decision logging with Markout analysis (NEW)
+- **Zero-Latency Telemetry**: Non-blocking decision logging with Markout analysis
+- **Polymarket Compliance**: $0.01 tick grid, kill zones, min spread, integer shares (NEW)
 
 ## Current Status (January 27, 2026)
 
+### January 27, 2026 - Session 39 (Polymarket Compliance Patch - COMPLETE)
+
+- ✅ **POLYMARKET COMPLIANCE PATCH COMPLETE**
+
+  **Problem**: HFT logic lacked Polymarket-specific microstructure compliance:
+  - No $0.01 tick grid enforcement (floating-point prices)
+  - No price kill zones ($0.05-$0.95 bounds)
+  - No minimum spread guarantee (2 ticks)
+  - No integer share conversion (USD → contracts)
+  - No order lifecycle management (stale order pruning)
+
+  **Solution**: Polymarket Microstructure Compliance + Order Lifecycle Manager
+
+  **Part 1: Order Lifecycle Manager** (`_prune_stale_orders()`)
+  - ✅ Hysteresis anti-churn logic (drift ≤ $0.01 → KEEP order, preserve queue priority)
+  - ✅ Large drift cancellation (drift > $0.01 → CANCEL, AI changed mind)
+  - ✅ Staleness timeout (> 120s → CANCEL, refresh liquidity)
+  - ✅ Bounds violation check (< $0.05 or > $0.95 → CANCEL, safety)
+
+  **Part 2: Polymarket Compliance Math** (in `_evaluate_hft_scalp()`)
+  - ✅ `_round_to_tick()`: Enforces $0.01 tick grid via `round(price, 2)`
+  - ✅ `_clamp_to_bounds()`: Kill zone protection [$0.05, $0.95]
+  - ✅ `_enforce_min_spread()`: Guarantees (ask - bid) ≥ $0.02
+  - ✅ `_calculate_order_qty()`: USD → Integer shares with dust guard
+
+  **Part 3: Active Order Tracking**
+  - ✅ `self.active_orders` dict tracks live orders per market
+  - ✅ Stores: price, size, side, timestamp, ai_price, order_qty
+  - ✅ Used by pruner for hysteresis and staleness checks
+
+  **Constants Added**:
+  ```python
+  TICK_SIZE = 0.01           # $0.01 tick grid
+  MIN_PRICE = 0.05           # Kill zone lower bound
+  MAX_PRICE = 0.95           # Kill zone upper bound
+  MIN_SPREAD_TICKS = 2       # Minimum 2 cents spread
+  ORDER_STALE_SECONDS = 120  # Refresh orders after 2 minutes
+  HYSTERESIS_THRESHOLD = 0.01  # 1 cent drift tolerance
+  ```
+
+  **Test Results**:
+  - Tick rounding: ✅ 0.5234567 → 0.52
+  - Bounds clamping: ✅ 0.02 → 0.05, 0.98 → 0.95
+  - Min spread: ✅ (0.50, 0.51) → (0.49, 0.52)
+  - Integer sizing: ✅ $10 @ $0.50 = 20 shares
+  - Dust guard: ✅ $0.40 @ $0.50 = 0 shares (blocked)
+  - Hysteresis: ✅ 0.5 cent drift → KEEP order
+  - Large drift: ✅ 5 cent drift → CANCEL order
+
 ### January 27, 2026 - Session 39 (Zero-Latency Forensic Telemetry - COMPLETE)
-
-- ✅ **ZERO-LATENCY FORENSIC TELEMETRY SYSTEM COMPLETE**
-
-  **Problem**: Need to validate HFT execution quality (Adverse Selection, Markout) without introducing I/O latency to the hot path.
-
-  **Solution**: 4-Phase Implementation
 
   **Phase 1: Zero-Latency Logger** (`services/telemetry.py`)
   - ✅ Lock-free `SimpleQueue` for non-blocking logging (<0.01ms per call)
