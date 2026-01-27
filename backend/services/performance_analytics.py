@@ -347,10 +347,20 @@ class PerformanceAnalytics:
             return 0.0
     
     async def _get_all_trades(self) -> List[Dict]:
-        """Get all trades"""
+        """Get all trades from both trades and paper_trades collections"""
         try:
+            trades = []
+            
+            # Get from trades collection
             cursor = self.db.trades.find({}, {"_id": 0})
-            return await cursor.to_list(length=10000)
+            trades.extend(await cursor.to_list(length=10000))
+            
+            # Also get from paper_trades collection (exit trades only)
+            cursor = self.db.paper_trades.find({"type": "exit"}, {"_id": 0})
+            paper_trades = await cursor.to_list(length=10000)
+            trades.extend(paper_trades)
+            
+            return trades
         except Exception as e:
             logger.error(f"Error getting trades: {e}")
             return []
