@@ -21,13 +21,15 @@ class MultiMarketArbitrageStrategy:
     def __init__(self):
         self.db = get_db()
         self.type = 'HFT'  # Three-Speed Architecture: Requires strict liquidity ($10k+)
+        # Import RISK for centralized thresholds
+        from risk_config import RISK
         self.signal_fusion = SignalFusionEngine()
         self.kelly_optimizer = KellySharpeOptimizer()
         self.execution = ExecutionEngine()
         self.position_mgr = PositionManager()
         self.risk_ctrl = RiskController()
         self.arbitrage_threshold = 0.05  # 5% price difference
-        self.min_liquidity = 5000
+        self.min_liquidity = RISK.HFT_MIN_VOLUME_24H  # Task 27: Use SSOT (arbitrage needs HFT liquidity)
         
     async def execute_strategy(self, market_data: Dict) -> Optional[Dict]:
         """Execute arbitrage strategy
