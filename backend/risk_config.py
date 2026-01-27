@@ -460,6 +460,11 @@ class RiskConfig:
             'allocated_capital_pct': self.ALLOCATED_CAPITAL_PCT,
             'cash_buffer_pct': self.CASH_BUFFER_PCT,
             
+            # Strategy Capital Allocation (Three-Speed Architecture - Task 25)
+            'hft_allocation_pct': self.HFT_ALLOCATION_PCT,
+            'alpha_allocation_pct': self.ALPHA_ALLOCATION_PCT,
+            'gamma_allocation_pct': self.GAMMA_ALLOCATION_PCT,
+            
             # Safety
             'stop_loss_pct': self.STOP_LOSS_PCT,
             'max_drawdown_pct': self.MAX_DRAWDOWN_PCT,
