@@ -6,7 +6,7 @@ Injects mock trades into the database to validate Lane Analytics UI.
 
 This script creates:
 - 50 HFT trades (high volume, small wins/losses, 66% win rate)
-- 10 ALPHA trades (medium trades, balanced wins/losses)
+- 15 ALPHA trades (medium trades, balanced wins/losses)
 - 5 GAMMA trades (moonshots, including one big winner)
 
 Run: python scripts/seed_lane_data.py
@@ -25,7 +25,14 @@ from datetime import datetime, timezone, timedelta
 # Add backend to path
 sys.path.insert(0, '/app/backend')
 
-from database import get_db
+from pymongo import MongoClient
+from config import config
+
+
+def get_sync_db():
+    """Get synchronous database connection."""
+    client = MongoClient(config.MONGO_URL)
+    return client[config.DB_NAME]
 
 
 def generate_trade(
@@ -211,7 +218,7 @@ def seed_database():
     print("\n🌱 APEX TRADER - Lane Data Seeder")
     print("=" * 50)
     
-    db = get_db()
+    db = get_sync_db()
     
     # Generate trades for each lane
     hft_trades = seed_hft_trades(50)
