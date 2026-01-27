@@ -10,6 +10,7 @@ import {
   Wifi, WifiOff, RotateCcw, List, GripVertical
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart as RePieChart, Pie, Legend } from 'recharts';
+import LanePerformance from '../components/analytics/LanePerformance';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
