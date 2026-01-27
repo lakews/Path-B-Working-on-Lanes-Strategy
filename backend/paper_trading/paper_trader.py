@@ -20,6 +20,7 @@ from ml.enhanced_sentiment import get_enhanced_sentiment_analyzer
 from trading.maker_executor import get_maker_executor, MakerOrderExecutor
 from trading.gamma_strategy import get_gamma_trader, GammaTrader, GammaOrderType
 from trading.exit_engine import get_exit_engine, ExitEngine, ExitAction, ExitReason
+from services.hft_context import get_hft_context, get_volatility_calculator, HFTContext, VolatilityCalculator, ContextStatus
 from config import config, SPREAD_RULES, RISK_PARAMS
 import numpy as np
 from threading import Lock
