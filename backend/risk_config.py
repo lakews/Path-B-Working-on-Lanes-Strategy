@@ -568,17 +568,31 @@ class RiskConfig:
         Determine the capital allocation path for a given strategy.
         
         Returns: 'HFT', 'ALPHA', or 'GAMMA'
+        
+        Architecture Note (Jan 2026 - Async-Skewed-Adaptive HFT Refactor):
+        - ARBITRAGE moved from HFT to ALPHA: Requires cross-market validation
+          which is too slow for the micro-scalper's sub-second execution.
+        - HFT is now strictly for market-making and scalping with AI guidance.
         """
         st = (strategy_name or '').upper()
         
-        HFT_STRATEGIES = {'HFT', 'ARBITRAGE', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER'}
+        # HFT: Pure speed strategies - market making, scalping (NO cross-market ops)
+        HFT_STRATEGIES = {'HFT', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER', 'SCALP', 'HFT_SCALP'}
+        
+        # GAMMA: High-volatility moonshot plays
         GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY', 'VOLATILITY_EXPLOITATION'}
+        
+        # ALPHA: Directional + cross-market (includes ARBITRAGE - too slow for HFT)
+        # Note: ARBITRAGE requires similar-market detection & validation - not HFT-suitable
+        ALPHA_STRATEGIES = {'ALPHA', 'ALPHA_DIRECTIONAL', 'ARBITRAGE', 'MULTI_MARKET_ARBITRAGE'}
         
         if st in HFT_STRATEGIES or st.startswith('HFT'):
             return 'HFT'
         if st in GAMMA_STRATEGIES or st.startswith('GAMMA') or st.startswith('VOLATILITY'):
             return 'GAMMA'
-        return 'ALPHA'
+        if st in ALPHA_STRATEGIES or st.startswith('ALPHA') or st.startswith('ARB'):
+            return 'ALPHA'
+        return 'ALPHA'  # Default fallback
     
     # =========================================================================
     # DATABASE PERSISTENCE
