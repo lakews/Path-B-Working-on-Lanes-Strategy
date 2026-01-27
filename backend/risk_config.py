@@ -685,6 +685,42 @@ class RiskConfig:
         if 'gamma_allocation_pct' in data:
             self.GAMMA_ALLOCATION_PCT = float(data['gamma_allocation_pct'])
         
+        # Strategy-Based Liquidity & Volume (Task 26)
+        if 'hft_min_liquidity' in data:
+            self.HFT_MIN_LIQUIDITY = float(data['hft_min_liquidity'])
+        if 'hft_min_volume_24h' in data:
+            self.HFT_MIN_VOLUME_24H = float(data['hft_min_volume_24h'])
+        if 'alpha_core_liquidity' in data:
+            self.ALPHA_CORE_LIQUIDITY = float(data['alpha_core_liquidity'])
+        if 'alpha_whale_liquidity' in data:
+            self.ALPHA_WHALE_LIQUIDITY = float(data['alpha_whale_liquidity'])
+        if 'alpha_core_volume' in data:
+            self.ALPHA_CORE_VOLUME = float(data['alpha_core_volume'])
+        if 'alpha_whale_volume' in data:
+            self.ALPHA_WHALE_VOLUME = float(data['alpha_whale_volume'])
+        if 'gamma_min_liquidity' in data:
+            self.GAMMA_MIN_LIQUIDITY = float(data['gamma_min_liquidity'])
+        if 'gamma_min_volume_24h' in data:
+            self.GAMMA_MIN_VOLUME_24H = float(data['gamma_min_volume_24h'])
+        if 'max_liquidity_cap' in data:
+            self.MAX_LIQUIDITY_CAP = float(data['max_liquidity_cap'])
+        if 'full_size_liquidity_threshold' in data:
+            self.FULL_SIZE_LIQUIDITY_THRESHOLD = float(data['full_size_liquidity_threshold'])
+        if 'data_cleaning_min_liquidity' in data:
+            self.DATA_CLEANING_MIN_LIQUIDITY = float(data['data_cleaning_min_liquidity'])
+        if 'data_cleaning_min_volume' in data:
+            self.DATA_CLEANING_MIN_VOLUME = float(data['data_cleaning_min_volume'])
+        if 'sharp_detection_min_volume' in data:
+            self.SHARP_DETECTION_MIN_VOLUME = float(data['sharp_detection_min_volume'])
+        if 'hot_market_volume_threshold' in data:
+            self.HOT_MARKET_VOLUME_THRESHOLD = float(data['hot_market_volume_threshold'])
+        if 'norm_liquidity_anchor' in data:
+            self.NORM_LIQUIDITY_ANCHOR = float(data['norm_liquidity_anchor'])
+        if 'norm_volume_anchor' in data:
+            self.NORM_VOLUME_ANCHOR = float(data['norm_volume_anchor'])
+        if 'spread_adjustment_tiers' in data:
+            self.SPREAD_ADJUSTMENT_TIERS = list(data['spread_adjustment_tiers'])
+        
         # Safety
         if 'stop_loss_pct' in data:
             self.STOP_LOSS_PCT = float(data['stop_loss_pct'])
