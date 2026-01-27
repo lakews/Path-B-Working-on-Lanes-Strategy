@@ -48,6 +48,7 @@ class PerformanceAnalytics:
                 "unrealized_pnl": overall_metrics.get("unrealized_pnl", 0.0),
                 "strategy_performance": strategy_metrics,
                 "asset_class_performance": asset_class_metrics,
+                "lane_performance": lane_metrics,  # Three-Speed: HFT/ALPHA/GAMMA breakdown
                 "portfolio_volatility": portfolio_volatility,
                 **advanced_metrics,  # Add advanced metrics
                 "timestamp": datetime.now(timezone.utc).isoformat()
