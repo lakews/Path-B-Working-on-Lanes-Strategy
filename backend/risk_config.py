@@ -546,9 +546,15 @@ class RiskConfig:
         # Normalize strategy type
         st = (strategy_type or 'ALPHA').upper()
         
-        # Map specific strategies to paths
-        HFT_STRATEGIES = {'HFT', 'ARBITRAGE', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER'}
+        # Map specific strategies to paths (Jan 2026: Aligned with get_strategy_path)
+        # HFT: Pure speed strategies - market making, scalping (NO cross-market ops)
+        HFT_STRATEGIES = {'HFT', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER', 'SCALP', 'HFT_SCALP'}
+        
+        # GAMMA: High-volatility moonshot plays
         GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY', 'VOLATILITY_EXPLOITATION'}
+        
+        # ALPHA: Directional + cross-market (includes ARBITRAGE - too slow for HFT)
+        ALPHA_STRATEGIES = {'ALPHA', 'ALPHA_DIRECTIONAL', 'ARBITRAGE', 'MULTI_MARKET_ARBITRAGE'}
         
         # Check for HFT path
         if st in HFT_STRATEGIES or st.startswith('HFT'):
@@ -557,6 +563,12 @@ class RiskConfig:
         # Check for GAMMA path
         if st in GAMMA_STRATEGIES or st.startswith('GAMMA') or st.startswith('VOLATILITY'):
             return self.GAMMA_MIN_LIQUIDITY, self.GAMMA_MIN_VOLUME_24H
+        
+        # Check for explicit ALPHA strategies
+        if st in ALPHA_STRATEGIES or st.startswith('ALPHA') or st.startswith('ARB'):
+            if price < self.PRICE_ZONE_THRESHOLD:
+                return self.ALPHA_WHALE_LIQUIDITY, self.ALPHA_WHALE_VOLUME
+            return self.ALPHA_CORE_LIQUIDITY, self.ALPHA_CORE_VOLUME
         
         # Default to ALPHA path - splits by price
         if price < self.PRICE_ZONE_THRESHOLD:
