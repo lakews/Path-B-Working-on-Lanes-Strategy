@@ -18,6 +18,47 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 27, 2026)
 
+### January 27, 2026 - Session 39 (Strategy Forensics Engine - COMPLETE)
+
+- ✅ **STRATEGY FORENSICS ENGINE COMPLETE**
+
+  **Purpose**: Standalone CLI diagnostic tool to perform deep-dive "Health Report" analysis on each trading lane (HFT, ALPHA, GAMMA). Calculates advanced risk/reward metrics beyond simple PnL to diagnose performance issues.
+
+  **File Created**: `/app/backend/scripts/dev_tools/strategy_forensics.py`
+
+  **Metrics Calculated (Per Lane)**:
+  | Metric | Description |
+  |--------|-------------|
+  | Profit Factor | Gross Profit / \|Gross Loss\| (health indicator) |
+  | Win Rate | Percentage of winning trades |
+  | Avg Win / Avg Loss | Average $ value of wins vs losses |
+  | Reward-to-Risk (R:R) | Avg Win / Avg Loss ratio |
+  | Expectancy | (Win% × Avg Win) - (Loss% × Avg Loss) |
+  | Holding Time | Average duration entry → exit |
+  | Fee Simulation | Net PnL assuming 0.05% fee per trade |
+  | Fee Drag % | % of gross profit eaten by fees |
+  | Largest Win/Loss | Peak trade outcomes |
+  | Max Consecutive Wins/Losses | Streak tracking |
+
+  **Diagnostic Verdicts**:
+  - ✅ PASS: Profit Factor ≥ 1.2
+  - ⚠️ WARNING: Profit Factor 1.0 - 1.2
+  - ❌ FAIL: Profit Factor < 1.0
+
+  **Current Analysis Results**:
+  | Lane | Trades | Win% | P/F | Expectancy | Verdict |
+  |------|--------|------|-----|------------|---------|
+  | HFT | 149 | 24.2% | 0.06 | -$10.74 | ❌ FAIL |
+  | ALPHA | 2107 | 10.7% | 1.05 | +$0.33 | ⚠️ WARNING |
+  | GAMMA | 21 | 4.8% | 0.13 | -$34.62 | ❌ FAIL |
+
+  **Key Diagnostics from First Run**:
+  - HFT: Signal quality issue (24% win rate too low for scalping), terrible R:R (0.18)
+  - ALPHA: Low win rate but valid due to strong R:R (3.5), max losing streak of 189
+  - GAMMA: Moonshots not paying off, largest win ($110) doesn't cover losses
+
+  **Usage**: `python /app/backend/scripts/dev_tools/strategy_forensics.py`
+
 ### January 27, 2026 - Session 38 (Task 27: Strategy Tagging & Legacy Purge - COMPLETE)
 
 - ✅ **TASK 27 COMPLETE: Strategy Activation & Legacy Cleanup**
