@@ -360,8 +360,8 @@ class RiskConfig:
     
     Hierarchy of Safety:
     1. Allocated Capital (virtual sub-account)
-    2. Price Zones (hard override based on price)
-    3. Strategy Regime (Alpha/HFT/Gamma)
+    2. Strategy Path (HFT/Alpha/Gamma)
+    3. Price Zones (hard override based on price within Alpha)
     4. Liquidity (never consume >10% of depth)
     5. Exposure (sector and event caps)
     """
@@ -378,6 +378,42 @@ class RiskConfig:
     GAMMA_ALLOCATION_PCT: float = DEFAULTS['GAMMA_ALLOCATION_PCT']
     
     # =========================================================================
+    # STRATEGY-BASED LIQUIDITY & VOLUME FILTERS (Task 26: Unified SSOT)
+    # =========================================================================
+    
+    # 1. HFT ZONE (Market Making / Arb) - 35% Allocation
+    HFT_MIN_LIQUIDITY: float = DEFAULTS['HFT_MIN_LIQUIDITY']
+    HFT_MIN_VOLUME_24H: float = DEFAULTS['HFT_MIN_VOLUME_24H']
+    
+    # 2. ALPHA ZONE (Directional) - 55% Allocation (splits by price)
+    ALPHA_CORE_LIQUIDITY: float = DEFAULTS['ALPHA_CORE_LIQUIDITY']
+    ALPHA_WHALE_LIQUIDITY: float = DEFAULTS['ALPHA_WHALE_LIQUIDITY']
+    ALPHA_CORE_VOLUME: float = DEFAULTS['ALPHA_CORE_VOLUME']
+    ALPHA_WHALE_VOLUME: float = DEFAULTS['ALPHA_WHALE_VOLUME']
+    
+    # 3. GAMMA ZONE (High Vol / Moonshots) - 10% Allocation
+    GAMMA_MIN_LIQUIDITY: float = DEFAULTS['GAMMA_MIN_LIQUIDITY']
+    GAMMA_MIN_VOLUME_24H: float = DEFAULTS['GAMMA_MIN_VOLUME_24H']
+    
+    # 4. SAFETY CAPS (Global)
+    MAX_LIQUIDITY_CONSUMPTION: float = DEFAULTS['MAX_LIQUIDITY_CONSUMPTION']
+    MAX_LIQUIDITY_CAP: float = DEFAULTS['MAX_LIQUIDITY_CAP']
+    FULL_SIZE_LIQUIDITY_THRESHOLD: float = DEFAULTS['FULL_SIZE_LIQUIDITY_THRESHOLD']
+    
+    # 5. ANALYSIS & INTELLIGENCE (The Brain)
+    DATA_CLEANING_MIN_LIQUIDITY: float = DEFAULTS['DATA_CLEANING_MIN_LIQUIDITY']
+    DATA_CLEANING_MIN_VOLUME: float = DEFAULTS['DATA_CLEANING_MIN_VOLUME']
+    SHARP_DETECTION_MIN_VOLUME: float = DEFAULTS['SHARP_DETECTION_MIN_VOLUME']
+    HOT_MARKET_VOLUME_THRESHOLD: float = DEFAULTS['HOT_MARKET_VOLUME_THRESHOLD']
+    NORM_LIQUIDITY_ANCHOR: float = DEFAULTS['NORM_LIQUIDITY_ANCHOR']
+    NORM_VOLUME_ANCHOR: float = DEFAULTS['NORM_VOLUME_ANCHOR']
+    SPREAD_ADJUSTMENT_TIERS: list = None  # Set in __post_init__
+    
+    def __post_init__(self):
+        if self.SPREAD_ADJUSTMENT_TIERS is None:
+            self.SPREAD_ADJUSTMENT_TIERS = list(DEFAULTS['SPREAD_ADJUSTMENT_TIERS'])
+    
+    # =========================================================================
     # GLOBAL SAFETY PARAMETERS
     # =========================================================================
     STOP_LOSS_PCT: float = DEFAULTS['STOP_LOSS_PCT']
@@ -391,7 +427,8 @@ class RiskConfig:
     PRICE_ZONE_THRESHOLD: float = DEFAULTS['PRICE_ZONE_THRESHOLD']
     
     # =========================================================================
-    # ZONE 1: CONVEXITY / WHALE ZONE ($0.03 - $0.09)
+    # LEGACY: ZONE 1 - WHALE ZONE ($0.03 - $0.09)
+    # Deprecated: Use ALPHA_WHALE_* or GAMMA_* instead
     # =========================================================================
     WHALE_PRICE_CEILING: float = DEFAULTS['WHALE_PRICE_CEILING']
     WHALE_MAX_SPREAD_CENTS: float = DEFAULTS['WHALE_MAX_SPREAD_CENTS']
@@ -409,7 +446,8 @@ class RiskConfig:
         return self.WHALE_MAX_PCT * 100
     
     # =========================================================================
-    # ZONE 2: CORE ALPHA ZONE ($0.10+)
+    # LEGACY: ZONE 2 - CORE ALPHA ZONE ($0.10+)
+    # Deprecated: Use ALPHA_CORE_* instead
     # =========================================================================
     CORE_TAKER_SPREAD_PCT: float = DEFAULTS['CORE_TAKER_SPREAD_PCT']
     CORE_MAKER_SPREAD_PCT: float = DEFAULTS['CORE_MAKER_SPREAD_PCT']
