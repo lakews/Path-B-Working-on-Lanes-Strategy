@@ -1354,7 +1354,8 @@ class PaperTrader:
                 f"Edge={edge:.2%} | Side={side} ${scalp_size:.2f}"
             )
             
-            return {
+            # Build opportunity dict
+            opportunity = {
                 'should_trade': True,
                 'side': side,
                 'size': scalp_size,
@@ -1367,7 +1368,32 @@ class PaperTrader:
                 'bias': bias,
                 'vol_multiplier': vol_multiplier,
                 'effective_spread_bps': effective_spread_bps,
+                'quoted_bid': my_bid,
+                'quoted_ask': my_ask,
             }
+            
+            # =============================================================
+            # ZERO-LATENCY TELEMETRY: Log decision snapshot
+            # =============================================================
+            try:
+                telemetry = get_telemetry_service()
+                snapshot = create_decision_snapshot(
+                    market_id=market_id,
+                    market_data=market_data,
+                    hft_params=params.to_dict() if params else None,
+                    opportunity=opportunity,
+                    decision="TRADE",
+                    reason=f"BUY_EDGE_{edge:.2%}",
+                    hft_positions={
+                        mid: pos for mid, pos in self.paper_positions.items()
+                        if RISK.get_strategy_path(pos.get('strategy', '')) == 'HFT'
+                    },
+                )
+                telemetry.log_decision(snapshot)  # Non-blocking
+            except Exception as e:
+                logger.debug(f"[HFT] Telemetry log error (ignored): {e}")
+            
+            return opportunity
             
         except Exception as e:
             logger.debug(f"[HFT] Error evaluating scalp: {e}")
