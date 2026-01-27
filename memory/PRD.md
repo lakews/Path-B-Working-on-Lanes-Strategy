@@ -18,6 +18,43 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 27, 2026)
 
+### January 27, 2026 - Session 37 (Task 26: Unified SSOT Refactor - COMPLETE)
+
+- ✅ **TASK 26 COMPLETE: Unified Strategy-Based SSOT for Liquidity/Volume**
+  
+  **Purpose**: Refactor the system to eliminate fragmented risk parameters scattered across multiple files. All liquidity/volume filters now flow through `RiskConfig` based on the Three-Speed model (HFT, Alpha, Gamma).
+
+  **New Strategy-Based Thresholds**:
+  | Strategy Path | Min Liquidity | Min Volume | Description |
+  |---------------|---------------|------------|-------------|
+  | HFT | $10,000 | $5,000 | Market making - requires deep books |
+  | Alpha (Core ≥$0.10) | $1,000 | $1,000 | Standard directional trading |
+  | Alpha (Whale <$0.10) | $500 | $500 | Cheap assets for alpha plays |
+  | Gamma | $250 | $250 | Moonshots - lowest floors for lotto plays |
+
+  **Key Methods Added to RiskConfig**:
+  - `get_thresholds(strategy_type, price)` → Returns (min_liq, min_vol) based on strategy path + price
+  - `get_strategy_path(strategy_name)` → Maps strategy to 'HFT', 'ALPHA', or 'GAMMA'
+
+  **Analysis & Intelligence Parameters**:
+  - `DATA_CLEANING_MIN_LIQUIDITY/VOLUME` = $250 (uses GAMMA floor so AI learns from ALL trades)
+  - `SHARP_DETECTION_MIN_VOLUME` = $25,000 (lowered from $100K)
+  - `HOT_MARKET_VOLUME_THRESHOLD` = $50,000 (for sentiment cache TTL)
+  - `NORM_LIQUIDITY_ANCHOR` / `NORM_VOLUME_ANCHOR` = $50,000 (for RL/ML normalization)
+  - `FULL_SIZE_LIQUIDITY_THRESHOLD` = $10,000 (for position sizing scalar)
+  - `MAX_LIQUIDITY_CAP` = $1,000,000 (anomaly filter)
+
+  **Files Refactored**:
+  - `/app/backend/risk_config.py` - Added all new parameters & get_thresholds() method
+  - `/app/backend/ml/adaptive_position_sizer.py` - Uses RISK.get_thresholds() for volume check
+  - `/app/backend/ml/bayesian_outlier.py` - Uses RISK.DATA_CLEANING_* and NORM anchors
+  - `/app/backend/ml/sharp_detector.py` - Uses RISK.SHARP_DETECTION_MIN_VOLUME
+  - `/app/backend/ml/rl_engine.py` - Uses RISK.NORM_* anchors for state normalization
+  - `/app/backend/ml/signal_fusion.py` - Uses RISK.NORM_VOLUME_ANCHOR for confidence
+  - `/app/backend/ml/sentiment_llm.py` - Uses RISK.HOT_MARKET_VOLUME_THRESHOLD
+
+  **Test Results**: 59/59 tests passed
+
 ### January 27, 2026 - Session 37 (Task 25: Three-Speed Capital Allocation - COMPLETE)
 
 - ✅ **TASK 25 COMPLETE: Three-Speed Capital Allocation**
