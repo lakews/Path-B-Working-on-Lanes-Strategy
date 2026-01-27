@@ -18,6 +18,29 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 27, 2026)
 
+### January 27, 2026 - Session 37 (Task 25: Three-Speed Capital Allocation - COMPLETE)
+
+- ✅ **TASK 25 COMPLETE: Three-Speed Capital Allocation**
+  
+  **Purpose**: Split deployed capital across three distinct trading paths instead of two:
+  - **HFT (Fast Path)**: 35% default - Market making, inventory skew, OFI quotes
+  - **Alpha (Slow Path)**: 55% default - Directional Bayesian signals, sentiment
+  - **Gamma (Whale)**: 10% default - Lottery tickets, 2x-5x targets, high risk
+  
+  **Backend Changes**:
+  - Added `HFT_ALLOCATION_PCT`, `ALPHA_ALLOCATION_PCT`, `GAMMA_ALLOCATION_PCT` to DEFAULTS (35/55/10)
+  - Updated `RiskConfig` class with new attributes
+  - Updated `to_dict()`, `load_from_dict()`, `reset_to_defaults()`, `get_defaults()` 
+  
+  **Frontend UI (Portfolio Risk Tab)**:
+  - Visual progress bar showing three colored segments (orange/purple/green)
+  - Three input cards with dollar amounts per $1000 deployed
+  - Auto-rebalancing when editing any value (maintains 100% total)
+  - "Reset to 35/55/10" button
+  - Validation warning when allocations don't sum to 100%
+  
+  **Test Results**: 11/11 API tests passed, UI verified
+
 ### January 27, 2026 - Session 37 (Task 24: Exit Engine INTEGRATION - COMPLETE)
 
 - ✅ **TASK 24 INTEGRATION COMPLETE: Exit Engine Now Active in Paper Trading**
