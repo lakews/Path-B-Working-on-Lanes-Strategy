@@ -2966,11 +2966,15 @@ class PaperTrader:
     
     async def _evaluate_exit(self, market_id: str, market_data: Dict):
         """
-        Evaluate existing paper position for exit.
+        Evaluate existing paper position for exit using the Alpha-State Exit Engine.
         
-        Supports two modes (controlled by self.use_dynamic_exit):
-        1. DYNAMIC MODE: Time-aware TP/SL based on max gain, expiry, and price zone
-        2. SIMPLE MODE: Configurable TP/SL from exit_params_by_strategy
+        Task 24: Hierarchical exit logic respecting:
+        1. State (ACTIVE vs FREE_RIDE)
+        2. Strategy (Mechanical vs Alpha)
+        3. Asset Class (wide/tight stops based on asset type)
+        4. Zone (Whale vs Core)
+        
+        Falls back to legacy logic if self.use_exit_engine is False.
         """
         try:
             position = self.paper_positions.get(market_id)
@@ -2988,6 +2992,369 @@ class PaperTrader:
             # Use yes_entry_price for internal calculations (stores the YES price at entry)
             yes_entry_price = position.get('yes_entry_price', position['entry_price'])
             side = position['side']
+            size = position.get('size', 0)
+            strategy = position.get('strategy', 'arbitrage')
+            asset_class = position.get('asset_class', 'unknown')
+            trade_status = position.get('trade_status', 'ACTIVE')  # ACTIVE or FREE_RIDE
+            peak_price = position.get('peak_price', yes_entry_price)  # Track peak for trailing stops
+            
+            # ==========================================================================
+            # FETCH FRESH ORDERBOOK FOR EXIT EVALUATION (not stale entry data!)
+            # ==========================================================================
+            bids = []
+            asks = []
+            current_spread_pct = 0.05  # Default 5% spread estimate
+            try:
+                token_ids = market_data.get('token_ids', [])
+                if token_ids:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        fresh_orderbook = await api.get_order_book(token_ids[0])
+                        bids = fresh_orderbook.get('bids', [])
+                        asks = fresh_orderbook.get('asks', [])
+                        if bids and asks:
+                            best_bid = float(bids[0]['price'])
+                            best_ask = float(asks[0]['price'])
+                            mid_price = (best_bid + best_ask) / 2
+                            current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.05
+                            logger.debug(f"[EXIT-OB] Fresh orderbook: bid={best_bid}, ask={best_ask}, spread={current_spread_pct:.2%}")
+            except Exception as e:
+                logger.debug(f"[EXIT-OB] Could not fetch fresh orderbook: {e}")
+            
+            # Fallback to cached orderbook if fresh fetch failed
+            if not bids or not asks:
+                order_book = market_data.get('order_book', {})
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
+            
+            if bids and asks:
+                best_bid = float(bids[0]['price'])
+                best_ask = float(asks[0]['price'])
+                spread = best_ask - best_bid
+                mid_price = (best_bid + best_ask) / 2
+                current_spread_pct = spread / mid_price if mid_price > 0 else 0.05
+                
+                # SANITY CHECK: Reject if spread is too wide (>15%)
+                if spread < 0 or spread > 0.15:
+                    logger.warning(f"[EXIT-EVAL] Suspicious orderbook spread={spread:.2%}, using midpoint instead")
+                    exit_yes_price = current_price
+                elif side == 'YES':
+                    exit_yes_price = best_bid  # Selling YES = hitting bid
+                else:
+                    exit_yes_price = best_ask  # Selling NO = buying YES = hitting ask
+            else:
+                spread_estimate = 0.02
+                if side == 'YES':
+                    exit_yes_price = current_price - (spread_estimate / 2)
+                else:
+                    exit_yes_price = current_price + (spread_estimate / 2)
+                exit_yes_price = max(0.001, min(0.999, exit_yes_price))
+            
+            # UPDATE position's current_price for UI display
+            if side == 'YES':
+                position['current_price'] = exit_yes_price
+            else:
+                position['current_price'] = 1 - exit_yes_price
+            
+            # Get time to expiry
+            expiry_info = self._calculate_time_to_expiry(market_data)
+            hours_to_expiry = expiry_info.get('hours_to_expiry')
+            
+            # Calculate duration
+            entry_time = datetime.fromisoformat(position['entry_time'].replace('Z', '+00:00'))
+            duration_hours = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
+            
+            # Update peak price for trailing stops
+            if exit_yes_price > peak_price:
+                peak_price = exit_yes_price
+                position['peak_price'] = peak_price
+            
+            # ============================================
+            # USE EXIT ENGINE (Task 24)
+            # ============================================
+            if self.use_exit_engine:
+                decision = self.exit_engine.check_exit(
+                    strategy=strategy,
+                    asset_class=asset_class,
+                    entry_price=yes_entry_price,
+                    current_price=exit_yes_price,
+                    position_size_usd=size,
+                    duration_hours=duration_hours,
+                    hours_to_expiry=hours_to_expiry,
+                    current_spread_pct=current_spread_pct,
+                    trade_status=trade_status,
+                    peak_price=peak_price,
+                )
+                
+                # Store exit engine decision for UI display
+                position['exit_engine_decision'] = {
+                    'action': decision.action.value,
+                    'reason': decision.reason.value,
+                    'zone': decision.zone,
+                    'state': decision.state,
+                    'pnl_pct': decision.pnl_pct,
+                    'tp_threshold': decision.take_profit_threshold,
+                    'sl_threshold': decision.stop_loss_threshold,
+                    'max_hours': decision.max_hours,
+                    'asset_class': decision.asset_class,
+                }
+                
+                # Also store in legacy format for UI compatibility
+                position['dynamic_exit_params'] = {
+                    'tp': decision.take_profit_threshold,
+                    'sl': -abs(decision.stop_loss_threshold) if decision.stop_loss_threshold else None,
+                    'max_hours': decision.max_hours,
+                    'zone': decision.zone,
+                    'exit_mode': f"engine_{decision.reason.value}",
+                    'is_dynamic': True,
+                }
+                
+                # Calculate P&L for position update
+                if side == 'YES':
+                    if yes_entry_price > 0:
+                        shares = size / yes_entry_price
+                        current_value = shares * exit_yes_price
+                        unrealized_pnl = current_value - size
+                        pnl_pct = unrealized_pnl / size if size > 0 else 0
+                    else:
+                        pnl_pct = 0
+                        unrealized_pnl = 0
+                else:
+                    no_entry_price = 1 - yes_entry_price
+                    no_exit_price = 1 - exit_yes_price
+                    if no_entry_price > 0:
+                        shares = size / no_entry_price
+                        current_value = shares * no_exit_price
+                        unrealized_pnl = current_value - size
+                        pnl_pct = unrealized_pnl / size if size > 0 else 0
+                    else:
+                        pnl_pct = 0
+                        unrealized_pnl = 0
+                
+                position['unrealized_pnl'] = unrealized_pnl
+                position['unrealized_pnl_pct'] = pnl_pct
+                
+                # ============================================
+                # EXECUTE EXIT DECISION
+                # ============================================
+                if decision.action == ExitAction.CLOSE_ALL:
+                    exit_reason = f"{decision.reason.value}_{decision.zone}"
+                    logger.info(f"📤 EXIT [{decision.zone}]: {market_id[:16]} | {decision.reason.value} | P&L: {pnl_pct:.2%}")
+                    await self._execute_paper_exit(market_id, market_data, exit_reason)
+                    
+                elif decision.action == ExitAction.FREE_ROLL:
+                    # Partial sell - sell principal, keep profits running
+                    sell_pct = decision.sell_pct
+                    sell_amount = size * sell_pct
+                    
+                    logger.info(f"🎰 FREE_ROLL [{decision.zone}]: {market_id[:16]} | Selling {sell_pct:.0%} (${sell_amount:.2f}) | P&L: {pnl_pct:.2%}")
+                    
+                    # Execute partial exit
+                    await self._execute_paper_partial_exit(market_id, market_data, sell_pct, "free_roll")
+                    
+                    # Update position status to FREE_RIDE
+                    if market_id in self.paper_positions:
+                        self.paper_positions[market_id]['trade_status'] = 'FREE_RIDE'
+                        self.paper_positions[market_id]['free_roll_time'] = datetime.now(timezone.utc).isoformat()
+                        self.paper_positions[market_id]['original_size'] = size
+                        logger.info(f"🏠 Position {market_id[:16]} is now HOUSE MONEY (FREE_RIDE)")
+                
+                # ExitAction.HOLD - do nothing, just log occasionally
+                elif decision.action == ExitAction.HOLD:
+                    # Log every ~10th check to avoid spam
+                    if hasattr(self, '_exit_log_counter'):
+                        self._exit_log_counter += 1
+                    else:
+                        self._exit_log_counter = 0
+                    
+                    if self._exit_log_counter % 10 == 0:
+                        logger.debug(f"⏸️ HOLD [{decision.zone}]: {market_id[:16]} | {decision.reason.value} | P&L: {pnl_pct:.2%}")
+                
+                return  # Exit engine handled, skip legacy logic
+            
+            # ============================================
+            # LEGACY EXIT LOGIC (fallback if use_exit_engine=False)
+            # ============================================
+            await self._legacy_evaluate_exit(market_id, market_data, position, exit_yes_price, 
+                                             yes_entry_price, side, size, strategy, asset_class,
+                                             hours_to_expiry, duration_hours)
+                
+        except Exception as e:
+            logger.error(f"Error evaluating exit: {e}", exc_info=True)
+    
+    async def _execute_paper_partial_exit(self, market_id: str, market_data: Dict, 
+                                          sell_pct: float, reason: str):
+        """
+        Execute a partial exit (for FREE_ROLL).
+        Sells a percentage of the position while keeping the rest running.
+        """
+        try:
+            position = self.paper_positions.get(market_id)
+            if not position:
+                return
+            
+            original_size = position.get('size', 0)
+            sell_size = original_size * sell_pct
+            remaining_size = original_size - sell_size
+            
+            if remaining_size < 0.01:  # Dust check
+                # Convert to full exit
+                await self._execute_paper_exit(market_id, market_data, f"{reason}_dust_convert")
+                return
+            
+            # Calculate realized P&L for the sold portion
+            yes_entry_price = position.get('yes_entry_price', position['entry_price'])
+            current_price = position.get('current_price', market_data.get('yes_price', yes_entry_price))
+            side = position['side']
+            
+            if side == 'YES':
+                if yes_entry_price > 0:
+                    shares_sold = sell_size / yes_entry_price
+                    exit_value = shares_sold * current_price
+                    realized_pnl = exit_value - sell_size
+                else:
+                    realized_pnl = 0
+            else:
+                no_entry_price = 1 - yes_entry_price
+                no_exit_price = 1 - current_price
+                if no_entry_price > 0:
+                    shares_sold = sell_size / no_entry_price
+                    exit_value = shares_sold * no_exit_price
+                    realized_pnl = exit_value - sell_size
+                else:
+                    realized_pnl = 0
+            
+            # Update position
+            position['size'] = remaining_size
+            position['partial_exits'] = position.get('partial_exits', [])
+            position['partial_exits'].append({
+                'time': datetime.now(timezone.utc).isoformat(),
+                'sell_pct': sell_pct,
+                'sell_size': sell_size,
+                'realized_pnl': realized_pnl,
+                'reason': reason,
+            })
+            
+            # Track realized P&L
+            self.paper_realized_pnl += realized_pnl
+            self.paper_trades_today += 1
+            
+            # Record partial trade
+            await self._record_paper_trade(
+                market_id=market_id,
+                market_data=market_data,
+                side=side,
+                entry_price=position['entry_price'],
+                exit_price=current_price,
+                size=sell_size,
+                strategy=position.get('strategy', 'unknown'),
+                pnl=realized_pnl,
+                entry_time=position.get('entry_time'),
+                exit_reason=f"partial_{reason}",
+                is_partial=True
+            )
+            
+            logger.info(f"📊 PARTIAL EXIT: {market_id[:16]} | Sold {sell_pct:.0%} (${sell_size:.2f}) | P&L: ${realized_pnl:.2f} | Remaining: ${remaining_size:.2f}")
+            
+        except Exception as e:
+            logger.error(f"Error in partial exit: {e}", exc_info=True)
+    
+    async def _legacy_evaluate_exit(self, market_id: str, market_data: Dict, position: Dict,
+                                    exit_yes_price: float, yes_entry_price: float, side: str,
+                                    size: float, strategy: str, asset_class: str,
+                                    hours_to_expiry: Optional[float], duration_hours: float):
+        """
+        Legacy exit evaluation logic (pre-Task 24).
+        Kept for fallback/comparison purposes.
+        """
+        days_to_expiry = hours_to_expiry / 24 if hours_to_expiry else None
+        
+        # Get exit parameters (dynamic or simple mode)
+        if self.use_dynamic_exit:
+            exit_params = self._get_dynamic_exit_params(side, yes_entry_price, days_to_expiry)
+        else:
+            exit_params = self._get_simple_exit_params(strategy, asset_class)
+        
+        take_profit_threshold = exit_params['take_profit']
+        stop_loss_threshold = exit_params['stop_loss']
+        max_hours = exit_params['max_hours']
+        exit_mode = exit_params.get('exit_mode', 'standard')
+        
+        # Store exit params in position for UI display
+        position['dynamic_exit_params'] = {
+            'tp': take_profit_threshold,
+            'sl': stop_loss_threshold,
+            'max_hours': max_hours,
+            'zone': exit_params.get('zone', 'unknown'),
+            'exit_mode': exit_mode,
+            'is_dynamic': self.use_dynamic_exit
+        }
+        
+        # Calculate P&L
+        if side == 'YES':
+            if yes_entry_price > 0:
+                shares = size / yes_entry_price
+                current_value = shares * exit_yes_price
+                unrealized_pnl = current_value - size
+                pnl_pct = unrealized_pnl / size if size > 0 else 0
+            else:
+                pnl_pct = 0
+                unrealized_pnl = 0
+        else:
+            no_entry_price = 1 - yes_entry_price
+            no_exit_price = 1 - exit_yes_price
+            if no_entry_price > 0:
+                shares = size / no_entry_price
+                current_value = shares * no_exit_price
+                unrealized_pnl = current_value - size
+                pnl_pct = unrealized_pnl / size if size > 0 else 0
+            else:
+                pnl_pct = 0
+                unrealized_pnl = 0
+        
+        position['unrealized_pnl'] = unrealized_pnl
+        position['unrealized_pnl_pct'] = pnl_pct
+        
+        # Get RL recommendation
+        signals = await self._get_signals(market_data)
+        rl_action, rl_confidence = await self.rl_engine.get_optimal_action(market_data, signals)
+        
+        # Exit conditions
+        should_exit = False
+        exit_reason = None
+        
+        # 1. Auto-exit for approaching expiry
+        if hours_to_expiry is not None and hours_to_expiry <= 1.0:
+            should_exit = True
+            exit_reason = f"expiry_safety_{hours_to_expiry:.1f}h"
+        
+        # 2. Take profit
+        if not should_exit and take_profit_threshold is not None and pnl_pct >= take_profit_threshold:
+            should_exit = True
+            exit_reason = f"tp_{pnl_pct:.1%}_{exit_mode}"
+        
+        # 3. Stop loss
+        if not should_exit and stop_loss_threshold is not None and pnl_pct <= stop_loss_threshold:
+            should_exit = True
+            exit_reason = f"sl_{pnl_pct:.1%}_{exit_mode}"
+        
+        # 4. RL signal reversal
+        if not should_exit and exit_mode != 'resolution' and rl_confidence > 0.7:
+            if side == 'YES' and 'SELL' in rl_action:
+                should_exit = True
+                exit_reason = f"rl_reversal_{rl_action}_{rl_confidence:.0%}"
+            elif side == 'NO' and 'BUY' in rl_action:
+                should_exit = True
+                exit_reason = f"rl_reversal_{rl_action}_{rl_confidence:.0%}"
+        
+        # 5. Time-based exit
+        if not should_exit and max_hours is not None and duration_hours > max_hours:
+            should_exit = True
+            exit_reason = f"time_{duration_hours:.1f}h>{max_hours:.0f}h_{exit_mode}"
+        
+        if should_exit:
+            logger.info(f"📤 LEGACY EXIT: {market_id[:16]} | {exit_reason} | P&L: {pnl_pct:.2%}")
+            await self._execute_paper_exit(market_id, market_data, exit_reason)
             size = position.get('size', 0)
             strategy = position.get('strategy', 'arbitrage')
             asset_class = position.get('asset_class', 'unknown')
