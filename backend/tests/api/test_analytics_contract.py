@@ -159,10 +159,11 @@ class TestComprehensiveMetricsSchema:
         response = ComprehensiveMetricsResponse(**MOCK_ANALYTICS_RESPONSE)
         
         hft = response.lane_performance["HFT"]
-        assert hft["total_pnl"] == 50.0
-        assert hft["win_rate"] == 60.0
-        assert hft["total_trades"] == 30
-        assert hft["total_volume"] == 3000.0
+        # Access as LaneMetric object attributes (Pydantic parses dict to model)
+        assert hft.total_pnl == 50.0
+        assert hft.win_rate == 60.0
+        assert hft.total_trades == 30
+        assert hft.total_volume == 3000.0
     
     def test_empty_response_defaults(self):
         """Empty response should have sensible defaults."""
@@ -235,9 +236,11 @@ class TestAnalyticsAPIContract:
         
         required_fields = ["total_pnl", "total_trades", "win_rate", "wins", "losses", "total_volume", "avg_pnl_per_trade"]
         
-        for lane_name, lane_data in response.lane_performance.items():
+        for lane_name, lane_metric in response.lane_performance.items():
+            # lane_metric is a LaneMetric object, check attributes
             for field in required_fields:
-                assert field in lane_data, f"Lane {lane_name} missing field: {field}"
+                assert hasattr(lane_metric, field), f"Lane {lane_name} missing field: {field}"
+                assert getattr(lane_metric, field) is not None, f"Lane {lane_name} field {field} is None"
     
     def test_response_json_serializable(self):
         """Response must be JSON serializable."""
@@ -268,22 +271,22 @@ class TestLaneMetricMath:
         """wins + losses should equal total_trades."""
         response = ComprehensiveMetricsResponse(**MOCK_ANALYTICS_RESPONSE)
         
-        for lane_name, lane_data in response.lane_performance.items():
-            expected_total = lane_data["wins"] + lane_data["losses"]
-            assert lane_data["total_trades"] == expected_total, (
-                f"Lane {lane_name}: wins({lane_data['wins']}) + losses({lane_data['losses']}) "
-                f"!= total_trades({lane_data['total_trades']})"
+        for lane_name, lane_metric in response.lane_performance.items():
+            expected_total = lane_metric.wins + lane_metric.losses
+            assert lane_metric.total_trades == expected_total, (
+                f"Lane {lane_name}: wins({lane_metric.wins}) + losses({lane_metric.losses}) "
+                f"!= total_trades({lane_metric.total_trades})"
             )
     
     def test_win_rate_calculation(self):
         """win_rate should equal (wins / total_trades) * 100."""
         response = ComprehensiveMetricsResponse(**MOCK_ANALYTICS_RESPONSE)
         
-        for lane_name, lane_data in response.lane_performance.items():
-            if lane_data["total_trades"] > 0:
-                expected_rate = (lane_data["wins"] / lane_data["total_trades"]) * 100
-                assert abs(lane_data["win_rate"] - expected_rate) < 0.1, (
-                    f"Lane {lane_name}: win_rate {lane_data['win_rate']} != "
+        for lane_name, lane_metric in response.lane_performance.items():
+            if lane_metric.total_trades > 0:
+                expected_rate = (lane_metric.wins / lane_metric.total_trades) * 100
+                assert abs(lane_metric.win_rate - expected_rate) < 0.1, (
+                    f"Lane {lane_name}: win_rate {lane_metric.win_rate} != "
                     f"calculated {expected_rate}"
                 )
 
