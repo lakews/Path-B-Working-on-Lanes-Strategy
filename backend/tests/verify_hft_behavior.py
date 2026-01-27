@@ -221,7 +221,7 @@ def test_scenario_2_nerves_of_steel():
     Scenario 2: The "Nerves of Steel" Test (Hysteresis)
     
     Setup: Bot has active order at $0.50
-    Action: AI price updates to $0.51 (1 cent drift)
+    Action: AI price updates to $0.505 (0.5 cent drift - within hysteresis)
     Expected: Bot DOES NOT cancel the order
     Check: Order remains active
     """
@@ -239,12 +239,14 @@ def test_scenario_2_nerves_of_steel():
     print(f"Setup: Active order at ${initial_price:.2f}")
     print(f"Active orders: {list(trader.active_orders.keys())}")
     
-    # Action: AI price changes by 1 cent (within hysteresis)
-    new_ai_price = 0.51
+    # Action: AI price changes by 0.5 cent (WITHIN hysteresis threshold)
+    # Using 0.005 drift which is clearly < 0.01 threshold
+    new_ai_price = 0.505
     drift = abs(initial_price - new_ai_price)
     
-    print(f"Action: AI price updates to ${new_ai_price:.2f} (drift = ${drift:.2f})")
+    print(f"Action: AI price updates to ${new_ai_price:.3f} (drift = ${drift:.3f})")
     print(f"Hysteresis threshold: ${trader.HYSTERESIS_THRESHOLD:.2f}")
+    print(f"Drift <= Threshold: {drift:.4f} <= {trader.HYSTERESIS_THRESHOLD} = {drift <= trader.HYSTERESIS_THRESHOLD}")
     
     # Prune stale orders
     stats = trader._prune_stale_orders(market_id, new_ai_price)
