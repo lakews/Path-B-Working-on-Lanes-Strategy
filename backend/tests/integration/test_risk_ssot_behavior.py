@@ -204,11 +204,12 @@ class TestStrategyPathMapping:
         ("GAMMA_SCALP", "GAMMA"),
         ("WHALE", "GAMMA"),
         ("MOONSHOT", "GAMMA"),
+        ("VOLATILITY", "GAMMA"),  # Volatility exploitation = GAMMA moonshots
+        ("VOLATILITY_EXPLOITATION", "GAMMA"),
         
         # Alpha Path (55% allocation) - default
         ("ALPHA", "ALPHA"),
         ("ALPHA_DIRECTIONAL", "ALPHA"),
-        ("VOLATILITY", "ALPHA"),
         ("unknown_strategy", "ALPHA"),  # Unknown defaults to Alpha
         (None, "ALPHA"),  # None defaults to Alpha
     ])
