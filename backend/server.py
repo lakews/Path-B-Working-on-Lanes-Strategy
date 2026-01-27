@@ -3641,12 +3641,60 @@ async def get_exit_engine_stats():
     
     try:
         exit_engine = get_exit_engine()
+        stats = exit_engine.get_stats()
+        
+        # Add integration status
+        global paper_trader
+        stats['integration'] = {
+            'enabled': paper_trader.use_exit_engine if paper_trader else False,
+            'legacy_mode': not (paper_trader.use_exit_engine if paper_trader else True),
+        }
+        
         return {
             "success": True,
-            "stats": exit_engine.get_stats()
+            "stats": stats
         }
     except Exception as e:
         logger.error(f"Error getting exit engine stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+
+@api_router.post("/exit-engine/toggle")
+async def toggle_exit_engine(enable: bool = None):
+    """
+    Toggle between new ExitEngine (Task 24) and legacy exit logic.
+    
+    If enable is not provided, toggles current state.
+    """
+    global paper_trader
+    
+    if not paper_trader:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "error": "No paper trading session active"}
+        )
+    
+    try:
+        if enable is None:
+            # Toggle
+            paper_trader.use_exit_engine = not paper_trader.use_exit_engine
+        else:
+            paper_trader.use_exit_engine = enable
+        
+        mode = "ExitEngine (Task 24)" if paper_trader.use_exit_engine else "Legacy Dynamic Exit"
+        logger.info(f"[EXIT-TOGGLE] Switched to {mode}")
+        
+        return {
+            "success": True,
+            "use_exit_engine": paper_trader.use_exit_engine,
+            "mode": mode,
+            "message": f"Exit logic switched to {mode}"
+        }
+    except Exception as e:
+        logger.error(f"Error toggling exit engine: {e}")
         return JSONResponse(
             status_code=500,
             content={"success": False, "error": str(e)}
