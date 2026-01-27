@@ -64,7 +64,8 @@ class TestStrategyLaneMapping:
         ("gamma", "GAMMA"),
         ("whale", "GAMMA"),
         ("moonshot", "GAMMA"),
-        ("volatility_exploitation", "GAMMA"),  # High vol plays
+        ("volatility_exploitation", "GAMMA"),  # High vol moonshot plays
+        ("VOLATILITY_EXPLOITATION", "GAMMA"),
         
         # HFT strategies
         ("arbitrage", "HFT"),
