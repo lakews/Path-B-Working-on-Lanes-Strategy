@@ -284,15 +284,23 @@ def seed_gamma_trades(count: int = 5) -> list:
 
 
 def seed_database():
-    """Main seeding function."""
+    """
+    Main seeding function.
+    
+    Updated Jan 2026 for Async-Skewed-Adaptive Architecture:
+    - HFT: 40 trades (slightly lower volume due to Safety Checks)
+    - ALPHA: 20 trades (now includes Arbitrage)
+    - GAMMA: 5 trades (unchanged)
+    """
     print("\n🌱 APEX TRADER - Lane Data Seeder")
+    print("   (Async-Skewed-Adaptive Architecture - Jan 2026)")
     print("=" * 50)
     
     db = get_sync_db()
     
-    # Generate trades for each lane
-    hft_trades = seed_hft_trades(50)
-    alpha_trades = seed_alpha_trades(15)
+    # Generate trades for each lane (updated counts)
+    hft_trades = seed_hft_trades(40)    # Slightly fewer (Safety Checks)
+    alpha_trades = seed_alpha_trades(20) # More trades (includes Arbitrage)
     gamma_trades = seed_gamma_trades(5)
     
     all_trades = hft_trades + alpha_trades + gamma_trades
@@ -303,7 +311,8 @@ def seed_database():
         lane_trades = [t for t in all_trades if t["strategy_lane"] == lane]
         total_pnl = sum(t["pnl"] for t in lane_trades)
         wins = len([t for t in lane_trades if t["pnl"] > 0])
-        print(f"   {lane}: {len(lane_trades)} trades, ${total_pnl:.2f} PnL, {wins}/{len(lane_trades)} wins")
+        win_rate = (wins / len(lane_trades) * 100) if lane_trades else 0
+        print(f"   {lane}: {len(lane_trades)} trades, ${total_pnl:.2f} PnL, {wins}/{len(lane_trades)} wins ({win_rate:.0f}%)")
     
     # Clear previous seeded data
     print("\n🗑️  Clearing previous seeded data...")
