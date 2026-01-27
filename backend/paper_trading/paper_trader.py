@@ -1438,6 +1438,8 @@ class PaperTrader:
             # =============================================================
             ai_price = fair_value  # Use AI fair value for drift calculation
             prune_stats = self._prune_stale_orders(market_id, ai_price)
+            if prune_stats['total_cancelled'] > 0:
+                logger.debug(f"[HFT] Pruned {prune_stats['total_cancelled']} stale orders for {market_id[:16]}...")
             
             # Determine trade direction based on opportunity
             # If market best_ask < our_bid → We want to BUY (market is cheap)
