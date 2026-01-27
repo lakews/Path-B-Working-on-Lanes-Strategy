@@ -1155,6 +1155,153 @@ class PaperTrader:
             logger.debug(f"[HFT] Error evaluating opportunity: {e}")
             return None
     
+    # =============================================================================
+    # POLYMARKET ORDER LIFECYCLE MANAGER (Jan 2026)
+    # =============================================================================
+    
+    def _prune_stale_orders(self, market_id: str, current_ai_price: float) -> Dict:
+        """
+        Prune stale or drifted orders with hysteresis (anti-churn) logic.
+        
+        This prevents "order churn" - the expensive habit of cancelling and
+        re-placing orders for small price changes. Queue priority is valuable.
+        
+        Logic:
+        1. If drift <= HYSTERESIS_THRESHOLD (1 cent): KEEP order (anti-churn)
+        2. If drift > HYSTERESIS_THRESHOLD: CANCEL (AI changed mind)
+        3. If age > ORDER_STALE_SECONDS (120s): CANCEL (refresh liquidity)
+        4. If price outside kill zones: CANCEL (safety)
+        
+        Returns:
+            Dict with pruning statistics and actions taken
+        """
+        now = datetime.now(timezone.utc)
+        stats = {
+            'orders_checked': 0,
+            'orders_kept_hysteresis': 0,
+            'orders_cancelled_drift': 0,
+            'orders_cancelled_stale': 0,
+            'orders_cancelled_bounds': 0,
+            'total_cancelled': 0,
+        }
+        
+        # Get order for this market (if exists)
+        order = self.active_orders.get(market_id)
+        if not order:
+            return stats
+        
+        stats['orders_checked'] = 1
+        order_price = order.get('price', 0)
+        order_time = order.get('timestamp')
+        should_cancel = False
+        cancel_reason = ""
+        
+        # =============================================================
+        # CHECK 1: BOUNDS VIOLATION (Safety First)
+        # =============================================================
+        if order_price < self.MIN_PRICE or order_price > self.MAX_PRICE:
+            should_cancel = True
+            cancel_reason = f"BOUNDS_VIOLATION (price={order_price:.2f})"
+            stats['orders_cancelled_bounds'] += 1
+        
+        # =============================================================
+        # CHECK 2: STALENESS (Refresh Liquidity)
+        # =============================================================
+        elif order_time:
+            age_seconds = (now - order_time).total_seconds()
+            if age_seconds > self.ORDER_STALE_SECONDS:
+                should_cancel = True
+                cancel_reason = f"STALE ({age_seconds:.0f}s > {self.ORDER_STALE_SECONDS}s)"
+                stats['orders_cancelled_stale'] += 1
+        
+        # =============================================================
+        # CHECK 3: DRIFT vs HYSTERESIS (Anti-Churn)
+        # =============================================================
+        if not should_cancel:
+            drift = abs(order_price - current_ai_price)
+            
+            if drift <= self.HYSTERESIS_THRESHOLD:
+                # Small drift - KEEP the order to preserve queue priority
+                stats['orders_kept_hysteresis'] += 1
+                logger.debug(
+                    f"[HFT-PRUNE] Keeping {market_id[:16]}... order (drift={drift:.3f} <= {self.HYSTERESIS_THRESHOLD})"
+                )
+            else:
+                # Large drift - AI has changed its mind significantly
+                should_cancel = True
+                cancel_reason = f"DRIFT ({drift:.3f} > {self.HYSTERESIS_THRESHOLD})"
+                stats['orders_cancelled_drift'] += 1
+        
+        # =============================================================
+        # EXECUTE CANCELLATION
+        # =============================================================
+        if should_cancel:
+            # Remove from active orders
+            del self.active_orders[market_id]
+            stats['total_cancelled'] += 1
+            
+            logger.info(
+                f"[HFT-PRUNE] ❌ Cancelled {market_id[:16]}... | "
+                f"Reason: {cancel_reason} | "
+                f"Old Price: ${order_price:.2f} → AI Price: ${current_ai_price:.2f}"
+            )
+        
+        return stats
+    
+    def _round_to_tick(self, price: float) -> float:
+        """Round price to Polymarket tick grid ($0.01)."""
+        return round(price, 2)
+    
+    def _clamp_to_bounds(self, price: float) -> float:
+        """Clamp price to kill zone bounds [$0.05, $0.95]."""
+        return max(self.MIN_PRICE, min(self.MAX_PRICE, price))
+    
+    def _enforce_min_spread(self, bid: float, ask: float) -> tuple:
+        """
+        Enforce minimum spread of 2 ticks ($0.02).
+        
+        If spread is too tight, widen symmetrically around mid-point.
+        Returns (new_bid, new_ask) tuple.
+        """
+        min_spread = self.MIN_SPREAD_TICKS * self.TICK_SIZE
+        current_spread = ask - bid
+        
+        if current_spread >= min_spread:
+            return bid, ask
+        
+        # Widen symmetrically
+        mid = (bid + ask) / 2
+        half_spread = min_spread / 2
+        
+        new_bid = self._round_to_tick(mid - half_spread)
+        new_ask = self._round_to_tick(mid + half_spread)
+        
+        # Re-apply bounds after widening
+        new_bid = self._clamp_to_bounds(new_bid)
+        new_ask = self._clamp_to_bounds(new_ask)
+        
+        # Final sanity check - ensure ask > bid
+        if new_ask <= new_bid:
+            new_ask = new_bid + min_spread
+            new_ask = self._clamp_to_bounds(new_ask)
+        
+        return new_bid, new_ask
+    
+    def _calculate_order_qty(self, usd_size: float, limit_price: float) -> int:
+        """
+        Convert USD size to integer share quantity.
+        
+        Polymarket uses integer contracts. This is the "Dust Guard" -
+        prevents placing orders for 0 shares.
+        
+        Returns: Integer quantity (0 if too small to trade)
+        """
+        if limit_price <= 0:
+            return 0
+        
+        qty = int(usd_size // limit_price)
+        return max(0, qty)  # Dust guard: minimum 0
+
     async def _evaluate_hft_scalp(self, market_data: Dict) -> Optional[Dict]:
         """
         Evaluate HFT scalping opportunity using Async-Skewed-Adaptive Architecture.
