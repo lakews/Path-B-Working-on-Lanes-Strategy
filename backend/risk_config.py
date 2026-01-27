@@ -527,6 +527,14 @@ class RiskConfig:
         if 'cash_buffer_pct' in data:
             self.CASH_BUFFER_PCT = float(data['cash_buffer_pct'])
         
+        # Strategy Capital Allocation (Three-Speed Architecture - Task 25)
+        if 'hft_allocation_pct' in data:
+            self.HFT_ALLOCATION_PCT = float(data['hft_allocation_pct'])
+        if 'alpha_allocation_pct' in data:
+            self.ALPHA_ALLOCATION_PCT = float(data['alpha_allocation_pct'])
+        if 'gamma_allocation_pct' in data:
+            self.GAMMA_ALLOCATION_PCT = float(data['gamma_allocation_pct'])
+        
         # Safety
         if 'stop_loss_pct' in data:
             self.STOP_LOSS_PCT = float(data['stop_loss_pct'])
