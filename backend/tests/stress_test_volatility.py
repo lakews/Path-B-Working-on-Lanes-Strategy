@@ -386,7 +386,8 @@ class HFTStressTest:
             }
             result = self._simulate_hft_decision(market_data)
             
-            if result['decision'] == 'BLOCKED' and 'STALE' in result['reason']:
+            # get() returns None for stale data, so we see NO_CONTEXT or STALE
+            if result['decision'] in ['BLOCKED', 'SKIP'] and result['reason'] in ['NO_CONTEXT', 'STALE_CONTEXT']:
                 trades_blocked += 1
             elif result['decision'] == 'TRADE':
                 trades_attempted += 1
