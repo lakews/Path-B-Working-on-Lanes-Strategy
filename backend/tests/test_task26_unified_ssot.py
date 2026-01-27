@@ -104,12 +104,17 @@ class TestRiskConfigGetThresholds:
 class TestRiskConfigGetStrategyPath:
     """Test RiskConfig.get_strategy_path() method - Strategy name to path mapping"""
     
-    def test_arbitrage_returns_hft(self):
-        """'arbitrage' should return 'HFT'"""
+    def test_arbitrage_returns_alpha(self):
+        """
+        'arbitrage' should return 'ALPHA' (Jan 2026 Async-Skewed-Adaptive Refactor).
+        
+        Reason: Arbitrage requires cross-market validation which is too slow
+        for the HFT micro-scalper's sub-second execution requirements.
+        """
         from risk_config import RISK
         
         path = RISK.get_strategy_path('arbitrage')
-        assert path == 'HFT', f"arbitrage should map to HFT, got {path}"
+        assert path == 'ALPHA', f"arbitrage should map to ALPHA (moved from HFT Jan 2026), got {path}"
     
     def test_gamma_scalp_returns_gamma(self):
         """'gamma_scalp' should return 'GAMMA'"""
