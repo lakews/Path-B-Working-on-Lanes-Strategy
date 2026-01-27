@@ -132,7 +132,6 @@ class HFTStressTest:
         """
         market_id = market_data['id']
         yes_price = market_data['yes_price']
-        best_bid = market_data.get('best_bid', yes_price - 0.01)
         best_ask = market_data.get('best_ask', yes_price + 0.01)
         
         # Step 1: Non-blocking context fetch
