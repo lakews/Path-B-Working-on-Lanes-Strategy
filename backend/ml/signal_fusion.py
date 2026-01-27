@@ -207,8 +207,8 @@ class SignalFusionEngine:
             # Price-based sentiment
             sentiment = yes_price  # Market's implied probability
             
-            # Volume-adjusted confidence
-            confidence = min(volume / 10000, 0.8) if volume > 0 else 0.3
+            # Volume-adjusted confidence - uses RISK anchor (Task 26)
+            confidence = min(volume / (self.risk_config.NORM_VOLUME_ANCHOR / 5), 0.8) if volume > 0 else 0.3
             
             return sentiment, confidence
         except Exception as e:
