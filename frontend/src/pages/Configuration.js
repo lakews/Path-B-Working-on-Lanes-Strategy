@@ -1389,7 +1389,7 @@ const Configuration = () => {
                 <Zap className="w-5 h-5 text-orange-400" />
               </div>
               <div>
-                <h3 className="text-white font-semibold">Two-Speed Architecture</h3>
+                <h3 className="text-white font-semibold">Three-Speed Architecture</h3>
                 <p className="text-xs text-white/50">Split capital between HFT (Fast) and Alpha (Slow) paths</p>
               </div>
             </div>

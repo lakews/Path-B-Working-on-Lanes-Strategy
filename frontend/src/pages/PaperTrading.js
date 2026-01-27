@@ -624,14 +624,14 @@ const AssetClassEquityCard = ({ equityData, initialCapital = 10000 }) => {
   );
 };
 
-// HFT vs Alpha Performance Card - Two-Speed Architecture Breakdown (Redesigned)
+// HFT vs Alpha vs Gamma Performance Card - Three-Speed Architecture Breakdown (Redesigned)
 const HftAlphaPerformanceCard = ({ executionPathStats, showLive = false }) => {
   if (!executionPathStats) {
     return (
       <div className="rounded-xl bg-gradient-to-br from-slate-900/50 to-slate-800/30 border border-white/10 p-5">
         <h4 className="text-sm font-semibold text-white/60 mb-3 flex items-center gap-2">
           <Zap className="w-4 h-4 text-amber-400" />
-          Two-Speed Architecture
+          Three-Speed Architecture
         </h4>
         <p className="text-xs text-white/40">Start trading to see HFT vs Alpha breakdown</p>
       </div>
@@ -741,7 +741,7 @@ const HftAlphaPerformanceCard = ({ executionPathStats, showLive = false }) => {
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-white flex items-center gap-2">
           <Zap className="w-4 h-4 text-amber-400" />
-          Two-Speed Architecture
+          Three-Speed Architecture
         </h4>
         {showLive && (
           <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] flex items-center gap-1">
@@ -3151,7 +3151,7 @@ const PaperTrading = () => {
             <AssetClassEquityCard equityData={status?.asset_class_equity} initialCapital={initialCapital} />
           )}
 
-          {/* HFT vs Alpha Performance - Two-Speed Architecture Breakdown */}
+          {/* HFT vs Alpha vs Gamma Performance - Three-Speed Architecture Breakdown */}
           {status && (
             <HftAlphaPerformanceCard executionPathStats={status?.execution_path_stats} showLive={running} />
           )}
