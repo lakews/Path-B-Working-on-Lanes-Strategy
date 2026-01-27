@@ -17,10 +17,13 @@ logger = logging.getLogger(__name__)
 class DeltaNeutralStrategy:
     """Delta-neutral market making strategy
     Default mode: Zero directional exposure, capture spreads
+    
+    Strategy Type: HFT (market making requires deep liquidity)
     """
     
     def __init__(self):
         self.db = get_db()
+        self.type = 'HFT'  # Three-Speed Architecture: Market making needs strict filters
         self.signal_fusion = SignalFusionEngine()
         self.kelly_optimizer = KellySharpeOptimizer()
         self.execution = ExecutionEngine()

@@ -14,10 +14,13 @@ class MultiMarketArbitrageStrategy:
     """Multi-market arbitrage strategy
     Detects price discrepancies across similar markets
     Target: Risk-free profit from market inefficiencies
+    
+    Strategy Type: HFT (requires high liquidity for sub-second execution)
     """
     
     def __init__(self):
         self.db = get_db()
+        self.type = 'HFT'  # Three-Speed Architecture: Requires strict liquidity ($10k+)
         self.signal_fusion = SignalFusionEngine()
         self.kelly_optimizer = KellySharpeOptimizer()
         self.execution = ExecutionEngine()

@@ -14,10 +14,13 @@ class AlphaDirectionalStrategy:
     """Alpha-directional strategy with directional exposure
     Activated when confidence > 0.7
     Target: Capture 30-100x multipliers on reversals
+    
+    Strategy Type: ALPHA (uses 55% allocation, price-aware liquidity filters)
     """
     
     def __init__(self):
         self.db = get_db()
+        self.type = 'ALPHA'  # Three-Speed Architecture: Standard directional plays
         self.signal_fusion = SignalFusionEngine()
         self.kelly_optimizer = KellySharpeOptimizer()
         self.execution = ExecutionEngine()
