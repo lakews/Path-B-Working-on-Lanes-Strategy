@@ -205,14 +205,19 @@ class AdaptivePositionSizer:
         # Log for debugging
         logger.debug(f"Liquidity calc: volume={volume}, volume_24h={volume_24h}, effective={effective_volume}, outstanding={outstanding}")
         
-        # Volume check - use configurable minimum (passed via market_data or use sensible default)
-        min_volume_threshold = market_data.get('_min_volume_threshold', 100)  # User config or default
-        if effective_volume < min_volume_threshold:
-            logger.debug(f"Volume too low: {effective_volume} < {min_volume_threshold}")
+        # Get strategy-based thresholds from RISK (Task 26: Unified SSOT)
+        strategy = market_data.get('strategy', 'ALPHA')
+        price = market_data.get('yes_price', 0.5)
+        min_liq, min_vol = self.risk_config.get_thresholds(strategy, price)
+        
+        # Volume check - use strategy-based minimum
+        if effective_volume < min_vol:
+            logger.debug(f"Volume too low for {strategy}: {effective_volume} < {min_vol}")
             return 0.0
         
         # Volume-based multiplier (linear scale up to full size threshold)
-        volume_mult = min(1.0, effective_volume / self.MIN_LIQUIDITY_FOR_FULL_SIZE)
+        full_size_threshold = self.risk_config.FULL_SIZE_LIQUIDITY_THRESHOLD
+        volume_mult = min(1.0, effective_volume / full_size_threshold)
         
         # Outstanding contracts multiplier
         # Don't take more than 5% of outstanding
