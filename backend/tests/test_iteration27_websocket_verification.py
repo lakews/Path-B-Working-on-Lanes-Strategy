@@ -343,13 +343,13 @@ class TestRealTimeMarketService:
             assert market['price_source'] == 'rest_cache'
             print(f"✅ Without WS data: price_source={market['price_source']}")
         
-        # Simulate WebSocket update setting price_source on market
-        service._market_cache['test_market_1']['price_source'] = 'websocket_yes'
-        service._price_cache = {'test_token_1': 0.55}
+        # Simulate WebSocket update: add price to yes_price_cache AND set last_ws_update
+        service._yes_price_cache = {'test_market_1': 0.55}
+        service._market_cache['test_market_1']['last_ws_update'] = '2025-01-01T00:00:00Z'
         markets = service.get_markets(limit=10)
         if markets:
             market = markets[0]
-            # The simplified price_source logic: if starts with 'websocket', return 'websocket'
+            # The price_source logic checks: market_id in _yes_price_cache AND last_ws_update
             assert market['price_source'] == 'websocket'
             print(f"✅ With WS data: price_source={market['price_source']}")
     
