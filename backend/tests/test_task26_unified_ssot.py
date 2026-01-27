@@ -61,14 +61,18 @@ class TestRiskConfigGetThresholds:
         assert min_liq == 500.0, f"ALPHA whale min_liquidity should be 500, got {min_liq}"
         assert min_vol == 500.0, f"ALPHA whale min_volume should be 500, got {min_vol}"
     
-    def test_arbitrage_maps_to_hft(self):
-        """'arbitrage' strategy should map to HFT path and return (10000, 5000)"""
+    def test_arbitrage_maps_to_alpha(self):
+        """
+        'arbitrage' strategy should map to ALPHA path (Jan 2026 refactor).
+        
+        At $0.50 price, ALPHA uses core thresholds (1000, 1000).
+        """
         from risk_config import RISK
         
         min_liq, min_vol = RISK.get_thresholds('arbitrage', 0.5)
         
-        assert min_liq == 10000.0, f"arbitrage should use HFT thresholds (10000), got {min_liq}"
-        assert min_vol == 5000.0, f"arbitrage should use HFT thresholds (5000), got {min_vol}"
+        assert min_liq == 1000.0, f"arbitrage should use ALPHA core thresholds (1000), got {min_liq}"
+        assert min_vol == 1000.0, f"arbitrage should use ALPHA core thresholds (1000), got {min_vol}"
     
     def test_gamma_scalp_maps_to_gamma(self):
         """'gamma_scalp' strategy should map to GAMMA path and return (250, 250)"""
