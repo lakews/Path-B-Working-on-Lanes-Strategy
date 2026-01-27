@@ -1140,14 +1140,18 @@ class PaperTrader:
     
     async def _evaluate_hft_scalp(self, market_data: Dict) -> Optional[Dict]:
         """
-        Evaluate pure scalping opportunity (no Alpha target available).
+        Evaluate HFT scalping opportunity using Async-Skewed-Adaptive Architecture.
         
-        This is "Autonomous HFT" - we don't have Alpha's opinion, so we trade
-        pure market microstructure when the spread is juicy enough.
+        ARCHITECTURE: 4-Step Workflow
+        1. Non-Blocking Context Fetch - Get AI guidance from HFTContext
+        2. Real-Time Volatility Adaptation - Widen spreads when vol spikes
+        3. Skewed Pricing Logic - Center orders on AI's fair value with bias
+        4. Inventory Guard - Block trades that would over-concentrate position
         
-        LIQUIDITY UNLOCK v2: Embrace wide spreads as the Golden Zone!
-        Strategy: "Penny-ing" - place limit buy at best_bid + 0.001 to front-run
-        existing orders and capture spread when filled.
+        HFT NEVER trades blind - requires valid context from Thinking Engine.
+        
+        Author: APEX TRADER Quantitative Architecture Team
+        Date: January 2026 (Async-Skewed-Adaptive Refactor)
         """
         try:
             market_id = market_data.get('id', '')
@@ -1158,6 +1162,29 @@ class PaperTrader:
                 return None
             
             yes_price = float(yes_price)
+            
+            # =============================================================
+            # STEP 1: Non-Blocking Context Fetch (The Brain's Guidance)
+            # =============================================================
+            hft_ctx = get_hft_context()
+            params = hft_ctx.get(market_id)
+            
+            # SAFETY CHECK: HFT NEVER trades blind
+            if params is None:
+                logger.debug(f"[HFT] No context for {market_id[:16]}... - skipping (no blind trades)")
+                return None
+            
+            if params.status == ContextStatus.KILL:
+                logger.debug(f"[HFT] KILL switch active for {market_id[:16]}...")
+                return None
+            
+            if params.status == ContextStatus.PAUSED:
+                logger.debug(f"[HFT] PAUSED for {market_id[:16]}...")
+                return None
+            
+            if params.is_stale():
+                logger.debug(f"[HFT] Stale context for {market_id[:16]}... (age: {params.get_age_seconds():.0f}s)")
+                return None
             
             # Get orderbook data for spread calculation
             best_bid = market_data.get('best_bid', 0)
@@ -1174,26 +1201,12 @@ class PaperTrader:
                 else:
                     return None  # No orderbook data, can't scalp
             
-            spread = best_ask - best_bid
+            market_spread = best_ask - best_bid
             
-            # =============================================================
-            # Task 21: Use centralized spread thresholds
-            # - Min scalp spread: 2% (taker threshold)
-            # - Max scalp spread: 12% (zombie threshold)
-            
-            MIN_SCALP_SPREAD = SPREAD_TAKER_THRESHOLD   # 2% minimum spread to scalp
-            MAX_SCALP_SPREAD = SPREAD_ZOMBIE_THRESHOLD  # 12% maximum
-            MIN_SCALP_VOLUME = 500                      # $500 minimum daily volume
-            
-            if not (MIN_SCALP_SPREAD <= spread <= MAX_SCALP_SPREAD):
-                return None  # Spread outside scalp zone
-            
+            # Basic volume filter
+            MIN_SCALP_VOLUME = 500  # $500 minimum daily volume
             if volume_24h < MIN_SCALP_VOLUME:
-                return None  # Not enough volume
-            
-            # Check for stuck prices (avoid)
-            if abs(yes_price - 0.5) < 0.02:
-                return None  # Price too close to 0.5, likely stuck
+                return None
             
             # Safety: Check we don't already have a position in this market
             if market_id in self.paper_positions:
@@ -1206,48 +1219,153 @@ class PaperTrader:
                 return None  # Not enough capital
             
             # =============================================================
-            # PENNY-ING STRATEGY: Front-run the best bid
+            # STEP 2: Real-Time Volatility Adaptation
             # =============================================================
-            # Place limit buy at best_bid + 0.001 to get queue priority
-            scalp_price = best_bid + 0.001
+            # Calculate volatility multiplier to widen spread when vol spikes
+            vol_calc = get_volatility_calculator()
             
-            # Safety clamp: Don't buy higher than mid-price
-            mid_price = (best_bid + best_ask) / 2
-            if scalp_price > mid_price:
-                scalp_price = mid_price - 0.001  # Stay on bid side
+            # Add current price tick to volatility window
+            vol_calc.add_tick(market_id, yes_price)
             
-            # Calculate implied edge from spread capture
-            implied_edge = (best_ask - scalp_price) / scalp_price
+            # Get volatility multiplier (current_vol / reference_vol)
+            vol_multiplier = vol_calc.get_vol_multiplier(market_id, params.reference_volatility)
             
-            # Standard sizing (Task 21: Simplified)
+            # Effective spread = base spread * volatility multiplier
+            # If vol spikes (multiplier > 1), we widen our spread for safety/premium
+            effective_spread_bps = int(params.base_spread_bps * vol_multiplier)
+            effective_spread = effective_spread_bps / 10000  # Convert bps to decimal
+            
+            # =============================================================
+            # STEP 3: Skewed Pricing Logic
+            # =============================================================
+            # Center orders on AI's fair value (NOT market mid-price) with bias skew
+            fair_value = params.fair_value
+            bias = params.bias  # -1.0 to +1.0
+            
+            # Calculate skew offset based on bias and current volatility
+            # Bullish bias → raise our mid (willing to pay more)
+            # Bearish bias → lower our mid (want cheaper entry)
+            current_volatility = vol_calc.calculate_volatility(market_id) or 0.01
+            skew_offset = bias * (current_volatility * 0.5)
+            
+            # Our "skewed mid" - where we want to center our quotes
+            skewed_mid = fair_value + skew_offset
+            
+            # Calculate our bid and ask around the skewed mid
+            my_bid = skewed_mid * (1 - effective_spread)
+            my_ask = skewed_mid * (1 + effective_spread)
+            
+            # Determine trade direction based on opportunity
+            # If market best_ask < our_bid → We want to BUY (market is cheap)
+            # If market best_bid > our_ask → We want to SELL (market is expensive)
+            
+            should_trade = False
+            side = None
+            edge = 0.0
+            entry_price = 0.0
+            
+            # Check for BUY opportunity
+            if best_ask < my_bid:
+                # Market is cheaper than we're willing to pay
+                should_trade = True
+                side = 'YES'
+                entry_price = best_ask
+                edge = (my_bid - best_ask) / best_ask
+            
+            # Check for SELL opportunity (if we have inventory)
+            elif best_bid > my_ask:
+                # Market is paying more than we want to sell at
+                # For now, HFT scalp only does BUY entries (sell on exit)
+                # This could be extended to short-selling in future
+                pass
+            
+            # Also check if market mid is significantly below our fair value (bullish signal)
+            market_mid = (best_bid + best_ask) / 2
+            fv_edge = fair_value - market_mid
+            
+            if not should_trade and fv_edge > 0.01 and bias > 0:
+                # Fair value says market is underpriced and we're bullish
+                should_trade = True
+                side = 'YES'
+                entry_price = best_ask
+                edge = fv_edge
+            
+            if not should_trade:
+                return None
+            
+            # =============================================================
+            # STEP 4: Inventory Guard
+            # =============================================================
+            # Check if we're already too concentrated in one direction
+            max_inventory_skew = params.max_inventory_skew
+            
+            # Calculate current inventory exposure
+            hft_positions = [
+                p for p in self.paper_positions.values()
+                if RISK.get_strategy_path(p.get('strategy', '')) == 'HFT'
+            ]
+            
+            total_hft_value = sum(p.get('size', 0) for p in hft_positions)
+            hft_long_value = sum(
+                p.get('size', 0) for p in hft_positions
+                if p.get('side', '').upper() in ['YES', 'BUY', 'LONG']
+            )
+            
+            if total_hft_value > 0:
+                current_skew = hft_long_value / total_hft_value
+            else:
+                current_skew = 0.5  # Neutral
+            
+            # If bullish bias (> 0) and already heavily LONG, block further buys
+            if bias > 0 and side == 'YES' and current_skew > (0.5 + max_inventory_skew):
+                logger.debug(f"[HFT] Inventory guard: Already {current_skew:.0%} long, blocking buy")
+                return None
+            
+            # If bearish bias (< 0) and already heavily SHORT, block further sells
+            if bias < 0 and side == 'NO' and current_skew < (0.5 - max_inventory_skew):
+                logger.debug(f"[HFT] Inventory guard: Already {(1-current_skew):.0%} short, blocking sell")
+                return None
+            
+            # =============================================================
+            # CALCULATE POSITION SIZE
+            # =============================================================
+            # Size based on confidence and edge
+            confidence_mult = min(1.0, params.confidence * 1.5)  # Scale up with confidence
+            edge_mult = min(1.0, edge * 20)  # Scale with edge (5% edge = 100%)
+            
             scalp_size = min(
-                available_capital * 0.01,  # Max 1% per scalp
-                15.0,                       # Cap at $15 per scalp
-                self.max_position_size * 0.3  # 30% of normal max
+                available_capital * 0.02 * confidence_mult * edge_mult,  # Max 2% * multipliers
+                25.0,  # Cap at $25 per scalp
+                self.max_position_size * 0.4  # 40% of normal max
             )
             scalp_size = max(scalp_size, 5.0)  # Minimum $5
             
-            logger.info(
-                f"⚡ [HFT SCALP] Opportunity in {market_id[:16]}... | "
-                f"Spread: {spread:.2%} | Bid: {best_bid:.4f} → Scalp: {scalp_price:.4f} | "
-                f"Implied Edge: {implied_edge:.2%}"
-            )
-            
-            # Determine regime based on spread (Task 21: Simplified)
-            if spread > SPREAD_TAKER_THRESHOLD:
+            # Determine regime
+            if market_spread > SPREAD_TAKER_THRESHOLD:
                 regime = MarketRegime.MAKER_WIDE
             else:
                 regime = MarketRegime.TAKER_TIGHT
             
+            logger.info(
+                f"🧠 [HFT SMART] {market_id[:16]}... | "
+                f"FV={fair_value:.4f} Bias={bias:+.2f} | "
+                f"Spread={effective_spread_bps}bps (vol×{vol_multiplier:.1f}) | "
+                f"Edge={edge:.2%} | Side={side} ${scalp_size:.2f}"
+            )
+            
             return {
                 'should_trade': True,
-                'side': 'YES',  # Scalping = buying YES at penny above bid
+                'side': side,
                 'size': scalp_size,
-                'edge': implied_edge,
-                'scalp_price': scalp_price,
-                'spread': spread,
-                'strategy': 'hft_scalp_autonomous',
+                'edge': edge,
+                'scalp_price': entry_price,
+                'spread': market_spread,
+                'strategy': 'hft_scalp_smart',
                 'regime': regime,
+                'fair_value': fair_value,
+                'bias': bias,
+                'vol_multiplier': vol_multiplier,
+                'effective_spread_bps': effective_spread_bps,
             }
             
         except Exception as e:
