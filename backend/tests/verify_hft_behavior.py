@@ -218,48 +218,72 @@ def test_scenario_1_tight_spread():
 
 def test_scenario_2_nerves_of_steel():
     """
-    Scenario 2: The "Nerves of Steel" Test (Hysteresis)
+    Scenario 2: The "Nerves of Steel" Test (Hysteresis with Semantic Rounding)
     
-    Setup: Bot has active order at $0.50
-    Action: AI price updates to $0.505 (0.5 cent drift - within hysteresis)
-    Expected: Bot DOES NOT cancel the order
-    Check: Order remains active
+    Tests that semantic rounding (round(drift, 4)) correctly handles:
+    - Small drifts: KEEP order (preserve queue priority)
+    - Exact boundary (0.01): KEEP order (anti-churn)
+    - Float noise like 0.01000001: KEEP order (rounds to 0.01)
     """
     print("\n" + "=" * 70)
-    print("SCENARIO 2: NERVES OF STEEL TEST (Hysteresis)")
+    print("SCENARIO 2: NERVES OF STEEL TEST (Hysteresis + Semantic Rounding)")
     print("=" * 70)
     
     trader = MockPaperTrader()
-    market_id = "test_market_001"
     
-    # Setup: Place order at $0.50
-    initial_price = 0.50
-    trader.place_order(market_id, initial_price, 10.0, "BUY")
+    # Test Case A: Small drift (0.5 cent) - should KEEP
+    print("\n--- Test A: Small drift (0.005) ---")
+    market_id_a = "test_market_001a"
+    trader.place_order(market_id_a, 0.50, 10.0, "BUY")
     
-    print(f"Setup: Active order at ${initial_price:.2f}")
-    print(f"Active orders: {list(trader.active_orders.keys())}")
-    
-    # Action: AI price changes by 0.5 cent (WITHIN hysteresis threshold)
-    # Using 0.005 drift which is clearly < 0.01 threshold
     new_ai_price = 0.505
-    drift = abs(initial_price - new_ai_price)
+    raw_drift = abs(0.50 - new_ai_price)
+    clean_drift = round(raw_drift, 4)
     
-    print(f"Action: AI price updates to ${new_ai_price:.3f} (drift = ${drift:.3f})")
-    print(f"Hysteresis threshold: ${trader.HYSTERESIS_THRESHOLD:.2f}")
-    print(f"Drift <= Threshold: {drift:.4f} <= {trader.HYSTERESIS_THRESHOLD} = {drift <= trader.HYSTERESIS_THRESHOLD}")
+    print(f"Order at $0.50, AI moves to $0.505")
+    print(f"Raw drift: {raw_drift}, Clean drift: {clean_drift}")
     
-    # Prune stale orders
-    stats = trader._prune_stale_orders(market_id, new_ai_price)
+    stats_a = trader._prune_stale_orders(market_id_a, new_ai_price)
+    assert stats_a['orders_kept_hysteresis'] == 1, "Should KEEP (small drift)"
+    print("✓ Order kept (small drift)")
     
-    print(f"Prune result: {stats}")
+    # Test Case B: Exact boundary (1 cent = threshold) - should KEEP
+    print("\n--- Test B: Exact boundary (0.01) ---")
+    market_id_b = "test_market_001b"
+    trader.place_order(market_id_b, 0.50, 10.0, "BUY")
     
-    # Assertions
-    order_is_active = market_id in trader.active_orders
-    assert order_is_active, f"FAILED: Order should still be active"
-    assert stats['orders_kept_hysteresis'] == 1, f"FAILED: Should have kept order via hysteresis"
-    assert stats['total_cancelled'] == 0, f"FAILED: Should not have cancelled"
+    new_ai_price = 0.51  # Exactly 1 cent drift
+    raw_drift = abs(0.50 - new_ai_price)
+    clean_drift = round(raw_drift, 4)
     
-    print("✅ PASSED: Order kept due to hysteresis (anti-churn)")
+    print(f"Order at $0.50, AI moves to $0.51")
+    print(f"Raw drift: {raw_drift}, Clean drift: {clean_drift}")
+    print(f"Threshold: {trader.HYSTERESIS_THRESHOLD}")
+    print(f"clean_drift <= threshold: {clean_drift} <= {trader.HYSTERESIS_THRESHOLD} = {clean_drift <= trader.HYSTERESIS_THRESHOLD}")
+    
+    stats_b = trader._prune_stale_orders(market_id_b, new_ai_price)
+    assert stats_b['orders_kept_hysteresis'] == 1, f"Should KEEP (boundary case): {stats_b}"
+    print("✓ Order kept (exact boundary)")
+    
+    # Test Case C: Float noise simulation (0.01000001) - should KEEP
+    print("\n--- Test C: Float noise (0.01000001 rounds to 0.01) ---")
+    market_id_c = "test_market_001c"
+    trader.place_order(market_id_c, 0.50, 10.0, "BUY")
+    
+    # Simulate float noise: 0.50 + 0.01000001 = 0.51000001
+    new_ai_price = 0.51000001
+    raw_drift = abs(0.50 - new_ai_price)
+    clean_drift = round(raw_drift, 4)
+    
+    print(f"Order at $0.50, AI moves to ${new_ai_price:.8f}")
+    print(f"Raw drift: {raw_drift:.10f}")
+    print(f"Clean drift (rounded to 4 decimals): {clean_drift}")
+    
+    stats_c = trader._prune_stale_orders(market_id_c, new_ai_price)
+    assert stats_c['orders_kept_hysteresis'] == 1, f"Should KEEP (float noise stripped): {stats_c}"
+    print("✓ Order kept (float noise stripped by semantic rounding)")
+    
+    print("\n✅ PASSED: Hysteresis with semantic rounding working correctly")
     return True
 
 
