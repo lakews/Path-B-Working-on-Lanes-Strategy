@@ -543,6 +543,29 @@ class PaperTrader:
         }
         
         # =============================================================
+        # HFT STATE ISOLATION (Jan 2026 - Market Memory Dicts)
+        # =============================================================
+        # Each market has isolated state to prevent data leaks between tickers
+        # Key: market_id -> state_value
+        self.smoothing_memory: Dict[str, float] = {}     # Smoothed signal per market
+        self.volatility_memory: Dict[str, List[float]] = {}  # Price history per market
+        self.last_signal_memory: Dict[str, Tuple[float, datetime]] = {}  # Last signal per market
+        
+        # HFT Math Engine (Cubic Skew, Jump Detection, Cliff Protection)
+        from strategies.hft_math import HFTMathEngine, HFTMathConfig
+        self.hft_math_config = HFTMathConfig(
+            max_position_limit=1000,
+            skew_intensity=0.05,
+            ema_alpha=0.2,
+            jump_threshold=0.03,
+            cliff_zone_threshold=0.15,
+            cliff_spread_multiplier=2.0,
+            extreme_zone_threshold=0.05,
+            extreme_spread_multiplier=3.0,
+        )
+        self.hft_math_engine = HFTMathEngine(self.hft_math_config)
+        
+        # =============================================================
         # HFT ACTIVE ORDER TRACKING (Polymarket Compliance - Jan 2026)
         # =============================================================
         # Track active orders for lifecycle management and hysteresis
