@@ -2142,12 +2142,22 @@ class PaperTrader:
             no_edge = (1 - fair_value) - (1 - yes_price + 0.02)
             
             # Determine side and edge
+            # ==========================================================
+            # EDGE DIRECTION SAFEGUARD (Jan 2026)
+            # ==========================================================
+            # The model's fair value predictions have been systematically
+            # wrong on NO bets. Until the model is recalibrated, only
+            # trade YES positions where FV > market price.
             if yes_edge > no_edge and yes_edge > 0.01:
                 side = 'YES'
                 edge = yes_edge
             elif no_edge > yes_edge and no_edge > 0.01:
-                side = 'NO'
+                # TEMPORARILY DISABLED: NO trades are losing systematically
+                # side = 'NO'
+                # edge = no_edge
+                side = None  # Skip NO trades
                 edge = no_edge
+                logger.debug(f"[ALPHA] Skipping NO trade (model bias under review)")
             else:
                 side = None
                 edge = max(yes_edge, no_edge)
