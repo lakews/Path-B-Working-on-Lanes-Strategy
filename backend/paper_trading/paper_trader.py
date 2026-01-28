@@ -1135,6 +1135,11 @@ class PaperTrader:
                 if abs(edge) > min_hft_edge:
                     side = 'YES' if edge > 0 else 'NO'
                     
+                    # EDGE DIRECTION SAFEGUARD: Only trade YES until model validated
+                    if side == 'NO':
+                        logger.debug(f"[HFT-SKIP] Skipping NO maker trade")
+                        return None
+                    
                     hft_size = min(
                         available_capital * 0.02,  # Max 2% per trade
                         self.max_position_size * 0.5,
