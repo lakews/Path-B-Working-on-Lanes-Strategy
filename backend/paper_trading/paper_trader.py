@@ -2711,6 +2711,47 @@ class PaperTrader:
                 return
             
             # ============================================
+            # LIVE EVENT FILTER (Jan 2026 - Critical Fix)
+            # ============================================
+            # Skip markets that appear to be live/in-progress events
+            # These resolve too quickly for our model to be accurate
+            question = market_data.get('question', '').lower()
+            
+            # Pattern 1: Team vs Team sports (NBA, NHL, NFL, etc.)
+            # Examples: "Kings vs. Red Wings", "Bucks vs. 76ers", "Seahawks vs. Patriots"
+            import re
+            sports_pattern = re.compile(
+                r'(vs\.?|versus)\s*'  # "vs" or "vs." or "versus"
+                r'(?!.*\d{4})',  # But NOT if it has a year (like "2024 election")
+                re.IGNORECASE
+            )
+            
+            # Check if it looks like a live sports matchup
+            is_sports_matchup = bool(sports_pattern.search(question))
+            
+            # Pattern 2: Over/Under bets (O/U) - these are always sports
+            is_over_under = 'o/u' in question or 'over/under' in question
+            
+            # Pattern 3: Common sports terms indicating live game
+            live_sports_terms = [
+                'vs.', ' vs ', 'versus',
+                'will win tonight', 'win today',
+                'beat the', 'defeat the',
+                'score first', 'first goal',
+                'first touchdown', 'first basket',
+            ]
+            has_live_sports_term = any(term in question for term in live_sports_terms)
+            
+            # Pattern 4: Category check (some sports correctly labeled)
+            category = market_data.get('category', market_data.get('asset_class', '')).lower()
+            
+            # Block if it looks like a live sports event
+            if is_sports_matchup or is_over_under or has_live_sports_term:
+                track_skip("live_sports_event")
+                logger.debug(f"[FILTER] Skipping live sports: {question[:50]}...")
+                return
+            
+            # ============================================
             # STRICT PRICE VALIDATION - REJECT DEFAULT PRICES
             # ============================================
             yes_price = market_data.get('yes_price')
