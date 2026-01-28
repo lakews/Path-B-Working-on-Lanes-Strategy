@@ -282,8 +282,18 @@ class ApexTrader:
             current_price = float(current_price)
             entry_price = position['avg_price']
             market_id = market_data.get('id')
+            side = position.get('side', 'YES')
             
-            profit_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+            # =================================================================
+            # SIDE-AWARE P&L CALCULATION (Critical Fix - Jan 2026)
+            # =================================================================
+            if side.upper() == 'YES':
+                profit_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+            else:
+                # NO position: profits when YES price falls
+                no_entry = 1 - entry_price
+                no_current = 1 - current_price
+                profit_pct = (no_current - no_entry) / no_entry if no_entry > 0 else 0
             
             # Get RL exit recommendation
             signals = await self._get_ml_signals(market_data)
