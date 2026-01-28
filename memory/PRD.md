@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 27, 2026 (Session 39 - Polymarket Compliance Patch)
+## Last Updated: January 28, 2026 (Session 40 - HFT Math Integration with State Isolation)
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -17,9 +17,73 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Alpha-State Exit Engine**: Hierarchical exit logic respecting State → Strategy → Asset Class → Zone
 - **Async-Skewed-Adaptive HFT**: AI-guided execution with real-time volatility adaptation
 - **Zero-Latency Telemetry**: Non-blocking decision logging with Markout analysis
-- **Polymarket Compliance**: $0.01 tick grid, kill zones, min spread, integer shares (NEW)
+- **Polymarket Compliance**: $0.01 tick grid, kill zones, min spread, integer shares
+- **HFT Math Engine**: Cubic Inventory Skew, Adaptive Signal Smoothing, Cliff Protection (NEW)
 
-## Current Status (January 27, 2026)
+## Current Status (January 28, 2026)
+
+### January 28, 2026 - Session 40 (HFT Math Integration with State Isolation - COMPLETE)
+
+- ✅ **HFT MATH ENGINE INTEGRATION COMPLETE**
+
+  **Problem**: Advanced HFT math functions existed in `/app/backend/strategies/hft_math.py` but were not integrated into the main trading loop. State isolation was needed to prevent data leaks between markets.
+
+  **Solution**: Full integration of `HFTMathEngine` into `_evaluate_hft_scalp()` with state-isolated memory dictionaries.
+
+  **Part 1: State Isolation (Memory Dicts)**
+  - ✅ `self.smoothing_memory: Dict[str, float]` - Stores smoothed price per market
+  - ✅ `self.volatility_memory: Dict[str, List[float]]` - Stores price history per market (last 20 ticks)
+  - ✅ Each market has completely isolated state - no data leakage between tickers
+
+  **Part 2: 5-Step HFT Workflow (Upgraded)**
+  1. **Non-Blocking Context Fetch** - Get AI guidance from HFTContext
+  2. **Adaptive Signal Smoothing** - EMA for noise, instant reaction for jumps (STATE ISOLATED)
+  3. **Cubic Inventory Skew** - Non-linear risk management with "Hockey Stick" curve
+  4. **Cliff Protection Spread** - Widen spreads near $0.00 or $1.00 boundaries
+  5. **Inventory Guard** - Block trades that over-concentrate position
+
+  **Part 3: Math Integration Details**
+  ```python
+  # Step 2A: Adaptive Smoothing
+  smoothed_price, signal_action, _ = self.hft_math_engine.smoother.smooth_signal(market_id, yes_price)
+  self.smoothing_memory[market_id] = smoothed_price  # State isolation
+  
+  # Step 3: Cubic Skew (70% AI fair value + 30% smoothed price)
+  blended_fair_value = (ai_fair_value * 0.7) + (smoothed_price * 0.3)
+  skewed_fair_value, skew_amount, _ = self.hft_math_engine.skew.calculate_skew(
+      current_position=current_inventory,
+      raw_fair_value=blended_fair_value,
+  )
+  
+  # Step 4: Cliff Protection
+  spread_multiplier, cliff_zone, _ = self.hft_math_engine.cliff.calculate_spread_multiplier(skewed_fair_value)
+  final_spread = base_spread * vol_multiplier * spread_multiplier
+  ```
+
+  **Part 4: Safety Guards**
+  - ✅ `if bid >= ask: ask = bid + 0.01` - Force minimum $0.01 spread
+  - ✅ Bounds clamping: bid ∈ [$0.01, $0.98], ask ∈ [$0.02, $0.99]
+  - ✅ Re-clamping after adjustment to handle edge cases
+
+  **Test Results** (`verify_strategy_logic.py`):
+  - ✅ 11/11 tests passed
+  - ✅ Scenario F: Cubic Skew - Hockey stick curve validated
+  - ✅ Scenario G: Jump Detection - Bypasses smoothing correctly  
+  - ✅ Scenario H: Cliff Protection - Widens spreads at extremes
+  - ✅ Scenario I: Full Engine Integration - All components work together
+  - ✅ Scenario J: State Isolation - No data leaks between markets
+  - ✅ Scenario K: Memory Dict Pattern - Correct usage validated
+
+  **Enhanced Logging**:
+  ```
+  🧠 [HFT MATH] {market_id} | Raw={yes_price} Smooth={smoothed_price} ({signal_action}) | 
+     Skew={skew_amount} (inv={current_inventory}) | FV={skewed_fair_value} Zone={cliff_zone} (×{spread_multiplier}) |
+     Spread={effective_spread_bps}bps | Edge={edge} | Qty={order_qty} @ ${entry_price} = ${scalp_size}
+  ```
+
+  **Files Modified**:
+  - `/app/backend/paper_trading/paper_trader.py` - `_evaluate_hft_scalp()` refactored with HFT Math Engine
+  - `/app/backend/tests/verify_strategy_logic.py` - Added scenarios J & K for state isolation testing
 
 ### January 27, 2026 - Session 39 (Polymarket Compliance Patch - COMPLETE)
 
