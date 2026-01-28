@@ -105,6 +105,10 @@ class MockPaperTrader:
     def _prune_stale_orders(self, market_id: str, current_ai_price: float) -> Dict:
         """
         Prune stale or drifted orders with hysteresis (anti-churn) logic.
+        
+        Uses SEMANTIC ROUNDING for robust floating-point handling:
+        - round(drift, 4) strips float noise like 0.01000001 → 0.01
+        - This is cleaner than epsilon buffers
         """
         now = datetime.now(timezone.utc)
         stats = {
@@ -141,17 +145,22 @@ class MockPaperTrader:
                 cancel_reason = f"STALE ({age_seconds:.0f}s > {self.ORDER_STALE_SECONDS}s)"
                 stats['orders_cancelled_stale'] += 1
         
-        # CHECK 3: DRIFT vs HYSTERESIS
+        # CHECK 3: DRIFT vs HYSTERESIS (with Semantic Rounding)
         if not should_cancel:
-            drift = abs(order_price - current_ai_price)
+            raw_drift = abs(order_price - current_ai_price)
             
-            if drift <= self.HYSTERESIS_THRESHOLD:
+            # Round drift to 4 decimals (0.1 bps precision) to strip float noise
+            # e.g., 0.01000001 becomes 0.01 (KEEP)
+            # e.g., 0.01400000 becomes 0.014 (CANCEL)
+            clean_drift = round(raw_drift, 4)
+            
+            if clean_drift <= self.HYSTERESIS_THRESHOLD:
                 # Small drift - KEEP the order
                 stats['orders_kept_hysteresis'] += 1
             else:
                 # Large drift - CANCEL
                 should_cancel = True
-                cancel_reason = f"DRIFT ({drift:.3f} > {self.HYSTERESIS_THRESHOLD})"
+                cancel_reason = f"DRIFT ({clean_drift:.4f} > {self.HYSTERESIS_THRESHOLD})"
                 stats['orders_cancelled_drift'] += 1
         
         # EXECUTE CANCELLATION
