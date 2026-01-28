@@ -1335,18 +1335,23 @@ class PaperTrader:
 
     async def _evaluate_hft_scalp(self, market_data: Dict) -> Optional[Dict]:
         """
-        Evaluate HFT scalping opportunity using Async-Skewed-Adaptive Architecture.
+        Evaluate HFT scalping opportunity using Async-Skewed-Adaptive Architecture
+        with Advanced HFT Math Integration (State Isolated).
         
-        ARCHITECTURE: 4-Step Workflow
+        ARCHITECTURE: 5-Step Workflow (Upgraded Jan 2026)
         1. Non-Blocking Context Fetch - Get AI guidance from HFTContext
-        2. Real-Time Volatility Adaptation - Widen spreads when vol spikes
-        3. Skewed Pricing Logic - Center orders on AI's fair value with bias
-        4. Inventory Guard - Block trades that would over-concentrate position
+        2. Adaptive Signal Smoothing - Filter noise, react to jumps (STATE ISOLATED)
+        3. Cubic Inventory Skew - Non-linear risk management (STATE ISOLATED)
+        4. Cliff Protection Spread - Widen spreads near 0/1 boundaries
+        5. Inventory Guard - Block trades that would over-concentrate position
+        
+        STATE ISOLATION: Each market has its own smoothing_memory and volatility_memory
+        to prevent data leaks between tickers.
         
         HFT NEVER trades blind - requires valid context from Thinking Engine.
         
         Author: APEX TRADER Quantitative Architecture Team
-        Date: January 2026 (Async-Skewed-Adaptive Refactor)
+        Date: January 2026 (HFT Math Integration + State Isolation)
         """
         try:
             market_id = market_data.get('id', '')
@@ -1414,60 +1419,121 @@ class PaperTrader:
                 return None  # Not enough capital
             
             # =============================================================
-            # STEP 2: Real-Time Volatility Adaptation
+            # STEP 2A: Adaptive Signal Smoothing (STATE ISOLATED)
             # =============================================================
-            # Calculate volatility multiplier to widen spread when vol spikes
+            # Get previous smoothed price for THIS market only (state isolation)
+            prev_smoothed = self.smoothing_memory.get(market_id, None)
+            
+            # Apply adaptive smoothing: EMA for noise, instant for jumps
+            smoothed_price, signal_action, smooth_debug = self.hft_math_engine.smoother.smooth_signal(
+                market_id=market_id,
+                new_raw_signal=yes_price,
+            )
+            
+            # Store new smoothed price in isolated memory dict
+            self.smoothing_memory[market_id] = smoothed_price
+            
+            # =============================================================
+            # STEP 2B: Real-Time Volatility Adaptation (STATE ISOLATED)
+            # =============================================================
+            # Store price tick in market-specific history for volatility calc
+            if market_id not in self.volatility_memory:
+                self.volatility_memory[market_id] = []
+            
+            # Keep last 20 ticks per market
+            self.volatility_memory[market_id].append(yes_price)
+            if len(self.volatility_memory[market_id]) > 20:
+                self.volatility_memory[market_id] = self.volatility_memory[market_id][-20:]
+            
+            # Calculate volatility from stored price history
             vol_calc = get_volatility_calculator()
-            
-            # Add current price tick to volatility window
-            vol_calc.add_tick(market_id, yes_price)
-            
-            # Get volatility multiplier (current_vol / reference_vol)
+            vol_calc.add_tick(market_id, yes_price)  # Feed real-time service too
             vol_multiplier = vol_calc.get_vol_multiplier(market_id, params.reference_volatility)
             
-            # Effective spread = base spread * volatility multiplier
-            # If vol spikes (multiplier > 1), we widen our spread for safety/premium
-            effective_spread_bps = int(params.base_spread_bps * vol_multiplier)
-            effective_spread = effective_spread_bps / 10000  # Convert bps to decimal
+            # =============================================================
+            # STEP 3: Cubic Inventory Skew (STATE ISOLATED)
+            # =============================================================
+            # Calculate current inventory for this market type
+            hft_positions = [
+                p for p in self.paper_positions.values()
+                if RISK.get_strategy_path(p.get('strategy', '')) == 'HFT'
+            ]
+            
+            total_hft_value = sum(p.get('size', 0) for p in hft_positions)
+            hft_long_value = sum(
+                p.get('size', 0) for p in hft_positions
+                if p.get('side', '').upper() in ['YES', 'BUY', 'LONG']
+            )
+            hft_short_value = total_hft_value - hft_long_value
+            
+            # Net inventory: positive = long, negative = short
+            current_inventory = hft_long_value - hft_short_value
+            
+            # Apply CUBIC skew using HFT Math Engine
+            # fair_value comes from smoothed price + AI context adjustment
+            ai_fair_value = params.fair_value
+            
+            # Blend AI fair value with smoothed market price (70% AI, 30% smoothed)
+            blended_fair_value = (ai_fair_value * 0.7) + (smoothed_price * 0.3)
+            
+            # Cubic skew: adjust fair value based on inventory
+            skewed_fair_value, skew_amount, skew_debug = self.hft_math_engine.skew.calculate_skew(
+                current_position=current_inventory,
+                raw_fair_value=blended_fair_value,
+                max_position=self.hft_math_config.max_position_limit,
+                intensity=self.hft_math_config.skew_intensity,
+            )
             
             # =============================================================
-            # STEP 3: Skewed Pricing Logic
+            # STEP 4: Cliff Protection Spread (Near 0/1 Boundaries)
             # =============================================================
-            # Center orders on AI's fair value (NOT market mid-price) with bias skew
-            fair_value = params.fair_value
-            bias = params.bias  # -1.0 to +1.0
+            # Get base spread from AI context
+            base_spread = params.base_spread_bps / 10000  # Convert bps to decimal
             
-            # Calculate skew offset based on bias and current volatility
-            # Bullish bias → raise our mid (willing to pay more)
-            # Bearish bias → lower our mid (want cheaper entry)
-            current_volatility = vol_calc.calculate_volatility(market_id) or 0.01
-            skew_offset = bias * (current_volatility * 0.5)
+            # Apply cliff protection: widen spread near $0.00 or $1.00
+            spread_multiplier, cliff_zone, cliff_debug = self.hft_math_engine.cliff.calculate_spread_multiplier(
+                price=skewed_fair_value
+            )
             
-            # Our "skewed mid" - where we want to center our quotes
-            skewed_mid = fair_value + skew_offset
+            # Final spread = base × volatility × cliff protection
+            final_spread = base_spread * vol_multiplier * spread_multiplier
             
-            # Calculate our bid and ask around the skewed mid
-            my_bid = skewed_mid * (1 - effective_spread)
-            my_ask = skewed_mid * (1 + effective_spread)
+            # Calculate bid/ask around skewed fair value (KEEP AS FLOAT UNTIL END)
+            half_spread = final_spread / 2
+            my_bid = skewed_fair_value - half_spread
+            my_ask = skewed_fair_value + half_spread
             
             # =============================================================
             # POLYMARKET COMPLIANCE: TICK GRID & BOUNDS ENFORCEMENT
             # =============================================================
-            # 1. Round to tick grid ($0.01)
-            my_bid = self._round_to_tick(my_bid)
-            my_ask = self._round_to_tick(my_ask)
+            # 1. Round to tick grid ($0.01) - FINAL rounding step
+            my_bid = round(my_bid, 2)
+            my_ask = round(my_ask, 2)
             
-            # 2. Clamp to kill zone bounds [$0.05, $0.95]
-            my_bid = self._clamp_to_bounds(my_bid)
-            my_ask = self._clamp_to_bounds(my_ask)
+            # 2. Clamp to kill zone bounds [$0.01, $0.99]
+            my_bid = max(0.01, min(0.98, my_bid))
+            my_ask = max(0.02, min(0.99, my_ask))
             
-            # 3. Enforce minimum spread (2 ticks = $0.02)
-            my_bid, my_ask = self._enforce_min_spread(my_bid, my_ask)
+            # =============================================================
+            # SAFETY GUARD: Ensure ask > bid with minimum spread
+            # =============================================================
+            if my_bid >= my_ask:
+                # Force minimum spread of $0.01
+                my_ask = my_bid + 0.01
+            
+            # Re-clamp after adjustment
+            if my_ask > 0.99:
+                my_ask = 0.99
+                my_bid = min(my_bid, my_ask - 0.01)
+            
+            if my_bid < 0.01:
+                my_bid = 0.01
+                my_ask = max(my_ask, my_bid + 0.01)
             
             # =============================================================
             # PRUNE STALE ORDERS (Anti-Churn with Hysteresis)
             # =============================================================
-            ai_price = fair_value  # Use AI fair value for drift calculation
+            ai_price = skewed_fair_value  # Use skewed fair value for drift calculation
             prune_stats = self._prune_stale_orders(market_id, ai_price)
             if prune_stats['total_cancelled'] > 0:
                 logger.debug(f"[HFT] Pruned {prune_stats['total_cancelled']} stale orders for {market_id[:16]}...")
@@ -1486,8 +1552,8 @@ class PaperTrader:
                 # Market is cheaper than we're willing to pay
                 should_trade = True
                 side = 'YES'
-                entry_price = self._round_to_tick(best_ask)  # Tick-aligned entry
-                edge = (my_bid - best_ask) / best_ask
+                entry_price = round(best_ask, 2)  # Tick-aligned entry
+                edge = (my_bid - best_ask) / max(best_ask, 0.01)
             
             # Check for SELL opportunity (if we have inventory)
             elif best_bid > my_ask:
@@ -1498,49 +1564,38 @@ class PaperTrader:
             
             # Also check if market mid is significantly below our fair value (bullish signal)
             market_mid = (best_bid + best_ask) / 2
-            fv_edge = fair_value - market_mid
+            fv_edge = skewed_fair_value - market_mid
+            bias = params.bias
             
             if not should_trade and fv_edge > 0.01 and bias > 0:
                 # Fair value says market is underpriced and we're bullish
                 should_trade = True
                 side = 'YES'
-                entry_price = self._round_to_tick(best_ask)  # Tick-aligned entry
+                entry_price = round(best_ask, 2)  # Tick-aligned entry
                 edge = fv_edge
             
             if not should_trade:
                 return None
             
             # =============================================================
-            # STEP 4: Inventory Guard
+            # STEP 5: Inventory Guard (Using Cubic Skew State)
             # =============================================================
             # Check if we're already too concentrated in one direction
             max_inventory_skew = params.max_inventory_skew
             
-            # Calculate current inventory exposure
-            hft_positions = [
-                p for p in self.paper_positions.values()
-                if RISK.get_strategy_path(p.get('strategy', '')) == 'HFT'
-            ]
-            
-            total_hft_value = sum(p.get('size', 0) for p in hft_positions)
-            hft_long_value = sum(
-                p.get('size', 0) for p in hft_positions
-                if p.get('side', '').upper() in ['YES', 'BUY', 'LONG']
-            )
-            
             if total_hft_value > 0:
-                current_skew = hft_long_value / total_hft_value
+                current_skew_ratio = hft_long_value / total_hft_value
             else:
-                current_skew = 0.5  # Neutral
+                current_skew_ratio = 0.5  # Neutral
             
             # If bullish bias (> 0) and already heavily LONG, block further buys
-            if bias > 0 and side == 'YES' and current_skew > (0.5 + max_inventory_skew):
-                logger.debug(f"[HFT] Inventory guard: Already {current_skew:.0%} long, blocking buy")
+            if bias > 0 and side == 'YES' and current_skew_ratio > (0.5 + max_inventory_skew):
+                logger.debug(f"[HFT] Inventory guard: Already {current_skew_ratio:.0%} long, blocking buy")
                 return None
             
             # If bearish bias (< 0) and already heavily SHORT, block further sells
-            if bias < 0 and side == 'NO' and current_skew < (0.5 - max_inventory_skew):
-                logger.debug(f"[HFT] Inventory guard: Already {(1-current_skew):.0%} short, blocking sell")
+            if bias < 0 and side == 'NO' and current_skew_ratio < (0.5 - max_inventory_skew):
+                logger.debug(f"[HFT] Inventory guard: Already {(1-current_skew_ratio):.0%} short, blocking sell")
                 return None
             
             # =============================================================
@@ -1577,15 +1632,19 @@ class PaperTrader:
             else:
                 regime = MarketRegime.TAKER_TIGHT
             
+            # Calculate effective spread in bps for logging
+            effective_spread_bps = int(final_spread * 10000)
+            
             logger.info(
-                f"🧠 [HFT SMART] {market_id[:16]}... | "
-                f"FV={fair_value:.4f} Bias={bias:+.2f} | "
-                f"Spread={effective_spread_bps}bps (vol×{vol_multiplier:.1f}) | "
-                f"Edge={edge:.2%} | Side={side} | "
+                f"🧠 [HFT MATH] {market_id[:16]}... | "
+                f"Raw={yes_price:.4f} Smooth={smoothed_price:.4f} ({signal_action}) | "
+                f"Skew={skew_amount:+.4f} (inv={current_inventory:.0f}) | "
+                f"FV={skewed_fair_value:.4f} Zone={cliff_zone} (×{spread_multiplier:.1f}) | "
+                f"Spread={effective_spread_bps}bps | Edge={edge:.2%} | "
                 f"Qty={order_qty} @ ${entry_price:.2f} = ${scalp_size:.2f}"
             )
             
-            # Build opportunity dict
+            # Build opportunity dict with enhanced diagnostics
             opportunity = {
                 'should_trade': True,
                 'side': side,
@@ -1595,12 +1654,20 @@ class PaperTrader:
                 'spread': market_spread,
                 'strategy': 'hft_scalp_smart',
                 'regime': regime,
-                'fair_value': fair_value,
+                'fair_value': skewed_fair_value,
+                'raw_fair_value': ai_fair_value,
+                'smoothed_price': smoothed_price,
+                'signal_action': signal_action,
                 'bias': bias,
                 'vol_multiplier': vol_multiplier,
                 'effective_spread_bps': effective_spread_bps,
                 'quoted_bid': my_bid,
                 'quoted_ask': my_ask,
+                # HFT Math Engine diagnostics
+                'skew_amount': skew_amount,
+                'current_inventory': current_inventory,
+                'cliff_zone': cliff_zone,
+                'spread_multiplier': spread_multiplier,
                 # Polymarket compliance fields
                 'order_qty': order_qty,
                 'tick_aligned': True,
@@ -1615,7 +1682,7 @@ class PaperTrader:
                 'size': scalp_size,
                 'side': side,
                 'timestamp': datetime.now(timezone.utc),
-                'ai_price': fair_value,
+                'ai_price': skewed_fair_value,
                 'order_qty': order_qty,
             }
             
