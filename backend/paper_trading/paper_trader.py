@@ -2891,16 +2891,22 @@ class PaperTrader:
             no_edge = (1 - fair_value_estimate) - (1 - yes_price + 0.02)
             
             # Select side based on which has positive edge
+            # ==========================================================
+            # EDGE DIRECTION SAFEGUARD (Jan 2026)
+            # ==========================================================
+            # Until model is recalibrated, only trade YES (FV > market)
             if yes_edge > no_edge and yes_edge > 0.005:
                 side = 'YES'
                 edge = yes_edge
             elif no_edge > yes_edge and no_edge > 0.005:
-                side = 'NO'
-                edge = no_edge
+                # TEMPORARILY SKIP NO trades - model bias issue
+                track_skip("no_side_disabled")
+                logger.debug(f"[ENTRY] Skipping NO trade (model under review)")
+                return
             else:
-                # Both edges negative or too small - use RL action as tiebreaker
-                side = 'YES' if 'BUY' in rl_action else 'NO'
-                edge = max(yes_edge, no_edge)
+                # Both edges negative or too small - skip
+                track_skip("no_edge")
+                return
             
             logger.debug(f"[ENTRY] {market_id_short}... FV={fair_value_estimate:.4f} YES_edge={yes_edge:.4f} NO_edge={no_edge:.4f} → {side}")
             
