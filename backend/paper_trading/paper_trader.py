@@ -1853,6 +1853,21 @@ class PaperTrader:
                     market_id = market_data.get('id')
                     
                     # ==========================================================
+                    # LIVE EVENT FILTER (Jan 2026 - Critical Fix)
+                    # ==========================================================
+                    question = market_data.get('question', '').lower()
+                    
+                    # Skip live sports matchups (Team vs Team)
+                    import re
+                    sports_pattern = re.compile(r'(vs\.?|versus)\s*(?!.*\d{4})', re.IGNORECASE)
+                    is_sports_matchup = bool(sports_pattern.search(question))
+                    is_over_under = 'o/u' in question or 'over/under' in question
+                    
+                    if is_sports_matchup or is_over_under:
+                        logger.debug(f"[ALPHA] Skipping live sports: {question[:40]}...")
+                        continue
+                    
+                    # ==========================================================
                     # FIX: Fetch fresh orderbook (The Brain needs eyes)
                     # ==========================================================
                     # Without orderbook data, regime classification defaults to
