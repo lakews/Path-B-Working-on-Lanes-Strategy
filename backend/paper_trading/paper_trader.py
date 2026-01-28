@@ -2742,24 +2742,38 @@ class PaperTrader:
                 track_skip("rl_no_buy_sell")
                 return
             
-            # SENTIMENT-BASED SIDE SELECTION (configurable thresholds)
-            # RL action determines size, but sentiment determines direction
+            # =============================================================
+            # EDGE-BASED SIDE SELECTION (Fixed Jan 2026)
+            # =============================================================
+            # Calculate fair value and edge to determine optimal direction
+            # This replaces the sentiment-only approach which was inverted
+            
             sentiment = signals.get('sentiment', 0.5)
-            if sentiment > self.bullish_sentiment_threshold:
-                # Bullish sentiment -> YES (BUY)
+            sharp_alignment = signals.get('sharp_alignment', 0.5)
+            
+            # Quick fair value estimate based on sentiment and price
+            # Sentiment > 0.5 = bullish, expecting YES to rise
+            # We combine sentiment with current price for a basic fair value
+            fair_value_estimate = (sentiment * 0.6 + yes_price * 0.4)
+            
+            # Calculate edges
+            effective_price = yes_price + 0.02  # Fee adjustment
+            yes_edge = fair_value_estimate - effective_price
+            no_edge = (1 - fair_value_estimate) - (1 - yes_price + 0.02)
+            
+            # Select side based on which has positive edge
+            if yes_edge > no_edge and yes_edge > 0.005:
                 side = 'YES'
-                if 'SELL' in rl_action:
-                    # Convert SELL to equivalent BUY size
-                    rl_action = rl_action.replace('SELL', 'BUY')
-            elif sentiment < self.bearish_sentiment_threshold:
-                # Bearish sentiment -> NO (SELL)  
+                edge = yes_edge
+            elif no_edge > yes_edge and no_edge > 0.005:
                 side = 'NO'
-                if 'BUY' in rl_action:
-                    # Convert BUY to equivalent SELL size
-                    rl_action = rl_action.replace('BUY', 'SELL')
+                edge = no_edge
             else:
-                # Neutral sentiment -> use RL action directly
+                # Both edges negative or too small - use RL action as tiebreaker
                 side = 'YES' if 'BUY' in rl_action else 'NO'
+                edge = max(yes_edge, no_edge)
+            
+            logger.debug(f"[ENTRY] {market_id_short}... FV={fair_value_estimate:.4f} YES_edge={yes_edge:.4f} NO_edge={no_edge:.4f} → {side}")
             
             # Determine strategy based on signals
             strategy = self._determine_strategy(signals, rl_action, market_data)
