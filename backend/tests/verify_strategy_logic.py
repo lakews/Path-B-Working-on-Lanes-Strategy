@@ -986,6 +986,8 @@ def run_all_tests():
         ("Scenario G: Jump Detection (Production)", test_scenario_g_jump_detection),
         ("Scenario H: Cliff Protection (Production)", test_scenario_h_cliff_protection),
         ("Scenario I: Full HFT Engine (Integration)", test_scenario_i_full_hft_engine),
+        ("Scenario J: State Isolation (Multi-Market)", test_scenario_j_state_isolation),
+        ("Scenario K: Paper Trader Memory Pattern", test_scenario_k_paper_trader_memory_dicts),
     ]
     
     results = []
