@@ -2155,6 +2155,21 @@ class PaperTrader:
         """Execute an Alpha (directional) trade."""
         try:
             market_id = market_data.get('id', '')
+            
+            # ==========================================================
+            # LIVE EVENT FILTER (Jan 2026 - Critical Fix)
+            # ==========================================================
+            question = market_data.get('question', '').lower()
+            
+            import re
+            sports_pattern = re.compile(r'\bvs\.?\b|\bversus\b', re.IGNORECASE)
+            is_sports_matchup = bool(sports_pattern.search(question))
+            is_over_under = 'o/u' in question or 'over/under' in question
+            
+            if is_sports_matchup or is_over_under:
+                logger.info(f"[ALPHA] BLOCKED live sports: {question[:40]}...")
+                return
+            
             side = analysis['side']
             edge = analysis['edge']
             
