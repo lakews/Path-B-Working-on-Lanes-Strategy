@@ -3578,6 +3578,7 @@ class PaperTrader:
                     current_spread_pct=current_spread_pct,
                     trade_status=trade_status,
                     peak_price=peak_price,
+                    side=side,  # CRITICAL: Pass side for correct P&L calculation
                 )
                 
                 # Store exit engine decision for UI display
