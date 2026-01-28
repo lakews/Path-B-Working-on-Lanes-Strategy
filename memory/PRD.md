@@ -23,6 +23,26 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 
 ## Current Status (January 28, 2026)
 
+### January 28, 2026 - Session 40 (P&L Bug Fix Validation - COMPLETE)
+
+- ✅ **P&L BUG FIX VALIDATED**
+
+  **Validation Results:**
+  - Cleared 7,122 old trades with corrupted P&L data
+  - Fresh paper trading session started
+  - All 28 NO position P&L calculations verified CORRECT
+  - P&L formula: `(exit_price - entry_price) / entry_price` for actual traded side
+
+  **What Changed:**
+  - Exit Engine now receives `side` parameter
+  - NO positions correctly profit when YES price falls, lose when YES price rises
+  - Trade records show accurate display prices for the side traded
+
+  **Current Performance (Post-Fix):**
+  - The strategies are still losing, but this is now a STRATEGIC issue, not a calculation bug
+  - Before fix: Winning NO trades were recorded as losses (inverted P&L)
+  - After fix: All trades have correct P&L, allowing accurate strategy analysis
+
 ### January 28, 2026 - Session 40 (CRITICAL BUG FIX - P&L Calculation for NO Positions)
 
 - 🚨 **ROOT CAUSE OF HFT LOSSES IDENTIFIED AND FIXED**
