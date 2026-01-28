@@ -8,7 +8,7 @@ import os
 import json
 from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://trade-analytics-88.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://hft-apex-trader.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 TEST_USERNAME = "admin"

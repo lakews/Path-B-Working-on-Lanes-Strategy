@@ -1,117 +1,48 @@
 <analysis>**original_problem_statement:**
-The user, a Lead HFT System Architect, requested a major overhaul of the APEX TRADER bot to a Two-Speed Hybrid model, which evolved into a Three-Speed model (HFT, Alpha, Gamma).
+The user, a Lead HFT System Architect, has been directing a series of deep architectural upgrades to the APEX TRADER bot's High-Frequency Trading (HFT) lane. The initial goal was to fix a failing HFT strategy, which led to a cascade of improvements:
 
 PRODUCT REQUIREMENTS:
--   **Architectural Split:** Decouple slow logic (LLM/Bayesian) from fast HFT execution into a three-way split: HFT, Alpha, and Gamma (Whale) strategies.
--   **Full Configuration via UI:** Make all strategy, risk, and exit parameters configurable from the frontend.
--   **Unified Risk Management (SSOT):** Centralize all risk, sizing, liquidity, and volume parameters into a Single Source of Truth ().
--   **Task 24:** Architect & Implement a hierarchical Alpha-State Exit Engine.
--   **Task 25:** Create a dedicated capital allocation bucket for Gamma/Whale trading, creating a Three-Speed allocation model.
--   **Task 26:** Refactor the entire codebase to use the new unified, strategy-based SSOT.
--   **Strategy Lane Analytics:** Implement backend services and a frontend UI to display performance metrics (PnL, Win Rate, etc.) grouped by the three strategy lanes (HFT, ALPHA, GAMMA).
--   **Strategy Forensics Engine:** Build a script to perform a deep-dive analysis on each trading lane to diagnose performance issues.
+-   **Initial Problem:** The HFT lane was unprofitable (Profit Factor 0.06). An audit revealed it was either blind (trading without AI context) or slow (awaiting synchronous AI calls).
+-   **Architectural Refactor:** Implement an Async-Skewed-Adaptive architecture. This involved creating a shared memory service () to allow a slow Thinking Engine to asynchronously provide guidance (fair value, bias) to a fast, non-blocking HFT execution loop.
+-   **Forensic Tooling:** Build a Strategy Forensics engine to diagnose performance and a Zero-Latency Telemetry service to capture high-resolution decision data without impacting the trading loop. This includes a Markout Analyzer to score execution quality.
+-   **Polymarket Compliance:** The HFT logic must be hardened to comply with Polymarket's specific microstructure, including /bin/bash.01 tick rounding, price bounds of [/bin/bash.01, /bin/bash.99], minimum spreads, and integer share sizing.
+-   **Order Lifecycle Management:** Implement an order pruner () with hysteresis (anti-churn) logic to prevent canceling and replacing orders for minor price drifts.
+-   **Advanced HFT Math:** Implement professional-grade quantitative functions, including Cubic Inventory Skew (aggressively shedding risk on large positions), Adaptive Signal Smoothing (filtering noise while reacting to shocks), and Cliff Protection (widening spreads near the /bin/bash.00 or .00 price boundaries).
+-   **State Isolation:** Ensure all stateful logic (like signal smoothing history) is isolated per market/ticker to prevent data leakage between instruments.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack trading application (React + FastAPI) with a Three-Speed architecture (HFT, Alpha, Gamma) at its core. All risk and execution logic is governed by a unified Single Source of Truth (SSOT) in . The backend test suite is now fully stable and passing (575/576 tests). A new Lane Analytics UI has been implemented on the paper trading dashboard, which visualizes performance metrics broken down by the three strategy lanes, pulling data from a dedicated analytics API endpoint.
+The application is a full-stack trading bot with a Three-Speed architecture (HFT, ALPHA, GAMMA). The HFT lane has undergone a massive overhaul. Key components that now exist are:
+-   A shared context service () for asynchronous AI guidance.
+-   A non-blocking telemetry service () for performance analysis.
+-   A full suite of Polymarket compliance logic (rounding, bounds, minimum spreads) and an order pruner with hysteresis () within .
+-   A new library of advanced HFT math functions () containing logic for cubic skew, adaptive smoothing, and cliff protection. These functions are fully unit-tested but **are not yet integrated** into the main trading loop.
+-   Multiple verification and stress-test scripts in  to validate all new behaviors.
 
 **Last working item**:
--   **Last item agent was working:** The user requested the creation of a Strategy Forensics engine to perform a deep-dive analysis on the performance of each trading lane (HFT, ALPHA, GAMMA). The agent's last action was creating the file for this new tool.
--   **Status:** NOT STARTED
+-   **Last item agent was working:** Integrating the newly created  (from ) into the main strategy execution logic. The primary goal is to replace the older, simpler logic with these advanced functions while ensuring **state isolation** by using dictionaries keyed by  for storing historical data (like previous smoothed prices).
+-   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** manual testing by curl. The agent should run 
-====================================================================================================
-                    APEX TRADER - STRATEGY FORENSICS REPORT
-====================================================================================================
-Generated: 2026-01-27 21:43:31 UTC
-Fee Rate Assumption: 0.05% per trade (maker fee)
-====================================================================================================
-
-📂 Connecting to database...
-📥 Fetching trades...
-   Found 2277 exit trades
-🔬 Calculating metrics...
-
-📊 LANE PERFORMANCE SUMMARY
-----------------------------------------------------------------------------------------------------
-LANE     |  TRADES |   WIN% |    P/F |    AVG WIN |   AVG LOSS |    R:R |    EXP ($) |   DURATION
-----------------------------------------------------------------------------------------------------
-HFT      |     149 |  24.2% |   0.06 | $    2.64 | $   15.00 |    0.2 |    $-10.74 |       2.6m
-ALPHA    |    2107 |  10.7% |   1.05 | $   66.63 | $   19.09 |    3.5 |     +$0.33 |      10.3h
-GAMMA    |      21 |   4.8% |   0.13 | $  110.00 | $   41.85 |    2.6 |    $-34.62 |       1.7d
-----------------------------------------------------------------------------------------------------
-
-💰 P&L BREAKDOWN (Fee Analysis)
-----------------------------------------------------------------------------------------------------
-LANE     |   GROSS PROFIT |     GROSS LOSS |        NET PnL |    EST. FEES | NET AFTER FEES |   FEE DRAG
-----------------------------------------------------------------------------------------------------
-HFT      | $        95.07 | $     1,695.08 |     $-1,600.01 | $       5.88 |     $-1,605.89 |      6.2%
-ALPHA    | $    14,991.55 | $    14,296.57 |       +$694.98 | $      50.59 |       +$644.38 |      0.3%
-GAMMA    | $       110.00 | $       837.10 |       $-727.10 | $       1.20 |       $-728.30 |      1.1%
-----------------------------------------------------------------------------------------------------
-
-📈 RISK METRICS
-----------------------------------------------------------------------------------------------------
-LANE     |  LARGEST WIN | LARGEST LOSS | MAX WIN STREAK | MAX LOSS STREAK |         VOLUME
-----------------------------------------------------------------------------------------------------
-HFT      | $       6.73 | $      37.83 |              6 |              24 | $        5,879
-ALPHA    | $   6,118.26 | $     200.31 |             99 |             189 | $       50,594
-GAMMA    | $     110.00 | $      59.27 |              1 |              18 | $        1,201
-----------------------------------------------------------------------------------------------------
-
-🔍 DIAGNOSTIC VERDICTS
-----------------------------------------------------------------------------------------------------
-
-  HFT LANE:
-    Status: ❌ FAIL
-    Reason: Losing strategy - investigate immediately
-    Profit Factor: 0.06
-    ⚠️  Win rate only 24.2% - SIGNAL QUALITY ISSUE
-    ⚠️  R:R ratio 0.18 - CUTTING WINNERS, HOLDING LOSERS
-
-  ALPHA LANE:
-    Status: ⚠️ WARNING
-    Reason: Marginal - needs improvement
-    Profit Factor: 1.05
-
-  GAMMA LANE:
-    Status: ❌ FAIL
-    Reason: Losing strategy - investigate immediately
-    Profit Factor: 0.13
-    ⚠️  Win rate only 4.8% - SIGNAL QUALITY ISSUE
-
-
-====================================================================================================
-                           RECOMMENDATIONS
-====================================================================================================
-  1. 🔧 HFT: Signal quality needs work - current win rate 24.2% is too low for scalping
-  2. 💡 ALPHA: Low win rate (10.7%) but profitable - this is valid if R:R is high (3.5)
-  3. ⚠️ ALPHA: Max losing streak of 189 - ensure position sizing can handle drawdowns
-  4. 🔧 GAMMA: Moonshots not paying off - largest win ($110.00) doesn't cover losses
-
-====================================================================================================
-
-📌 TOTAL: 2277 trades, Net P&L: $-1,632.13
-==================================================================================================== and verify its output.
+-   **Which testing method agent to use?** The agent should update and run the verification script  to confirm the new math is correctly integrated and respects state isolation.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   There are no pending issues. The previously critical issue of the broken test suite has been fully resolved.
+-   There are no known bugs or issues.
 
 **In progress Task List**:
--   **Task 1: Implement the Strategy Forensics Engine (P0)**
-    -   **Where to resume:** The file  has been created. The next step is to implement the Python code as specified in the user's prompt.
-    -   **What will be achieved with this?** This script will provide a detailed, human-readable CLI report with advanced metrics (Profit Factor, Reward-to-Risk, Expectancy, Fee Simulation) for each trading lane, allowing for a deep diagnosis of strategy performance.
-    -   **Status:** NOT STARTED
+-   **Task 1: Integrate HFT Math with State Isolation (P0)**
+    -   **Where to resume:** The agent has reviewed  but has not yet started modifying the code. The next step is to refactor the strategy execution flow (likely within  or a similar method) to use the new .
+    -   **What will be achieved with this?** This will complete the HFT upgrade by wiring the advanced risk management (cubic skew, adaptive smoothing, cliff protection) into the live decision-making process, making the bot significantly more robust.
+    -   **Status:** IN PROGRESS
     -   **Should Test frontend/backend/both after fix?** backend
     -   **Blocked on something:** No.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **(P1)** Add HFT-specific parameters (, ) to the  UI, sourcing them from .
--   **Future Tasks:**
     -   **(P0 - CRITICAL)** Test the fully functional bot in  mode with a small amount of capital.
+    -   **(P1)** Add HFT-specific parameters (, ) to the  UI.
+-   **Future Tasks:**
     -   **(P2)** Pre-populate the RL replay buffer from historical trades on startup.
     -   **(P3)** Continue refactoring  into smaller modules.
     -   **(P3)** AWS Deployment: Clean up heavy ML dependencies (, usage: transformers <command> [<args>]
@@ -128,220 +59,15 @@ options:
     -   **(P3)** Address frontend ESLint warnings.
 
 **Completed work in this session**
--   **Backend Test Suite Fix (100% Pass Rate):**
-    -   Resolved 14 initial errors and dozens of test failures across the entire ============================= test session starts ==============================
-platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
-rootdir: /app
-plugins: anyio-4.12.0, asyncio-1.3.0
-asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-collected 601 items / 18 errors
-
-==================================== ERRORS ====================================
-_____________ ERROR collecting tests/test_ai_signals_websocket.py ______________
-ImportError while importing test module '/app/tests/test_ai_signals_websocket.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_ai_signals_websocket'
-________________ ERROR collecting tests/test_apex_trader_api.py ________________
-ImportError while importing test module '/app/tests/test_apex_trader_api.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_apex_trader_api'
-___________ ERROR collecting tests/test_backtest_data_source_fix.py ____________
-ImportError while importing test module '/app/tests/test_backtest_data_source_fix.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_backtest_data_source_fix'
-___________ ERROR collecting tests/test_backtest_history_compare.py ____________
-ImportError while importing test module '/app/tests/test_backtest_history_compare.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_backtest_history_compare'
-___________ ERROR collecting tests/test_config_paper_trading_fix.py ____________
-ImportError while importing test module '/app/tests/test_config_paper_trading_fix.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_config_paper_trading_fix'
-_________ ERROR collecting tests/test_dashboard_websocket_features.py __________
-ImportError while importing test module '/app/tests/test_dashboard_websocket_features.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_dashboard_websocket_features'
-___________ ERROR collecting tests/test_dqn_features_iteration20.py ____________
-ImportError while importing test module '/app/tests/test_dqn_features_iteration20.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_dqn_features_iteration20'
-______________ ERROR collecting tests/test_exit_params_feature.py ______________
-ImportError while importing test module '/app/tests/test_exit_params_feature.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_exit_params_feature'
-__________ ERROR collecting tests/test_gamma_api_paper_trading_fix.py __________
-ImportError while importing test module '/app/tests/test_gamma_api_paper_trading_fix.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_gamma_api_paper_trading_fix'
-_____________ ERROR collecting tests/test_iteration19_features.py ______________
-ImportError while importing test module '/app/tests/test_iteration19_features.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_iteration19_features'
-____________ ERROR collecting tests/test_jwt_auth_paper_trading.py _____________
-ImportError while importing test module '/app/tests/test_jwt_auth_paper_trading.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_jwt_auth_paper_trading'
-________ ERROR collecting tests/test_new_config_features_iteration18.py ________
-ImportError while importing test module '/app/tests/test_new_config_features_iteration18.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_new_config_features_iteration18'
-____________ ERROR collecting tests/test_new_features_iteration6.py ____________
-ImportError while importing test module '/app/tests/test_new_features_iteration6.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_new_features_iteration6'
-__________ ERROR collecting tests/test_paper_trading_data_sync_fix.py __________
-ImportError while importing test module '/app/tests/test_paper_trading_data_sync_fix.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_paper_trading_data_sync_fix'
-__________ ERROR collecting tests/test_paper_trading_enhancements.py ___________
-ImportError while importing test module '/app/tests/test_paper_trading_enhancements.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_paper_trading_enhancements'
-____________ ERROR collecting tests/test_paper_trading_features.py _____________
-ImportError while importing test module '/app/tests/test_paper_trading_features.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_paper_trading_features'
-_________________ ERROR collecting tests/test_rl_engine_api.py _________________
-ImportError while importing test module '/app/tests/test_rl_engine_api.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_rl_engine_api'
-_________ ERROR collecting tests/test_spread_calibrator_historical.py __________
-ImportError while importing test module '/app/tests/test_spread_calibrator_historical.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   ModuleNotFoundError: No module named 'tests.test_spread_calibrator_historical'
-=============================== warnings summary ===============================
-backend/tests/test_position_sizer.py:21
-  /app/backend/tests/test_position_sizer.py:21: DeprecationWarning: polymarket_position_sizer is deprecated. Use trading.portfolio_manager instead.
-    from ml.polymarket_position_sizer import PolymarketPositionSizer
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
-ERROR tests/test_ai_signals_websocket.py
-ERROR tests/test_apex_trader_api.py
-ERROR tests/test_backtest_data_source_fix.py
-ERROR tests/test_backtest_history_compare.py
-ERROR tests/test_config_paper_trading_fix.py
-ERROR tests/test_dashboard_websocket_features.py
-ERROR tests/test_dqn_features_iteration20.py
-ERROR tests/test_exit_params_feature.py
-ERROR tests/test_gamma_api_paper_trading_fix.py
-ERROR tests/test_iteration19_features.py
-ERROR tests/test_jwt_auth_paper_trading.py
-ERROR tests/test_new_config_features_iteration18.py
-ERROR tests/test_new_features_iteration6.py
-ERROR tests/test_paper_trading_data_sync_fix.py
-ERROR tests/test_paper_trading_enhancements.py
-ERROR tests/test_paper_trading_features.py
-ERROR tests/test_rl_engine_api.py
-ERROR tests/test_spread_calibrator_historical.py
-!!!!!!!!!!!!!!!!!!! Interrupted: 18 errors during collection !!!!!!!!!!!!!!!!!!!
-======================== 1 warning, 18 errors in 0.89s ========================= suite.
-    -   Fixed broken test fixtures in  by initializing missing attributes.
-    -   Updated outdated test assertions that were checking for old, intentionally removed behavior (e.g., probability clamping).
-    -   Corrected invalid test logic in  by recalculating expected outcomes.
-    -   Added  decorators to async tests in .
-    -   Created a shared  to provide a consistent  for all integration tests, fixing widespread connectivity errors.
-    -   Fixed data-dependent and environment-dependent tests to be more robust.
-
--   **Strategy Tagging & Legacy Purge:**
-    -   Tagged all strategies in  with their correct  (, , ).
-    -   Refactored  to use the new  method instead of the legacy .
-    -   Removed obsolete risk parameters () from .
-    -   Refactored modules (, ) to remove hardcoded magic numbers and use  instead.
-
--   **Strategy Lane Persistence:**
-    -   Added  to the Pydantic  model in .
-    -   Updated all trade creation points in  to capture and save the .
-    -   Created a new round-trip integration test () to verify the lane was being correctly saved to and retrieved from the database.
-
--   **Lane Analytics (Backend):**
-    -   Created a new  method in  to aggregate performance by lane.
-    -   Updated the  endpoint to include  in its response.
-    -   Created a strict Pydantic schema () for the API response to ensure type safety.
-    -   Created an API contract test () to verify the new response structure.
-
--   **Lane Analytics & Equity Curve (Frontend):**
-    -   Refactored the equity curve logic in  and  to track and display PnL by  (HFT, ALPHA, GAMMA) instead of old, specific strategy names.
-    -   Created a new reusable React component () to display the lane performance cards.
-    -   Integrated the new component into the  page.
-    -   Updated UI labels from Two-Speed to Three-Speed.
-
--   **Verification & Seeding:**
-    -   Created a database seeding script () to inject mock trade data for all three lanes, allowing for immediate UI verification.
-    -   Debugged and fixed the  service to correctly query the  collection.
-    -   Successfully verified that the frontend UI lit up with the seeded data, confirming the entire DB-to-UI pipeline works.
+-   **Strategy Forensics Engine:** Implemented a CLI tool () to generate deep-dive performance reports, which was used to diagnose the initial HFT failure.
+-   **HFT Strategy Audit:** Performed a codebase audit that identified HFT strategies were disconnected from the AI thinking engine.
+-   **Async-Skewed-Adaptive Architecture:** Completed a major refactor to decouple the HFT execution loop from synchronous AI calls using a shared context service (). Reclassified  strategy from HFT to ALPHA.
+-   **Zero-Latency Forensic Telemetry:** Implemented a non-blocking, queue-based telemetry service () and a markout analyzer () to measure execution quality without adding latency.
+-   **Volatility Stress Test:** Created a stress-testing framework () to validate HFT behavior under hostile market conditions (whipsaws, latency traps).
+-   **Polymarket Compliance Patch:** Hardened the HFT execution logic in  with rules for /bin/bash.01 tick rounding, price bounds, minimum spreads, and integer share sizing.
+-   **Order Lifecycle Management:** Implemented the  method with hysteresis (anti-churn) logic to efficiently manage open orders. Implemented semantic rounding for robust floating-point comparisons.
+-   **HFT Behavioral Verification:** Created a dedicated test suite () to confirm the compliance and hysteresis logic works as expected.
+-   **Advanced HFT Math Engine:** Designed and implemented a library of advanced math functions () for cubic inventory skew, adaptive signal smoothing, and cliff protection. Validated these with a new test suite ().
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Heavy ML Dependencies**: , usage: transformers <command> [<args>]
@@ -364,25 +90,24 @@ options:
 
 
 **Key Technical Concepts**
--   **Strategy-Based Single Source of Truth (SSOT):** Centralized risk control via .
--   **Three-Speed Architecture:** HFT, Alpha, and Gamma strategies with distinct capital allocations and risk profiles.
--   **Lane Analytics Pipeline:** A full data pipeline from DB ( field) -> Backend Service () -> API () -> Frontend UI ().
--   **Strict API Typing (Pydantic):** Using Pydantic models as  in FastAPI to enforce API contracts and generate accurate OpenAPI docs.
--   **Comprehensive Test Suite:** A stable and reliable suite of over 575 unit and integration tests providing a safety net for development.
+-   **Async Parameter Injection:** Using a shared, thread-safe service () to pass guidance from slow analysis loops to a fast execution loop without blocking.
+-   **Zero-Latency Telemetry:** Employing a  and a background thread to log high-frequency decision data without incurring disk I/O latency on the main trading thread.
+-   **Markout Analysis:** A technique to measure adverse selection by comparing the trade execution price to the market price a short time after the trade.
+-   **Hysteresis (Anti-Churn):** A control logic principle to prevent rapid state-switching by requiring a change to exceed a certain threshold before acting, used here to avoid unnecessary order cancellations.
+-   **Semantic Rounding:** Explicitly rounding floating-point numbers to a set precision before comparison to avoid errors from infinitesimal floating-point artifacts.
+-   **Cubic Inventory Skew:** A non-linear risk management technique that applies a small pricing penalty for small positions but a rapidly increasing (cubic) penalty for large positions to incentivize risk reduction.
+-   **Adaptive Signal Smoothing:** An EMA-based filter with a jump detection mechanism that bypasses smoothing during sharp price moves (shocks) but filters out minor oscillations (noise).
+-   **State Isolation:** Using dictionary-based memory () to ensure that historical data for one trading instrument does not leak into the calculations for another.
 
 **key DB schema**
--   **paper_trades (collection):** Documents now include a  field (e.g., HFT, ALPHA, GAMMA).
+-   No changes to the DB schema in this session.
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   **Fixed Files:**
-    -   
-    -   
-    -   
-    -   Numerous integration test files (e.g., , )
 -   **Created Files:**
+    -    (Discovered it was already complete)
     -   
     -   
     -   
@@ -390,65 +115,65 @@ options:
     -   
     -   
     -   
-    -    (placeholder)
 -   **Updated Files:**
+    -    (Significantly refactored)
     -   
     -   
     -   
     -   
     -   
     -   
-    -   
-    -   All strategy files in 
 
 **Areas that need refactoring**:
--    could still be broken down into smaller, more focused modules.
+-    remains a very large file and could be broken down further.
 
 **key api endpoints**
--   : Returns comprehensive performance metrics, including the new  object. It now uses a strict Pydantic response model.
+-   No new API endpoints were created. The work was focused on the backend trading logic and offline analysis scripts.
 
 **Critical Info for New Agent**
-1.  **The test suite is your source of truth.** It is now stable with >99% pass rate. Run tests after any significant change.
-2.  **The current task is to build the Strategy Forensics engine.** The placeholder file  is ready for implementation.
-3.  **The Lane Analytics UI is complete and verified.** It correctly displays data aggregated by the  field from the database.
-4.  **All major architectural refactoring is done.** The Three-Speed SSOT is fully integrated and observable from the database to the UI. Focus on the requested forensics tool.
+1.  **Current Task is Integration:** The most advanced HFT logic (cubic skew, adaptive smoothing) resides in  but is **not yet active**. Your immediate task is to wire this engine into the main trading loop in .
+2.  **State Isolation is Key:** When integrating, you MUST ensure that any stateful operations (like EMA smoothing) use a dictionary keyed by  to prevent data from one market influencing another.
+3.  **Use the Test Suites:** Three new, powerful verification scripts exist in . Run  and  after your changes to ensure you haven't introduced regressions.
+4.  **The Architecture is Layered:** The flow is now:  (main loop) -> calls  (for calculations) -> which uses  (for AI guidance). Do not bypass this flow.
 
 **documents and test reports created in this job**
--    (Updated to reflect Three-Speed architecture)
--   Numerous new test files added under 
+-    (Continuously updated)
+-   Telemetry data is generated at  during stress tests.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Request to build a Strategy Forensics engine script. (Status: IN PROGRESS)
-2.  **Agent:** Confirms seed script is moved and project is ready for next steps. (Status: Done)
-3.  **User:** Provides next steps after Lane Analytics UI is complete, including committing work and isolating the seed script. (Status: Done)
-4.  **Agent:** Confirms Lane Analytics UI is working and displaying seeded data. (Status: Done)
-5.  **User:** Provides a prompt to create a database seeding script to populate the UI for verification. (Status: Done)
-6.  **Agent:** Confirms the Lane Analytics UI is implemented and integrated correctly, but needs data. (Status: Done)
-7.  **User:** Provides a prompt to implement the production-grade Lane Analytics UI component. (Status: Done)
-8.  **Agent:** Confirms the strict API schema is implemented and working. (Status: Done)
-9.  **User:** Provides a prompt to upgrade the API contract with strict Pydantic models. (Status: Done)
-10. **Agent:** Confirms all UI labels are updated from Two-Speed to Three-Speed. (Status: Done)
+1.  **User (Current Task):** Integrate the  with State Isolation. (Status: IN PROGRESS)
+2.  **User:** Implement advanced HFT math (Cubic Skew, Adaptive Smoothing, Cliff Protection). (Status: DONE)
+3.  **User:** Audit the strategy layer and create a stress-test script (). (Status: DONE)
+4.  **User:** Implement Semantic Rounding for robust float comparisons in the order pruner. (Status: DONE)
+5.  **User:** Create a behavioral verification script () for the HFT compliance patch. (Status: DONE)
+6.  **User:** Finalize Polymarket HFT logic by implementing  and a compliance patch. (Status: DONE)
+7.  **User:** Audit the HFT execution logic for Polymarket compliance. (Status: DONE)
+8.  **User:** Implement Zero-Latency Forensic Telemetry and a stress test. (Status: DONE)
+9.  **User:** Implement the Async-Skewed-Adaptive HFT architecture. (Status: DONE)
+10. **User:** Perform an audit of HFT strategies to find out why they are failing. (Status: DONE)
 
 **Project Health Check:**
--   **Broken:** None. The backend test suite has been fixed.
+-   **Broken:** None.
 -   **Mocked:**
     -    mode in  simulates trade fills.
-    -   The  endpoint was mocked during API contract testing.
+    -   The verification and stress test scripts heavily mock market data and agent state to test specific logic in isolation.
 
 **3rd Party Integrations**
 -   **Polymarket CLOB API:** via .
--   **OpenAI GPT-4o-mini:** Used for sentiment analysis.
+-   **OpenAI GPT-4o-mini:** Used for sentiment analysis in the Alpha lane.
 
 **Testing status**
--   **Testing agent used after significant changes:** NO (Agent fixed tests manually)
+-   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** Yes, multiple new test files were created for API contracts, services, and integration logic (e.g., , , ).
--   **Known regressions:** None. The test suite is passing.
+-   **Test files created:**
+    -   
+    -   
+    -   
+-   **Known regressions:** None.
 
 **Credentials to test flow:**
 -   **Username:** 
 -   **Password:** 
 
 **What agent forgot to execute**
--   The agent initially used an incorrect database connection method ( style) for the MongoDB seeding script but quickly identified the error and corrected it to use  directly.
--   The agent initially seeded to the wrong collection () while the analytics service was reading from another (). This was also identified and fixed by updating the service to read from both.</analysis>
+-   The current task of integrating the  is still pending implementation. No other tasks were forgotten; the agent has systematically completed a long chain of dependent tasks.</analysis>
