@@ -1153,8 +1153,8 @@ class PaperTrader:
             edge = fair_value - yes_price
             min_hft_edge = 0.008  # 0.8% edge for tight markets
             
-            # DEBUG: Log the calculation
-            logger.debug(
+            # DEBUG: Log the calculation (temp INFO for visibility)
+            logger.info(
                 f"[HFT-EDGE] {market_id[:16]}... FV={fair_value:.4f} yes_price={yes_price:.4f} "
                 f"edge={edge:.4f} abs_edge={abs(edge):.4f} min={min_hft_edge}"
             )
@@ -1163,7 +1163,7 @@ class PaperTrader:
                 side = 'YES' if edge > 0 else 'NO'
                 
                 # Log the decision
-                logger.debug(f"[HFT-SIDE] edge={edge:.4f} > 0 is {edge > 0} → side={side}")
+                logger.info(f"[HFT-SIDE] edge={edge:.4f} > 0 is {edge > 0} → side={side}")
                 
                 hft_size = min(
                     available_capital * 0.02,  # Max 2% per HFT trade
