@@ -518,6 +518,273 @@ def test_scenario_e_combined_stress():
 
 
 # =============================================================================
+# PRODUCTION HFT MATH ENGINE TESTS
+# =============================================================================
+
+def test_scenario_f_cubic_skew():
+    """
+    Scenario F: Cubic Inventory Skew (Production HFT Math)
+    
+    Validates the "Hockey Stick" curve:
+    - Near-zero skew at 10% inventory
+    - Significant skew at 90% inventory
+    """
+    print("\n" + "=" * 70)
+    print("SCENARIO F: CUBIC INVENTORY SKEW (Production HFT Math)")
+    print("=" * 70)
+    
+    from strategies.hft_math import CubicInventorySkew, HFTMathConfig
+    
+    config = HFTMathConfig(max_position_limit=1000, skew_intensity=0.05)
+    skewer = CubicInventorySkew(config)
+    
+    raw_fair = 0.50
+    
+    # Test 1: 10% inventory (100 shares) - should have negligible skew
+    print("\n--- Test 1: Small Position (10% inventory) ---")
+    adj_10, skew_10, debug_10 = skewer.calculate_skew(100, raw_fair)
+    
+    print(f"Position: 100 / 1000 = 10%")
+    print(f"Pos Ratio Cubed: {debug_10['pos_ratio_cubed']:.6f}")
+    print(f"Skew: ${skew_10:.6f}")
+    print(f"Adjusted Fair: ${adj_10:.4f}")
+    
+    assert abs(skew_10) < 0.001, f"FAILED: 10% skew should be < 0.1 cent, got ${skew_10:.4f}"
+    
+    # Test 2: 50% inventory (500 shares) - moderate skew
+    print("\n--- Test 2: Medium Position (50% inventory) ---")
+    adj_50, skew_50, debug_50 = skewer.calculate_skew(500, raw_fair)
+    
+    print(f"Position: 500 / 1000 = 50%")
+    print(f"Pos Ratio Cubed: {debug_50['pos_ratio_cubed']:.6f}")
+    print(f"Skew: ${skew_50:.6f}")
+    print(f"Adjusted Fair: ${adj_50:.4f}")
+    
+    assert 0.005 < abs(skew_50) < 0.015, f"FAILED: 50% skew should be ~0.6 cent, got ${skew_50:.4f}"
+    
+    # Test 3: 90% inventory (900 shares) - significant skew
+    print("\n--- Test 3: Large Position (90% inventory) ---")
+    adj_90, skew_90, debug_90 = skewer.calculate_skew(900, raw_fair)
+    
+    print(f"Position: 900 / 1000 = 90%")
+    print(f"Pos Ratio Cubed: {debug_90['pos_ratio_cubed']:.6f}")
+    print(f"Skew: ${skew_90:.6f}")
+    print(f"Adjusted Fair: ${adj_90:.4f}")
+    
+    assert abs(skew_90) > 0.03, f"FAILED: 90% skew should be > 3 cents, got ${skew_90:.4f}"
+    
+    # Test 4: Verify cubic curve shape (90% skew >> 10% skew)
+    print("\n--- Test 4: Hockey Stick Shape Verification ---")
+    ratio = abs(skew_90) / abs(skew_10) if skew_10 != 0 else float('inf')
+    print(f"Skew ratio (90% / 10%): {ratio:.0f}x")
+    
+    assert ratio > 50, f"FAILED: 90% skew should be >>50x larger than 10% skew"
+    
+    # Print full curve
+    print("\n--- Full Skew Curve ---")
+    curve = skewer.calculate_skew_curve()
+    for pct, skew in curve.items():
+        bar = "█" * int(skew * 1000)
+        print(f"  {pct:3d}%: ${skew:.4f} {bar}")
+    
+    print("\n✅ PASSED: Cubic inventory skew follows hockey stick curve")
+    return True
+
+
+def test_scenario_g_jump_detection():
+    """
+    Scenario G: Adaptive Signal Smoothing (Jump Detection)
+    
+    Validates:
+    - 0.10 jump is caught instantly (bypass smoothing)
+    - 0.01 jitter is smoothed (EMA applied)
+    """
+    print("\n" + "=" * 70)
+    print("SCENARIO G: ADAPTIVE SIGNAL SMOOTHING (Jump Detection)")
+    print("=" * 70)
+    
+    from strategies.hft_math import AdaptiveSignalSmoother, HFTMathConfig
+    
+    config = HFTMathConfig(ema_alpha=0.2, jump_threshold=0.03)
+    smoother = AdaptiveSignalSmoother(config)
+    
+    market_id = "jump_test_market"
+    
+    # Test 1: Initial signal
+    print("\n--- Test 1: Initial Signal ---")
+    sig1, action1, debug1 = smoother.smooth_signal(market_id, 0.50)
+    print(f"Raw: 0.50 -> Smoothed: {sig1:.4f} | Action: {action1}")
+    assert action1 == "INITIALIZED", "First signal should be INITIALIZED"
+    
+    # Test 2: Small jitter (0.01 move) - should be smoothed
+    print("\n--- Test 2: Small Jitter (0.01 move) ---")
+    sig2, action2, debug2 = smoother.smooth_signal(market_id, 0.51)
+    print(f"Raw: 0.51 -> Smoothed: {sig2:.4f} | Action: {action2}")
+    print(f"  Diff: {debug2['diff']:.4f}, Threshold: {debug2['threshold']}")
+    
+    assert action2 == "EMA_SMOOTHED", "Small move should be smoothed"
+    assert sig2 < 0.51, "Smoothed signal should be less than raw (EMA lag)"
+    
+    # Test 3: Large jump (0.10 move) - should bypass smoothing
+    print("\n--- Test 3: Large Jump (0.10 move) ---")
+    smoother.reset(market_id)  # Reset for clean test
+    smoother.smooth_signal(market_id, 0.50)  # Initialize
+    sig3, action3, debug3 = smoother.smooth_signal(market_id, 0.60)  # 10 cent jump
+    
+    print(f"Raw: 0.60 -> Smoothed: {sig3:.4f} | Action: {action3}")
+    print(f"  Diff: {debug3['diff']:.4f}, Threshold: {debug3['threshold']}")
+    
+    assert action3 == "JUMP_DETECTED", "Large move should bypass smoothing"
+    assert sig3 == 0.60, "Jump signal should equal raw signal (no smoothing)"
+    
+    # Test 4: Sequence with mixed moves
+    print("\n--- Test 4: Mixed Sequence ---")
+    smoother.reset(market_id)
+    
+    signals = [0.50, 0.51, 0.52, 0.65, 0.66, 0.67]  # 0.65 is a jump
+    results = []
+    
+    for raw in signals:
+        smoothed, action, _ = smoother.smooth_signal(market_id, raw)
+        results.append((raw, smoothed, action))
+        status = "⚡ JUMP" if action == "JUMP_DETECTED" else "📊 SMOOTH"
+        print(f"  Raw: {raw:.2f} -> Smoothed: {smoothed:.4f} | {status}")
+    
+    # Verify jump at 0.65 was detected
+    jump_detected = any(r[2] == "JUMP_DETECTED" and r[0] == 0.65 for r in results)
+    assert jump_detected, "Jump at 0.65 should be detected"
+    
+    print("\n✅ PASSED: Jump detection bypasses smoothing correctly")
+    return True
+
+
+def test_scenario_h_cliff_protection():
+    """
+    Scenario H: Cliff Protection (Extreme Price Spreads)
+    
+    Validates spread widening at price extremes:
+    - Safe zone ($0.50): 1x spread
+    - Cliff zone ($0.10): 2x spread
+    - Extreme zone ($0.03): 3x spread
+    """
+    print("\n" + "=" * 70)
+    print("SCENARIO H: CLIFF PROTECTION (Extreme Price Spreads)")
+    print("=" * 70)
+    
+    from strategies.hft_math import CliffProtection, HFTMathConfig
+    
+    config = HFTMathConfig(
+        cliff_zone_threshold=0.15,
+        cliff_spread_multiplier=2.0,
+        extreme_zone_threshold=0.05,
+        extreme_spread_multiplier=3.0
+    )
+    cliff = CliffProtection(config)
+    
+    base_spread = 0.02
+    
+    # Test at various prices
+    test_prices = [0.50, 0.20, 0.10, 0.05, 0.03, 0.95, 0.97]
+    
+    print(f"\nBase spread: ${base_spread:.2f}")
+    print("\n{'Price':<8} | {'Zone':<10} | {'Mult':<6} | {'Spread':<8}")
+    print("-" * 40)
+    
+    for price in test_prices:
+        mult, zone, debug = cliff.calculate_spread_multiplier(price)
+        adj_spread, spread_debug = cliff.calculate_adjusted_spread(base_spread, price)
+        
+        print(f"${price:.2f}    | {zone:<10} | {mult:.1f}x   | ${adj_spread:.2f}")
+    
+    # Specific assertions
+    print("\n--- Verifying Zone Classifications ---")
+    
+    # Safe zone test
+    mult_50, zone_50, _ = cliff.calculate_spread_multiplier(0.50)
+    assert zone_50 == "SAFE" and mult_50 == 1.0, f"$0.50 should be SAFE zone"
+    print(f"✓ $0.50 -> SAFE zone (1x)")
+    
+    # Cliff zone test
+    mult_10, zone_10, _ = cliff.calculate_spread_multiplier(0.10)
+    assert zone_10 == "CLIFF" and mult_10 == 2.0, f"$0.10 should be CLIFF zone"
+    print(f"✓ $0.10 -> CLIFF zone (2x)")
+    
+    # Extreme zone test
+    mult_03, zone_03, _ = cliff.calculate_spread_multiplier(0.03)
+    assert zone_03 == "EXTREME" and mult_03 == 3.0, f"$0.03 should be EXTREME zone"
+    print(f"✓ $0.03 -> EXTREME zone (3x)")
+    
+    # Upper extreme test
+    mult_97, zone_97, _ = cliff.calculate_spread_multiplier(0.97)
+    assert zone_97 == "EXTREME" and mult_97 == 3.0, f"$0.97 should be EXTREME zone"
+    print(f"✓ $0.97 -> EXTREME zone (3x)")
+    
+    print("\n✅ PASSED: Cliff protection widens spreads at extremes")
+    return True
+
+
+def test_scenario_i_full_hft_engine():
+    """
+    Scenario I: Full HFT Math Engine Integration
+    
+    Tests all three components working together:
+    - Cubic skew + Jump detection + Cliff protection
+    """
+    print("\n" + "=" * 70)
+    print("SCENARIO I: FULL HFT MATH ENGINE INTEGRATION")
+    print("=" * 70)
+    
+    from strategies.hft_math import HFTMathEngine, HFTMathConfig
+    
+    config = HFTMathConfig(
+        max_position_limit=1000,
+        skew_intensity=0.05,
+        ema_alpha=0.2,
+        jump_threshold=0.03,
+        cliff_zone_threshold=0.15,
+        cliff_spread_multiplier=2.0
+    )
+    engine = HFTMathEngine(config)
+    
+    market_id = "integration_test"
+    
+    # Scenario: Bot is long 800 shares, price near cliff ($0.12), news jump
+    print("\nScenario: Long 800 shares, price $0.12 (cliff zone), news event")
+    
+    result = engine.calculate_quote(
+        market_id=market_id,
+        raw_fair_value=0.12,
+        raw_signal=0.15,  # Signal after jump
+        current_position=800,
+        base_spread=0.02
+    )
+    
+    print(f"\nRaw Fair Value: ${result['raw_fair_value']:.4f}")
+    print(f"Skew Adjustment: ${result['skew_amount']:.4f}")
+    print(f"Skewed Fair Value: ${result['fair_value']:.4f}")
+    print(f"Cliff Zone: {result['cliff_zone']}")
+    print(f"Spread Multiplier: {result['spread_multiplier']}x")
+    print(f"Final Spread: ${result['spread']:.2f}")
+    print(f"Final Quote: Bid ${result['bid']:.2f} / Ask ${result['ask']:.2f}")
+    
+    # Assertions
+    assert result['fair_value'] < result['raw_fair_value'], \
+        "Long position should skew fair value DOWN"
+    
+    assert result['cliff_zone'] == "CLIFF", \
+        f"Price $0.12 should be in CLIFF zone, got {result['cliff_zone']}"
+    
+    assert result['spread_multiplier'] == 2.0, \
+        "CLIFF zone should have 2x spread multiplier"
+    
+    assert result['spread'] >= 0.04, \
+        f"Spread should be at least $0.04 (2x base), got ${result['spread']}"
+    
+    print("\n✅ PASSED: Full HFT Math Engine integrates all components")
+    return True
+
+
+# =============================================================================
 # MAIN EXECUTION
 # =============================================================================
 
@@ -525,20 +792,20 @@ def run_all_tests():
     """Run all strategy logic stress tests."""
     print("\n" + "=" * 70)
     print("        STRATEGY LOGIC STRESS TEST SUITE")
-    print("        Gap Analysis + Behavioral Verification")
+    print("        Gap Analysis + Production HFT Math Verification")
     print("=" * 70)
     print(f"Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
     
-    # Print audit summary
+    # Print status summary
     print("\n" + "-" * 70)
-    print("GAP ANALYSIS SUMMARY (See full report in docstring)")
+    print("IMPLEMENTATION STATUS")
     print("-" * 70)
-    print("| Feature              | Status     | Priority |")
-    print("|---------------------|------------|----------|")
-    print("| Inventory Price Skew | ⚠️ Partial | HIGH     |")
-    print("| Signal Noise Filter  | ❌ Missing | HIGH     |")
-    print("| Theta Spread Adjust  | ❌ Missing | MEDIUM   |")
-    print("| Stale Data in Strats | ⚠️ Partial | MEDIUM   |")
+    print("| Feature              | Status     | Component              |")
+    print("|---------------------|------------|------------------------|")
+    print("| Cubic Inventory Skew | ✅ DONE    | strategies/hft_math.py |")
+    print("| Jump Detection       | ✅ DONE    | strategies/hft_math.py |")
+    print("| Cliff Protection     | ✅ DONE    | strategies/hft_math.py |")
+    print("| Signal Smoothing     | ✅ DONE    | strategies/hft_math.py |")
     print("-" * 70)
     
     tests = [
@@ -547,6 +814,10 @@ def run_all_tests():
         ("Scenario C: Panic (Volatility Expansion)", test_scenario_c_panic),
         ("Scenario D: Zombie (Stale Data)", test_scenario_d_zombie),
         ("Scenario E: Combined Stress", test_scenario_e_combined_stress),
+        ("Scenario F: Cubic Skew (Production)", test_scenario_f_cubic_skew),
+        ("Scenario G: Jump Detection (Production)", test_scenario_g_jump_detection),
+        ("Scenario H: Cliff Protection (Production)", test_scenario_h_cliff_protection),
+        ("Scenario I: Full HFT Engine (Integration)", test_scenario_i_full_hft_engine),
     ]
     
     results = []
