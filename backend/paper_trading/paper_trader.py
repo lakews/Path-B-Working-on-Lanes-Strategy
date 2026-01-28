@@ -1217,19 +1217,27 @@ class PaperTrader:
         # =============================================================
         # CHECK 3: DRIFT vs HYSTERESIS (Anti-Churn)
         # =============================================================
+        # Uses SEMANTIC ROUNDING for robust floating-point handling:
+        # - Raw drift like 0.01000001 becomes 0.01 (KEEP)
+        # - Raw drift like 0.01400000 becomes 0.014 (CANCEL)
+        # This is cleaner than epsilon buffers - explicitly states precision tolerance
         if not should_cancel:
-            drift = abs(order_price - current_ai_price)
+            raw_drift = abs(order_price - current_ai_price)
             
-            if drift <= self.HYSTERESIS_THRESHOLD:
+            # Round drift to 4 decimals (0.1 bps precision) to strip float noise
+            clean_drift = round(raw_drift, 4)
+            
+            if clean_drift <= self.HYSTERESIS_THRESHOLD:
                 # Small drift - KEEP the order to preserve queue priority
                 stats['orders_kept_hysteresis'] += 1
                 logger.debug(
-                    f"[HFT-PRUNE] Keeping {market_id[:16]}... order (drift={drift:.3f} <= {self.HYSTERESIS_THRESHOLD})"
+                    f"[HFT-PRUNE] Keeping {market_id[:16]}... order "
+                    f"(drift={clean_drift:.4f} <= {self.HYSTERESIS_THRESHOLD})"
                 )
             else:
                 # Large drift - AI has changed its mind significantly
                 should_cancel = True
-                cancel_reason = f"DRIFT ({drift:.3f} > {self.HYSTERESIS_THRESHOLD})"
+                cancel_reason = f"DRIFT ({clean_drift:.4f} > {self.HYSTERESIS_THRESHOLD})"
                 stats['orders_cancelled_drift'] += 1
         
         # =============================================================
