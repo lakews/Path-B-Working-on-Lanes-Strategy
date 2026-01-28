@@ -9,8 +9,10 @@ Comprehensive verification of strategy layer capabilities:
 - Volatility Adaptation (Spread Widening)
 - Stale Data Handling (Data Freshness)
 
-Part 1: Gap Analysis Audit (see docstring for findings)
-Part 2: Stress Test Scenarios A-D
+UPDATED: Now tests production HFT Math Engine:
+- Cubic Inventory Skew (Hockey Stick)
+- Adaptive Signal Smoothing (Jump Detection)
+- Cliff Protection (Extreme Price Spreads)
 
 Author: APEX TRADER QA Team
 Date: January 2026
