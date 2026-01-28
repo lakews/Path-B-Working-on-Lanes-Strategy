@@ -1421,16 +1421,14 @@ class PaperTrader:
             # =============================================================
             # STEP 2A: Adaptive Signal Smoothing (STATE ISOLATED)
             # =============================================================
-            # Get previous smoothed price for THIS market only (state isolation)
-            prev_smoothed = self.smoothing_memory.get(market_id, None)
-            
+            # The HFTMathEngine.smoother internally maintains state per market_id
             # Apply adaptive smoothing: EMA for noise, instant for jumps
             smoothed_price, signal_action, smooth_debug = self.hft_math_engine.smoother.smooth_signal(
                 market_id=market_id,
                 new_raw_signal=yes_price,
             )
             
-            # Store new smoothed price in isolated memory dict
+            # Store new smoothed price in our isolated memory dict (for reference/debugging)
             self.smoothing_memory[market_id] = smoothed_price
             
             # =============================================================
