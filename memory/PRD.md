@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 28, 2026 (Session 40 - HFT Math Integration with State Isolation)
+## Last Updated: January 28, 2026 (Session 40 - Critical P&L Bug Fix for NO Positions)
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -18,9 +18,37 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Async-Skewed-Adaptive HFT**: AI-guided execution with real-time volatility adaptation
 - **Zero-Latency Telemetry**: Non-blocking decision logging with Markout analysis
 - **Polymarket Compliance**: $0.01 tick grid, kill zones, min spread, integer shares
-- **HFT Math Engine**: Cubic Inventory Skew, Adaptive Signal Smoothing, Cliff Protection (NEW)
+- **HFT Math Engine**: Cubic Inventory Skew, Adaptive Signal Smoothing, Cliff Protection
+- **Side-Aware P&L Calculation**: Correct P&L for both YES and NO positions (CRITICAL FIX)
 
 ## Current Status (January 28, 2026)
+
+### January 28, 2026 - Session 40 (CRITICAL BUG FIX - P&L Calculation for NO Positions)
+
+- 🚨 **ROOT CAUSE OF HFT LOSSES IDENTIFIED AND FIXED**
+
+  **Symptom**: Delta-Neutral strategy losing $11,302 across 616 trades with only 1.8% win rate.
+
+  **Root Cause**: The Exit Engine was calculating P&L **without considering the position SIDE**. For NO positions, this resulted in **inverted P&L** - showing losses when the trade was actually profitable!
+
+  **Example of the bug**:
+  - NO position: Entry YES price = $0.81 (NO entry = $0.19)
+  - Exit YES price = $0.19 (NO exit = $0.81)
+  - **WRONG P&L** (old code): `(0.19 - 0.81) / 0.81 = -76.5%`
+  - **CORRECT P&L** (fixed): `(0.81 - 0.19) / 0.19 = +326%`
+
+  **Files Fixed**:
+  1. `/app/backend/trading/exit_engine.py` - Added `side` parameter, implemented side-aware P&L
+  2. `/app/backend/paper_trading/paper_trader.py` - Pass `side` to exit engine
+  3. `/app/backend/trading_bot.py` - Fixed live trading P&L calculation
+
+  **Test Results**:
+  ```
+  ✅ YES position (price UP = PROFIT): +20% (Expected: +20%)
+  ✅ YES position (price DOWN = LOSS): -20% (Expected: -20%)
+  ✅ NO position (YES price DOWN = PROFIT): +326% (Expected: +326%)
+  ✅ NO position (YES price UP = LOSS): -50% (Expected: -50%)
+  ```
 
 ### January 28, 2026 - Session 40 (HFT Math Integration with State Isolation - COMPLETE)
 
