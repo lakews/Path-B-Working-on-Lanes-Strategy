@@ -164,6 +164,7 @@ class ExitEngine:
         hours_to_expiry: float = None,
         trade_status: str = 'ACTIVE',
         peak_price: float = None,
+        side: str = 'YES',
     ) -> ExitDecision:
         """
         Check if a trade should exit.
@@ -171,24 +172,49 @@ class ExitEngine:
         Args:
             strategy: Trade strategy (e.g., 'alpha_directional')
             asset_class: Asset category (e.g., 'politics', 'sports')
-            entry_price: Original entry price (0-1)
-            current_price: Current market price (0-1)
+            entry_price: Original entry price (YES price, 0-1)
+            current_price: Current market price (YES price, 0-1)
             position_size_usd: Current position size in USD
             duration_hours: How long position has been held
             current_spread_pct: Current bid-ask spread as percentage
             hours_to_expiry: Hours until market expires (None if unknown)
             trade_status: 'ACTIVE' or 'FREE_RIDE'
             peak_price: Highest price seen (for trailing stops)
+            side: 'YES' or 'NO' - CRITICAL for correct P&L calculation
             
         Returns:
             ExitDecision with action and full context
         """
         self.stats['total_checks'] += 1
         
-        # Calculate PnL
-        pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+        # =================================================================
+        # SIDE-AWARE P&L CALCULATION (Critical Fix - Jan 2026)
+        # =================================================================
+        # For YES positions: P&L = (current - entry) / entry
+        # For NO positions: P&L = ((1 - current) - (1 - entry)) / (1 - entry)
+        #                       = (entry - current) / (1 - entry)
+        # This is because NO positions GAIN when YES price FALLS.
         
-        # Determine zone
+        if side.upper() == 'YES':
+            # YES position: profits when price goes UP
+            pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+            # Peak tracking for trailing stops (YES wants high prices)
+            effective_peak = peak_price if peak_price else current_price
+        else:
+            # NO position: profits when YES price goes DOWN (NO price goes UP)
+            no_entry = 1 - entry_price
+            no_current = 1 - current_price
+            pnl_pct = (no_current - no_entry) / no_entry if no_entry > 0 else 0
+            # Peak tracking for NO positions (NO wants low YES prices = high NO prices)
+            # For trailing stops, we track the HIGHEST NO price seen (lowest YES price)
+            if peak_price:
+                # peak_price stores YES price, convert to NO for comparison
+                no_peak = 1 - peak_price
+                effective_peak = 1 - no_peak  # Back to YES for internal logic
+            else:
+                effective_peak = current_price
+        
+        # Determine zone (based on YES entry price)
         zone = 'WHALE' if entry_price < self.global_settings['whale_threshold_price'] else 'CORE'
         
         # Get strategy config
