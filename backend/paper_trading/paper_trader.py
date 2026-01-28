@@ -1165,7 +1165,22 @@ class PaperTrader:
             if abs(edge) > min_hft_edge:
                 side = 'YES' if edge > 0 else 'NO'
                 
-                # Log the decision
+                # ==========================================================
+                # EDGE DIRECTION SAFEGUARD (Jan 2026)
+                # ==========================================================
+                # If price has moved significantly since Alpha analysis,
+                # the edge may have flipped direction. In this case, the
+                # original thesis is invalidated - DO NOT TRADE.
+                #
+                # We only trade if the current edge is POSITIVE (YES is underpriced)
+                # or if we're confident in the model's fair value prediction.
+                #
+                # TEMPORARY FIX: Only trade YES side until model is validated
+                # This prevents systematic losses from stale fair value predictions
+                if side == 'NO':
+                    logger.info(f"[HFT-SKIP] Skipping NO trade (edge flipped or FV < market)")
+                    return None
+                
                 logger.info(f"[HFT-SIDE] edge={edge:.4f} > 0 is {edge > 0} → side={side}")
                 
                 hft_size = min(
