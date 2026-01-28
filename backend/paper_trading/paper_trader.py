@@ -1076,6 +1076,9 @@ class PaperTrader:
             # Zone 2: TAKER_TIGHT, MAKER_WIDE (Core Zone - price >= $0.10)
             # Skip: ZOMBIE
             
+            # Log regime for debugging
+            logger.info(f"[HFT-REGIME] {market_id[:16]}... regime={regime} yes_price={yes_price:.4f} FV={fair_value:.4f}")
+            
             # Skip zombie markets
             if regime == MarketRegime.ZOMBIE:
                 return None
