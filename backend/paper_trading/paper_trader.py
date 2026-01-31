@@ -34,7 +34,7 @@ from threading import Lock
 
 # Sports Strategy imports
 from risk_config import get_sports_config, is_sports_market, SportsConfig
-from strategies.sports_strategy import get_sports_strategy, SportsArbitrageStrategy, SportsSignal
+from strategies.sports_strategy import get_sports_strategy, SportsArbitrageStrategy, SportsSignal, SportsTradeSignal
 
 logger = logging.getLogger(__name__)
 
