@@ -87,6 +87,30 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - ⚠️ **SECURITY NOTE**: API key is hardcoded in `sports_odds.py` for development. 
   Move to `.env` before production deployment.
 
+- ✅ **POLYMORPHIC UI COMPLETE (Jan 31, 2026)**
+
+  **File Modified:**
+  - `/app/frontend/src/pages/Positions.js`
+
+  **Polymorphic Column (Signal Strength):**
+  - Sports: Displays `Edge: X.X%` (green if >5%)
+  - Sentiment: Displays `Sentiment: XX/100` (blue if >75)
+
+  **Trade Detail Card (Conditional Rendering):**
+  | Mode | Header | Metrics | Text Area |
+  |------|--------|---------|-----------|
+  | **Sports** | "Statistical Arbitrage Opportunity" | Implied Prob vs Fair Value, Kelly Stake | "Arbitrage detected vs [X] bookmakers..." |
+  | **Legacy** | Standard | Sentiment Gauge, P&L | LLM reasoning (if available) |
+
+  **Sector Visualization:**
+  - New "Sector Allocation" pie chart showing category breakdown
+  - Sports allocation warning badge when >15% limit exceeded
+  - Pink color (#ec4899) for sports positions
+
+  **Helper Functions Added:**
+  - `isSportsPosition(position)` - Detects sports positions
+  - `getSignalStrengthDisplay(position)` - Polymorphic column rendering
+
 - ✅ **SPORTS STRATEGY INJECTION COMPLETE (Jan 31, 2026)**
 
   **Files Created:**
