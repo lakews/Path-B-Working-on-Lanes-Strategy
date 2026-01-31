@@ -2124,8 +2124,8 @@ const TradeRow = ({ trade, onViewSentiment, onRowClick }) => {
           )}
         </div>
       </td>
-      <td className="py-3 px-4 text-sm text-white/80 max-w-xs truncate" title={trade.market_question || trade.market_id}>
-        {trade.market_question || trade.market_id?.substring(0, 30) + '...'}
+      <td className="py-3 px-4 text-sm text-white/80 max-w-xs truncate" title={trade.market_question || trade.question || trade.market_id}>
+        {trade.market_question || trade.question || trade.market_id?.substring(0, 30) + '...'}
       </td>
       <td className="py-3 px-4 text-sm text-white/60">{STRATEGY_INFO[trade.strategy]?.name || trade.strategy}</td>
       <td className="py-3 px-4">
