@@ -1159,3 +1159,185 @@ def is_spread_acceptable(
 def get_deployed_capital(wallet_balance: float) -> float:
     """Calculate deployed capital from wallet balance."""
     return wallet_balance * (RISK.ALLOCATED_CAPITAL_PCT / 100)
+
+
+
+# =============================================================================
+# SPORTS ARBITRAGE CONFIGURATION (Task: Sports Strategy Injection)
+# =============================================================================
+# Single Source of Truth (SSOT) for Sports Strategy parameters.
+# All values flow to SportsArbitrageStrategy - NO hardcoded magic numbers.
+
+@dataclass
+class SportsConfig:
+    """
+    Sports Arbitrage Strategy Configuration.
+    
+    This is the SSOT for all sports-related parameters.
+    Values should be loaded from the database (Settings UI) or use defaults.
+    
+    CATEGORY ISOLATION:
+    - Sports markets bypass standard Alpha filters
+    - Lower volume/liquidity requirements (sports are often lower volume)
+    - NO-side betting ALLOWED (required for arbitrage)
+    - Higher price cap (heavy favorites trade at 0.98-0.99)
+    """
+    # =========================================================================
+    # ENABLE/DISABLE
+    # =========================================================================
+    enabled: bool = True
+    
+    # =========================================================================
+    # CAPITAL ALLOCATION
+    # =========================================================================
+    allocation_pct: float = 15.0       # % of deployed capital to sports
+    total_capital: float = 10000.0     # Total capital (set at runtime)
+    max_position_size: float = 100.0   # Max $ per sports trade
+    max_positions: int = 10            # Max concurrent sports positions
+    
+    # =========================================================================
+    # VOLUME/LIQUIDITY FILTERS (Lower than Alpha)
+    # =========================================================================
+    min_volume: float = 250.0          # Min 24h volume ($ - lower for sports)
+    min_liquidity: float = 250.0       # Min liquidity ($)
+    
+    # =========================================================================
+    # SPREAD FILTERS
+    # =========================================================================
+    max_spread: float = 0.15           # Max 15% spread (sports can be wide)
+    
+    # =========================================================================
+    # PRICE CAPS (Higher for sports - heavy favorites)
+    # =========================================================================
+    min_price_cap: float = 0.01        # Allow very low prices (longshots)
+    max_price_cap: float = 0.99        # Allow heavy favorites (0.98-0.99)
+    
+    # =========================================================================
+    # EDGE THRESHOLDS
+    # =========================================================================
+    min_edge: float = 0.02             # Min 2% edge to trade (after fees)
+    taker_fee: float = 0.02            # Polymarket taker fee
+    
+    # =========================================================================
+    # KELLY SIZING
+    # =========================================================================
+    kelly_fraction: float = 0.25       # Fractional Kelly (25%)
+    min_kelly: float = 0.05            # Min Kelly fraction
+    max_kelly: float = 0.20            # Max Kelly fraction
+    min_trade_size: float = 5.0        # Min trade size ($)
+    
+    # =========================================================================
+    # EXIT PARAMETERS
+    # =========================================================================
+    stop_loss_pct: float = 0.25        # 25% stop loss (wide for sports volatility)
+    take_profit_pct: float = 0.30      # 30% take profit
+    max_hold_hours: float = 48.0       # Max 48 hours (close before event)
+    
+    # =========================================================================
+    # ALLOWED SPORTS (for filtering)
+    # =========================================================================
+    allowed_sports: list = field(default_factory=lambda: [
+        'basketball_nba', 'americanfootball_nfl', 'baseball_mlb',
+        'icehockey_nhl', 'soccer_epl', 'mma_mixed_martial_arts'
+    ])
+    
+    # =========================================================================
+    # BETTING SIDE CONTROL
+    # =========================================================================
+    allow_no_bets: bool = True         # ALLOW NO-side betting (for arbitrage)
+    allow_yes_bets: bool = True        # Allow YES-side betting
+    
+    def __post_init__(self):
+        """Validate configuration on creation."""
+        if self.allocation_pct < 0 or self.allocation_pct > 100:
+            raise ValueError(f"allocation_pct must be 0-100, got {self.allocation_pct}")
+        if self.min_edge < 0:
+            raise ValueError(f"min_edge must be >= 0, got {self.min_edge}")
+        if self.max_price_cap <= self.min_price_cap:
+            raise ValueError(f"max_price_cap must be > min_price_cap")
+
+
+# Default sports config instance
+_sports_config: Optional[SportsConfig] = None
+
+
+def get_sports_config() -> SportsConfig:
+    """Get the sports configuration singleton."""
+    global _sports_config
+    if _sports_config is None:
+        _sports_config = SportsConfig()
+        logger.info(f"[SPORTS CONFIG] Initialized with defaults: "
+                   f"enabled={_sports_config.enabled}, "
+                   f"allocation={_sports_config.allocation_pct}%, "
+                   f"min_edge={_sports_config.min_edge}")
+    return _sports_config
+
+
+def update_sports_config(new_config: Dict) -> SportsConfig:
+    """
+    Update sports configuration from database settings.
+    
+    Args:
+        new_config: Dict with configuration values from Settings UI
+        
+    Returns:
+        Updated SportsConfig instance
+    """
+    global _sports_config
+    
+    # Create new config with updated values
+    current = get_sports_config()
+    
+    # Update fields if provided
+    for field_name in [
+        'enabled', 'allocation_pct', 'total_capital', 'max_position_size',
+        'max_positions', 'min_volume', 'min_liquidity', 'max_spread',
+        'min_price_cap', 'max_price_cap', 'min_edge', 'taker_fee',
+        'kelly_fraction', 'min_kelly', 'max_kelly', 'min_trade_size',
+        'stop_loss_pct', 'take_profit_pct', 'max_hold_hours',
+        'allow_no_bets', 'allow_yes_bets'
+    ]:
+        if field_name in new_config:
+            setattr(current, field_name, new_config[field_name])
+    
+    logger.info(f"[SPORTS CONFIG] Updated: {new_config}")
+    return current
+
+
+def is_sports_market(question: str) -> bool:
+    """
+    Detect if a market question is sports-related.
+    
+    Used by the filter pipeline to route to Sports strategy.
+    
+    Args:
+        question: Market question text
+        
+    Returns:
+        True if sports market, False otherwise
+    """
+    import re
+    question_lower = question.lower()
+    
+    # Pattern 1: "Team vs Team" or "Player vs Player"
+    vs_pattern = re.compile(r'\bvs\.?\b|\bversus\b', re.IGNORECASE)
+    
+    # Pattern 2: Sports keywords
+    sports_keywords = [
+        'nba', 'nfl', 'mlb', 'nhl', 'mls', 'ufc', 'boxing',
+        'premier league', 'champions league', 'world cup',
+        'super bowl', 'playoffs', 'finals', 'championship',
+        'lakers', 'celtics', 'warriors', 'chiefs', 'eagles',
+        'yankees', 'dodgers', 'cowboys', 'packers', 'heat',
+        'match', 'game tonight', 'beat', 'defeat'
+    ]
+    
+    # Pattern 3: Over/Under betting
+    ou_pattern = re.compile(r'\bo/u\b|over/under', re.IGNORECASE)
+    
+    # Check patterns
+    has_vs = bool(vs_pattern.search(question_lower))
+    has_keywords = any(kw in question_lower for kw in sports_keywords)
+    has_ou = bool(ou_pattern.search(question_lower))
+    
+    return has_vs or has_keywords or has_ou
