@@ -177,11 +177,13 @@ class EnhancedSentimentAnalyzer:
     3. Polymarket-native sentiment (order flow, volume momentum, whale signals)
     4. GitHub sentiment (for crypto/tech markets)
     5. Hybrid Smart-Cache for cost optimization
+    6. Sports Odds API (REAL arbitrage data - replaces LLM hallucination)
     
-    Smart Cache Strategy:
-    - Hot markets (high volume): 10 min cache TTL
-    - Cold markets (low volume): 60 min cache TTL
-    - Result: 100% market coverage without 100% of the cost
+    CATEGORY-AWARE FUSION (Stops LLM Hallucination):
+    - Sports: 80% Real Odds API + 20% Order Flow (LLM/GitHub DISABLED)
+    - Politics: 90% Order Flow + 10% LLM (GitHub DISABLED)
+    - Crypto: Full fusion (LLM + GitHub + Order Flow)
+    - Default: 100% Order Flow on API failure
     """
     
     def __init__(self):
@@ -196,6 +198,15 @@ class EnhancedSentimentAnalyzer:
                 logger.info("Smart LLM Sentiment Analyzer initialized (Hybrid Smart-Cache)")
             except Exception as e:
                 logger.warning(f"Could not initialize Smart LLM: {e}")
+        
+        # Initialize Sports Odds Analyzer (REAL DATA - No hallucination)
+        self.sports_odds = None
+        if SPORTS_ODDS_AVAILABLE:
+            try:
+                self.sports_odds = get_sports_odds_analyzer()
+                logger.info("Sports Odds Analyzer initialized (Real Arbitrage Data)")
+            except Exception as e:
+                logger.warning(f"Could not initialize Sports Odds: {e}")
         
         # Initialize Polymarket sentiment extractor
         try:
