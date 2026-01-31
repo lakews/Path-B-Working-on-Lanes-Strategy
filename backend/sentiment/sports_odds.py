@@ -19,6 +19,10 @@ Data Flow:
 3. Return fair_value for use in trading decisions
 
 API: https://the-odds-api.com/
+
+FIXES APPLIED (Jan 31, 2026):
+- BUG 1: Word boundary matching prevents "Seahawks"/"Hawks" collision
+- BUG 5: Tennis keywords and players now supported
 """
 
 import asyncio
@@ -30,6 +34,12 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Tuple
 from cachetools import TTLCache
 from rapidfuzz import fuzz, process
+
+# Import the new robust matching utilities
+from utils.sports_constants import (
+    SPORT_KEYS, TEAM_DATABASE, 
+    match_sport_and_teams, detect_sport, extract_teams, is_sports_market
+)
 
 logger = logging.getLogger(__name__)
 
