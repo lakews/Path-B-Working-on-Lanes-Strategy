@@ -11,10 +11,12 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const STRATEGIES = [
-  { id: 'delta_neutral', name: 'Delta-Neutral', icon: Scale, color: '#06b6d4' },
-  { id: 'volatility_exploitation', name: 'Volatility Exploitation', icon: Zap, color: '#f59e0b' },
-  { id: 'alpha_directional', name: 'Alpha-Directional', icon: TrendingUp, color: '#10b981' },
-  { id: 'arbitrage', name: 'Multi-Market Arbitrage', icon: GitBranch, color: '#8b5cf6' },
+  { id: 'hft_maker', name: 'HFT Market Making', icon: Zap, color: '#06b6d4' },
+  { id: 'hft_gamma_scalp', name: 'HFT Gamma Scalp', icon: Activity, color: '#f59e0b' },
+  { id: 'alpha_directional', name: 'Alpha Directional', icon: TrendingUp, color: '#10b981' },
+  { id: 'gamma_scalp', name: 'Gamma (Whale Zone)', icon: Target, color: '#8b5cf6' },
+  { id: 'sports_arbitrage', name: 'Sports Arbitrage', icon: GitBranch, color: '#ec4899' },
+  { id: 'delta_neutral', name: 'Delta-Neutral (Legacy)', icon: Scale, color: '#64748b' },
 ];
 
 // Define the parameter grids for transparency
