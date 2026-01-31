@@ -440,12 +440,14 @@ class SportsOddsAnalyzer:
             match = re.search(pattern, question_lower)
             if match:
                 subject = match.group(1).strip()
-                # Expand alias
-                subject = TEAM_ALIASES.get(subject, subject)
+                # Expand alias using TEAM_DATABASE
+                team_info = TEAM_DATABASE.get(subject.lower())
+                if team_info:
+                    subject = team_info[0]  # Full team name
                 
                 # Match to home/away
-                home_score = fuzz.ratio(subject, home_team.lower())
-                away_score = fuzz.ratio(subject, away_team.lower())
+                home_score = fuzz.ratio(subject.lower(), home_team.lower())
+                away_score = fuzz.ratio(subject.lower(), away_team.lower())
                 
                 if home_score > away_score and home_score > 50:
                     return home_team
