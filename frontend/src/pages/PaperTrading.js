@@ -1052,7 +1052,7 @@ const SizingBreakdownModal = ({ isOpen, position, onClose }) => {
         <div className="flex-1 overflow-auto p-4 space-y-5">
           {/* Market Info */}
           <div className="bg-white/5 rounded-lg p-3">
-            <p className="text-white/80 text-sm font-medium">{position.market_question}</p>
+            <p className="text-white/80 text-sm font-medium">{position.market_question || position.question || 'N/A'}</p>
             <div className="flex gap-4 mt-2 text-xs">
               <span className="text-white/50">Side: <span className={position.side === 'YES' ? 'text-green-400' : 'text-red-400'}>{position.side}</span></span>
               <span className="text-white/50">Strategy: <span className="text-white/80">{position.strategy}</span></span>
