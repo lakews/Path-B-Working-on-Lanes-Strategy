@@ -203,7 +203,7 @@ TEAM_ALIASES = {
     'arsenal': 'arsenal',
     'chelsea': 'chelsea',
     'tottenham': 'tottenham hotspur',
-    'spurs': 'tottenham hotspur',
+    'tottenham spurs': 'tottenham hotspur',
     'real madrid': 'real madrid',
     'barca': 'barcelona',
     'barcelona': 'barcelona',
