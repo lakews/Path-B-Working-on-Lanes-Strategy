@@ -1145,10 +1145,30 @@ class PaperTrader:
                 if abs(edge) > min_hft_edge:
                     side = 'YES' if edge > 0 else 'NO'
                     
-                    # EDGE DIRECTION SAFEGUARD: Only trade YES until model validated
+                    # ==========================================================
+                    # EDGE DIRECTION SAFEGUARD (Jan 2026)
+                    # ==========================================================
+                    # If price has moved significantly since Alpha analysis,
+                    # the edge may have flipped direction. In this case, the
+                    # original thesis is invalidated - DO NOT TRADE.
+                    #
+                    # EXCEPTION: Sports markets can trade NO side (for arbitrage)
+                    # Sports config controls whether NO bets are allowed
+                    #
+                    # TEMPORARY FIX: Only trade YES side until model is validated
+                    # This prevents systematic losses from stale fair value predictions
+                    market_category = market_data.get('category', '').lower()
+                    is_sports = market_data.get('_is_sports', False) or is_sports_market(market_data.get('question', ''))
+                    sports_config = get_sports_config()
+                    
                     if side == 'NO':
-                        logger.debug(f"[HFT-SKIP] Skipping NO maker trade")
-                        return None
+                        # Sports markets: Allow NO if enabled in config
+                        if is_sports and sports_config.enabled and sports_config.allow_no_bets:
+                            logger.debug(f"[HFT] Sports NO trade allowed: {market_id[:16]}...")
+                            pass  # Allow the trade
+                        else:
+                            logger.debug(f"[HFT-SKIP] Skipping NO maker trade")
+                            return None
                     
                     hft_size = min(
                         available_capital * 0.02,  # Max 2% per trade
