@@ -48,7 +48,6 @@ SPORT_KEYS = {
     'baseball': 'baseball_mlb',
     'nhl': 'icehockey_nhl',
     'hockey': 'icehockey_nhl',
-    'mls': 'soccer_usa_mls',
     
     # College Sports
     'ncaab': 'basketball_ncaab',
