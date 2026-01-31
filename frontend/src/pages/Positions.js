@@ -213,6 +213,34 @@ const Positions = () => {
     count: data.count
   }));
 
+  // ============================================================================
+  // SPORTS ALLOCATION TRACKING (Task: Polymorphic UI)
+  // ============================================================================
+  // Calculate sports allocation vs SSOT limit
+  const sportsPositions = positions.filter(p => isSportsPosition(p));
+  const sportsValue = sportsPositions.reduce((sum, p) => sum + ((p.shares || 0) * (p.current_price || 0)), 0);
+  const sportsAllocationPct = totalValue > 0 ? (sportsValue / totalValue) : 0;
+  const sportsOverLimit = sportsAllocationPct > SPORTS_ALLOCATION_LIMIT;
+
+  // Category breakdown for sector chart
+  const categoryBreakdown = positions.reduce((acc, p) => {
+    const category = (p.category || p.asset_class || 'unknown').toLowerCase();
+    if (!acc[category]) {
+      acc[category] = { count: 0, value: 0, pnl: 0 };
+    }
+    acc[category].count++;
+    acc[category].value += (p.shares || 0) * (p.current_price || 0);
+    acc[category].pnl += p.unrealized_pnl || 0;
+    return acc;
+  }, {});
+
+  const categoryChartData = Object.entries(categoryBreakdown).map(([name, data]) => ({
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    value: data.value,
+    count: data.count,
+    isOverLimit: name === 'sports' && sportsOverLimit
+  }));
+
   // Group by side (long/short)
   const longPositions = positions.filter(p => p.side === 'BUY');
   const shortPositions = positions.filter(p => p.side === 'SELL');
