@@ -141,30 +141,62 @@ class SportsArbitrageStrategy:
                 reason=f"Volume ${volume_24h:.0f} < min ${self.config.min_volume}"
             )
         
-        # Calculate edges for both sides
-        # YES edge: fair_value - market_price (positive = underpriced)
-        # NO edge: (1 - fair_value) - no_price (positive = underpriced)
-        yes_edge = fair_value - yes_price
-        no_edge = (1 - fair_value) - no_price
+        # ====================================================================
+        # BUG 2 FIX: EXPLICIT DIRECTIONAL LOGIC
+        # ====================================================================
+        # fair_value = probability the YES outcome is correct (from bookmakers)
+        # yes_price = cost to buy YES on Polymarket
+        # no_price = cost to buy NO on Polymarket (should be 1 - yes_price)
+        #
+        # EDGE CALCULATION:
+        # - YES edge = fair_value - yes_price (positive = YES is underpriced)
+        # - NO edge = (1 - fair_value) - no_price (positive = NO is underpriced)
+        #
+        # SIGNAL:
+        # - BUY YES if we believe YES will win AND it's cheap
+        # - BUY NO if we believe NO will win AND it's cheap
+        # ====================================================================
         
-        # Fee adjustment (Polymarket taker fee)
+        # Ensure no_price is correctly calculated
+        no_price = 1.0 - yes_price
+        fair_no_prob = 1.0 - fair_value
+        
+        # Calculate raw edges (before fees)
+        yes_edge_raw = fair_value - yes_price  # Positive = YES underpriced
+        no_edge_raw = fair_no_prob - no_price   # Positive = NO underpriced
+        
+        # Apply taker fee
         taker_fee = self.config.taker_fee
-        yes_edge_net = yes_edge - taker_fee
-        no_edge_net = no_edge - taker_fee
+        yes_edge_net = yes_edge_raw - taker_fee
+        no_edge_net = no_edge_raw - taker_fee
         
-        # Determine best side
-        if yes_edge_net > no_edge_net and yes_edge_net > self.config.min_edge:
+        # Log the calculation for debugging
+        logger.debug(
+            f"[SPORTS EDGE] FV={fair_value:.3f} | YES: price={yes_price:.3f} edge={yes_edge_net:.4f} | "
+            f"NO: price={no_price:.3f} edge={no_edge_net:.4f}"
+        )
+        
+        # Determine best side - ONLY trade if we have positive edge after fees
+        side = None
+        edge = 0.0
+        edge_pct = 0.0
+        market_price = yes_price
+        
+        # Check YES first (prefer YES if edges are equal)
+        if yes_edge_net >= self.config.min_edge and yes_edge_net >= no_edge_net:
             side = 'YES'
             edge = yes_edge_net
             edge_pct = edge / yes_price if yes_price > 0 else 0
             market_price = yes_price
-        elif no_edge_net > yes_edge_net and no_edge_net > self.config.min_edge:
+        # Then check NO
+        elif no_edge_net >= self.config.min_edge and no_edge_net > yes_edge_net:
             side = 'NO'
             edge = no_edge_net
             edge_pct = edge / no_price if no_price > 0 else 0
             market_price = no_price
-        else:
-            # No edge exceeds threshold
+        
+        # No tradeable edge
+        if side is None:
             return SportsTradeSignal(
                 signal=SportsSignal.NO_EDGE,
                 side=None,
@@ -174,7 +206,7 @@ class SportsArbitrageStrategy:
                 edge_pct=0.0,
                 suggested_size=0.0,
                 confidence=0.0,
-                reason=f"Edge {max(yes_edge_net, no_edge_net):.4f} < min {self.config.min_edge}"
+                reason=f"Edge YES={yes_edge_net:.4f} NO={no_edge_net:.4f} < min {self.config.min_edge}"
             )
         
         # Calculate position size using Kelly Criterion
