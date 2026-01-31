@@ -6077,13 +6077,25 @@ class PaperTrader:
             quality_stats['total_fetched'] = len(live_markets)
             
             # ================================================================
-            # PRE-FLIGHT QUALITY CONTROL - The "Bouncer" (Dual-Zone Aware)
+            # PRE-FLIGHT QUALITY CONTROL - The "Bouncer" (Category-Aware)
             # ================================================================
             # Task 21: Different thresholds for Whale Zone vs Core Zone
+            # Task: Sports Strategy - Dynamic overrides for sports markets
+            
+            # Get sports config for dynamic overrides
+            sports_config = get_sports_config()
             
             quality_markets = []
+            sports_markets_passed = 0
+            
             for m in live_markets:
                 market_id = m.get('id', 'unknown')[:16]
+                question = m.get('question', '')
+                
+                # ==========================================================
+                # CATEGORY DETECTION (Sports Green Lane)
+                # ==========================================================
+                is_sports = is_sports_market(question)
                 
                 # PRICE VALIDATION (First - cheapest check)
                 yes_price = m.get('yes_price')
@@ -6093,27 +6105,40 @@ class PaperTrader:
                 
                 yes_price = float(yes_price)
                 
-                # KILL SWITCH CHECK (Global safety)
-                if yes_price < RISK.KILL_SWITCH_LOW:
+                # ==========================================================
+                # DYNAMIC PRICE CAPS (Sports Override)
+                # ==========================================================
+                # Sports: Allow heavy favorites (0.98-0.99) and longshots (0.01)
+                # Non-Sports: Standard kill switch (0.03-0.97)
+                if is_sports and sports_config.enabled:
+                    safe_min = sports_config.min_price_cap
+                    safe_max = sports_config.max_price_cap
+                else:
+                    safe_min = RISK.KILL_SWITCH_LOW
+                    safe_max = RISK.KILL_SWITCH_HIGH
+                
+                if yes_price < safe_min:
                     quality_stats['rejected_extreme_price'] += 1
                     continue
-                if yes_price > RISK.KILL_SWITCH_HIGH:
+                if yes_price > safe_max:
                     quality_stats['rejected_extreme_price'] += 1
                     continue
                 
                 # ============================================================
-                # DUAL-ZONE VOLUME CHECK
+                # DYNAMIC VOLUME/LIQUIDITY CHECK (Sports Override)
                 # ============================================================
-                # Whale Zone: Lower volume threshold (looking for convexity)
-                # Core Zone: Higher volume threshold (need liquidity for size)
-                
                 volume_24h = float(m.get('volume_24h', 0) or 0)
                 liquidity = float(m.get('liquidity', 0) or 0)
                 
-                # Get zone-specific parameters
-                zone_params = get_zone_parameters(yes_price)
-                min_volume = zone_params['min_volume']
-                min_liquidity = zone_params['min_liquidity']
+                # Sports markets use sports_config thresholds (lower)
+                # Non-sports use zone-specific thresholds
+                if is_sports and sports_config.enabled:
+                    min_volume = sports_config.min_volume
+                    min_liquidity = sports_config.min_liquidity
+                else:
+                    zone_params = get_zone_parameters(yes_price)
+                    min_volume = zone_params['min_volume']
+                    min_liquidity = zone_params['min_liquidity']
                 
                 if volume_24h < min_volume:
                     quality_stats['rejected_low_volume'] += 1
@@ -6129,10 +6154,16 @@ class PaperTrader:
                 else:
                     quality_stats['core_zone_count'] += 1
                 
-                # Market passed zone-specific quality checks!
+                # Track sports markets separately
+                if is_sports:
+                    sports_markets_passed += 1
+                    m['_is_sports'] = True  # Flag for routing
+                
+                # Market passed category-aware quality checks!
                 quality_markets.append(m)
             
             quality_stats['passed_quality'] = len(quality_markets)
+            quality_stats['sports_markets'] = sports_markets_passed
             
             # ================================================================
             # SORT BY VOLUME & TAKE TOP N
