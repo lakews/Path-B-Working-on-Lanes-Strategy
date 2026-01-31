@@ -330,85 +330,91 @@ class SportsOddsAnalyzer:
         
         return teams[:2]  # Return max 2 teams
     
-    def _devig_odds(self, outcomes: List[Dict]) -> Dict[str, float]:
+    def remove_vig(self, odds_list: List[Dict], odds_format: str = 'decimal') -> Dict[str, float]:
         """
-        Remove bookmaker's vig (fee) to get true probabilities.
+        DEVIGGING: Remove bookmaker's vig (fee) to get TRUE PROBABILITY.
         
-        Formula: True_Prob = Implied_Prob / Sum_of_All_Implied_Probs
+        THE MATH:
+        ---------
+        Step A: Calculate Implied Probability for all outcomes
+                Implied = 1 / DecimalOdds
+                
+        Step B: Sum them (this will be > 1.0 due to vig)
+                TotalImplied = Sum(Implied)
+                
+        Step C: Calculate True Probability
+                TrueProb = Implied / TotalImplied
         
-        For American odds:
-        - Negative odds (favorite): Implied_Prob = |odds| / (|odds| + 100)
-        - Positive odds (underdog): Implied_Prob = 100 / (odds + 100)
+        Args:
+            odds_list: List of outcomes with 'name' and 'price' keys
+            odds_format: 'decimal' (European) or 'american' (US)
+            
+        Returns:
+            Dict mapping team name to true probability (0-1)
+            
+        Example:
+            Input:  Lakers 1.91 (-110), Warriors 1.91 (-110)
+            Step A: Implied = 1/1.91 = 0.5236 each
+            Step B: Total = 0.5236 + 0.5236 = 1.0471 (4.71% vig)
+            Step C: True = 0.5236 / 1.0471 = 0.5000 each (50/50)
         """
-        if not outcomes:
+        if not odds_list:
             return {}
         
         implied_probs = {}
         
-        for outcome in outcomes:
+        for outcome in odds_list:
             name = outcome.get('name', '')
             price = outcome.get('price', 0)
             
-            if price == 0:
+            if not name or price == 0:
                 continue
             
-            # Convert American odds to implied probability
-            if price < 0:
-                # Favorite: -150 means 150/(150+100) = 60%
-                implied_prob = abs(price) / (abs(price) + 100)
-            else:
-                # Underdog: +200 means 100/(200+100) = 33.3%
-                implied_prob = 100 / (price + 100)
+            # Step A: Calculate Implied Probability
+            if odds_format == 'decimal':
+                if price <= 1:
+                    continue  # Invalid decimal odds
+                implied_prob = 1 / price
+            else:  # American odds
+                if price < 0:
+                    # Favorite: -150 means 150/(150+100) = 60%
+                    implied_prob = abs(price) / (abs(price) + 100)
+                else:
+                    # Underdog: +200 means 100/(200+100) = 33.3%
+                    implied_prob = 100 / (price + 100)
             
             implied_probs[name] = implied_prob
         
-        # Calculate total implied probability (includes vig)
+        # Step B: Sum all implied probabilities (will be > 1.0)
         total_implied = sum(implied_probs.values())
         
         if total_implied == 0:
             return {}
         
-        # Devig: normalize to remove the overround
+        # Log the overround (vig percentage)
+        vig_percentage = (total_implied - 1.0) * 100
+        logger.debug(f"Bookmaker vig: {vig_percentage:.2f}% (Total implied: {total_implied:.4f})")
+        
+        # Step C: Calculate True Probability (remove the vig)
         true_probs = {}
         for name, implied in implied_probs.items():
             true_probs[name] = implied / total_implied
         
         return true_probs
     
+    def _devig_odds(self, outcomes: List[Dict]) -> Dict[str, float]:
+        """
+        Remove bookmaker's vig from American odds to get true probabilities.
+        Wrapper around remove_vig for American odds format.
+        """
+        return self.remove_vig(outcomes, odds_format='american')
+    
     def _devig_decimal_odds(self, outcomes: List[Dict]) -> Dict[str, float]:
         """
-        Devig decimal odds (European format).
-        
-        Decimal odds: Implied_Prob = 1 / decimal_odds
+        Remove bookmaker's vig from Decimal odds to get true probabilities.
+        Wrapper around remove_vig for Decimal odds format.
         """
-        if not outcomes:
-            return {}
-        
-        implied_probs = {}
-        
-        for outcome in outcomes:
-            name = outcome.get('name', '')
-            price = outcome.get('price', 0)
-            
-            if price <= 1:  # Invalid decimal odds
-                continue
-            
-            # Decimal odds to implied probability
-            implied_prob = 1 / price
-            implied_probs[name] = implied_prob
-        
-        # Calculate overround
-        total_implied = sum(implied_probs.values())
-        
-        if total_implied == 0:
-            return {}
-        
-        # Devig
-        true_probs = {}
-        for name, implied in implied_probs.items():
-            true_probs[name] = implied / total_implied
-        
-        return true_probs
+        return self.remove_vig(outcomes, odds_format='decimal')
     
     async def _fetch_events(self, sport_key: str) -> List[Dict]:
         """Fetch upcoming events for a sport."""
