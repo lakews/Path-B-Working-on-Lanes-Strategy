@@ -1308,7 +1308,7 @@ def is_sports_market(question: str) -> bool:
     """
     Detect if a market question is sports-related.
     
-    Used by the filter pipeline to route to Sports strategy.
+    Uses the robust matching from utils/sports_constants.py.
     
     Args:
         question: Market question text
@@ -1316,28 +1316,6 @@ def is_sports_market(question: str) -> bool:
     Returns:
         True if sports market, False otherwise
     """
-    import re
-    question_lower = question.lower()
-    
-    # Pattern 1: "Team vs Team" or "Player vs Player"
-    vs_pattern = re.compile(r'\bvs\.?\b|\bversus\b', re.IGNORECASE)
-    
-    # Pattern 2: Sports keywords
-    sports_keywords = [
-        'nba', 'nfl', 'mlb', 'nhl', 'mls', 'ufc', 'boxing',
-        'premier league', 'champions league', 'world cup',
-        'super bowl', 'playoffs', 'finals', 'championship',
-        'lakers', 'celtics', 'warriors', 'chiefs', 'eagles',
-        'yankees', 'dodgers', 'cowboys', 'packers', 'heat',
-        'match', 'game tonight', 'beat', 'defeat'
-    ]
-    
-    # Pattern 3: Over/Under betting
-    ou_pattern = re.compile(r'\bo/u\b|over/under', re.IGNORECASE)
-    
-    # Check patterns
-    has_vs = bool(vs_pattern.search(question_lower))
-    has_keywords = any(kw in question_lower for kw in sports_keywords)
-    has_ou = bool(ou_pattern.search(question_lower))
-    
-    return has_vs or has_keywords or has_ou
+    # Import from the centralized sports constants module
+    from utils.sports_constants import is_sports_market as _is_sports_market
+    return _is_sports_market(question)
