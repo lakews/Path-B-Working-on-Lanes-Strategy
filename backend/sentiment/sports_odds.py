@@ -1,13 +1,18 @@
 """
-Sports Odds Integration for APEX TRADER
-=========================================
+Sports Odds Integration for APEX TRADER - Statistical Arbitrage Engine
+========================================================================
 
 Real-time sports betting odds from The Odds API to replace LLM hallucination
 on sports markets with actual arbitrage-derived fair values.
 
+ARCHITECTURE:
+- Primary Truth Source for Sports Markets
+- Uses "Devigging" to extract True Probability from bookmaker odds
+- Strict isolation: GitHub/LLM sentiment BANNED for sports
+
 Data Flow:
 1. Polymarket sports question -> Fuzzy match to Odds API event
-2. Fetch bookmaker odds -> Devig to get true probabilities
+2. Fetch bookmaker odds -> Remove Vig to get True Probability
 3. Return fair_value for use in trading decisions
 
 API: https://the-odds-api.com/
@@ -16,6 +21,7 @@ API: https://the-odds-api.com/
 import asyncio
 import aiohttp
 import logging
+import os
 import re
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Tuple
@@ -26,15 +32,16 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# TODO: SECURITY RISK - MOVE THIS KEY TO .ENV FILE BEFORE PRODUCTION DEPLOYMENT
+# TODO: SECURITY ALERT - MOVE THIS KEY TO .ENV FILE BEFORE LIVE DEPLOYMENT
 # =============================================================================
-# This API key is hardcoded for rapid development. Before deploying to 
-# production, this MUST be moved to an environment variable:
+# CRITICAL: This API key is hardcoded for rapid development ONLY.
+# Before deploying to production, this MUST be moved to an environment variable:
 #   1. Add to backend/.env: ODDS_API_KEY=your_key_here
 #   2. Replace the line below with: ODDS_API_KEY = os.environ.get('ODDS_API_KEY')
 #   3. Delete this comment block
+# FAILURE TO DO THIS WILL EXPOSE YOUR API KEY IN VERSION CONTROL
 # =============================================================================
-ODDS_API_KEY = "4c8d0ae8cc9df5fecafca3a874cfdc4f"
+ODDS_API_KEY = os.environ.get('ODDS_API_KEY', "4c8d0ae8cc9df5fecafca3a874cfdc4f")
 
 
 # Sport key mappings for The Odds API
