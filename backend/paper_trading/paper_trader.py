@@ -2234,20 +2234,200 @@ class PaperTrader:
             logger.debug(f"[ALPHA] Error analyzing market: {e}")
             return None
     
+    # =============================================================================
+    # SPORTS STRATEGY PROCESSING (Task: Sports Strategy Injection)
+    # =============================================================================
+    
+    async def _process_sports_market(self, market_data: Dict, sports_config: SportsConfig):
+        """
+        Process a sports market using SportsArbitrageStrategy.
+        
+        This is the "Green Lane" for sports markets:
+        - Uses real bookmaker odds from sports_odds.py
+        - Lower volume/liquidity requirements
+        - NO-side betting allowed
+        - Bypasses Alpha's LLM sentiment (which hallucinates on sports)
+        
+        Args:
+            market_data: Polymarket market data
+            sports_config: SportsConfig from SSOT
+        """
+        try:
+            market_id = market_data.get('id', '')
+            question = market_data.get('question', '')
+            yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+            
+            # Skip if already have position
+            if market_id in self.paper_positions:
+                return
+            
+            logger.info(f"[SPORTS] Processing: {question[:50]}...")
+            
+            # ==========================================================
+            # STEP 1: Get real odds from Sports Odds API
+            # ==========================================================
+            sentiment_analyzer = get_enhanced_sentiment_analyzer()
+            
+            # The enhanced sentiment analyzer handles sports routing internally
+            # It will use 85% sports odds + 15% order flow for sports markets
+            analysis = await sentiment_analyzer.analyze(market_data)
+            
+            # Extract fair value (from sports odds or fallback)
+            fair_value = analysis.get('combined_sentiment', 0.5)
+            sports_confidence = analysis.get('sports_confidence', 0)
+            sports_matched_event = analysis.get('sports_matched_event')
+            
+            # ==========================================================
+            # STEP 2: Generate signal using Sports Strategy
+            # ==========================================================
+            sports_strategy = get_sports_strategy(sports_config)
+            
+            signal = sports_strategy.generate_signal(
+                market_data=market_data,
+                fair_value=fair_value,
+                sports_analysis=analysis
+            )
+            
+            # ==========================================================
+            # STEP 3: Execute if signal is valid
+            # ==========================================================
+            if signal.signal in [SportsSignal.BUY_YES, SportsSignal.BUY_NO]:
+                # Validate side against config
+                if signal.side == 'NO' and not sports_config.allow_no_bets:
+                    logger.info(f"[SPORTS] NO-side blocked by config: {question[:40]}...")
+                    return
+                
+                if signal.side == 'YES' and not sports_config.allow_yes_bets:
+                    logger.info(f"[SPORTS] YES-side blocked by config: {question[:40]}...")
+                    return
+                
+                # Check capital availability
+                current_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+                available_capital = self.deployed_capital - current_deployed
+                
+                # Use sports allocation limit
+                sports_allocation = sports_config.allocation_pct / 100 * self.deployed_capital
+                sports_deployed = sum(
+                    p.get('size', 0) for p in self.paper_positions.values()
+                    if p.get('strategy') == 'sports_arbitrage'
+                )
+                sports_available = sports_allocation - sports_deployed
+                
+                if sports_available < sports_config.min_trade_size:
+                    logger.debug(f"[SPORTS] Allocation exhausted: ${sports_available:.2f} available")
+                    return
+                
+                # Cap size by sports allocation
+                trade_size = min(signal.suggested_size, sports_available, available_capital)
+                
+                if trade_size < sports_config.min_trade_size:
+                    return
+                
+                # Execute the trade
+                await self._execute_sports_trade(
+                    market_data=market_data,
+                    signal=signal,
+                    trade_size=trade_size,
+                    analysis=analysis
+                )
+            else:
+                logger.debug(f"[SPORTS] No signal: {signal.reason}")
+                
+        except Exception as e:
+            logger.error(f"[SPORTS] Error processing market: {e}")
+    
+    async def _execute_sports_trade(
+        self,
+        market_data: Dict,
+        signal: 'SportsTradeSignal',
+        trade_size: float,
+        analysis: Dict
+    ):
+        """
+        Execute a sports arbitrage trade.
+        
+        Args:
+            market_data: Polymarket market data
+            signal: SportsTradeSignal from strategy
+            trade_size: Trade size in USD
+            analysis: Full sentiment analysis
+        """
+        try:
+            market_id = market_data.get('id', '')
+            question = market_data.get('question', '')
+            
+            # Calculate entry price
+            if signal.side == 'YES':
+                entry_price = float(market_data.get('yes_price', 0.5))
+            else:
+                entry_price = 1 - float(market_data.get('yes_price', 0.5))
+            
+            # Calculate shares
+            shares = trade_size / entry_price if entry_price > 0 else 0
+            
+            # Create position
+            position = {
+                'market_id': market_id,
+                'question': question[:100],
+                'side': signal.side,
+                'size': trade_size,
+                'shares': shares,
+                'entry_price': entry_price,
+                'entry_time': datetime.now(timezone.utc).isoformat(),
+                'strategy': 'sports_arbitrage',
+                'fair_value': signal.fair_value,
+                'edge': signal.edge,
+                'edge_pct': signal.edge_pct,
+                'confidence': signal.confidence,
+                'sports_matched_event': signal.matched_event,
+                'bookmakers_used': signal.bookmakers_used,
+                'lane': 'SPORTS',
+            }
+            
+            # Add to positions
+            self.paper_positions[market_id] = position
+            
+            # Track P&L by strategy
+            if 'sports_arbitrage' not in self.strategy_equity:
+                self.strategy_equity['sports_arbitrage'] = 0.0
+            
+            # Track in lane equity
+            if 'SPORTS' not in self.lane_equity:
+                self.lane_equity['SPORTS'] = 0.0
+            
+            # Log the trade
+            logger.info(
+                f"🏈 [SPORTS TRADE] {signal.side} ${trade_size:.2f} @ {entry_price:.4f} | "
+                f"FV={signal.fair_value:.4f} Edge={signal.edge:.4f} ({signal.edge_pct:.2%}) | "
+                f"Event: {signal.matched_event.get('home_team', 'N/A') if signal.matched_event else 'N/A'} vs "
+                f"{signal.matched_event.get('away_team', 'N/A') if signal.matched_event else 'N/A'}"
+            )
+            
+            # Record trade in DB
+            self.db.paper_trades.insert_one({
+                **position,
+                'trade_type': 'ENTRY',
+                'timestamp': datetime.now(timezone.utc),
+            })
+            
+        except Exception as e:
+            logger.error(f"[SPORTS] Error executing trade: {e}")
+    
     async def _execute_alpha_trade(self, market_data: Dict, analysis: Dict):
         """Execute an Alpha (directional) trade."""
         try:
             market_id = market_data.get('id', '')
             
             # ==========================================================
-            # LIVE EVENT FILTER (Jan 2026 - Critical Fix)
+            # SPORTS ROUTING CHECK (Skip - already processed)
             # ==========================================================
+            # If this is a sports market, it should have been routed
+            # to _process_sports_market already. Double-check here.
             question = market_data.get('question', '').lower()
             
-            import re
-            sports_pattern = re.compile(r'\bvs\.?\b|\bversus\b', re.IGNORECASE)
-            is_sports_matchup = bool(sports_pattern.search(question))
-            is_over_under = 'o/u' in question or 'over/under' in question
+            if is_sports_market(question):
+                logger.debug(f"[ALPHA] Sports market should use sports handler: {question[:40]}...")
+                return
             
             if is_sports_matchup or is_over_under:
                 logger.info(f"[ALPHA] BLOCKED live sports: {question[:40]}...")
