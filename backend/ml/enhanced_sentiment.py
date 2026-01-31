@@ -316,7 +316,13 @@ class EnhancedSentimentAnalyzer:
     
     async def analyze(self, market_data: Dict, trades: List = None, order_book: Dict = None) -> Dict:
         """
-        Comprehensive sentiment analysis combining all sources.
+        Comprehensive sentiment analysis with CATEGORY-AWARE FUSION.
+        
+        FUSION STRATEGY (Stops LLM Hallucination):
+        - Sports: 80% Real Odds API + 20% Order Flow (LLM=0%, GitHub=0%)
+        - Politics: 90% Order Flow + 10% LLM (GitHub=0%)
+        - Crypto: Full fusion (30% Order Flow + 35% LLM + 20% GitHub + 15% Correlation)
+        - Other/Fallback: 100% Order Flow
         
         Args:
             market_data: Market info (price, volume, etc.)
@@ -324,22 +330,15 @@ class EnhancedSentimentAnalyzer:
             order_book: Optional order book for spread analysis
         
         Returns:
-        {
-            'llm_sentiment': float,      # LLM-based analysis
-            'llm_confidence': float,     # LLM confidence
-            'correlation_sentiment': float,  # Cross-market correlation
-            'correlation_strength': float,   # Correlation confidence
-            'polymarket_sentiment': float,   # Polymarket-native signals
-            'polymarket_momentum': dict,     # Sentiment momentum (1h/6h/24h)
-            'combined_sentiment': float,     # Final fused sentiment
-            'combined_confidence': float,    # Overall confidence
-            'analysis_source': str,          # What sources were used
-        }
+            Dict with sentiment scores, confidence, and source breakdown
         """
         market_id = market_data.get('id', '')
         question = market_data.get('question', '')
-        category = market_data.get('category', 'unknown')
+        raw_category = market_data.get('category', 'unknown')
         yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+        
+        # Detect TRUE category for proper weighting
+        detected_category = self._detect_category(market_data)
         
         result = {
             'llm_sentiment': 0.5,
@@ -350,15 +349,21 @@ class EnhancedSentimentAnalyzer:
             'polymarket_sentiment': 0.5,
             'polymarket_confidence': 0.0,
             'polymarket_momentum': {},
+            'sports_sentiment': 0.5,
+            'sports_confidence': 0.0,
+            'github_sentiment': 0.5,
+            'github_confidence': 0.0,
             'combined_sentiment': 0.5,
             'combined_confidence': 0.0,
-            'analysis_source': 'none'
+            'analysis_source': 'none',
+            'detected_category': detected_category,
+            'raw_category': raw_category,
         }
         
         sources_used = []
         
         # ================================================================
-        # 1. POLYMARKET-NATIVE SENTIMENT (NEW - No external API needed)
+        # 1. POLYMARKET-NATIVE SENTIMENT (Always collected - Order Flow)
         # ================================================================
         if self.polymarket_sentiment:
             try:
@@ -387,18 +392,46 @@ class EnhancedSentimentAnalyzer:
                     poly_confidence += 0.15
                 
                 result['polymarket_confidence'] = min(0.9, poly_confidence)
-                sources_used.append('polymarket')
+                sources_used.append('orderflow')
                 
             except Exception as e:
                 logger.debug(f"Polymarket sentiment error: {e}")
         
         # ================================================================
-        # 2. LLM SENTIMENT (HYBRID SMART-CACHE)
+        # 2. SPORTS ODDS API (ONLY for sports markets - REAL DATA)
         # ================================================================
-        # Uses the new Smart LLM module with activity-based caching:
-        # - Hot markets (>$50k volume): 10 min cache
-        # - Cold markets (<$50k volume): 60 min cache
-        if self.smart_llm:
+        sports_fair_value = 0.5
+        sports_confidence = 0.0
+        
+        if detected_category == 'sports' and self.sports_odds:
+            try:
+                sports_result = await self.sports_odds.analyze_market(market_data)
+                
+                if sports_result.get('is_sports_market'):
+                    sports_fair_value = sports_result.get('sports_fair_value', 0.5)
+                    sports_confidence = sports_result.get('sports_confidence', 0.0)
+                    
+                    result['sports_sentiment'] = sports_fair_value
+                    result['sports_confidence'] = sports_confidence
+                    result['sports_matched_event'] = sports_result.get('matched_event')
+                    result['sports_all_fair_values'] = sports_result.get('all_fair_values', {})
+                    result['sports_bookmakers_used'] = sports_result.get('bookmakers_used', 0)
+                    
+                    if sports_confidence > 0:
+                        sources_used.append('sports_odds')
+                        logger.info(f"[SPORTS] Real odds for {question[:40]}: "
+                                   f"fair_value={sports_fair_value:.3f}")
+                else:
+                    result['sports_error'] = sports_result.get('error', 'not_sports_market')
+                    
+            except Exception as e:
+                logger.warning(f"Sports odds error: {e}")
+                result['sports_error'] = str(e)
+        
+        # ================================================================
+        # 3. LLM SENTIMENT (DISABLED for sports, limited for politics)
+        # ================================================================
+        if detected_category not in ['sports'] and self.smart_llm:
             try:
                 llm_sentiment, llm_confidence = await self.smart_llm.get_sentiment(market_data)
                 result['llm_sentiment'] = llm_sentiment
@@ -410,27 +443,27 @@ class EnhancedSentimentAnalyzer:
                     
             except Exception as e:
                 logger.debug(f"Smart LLM sentiment error: {e}")
-            sources_used.append('llm')
+        elif detected_category == 'sports':
+            result['llm_disabled_reason'] = 'Sports markets use real odds API instead of LLM'
         
         # ================================================================
-        # 3. CROSS-MARKET CORRELATION
+        # 4. CROSS-MARKET CORRELATION
         # ================================================================
         correlation_result = self.correlation_tracker.get_correlation_signal(
-            market_id, category, question, yes_price
+            market_id, raw_category, question, yes_price
         )
         result['correlation_sentiment'] = correlation_result['correlation_sentiment']
         result['correlation_strength'] = correlation_result['correlation_strength']
         result['category_momentum'] = correlation_result['category_momentum']
         result['related_groups'] = correlation_result['related_groups']
-        sources_used.append('correlation')
         
         # ================================================================
-        # 4. GITHUB SENTIMENT (for crypto/tech markets)
+        # 5. GITHUB SENTIMENT (ONLY for crypto/tech markets)
         # ================================================================
         github_sentiment = 0.5
         github_confidence = 0.0
         
-        if self.github_sentiment:
+        if detected_category == 'crypto' and self.github_sentiment:
             try:
                 github_result = await self.github_sentiment.analyze_market(market_data)
                 
@@ -449,41 +482,140 @@ class EnhancedSentimentAnalyzer:
                         
             except Exception as e:
                 logger.debug(f"GitHub sentiment error: {e}")
+        elif detected_category != 'crypto':
+            result['github_disabled_reason'] = f'GitHub only used for crypto (detected: {detected_category})'
         
         # ================================================================
-        # 5. COMBINE ALL SIGNALS
+        # 6. CATEGORY-AWARE FUSION (THE KEY FIX)
         # ================================================================
-        # Dynamic weighting based on confidence
-        poly_weight = result.get('polymarket_confidence', 0) * 0.30   # Polymarket: 30% max
-        llm_weight = result['llm_confidence'] * 0.35                   # LLM: 35% max  
-        corr_weight = result['correlation_strength'] * 0.15            # Correlation: 15% max
-        github_weight = github_confidence * 0.20                       # GitHub: 20% max (for crypto/tech)
+        combined_sentiment = 0.5
+        combined_confidence = 0.0
+        weight_breakdown = {}
         
-        total_weight = poly_weight + llm_weight + corr_weight + github_weight
-        
-        if total_weight > 0:
-            result['combined_sentiment'] = (
-                result.get('polymarket_sentiment', 0.5) * poly_weight +
-                result['llm_sentiment'] * llm_weight +
-                result['correlation_sentiment'] * corr_weight +
-                github_sentiment * github_weight
-            ) / total_weight
-            result['combined_confidence'] = min(0.95, total_weight)
+        if detected_category == 'sports':
+            # ============================================================
+            # SPORTS: 80% Real Odds + 20% Order Flow
+            # LLM = 0%, GitHub = 0% (COMPLETELY DISCONNECTED)
+            # ============================================================
+            if sports_confidence > 0:
+                # Real odds available - use them!
+                sports_weight = 0.80
+                orderflow_weight = 0.20
+                
+                combined_sentiment = (
+                    sports_fair_value * sports_weight +
+                    result['polymarket_sentiment'] * orderflow_weight
+                )
+                combined_confidence = min(0.95, sports_confidence * 0.8 + result['polymarket_confidence'] * 0.2)
+                
+                weight_breakdown = {
+                    'sports_odds': sports_weight,
+                    'orderflow': orderflow_weight,
+                    'llm': 0.0,  # DISABLED
+                    'github': 0.0,  # DISABLED
+                    'correlation': 0.0,
+                }
+                result['fusion_strategy'] = 'SPORTS: 80% Real Odds + 20% Order Flow (LLM DISABLED)'
+            else:
+                # Fallback: 100% Order Flow if odds API fails
+                combined_sentiment = result['polymarket_sentiment']
+                combined_confidence = result['polymarket_confidence']
+                
+                weight_breakdown = {
+                    'sports_odds': 0.0,  # API failed
+                    'orderflow': 1.0,  # 100% fallback
+                    'llm': 0.0,
+                    'github': 0.0,
+                    'correlation': 0.0,
+                }
+                result['fusion_strategy'] = 'SPORTS FALLBACK: 100% Order Flow (Odds API unavailable)'
+                
+        elif detected_category == 'politics':
+            # ============================================================
+            # POLITICS: 90% Order Flow + 10% LLM
+            # GitHub = 0% (NOT RELEVANT)
+            # ============================================================
+            orderflow_weight = 0.90
+            llm_weight = 0.10 if result['llm_confidence'] > 0 else 0.0
+            
+            # Normalize if LLM unavailable
+            if llm_weight == 0:
+                orderflow_weight = 1.0
+            
+            combined_sentiment = (
+                result['polymarket_sentiment'] * orderflow_weight +
+                result['llm_sentiment'] * llm_weight
+            )
+            combined_confidence = min(0.90, result['polymarket_confidence'] * 0.9 + result['llm_confidence'] * 0.1)
+            
+            weight_breakdown = {
+                'sports_odds': 0.0,
+                'orderflow': orderflow_weight,
+                'llm': llm_weight,
+                'github': 0.0,  # DISABLED
+                'correlation': 0.0,
+            }
+            result['fusion_strategy'] = 'POLITICS: 90% Order Flow + 10% LLM (GitHub DISABLED)'
+            
+        elif detected_category == 'crypto':
+            # ============================================================
+            # CRYPTO: Full Fusion (Order Flow + LLM + GitHub + Correlation)
+            # This is the original strategy - crypto benefits from all signals
+            # ============================================================
+            poly_weight = result.get('polymarket_confidence', 0) * 0.30
+            llm_weight = result['llm_confidence'] * 0.35
+            corr_weight = result['correlation_strength'] * 0.15
+            gh_weight = github_confidence * 0.20
+            
+            total_weight = poly_weight + llm_weight + corr_weight + gh_weight
+            
+            if total_weight > 0:
+                combined_sentiment = (
+                    result['polymarket_sentiment'] * poly_weight +
+                    result['llm_sentiment'] * llm_weight +
+                    result['correlation_sentiment'] * corr_weight +
+                    github_sentiment * gh_weight
+                ) / total_weight
+                combined_confidence = min(0.95, total_weight)
+            else:
+                combined_sentiment = yes_price
+                combined_confidence = 0.1
+            
+            weight_breakdown = {
+                'sports_odds': 0.0,
+                'orderflow': round(poly_weight / max(total_weight, 0.01), 3),
+                'llm': round(llm_weight / max(total_weight, 0.01), 3),
+                'github': round(gh_weight / max(total_weight, 0.01), 3),
+                'correlation': round(corr_weight / max(total_weight, 0.01), 3),
+            }
+            result['fusion_strategy'] = 'CRYPTO: Full Fusion (30% Order Flow + 35% LLM + 20% GitHub + 15% Corr)'
+            
         else:
-            # No external signals - use price as fallback
-            result['combined_sentiment'] = yes_price
-            result['combined_confidence'] = 0.1
+            # ============================================================
+            # OTHER/UNKNOWN: 100% Order Flow (safest default)
+            # ============================================================
+            combined_sentiment = result['polymarket_sentiment']
+            combined_confidence = result['polymarket_confidence']
+            
+            weight_breakdown = {
+                'sports_odds': 0.0,
+                'orderflow': 1.0,
+                'llm': 0.0,
+                'github': 0.0,
+                'correlation': 0.0,
+            }
+            result['fusion_strategy'] = f'OTHER ({detected_category}): 100% Order Flow (safe default)'
         
+        result['combined_sentiment'] = combined_sentiment
+        result['combined_confidence'] = combined_confidence
+        result['weight_breakdown'] = weight_breakdown
         result['analysis_source'] = '+'.join(sources_used) if sources_used else 'fallback'
         
-        # Add weight breakdown for debugging
-        result['weight_breakdown'] = {
-            'polymarket': round(poly_weight, 3),
-            'llm': round(llm_weight, 3),
-            'correlation': round(corr_weight, 3),
-            'github': round(github_weight, 3),
-            'total': round(total_weight, 3)
-        }
+        # Log the fusion decision for debugging
+        logger.info(f"[FUSION] {question[:30]}... | "
+                   f"Category={detected_category} | "
+                   f"Combined={combined_sentiment:.3f} | "
+                   f"Strategy={result['fusion_strategy'][:50]}")
         
         return result
 
