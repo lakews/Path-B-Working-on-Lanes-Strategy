@@ -543,8 +543,11 @@ class EnhancedSentimentAnalyzer:
                 
         elif detected_category == 'politics':
             # ============================================================
-            # POLITICS: 90% Order Flow + 10% LLM
-            # GitHub = 0% (NOT RELEVANT)
+            # POLITICS / ECONOMICS: 90% Order Flow + 10% LLM
+            # ============================================================
+            # BANNED SOURCES: GitHub = 0%, Social = 0% (unless very specific)
+            # RATIONALE: GitHub activity does NOT influence political outcomes.
+            #            LLM provides context only, not primary truth.
             # ============================================================
             orderflow_weight = 0.90
             llm_weight = 0.10 if result['llm_confidence'] > 0 else 0.0
@@ -563,10 +566,12 @@ class EnhancedSentimentAnalyzer:
                 'sports_odds': 0.0,
                 'orderflow': orderflow_weight,
                 'llm': llm_weight,
-                'github': 0.0,  # DISABLED
+                'github': 0.0,  # BANNED
+                'social': 0.0,  # BANNED (unless very specific)
                 'correlation': 0.0,
             }
-            result['fusion_strategy'] = 'POLITICS: 90% Order Flow + 10% LLM (GitHub DISABLED)'
+            result['fusion_strategy'] = 'POLITICS: 90% Order Flow + 10% LLM (GitHub/Social BANNED)'
+            result['banned_sources'] = ['github', 'social']
             
         elif detected_category == 'crypto':
             # ============================================================
