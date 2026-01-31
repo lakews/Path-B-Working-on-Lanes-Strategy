@@ -87,6 +87,35 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - ⚠️ **SECURITY NOTE**: API key is hardcoded in `sports_odds.py` for development. 
   Move to `.env` before production deployment.
 
+- ✅ **SPORTS STRATEGY INJECTION COMPLETE (Jan 31, 2026)**
+
+  **Files Created:**
+  - `/app/backend/strategies/sports_strategy.py` - SportsArbitrageStrategy class
+  - `/app/backend/risk_config.py` - SportsConfig (SSOT)
+
+  **Filter Pipeline Modifications (paper_trader.py):**
+  - **Line ~1920**: Sports detection routes to `_process_sports_market()` instead of blocking
+  - **Line ~6080**: Dynamic volume/liquidity/price caps from SportsConfig
+  - **Line ~1160, ~1210**: NO-side betting allowed for sports (controlled by config)
+  
+  **Sports Config (SSOT) Parameters:**
+  | Parameter | Default | Description |
+  |-----------|---------|-------------|
+  | `enabled` | True | Enable/disable sports strategy |
+  | `allocation_pct` | 15% | Capital allocation to sports |
+  | `min_volume` | $250 | Lower than Alpha ($1000) |
+  | `min_liquidity` | $250 | Lower than Alpha |
+  | `max_spread` | 15% | Wide spreads allowed |
+  | `min_edge` | 2% | Minimum edge to trade |
+  | `max_price_cap` | 0.99 | Heavy favorites allowed |
+  | `allow_no_bets` | True | Enable NO-side arbitrage |
+
+  **Category Routing:**
+  | Market Type | Detection | Routing |
+  |-------------|-----------|---------|
+  | Sports ("vs", team names) | `is_sports_market()` | → SportsArbitrageStrategy |
+  | Non-Sports | Default | → Alpha/HFT Lane |
+
 ### Previous Session (January 28, 2026) - P&L Bug Fix
 
 - ✅ **P&L BUG FIX VALIDATED**
