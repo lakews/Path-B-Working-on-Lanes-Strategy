@@ -1899,20 +1899,34 @@ class PaperTrader:
                     market_id = market_data.get('id')
                     
                     # ==========================================================
-                    # LIVE EVENT FILTER (Jan 2026 - Critical Fix)
+                    # CATEGORY DETECTION (Task: Sports Strategy Injection)
                     # ==========================================================
+                    # Detect if this is a sports market for category isolation
                     question = market_data.get('question', '').lower()
+                    raw_category = market_data.get('category', 'unknown').lower()
                     
-                    # Skip live sports matchups (Team vs Team)
-                    import re
-                    sports_pattern = re.compile(r'(vs\.?|versus)\s*(?!.*\d{4})', re.IGNORECASE)
-                    is_sports_matchup = bool(sports_pattern.search(question))
-                    is_over_under = 'o/u' in question or 'over/under' in question
+                    # Check if sports market using SSOT function
+                    is_sports = is_sports_market(question)
                     
-                    if is_sports_matchup or is_over_under:
-                        logger.debug(f"[ALPHA] Skipping live sports: {question[:40]}...")
-                        continue
+                    # ==========================================================
+                    # SPORTS ROUTING (Green Lane)
+                    # ==========================================================
+                    # If sports market and sports strategy enabled, route to sports handler
+                    # Do NOT skip/block - process through sports pipeline instead
+                    if is_sports:
+                        sports_config = get_sports_config()
+                        
+                        if sports_config.enabled:
+                            # Route to Sports Strategy (bypass Alpha filters)
+                            await self._process_sports_market(market_data, sports_config)
+                            continue  # Skip Alpha processing for sports
+                        else:
+                            # Sports disabled - skip silently
+                            logger.debug(f"[ALPHA] Sports market skipped (disabled): {question[:40]}...")
+                            continue
                     
+                    # ==========================================================
+                    # LEGACY: Alpha Lane Processing (Non-Sports)
                     # ==========================================================
                     # FIX: Fetch fresh orderbook (The Brain needs eyes)
                     # ==========================================================
