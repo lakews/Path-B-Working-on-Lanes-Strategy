@@ -19,13 +19,14 @@ const STRATEGY_COLORS = {
   'arbitrage': '#10b981'
 };
 
-// All available strategies and asset classes
+// All available strategies and asset classes (Current Architecture)
 const ALL_STRATEGIES = [
-  { value: 'delta_neutral', label: 'Delta-Neutral', shortLabel: 'Delta', color: '#06b6d4' },
-  { value: 'volatility_exploitation', label: 'Volatility', shortLabel: 'Vol', color: '#f59e0b' },
-  { value: 'alpha_directional', label: 'Alpha', shortLabel: 'Alpha', color: '#10b981' },
-  { value: 'arbitrage', label: 'Arbitrage', shortLabel: 'Arb', color: '#8b5cf6' },
-  { value: 'sports_arbitrage', label: 'Sports Arb', shortLabel: 'Sports', color: '#ec4899' }
+  { value: 'hft_maker', label: 'HFT Market Making', shortLabel: 'HFT-MM', color: '#06b6d4' },
+  { value: 'hft_gamma_scalp', label: 'HFT Gamma Scalp', shortLabel: 'HFT-G', color: '#f59e0b' },
+  { value: 'alpha_directional', label: 'Alpha Directional', shortLabel: 'Alpha', color: '#10b981' },
+  { value: 'gamma_scalp', label: 'Gamma (Whale Zone)', shortLabel: 'Gamma', color: '#8b5cf6' },
+  { value: 'sports_arbitrage', label: 'Sports Arbitrage', shortLabel: 'Sports', color: '#ec4899' },
+  { value: 'delta_neutral', label: 'Delta-Neutral', shortLabel: 'Delta', color: '#64748b' }
 ];
 
 const ALL_ASSET_CLASSES = [
