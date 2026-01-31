@@ -189,7 +189,7 @@ const TradeDetailsModal = ({ isOpen, trade, onClose }) => {
           {/* Market Info */}
           <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-lg p-4">
             <SectionHeader icon={FileText} title="Market" color="cyan" />
-            <p className="text-white font-medium mb-2">{trade.market_question || 'N/A'}</p>
+            <p className="text-white font-medium mb-2">{trade.market_question || trade.question || 'N/A'}</p>
             <p className="text-xs text-white/40 font-mono break-all">{trade.market_id}</p>
           </div>
           
