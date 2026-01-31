@@ -695,9 +695,11 @@ class SportsOddsAnalyzer:
         
         return None
     
-    async def analyze_market(self, market_data: Dict) -> Dict:
+    async def analyze_market(self, market_data: Dict) -> Optional[Dict]:
         """
         Analyze a sports market using real bookmaker odds.
+        
+        Returns None if module is disabled (no API key), triggering Order Flow fallback.
         
         Args:
             market_data: Polymarket market data containing:
@@ -713,7 +715,16 @@ class SportsOddsAnalyzer:
                 - bookmakers_used: Number of bookmakers aggregated
                 - is_sports_market: Whether this is a valid sports market
                 - source: 'odds_api'
+            
+            Returns None if module is disabled.
         """
+        # ================================================================
+        # SECURITY GUARD: Return None if module is disabled
+        # ================================================================
+        if not self.active:
+            logger.info("Sports Odds Module disabled - returning None (will fallback to Order Flow)")
+            return None
+        
         question = market_data.get('question', '')
         
         result = {
@@ -745,6 +756,11 @@ class SportsOddsAnalyzer:
         # Step 3: Fetch events and odds
         try:
             odds_data = await self._fetch_odds(sport_key)
+            
+            # Handle None return (module disabled) or empty list (no data)
+            if odds_data is None:
+                result['error'] = 'module_disabled'
+                return result
             
             if not odds_data:
                 result['error'] = 'no_odds_data'
