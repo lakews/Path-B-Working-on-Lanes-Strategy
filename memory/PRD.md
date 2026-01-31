@@ -1,6 +1,6 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 28, 2026 (Session 40 - Critical P&L Bug Fix for NO Positions)
+## Last Updated: January 31, 2026 (Session 41 - Sports Odds Integration & Category-Aware Fusion)
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
@@ -20,10 +20,51 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
 - **Polymarket Compliance**: $0.01 tick grid, kill zones, min spread, integer shares
 - **HFT Math Engine**: Cubic Inventory Skew, Adaptive Signal Smoothing, Cliff Protection
 - **Side-Aware P&L Calculation**: Correct P&L for both YES and NO positions (CRITICAL FIX)
+- **Category-Aware Sentiment Fusion**: Different signal weights for Sports/Politics/Crypto (NEW)
+- **Sports Odds Integration**: Real arbitrage data from The Odds API (NEW)
 
-## Current Status (January 28, 2026)
+## Current Status (January 31, 2026)
 
-### January 28, 2026 - Session 40 (P&L Bug Fix Validation - COMPLETE)
+### January 31, 2026 - Session 41 (Sports Odds Integration & Category-Aware Fusion)
+
+- ✅ **SPORTS ODDS API INTEGRATION COMPLETE**
+
+  **What Was Built:**
+  - New `backend/sentiment/sports_odds.py` module using The Odds API
+  - Real-time sports betting odds from multiple bookmakers
+  - Devigging algorithm to extract true probabilities from bookmaker lines
+  - Fuzzy matching (rapidfuzz) to match Polymarket questions to API events
+  - TTLCache (30 min) to respect free tier API limits (500 req/month)
+  
+  **Key Features:**
+  - Sport detection from market questions (NBA, NFL, MLB, NHL, UFC, Soccer, etc.)
+  - Team name extraction and alias mapping
+  - Multi-bookmaker aggregation for more accurate fair values
+  - Market subject determination (which team the question is asking about)
+
+- ✅ **CATEGORY-AWARE SENTIMENT FUSION COMPLETE**
+
+  **The Problem Solved:**
+  - LLM was "hallucinating" fair values for sports markets (no access to live scores)
+  - GitHub sentiment was being applied to non-crypto markets (irrelevant)
+  - All markets were using the same fusion weights (inappropriate)
+
+  **New Fusion Strategy:**
+  | Category | Sports Odds | Order Flow | LLM | GitHub | Correlation |
+  |----------|-------------|------------|-----|--------|-------------|
+  | **Sports** | 80% | 20% | 0% (DISABLED) | 0% | 0% |
+  | **Politics** | 0% | 90% | 10% | 0% (DISABLED) | 0% |
+  | **Crypto** | 0% | 30% | 35% | 20% | 15% |
+  | **Other** | 0% | 100% | 0% | 0% | 0% |
+
+  **Fallback Logic:**
+  - If Sports Odds API fails → 100% Order Flow (never fallback to LLM for sports)
+  - Detected category takes precedence over raw API category
+
+- ⚠️ **SECURITY NOTE**: API key is hardcoded in `sports_odds.py` for development. 
+  Move to `.env` before production deployment.
+
+### Previous Session (January 28, 2026) - P&L Bug Fix
 
 - ✅ **P&L BUG FIX VALIDATED**
 
