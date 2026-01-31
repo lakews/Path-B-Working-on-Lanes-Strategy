@@ -2368,13 +2368,16 @@ class PaperTrader:
             # Create position
             position = {
                 'market_id': market_id,
-                'question': question[:100],
+                'market_question': question[:100],  # Use consistent key name
+                'question': question[:100],  # Keep for backwards compatibility
                 'side': signal.side,
                 'size': trade_size,
                 'shares': shares,
                 'entry_price': entry_price,
+                'yes_entry_price': float(market_data.get('yes_price', 0.5)),  # Store YES price for P&L calc
                 'entry_time': datetime.now(timezone.utc).isoformat(),
                 'strategy': 'sports_arbitrage',
+                'asset_class': 'sports',  # Add asset class
                 'fair_value': signal.fair_value,
                 'edge': signal.edge,
                 'edge_pct': signal.edge_pct,
