@@ -24,7 +24,8 @@ const ALL_STRATEGIES = [
   { value: 'delta_neutral', label: 'Delta-Neutral', shortLabel: 'Delta', color: '#06b6d4' },
   { value: 'volatility_exploitation', label: 'Volatility', shortLabel: 'Vol', color: '#f59e0b' },
   { value: 'alpha_directional', label: 'Alpha', shortLabel: 'Alpha', color: '#10b981' },
-  { value: 'arbitrage', label: 'Arbitrage', shortLabel: 'Arb', color: '#8b5cf6' }
+  { value: 'arbitrage', label: 'Arbitrage', shortLabel: 'Arb', color: '#8b5cf6' },
+  { value: 'sports_arbitrage', label: 'Sports Arb', shortLabel: 'Sports', color: '#ec4899' }
 ];
 
 const ALL_ASSET_CLASSES = [
@@ -35,6 +36,44 @@ const ALL_ASSET_CLASSES = [
   { value: 'science', label: 'Science', color: '#06b6d4' },
   { value: 'sports', label: 'Sports', color: '#8b5cf6' }
 ];
+
+// ============================================================================
+// POLYMORPHIC DATA HELPERS (Task: Hybrid Data Visualization)
+// ============================================================================
+// Sports markets use probability-based data (fair_value, edge)
+// Sentiment markets use sentiment-based data (sentiment_score, llm_explanation)
+
+const isSportsPosition = (position) => {
+  const category = (position.category || position.asset_class || '').toLowerCase();
+  const strategy = (position.strategy || '').toLowerCase();
+  const lane = (position.lane || '').toUpperCase();
+  return category === 'sports' || strategy === 'sports_arbitrage' || lane === 'SPORTS';
+};
+
+const getSignalStrengthDisplay = (position) => {
+  // Polymorphic column: Edge for Sports, Sentiment for others
+  if (isSportsPosition(position)) {
+    const edgePct = (position.edge_pct || position.edge || 0) * 100;
+    return {
+      value: `Edge: ${edgePct.toFixed(1)}%`,
+      color: edgePct > 5 ? 'text-green-400' : edgePct > 2 ? 'text-yellow-400' : 'text-white/60',
+      bgColor: edgePct > 5 ? 'bg-green-500/20' : edgePct > 2 ? 'bg-yellow-500/20' : 'bg-white/5',
+      type: 'sports'
+    };
+  } else {
+    const sentimentScore = position.sentiment_score || position.confidence || 0;
+    const displayScore = sentimentScore > 1 ? sentimentScore : sentimentScore * 100; // Handle 0-1 or 0-100
+    return {
+      value: `Sentiment: ${displayScore.toFixed(0)}/100`,
+      color: displayScore > 75 ? 'text-blue-400' : displayScore > 50 ? 'text-cyan-400' : 'text-white/60',
+      bgColor: displayScore > 75 ? 'bg-blue-500/20' : displayScore > 50 ? 'bg-cyan-500/20' : 'bg-white/5',
+      type: 'sentiment'
+    };
+  }
+};
+
+// Sports Allocation Limit (from SSOT)
+const SPORTS_ALLOCATION_LIMIT = 0.15; // 15% hard cap
 
 const Positions = () => {
   const [positions, setPositions] = useState([]);
