@@ -137,24 +137,6 @@ class SportsOddsAnalyzer:
         which implements longest-match-first strategy.
         """
         return extract_teams(question)
-        
-        # Also try to extract "Team A vs Team B" pattern
-        vs_patterns = [
-            r'(\w+(?:\s+\w+)?)\s+(?:vs\.?|versus|v\.?|against)\s+(\w+(?:\s+\w+)?)',
-            r'will\s+(?:the\s+)?(\w+(?:\s+\w+)?)\s+(?:beat|defeat|win)',
-        ]
-        
-        for pattern in vs_patterns:
-            match = re.search(pattern, question_lower)
-            if match:
-                for group in match.groups():
-                    if group:
-                        # Expand alias if found
-                        expanded = TEAM_ALIASES.get(group.strip(), group.strip())
-                        if expanded not in teams:
-                            teams.append(expanded)
-        
-        return teams[:2]  # Return max 2 teams
     
     def remove_vig(self, odds_list: List[Dict], odds_format: str = 'decimal') -> Dict[str, float]:
         """
