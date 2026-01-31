@@ -2429,10 +2429,6 @@ class PaperTrader:
                 logger.debug(f"[ALPHA] Sports market should use sports handler: {question[:40]}...")
                 return
             
-            if is_sports_matchup or is_over_under:
-                logger.info(f"[ALPHA] BLOCKED live sports: {question[:40]}...")
-                return
-            
             side = analysis['side']
             edge = analysis['edge']
             
@@ -2447,6 +2443,7 @@ class PaperTrader:
                 available_capital * 0.05,  # Max 5% per Alpha trade
                 self.max_position_size,
                 100.0  # Cap at $100 for Alpha
+            )
             )
             
             # Determine strategy
