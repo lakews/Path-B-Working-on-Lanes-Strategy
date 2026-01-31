@@ -49,13 +49,18 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - GitHub sentiment was being applied to non-crypto markets (irrelevant)
   - All markets were using the same fusion weights (inappropriate)
 
-  **New Fusion Strategy:**
-  | Category | Sports Odds | Order Flow | LLM | GitHub | Correlation |
-  |----------|-------------|------------|-----|--------|-------------|
-  | **Sports** | 80% | 20% | 0% (DISABLED) | 0% | 0% |
-  | **Politics** | 0% | 90% | 10% | 0% (DISABLED) | 0% |
+  **New Fusion Strategy (Updated to 85/15):**
+  | Category | Sports Odds | Order Flow | LLM | GitHub | Social |
+  |----------|-------------|------------|-----|--------|--------|
+  | **Sports** | **85%** | **15%** | 0% (BANNED) | 0% (BANNED) | 0% (BANNED) |
+  | **Politics** | 0% | **90%** | **10%** | 0% (BANNED) | 0% (BANNED) |
   | **Crypto** | 0% | 30% | 35% | 20% | 15% |
   | **Other** | 0% | 100% | 0% | 0% | 0% |
+
+  **The Devigging Math:**
+  - Step A: Calculate Implied Probability = 1 / DecimalOdds
+  - Step B: Sum all implied probabilities (will be > 1.0 due to vig)
+  - Step C: True Probability = Implied / TotalImplied
 
   **Fallback Logic:**
   - If Sports Odds API fails → 100% Order Flow (never fallback to LLM for sports)
