@@ -583,6 +583,79 @@ const Positions = () => {
             )}
           </div>
 
+          {/* Sector/Category Allocation (Shows SSOT Limits) */}
+          <div className="rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6" data-testid="sector-allocation">
+            <h3 className="text-sm font-semibold text-white mb-4">Sector Allocation</h3>
+            {categoryChartData.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie
+                      data={categoryChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={75}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {categoryChartData.map((entry, index) => {
+                        const colorMap = {
+                          'politics': '#ef4444',
+                          'crypto': '#f59e0b',
+                          'finance': '#10b981',
+                          'entertainment': '#ec4899',
+                          'science': '#06b6d4',
+                          'sports': '#8b5cf6'
+                        };
+                        return (
+                          <Cell 
+                            key={`sector-${index}`} 
+                            fill={colorMap[entry.name.toLowerCase()] || COLORS[index % COLORS.length]}
+                            stroke={entry.isOverLimit ? '#ef4444' : 'none'}
+                            strokeWidth={entry.isOverLimit ? 2 : 0}
+                          />
+                        );
+                      })}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="mt-3 space-y-2">
+                  {categoryChartData.map((item, idx) => {
+                    const colorMap = {
+                      'politics': '#ef4444',
+                      'crypto': '#f59e0b',
+                      'finance': '#10b981',
+                      'entertainment': '#ec4899',
+                      'science': '#06b6d4',
+                      'sports': '#8b5cf6'
+                    };
+                    const pct = totalValue > 0 ? (item.value / totalValue * 100) : 0;
+                    return (
+                      <div key={idx} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className={`w-2 h-2 rounded-full ${item.isOverLimit ? 'ring-2 ring-red-400' : ''}`}
+                            style={{ backgroundColor: colorMap[item.name.toLowerCase()] || COLORS[idx % COLORS.length] }} 
+                          />
+                          <span className={`text-white/70 ${item.isOverLimit ? 'text-red-400' : ''}`}>
+                            {item.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white/50 text-xs">{pct.toFixed(1)}%</span>
+                          <span className="text-white font-medium">${item.value.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-white/40">No positions</div>
+            )}
+          </div>
+
           {/* Strategy Performance Table */}
           <div className="lg:col-span-2 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
             <h3 className="text-sm font-semibold text-white mb-4">Strategy Performance</h3>
