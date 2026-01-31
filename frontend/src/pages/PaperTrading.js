@@ -1908,7 +1908,7 @@ const PositionCard = ({ position, onViewSizing }) => {
       {/* Header: Market question and P&L */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-white font-medium truncate">{position.market_question}</p>
+          <p className="text-sm text-white font-medium truncate">{position.market_question || position.question || 'N/A'}</p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className={`text-xs px-2 py-0.5 rounded ${position.side === 'YES' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{position.side}</span>
             <span className="text-xs text-white/40">{position.strategy}</span>
