@@ -224,6 +224,11 @@ class SportsOddsAnalyzer:
     
     PURPOSE: Replace LLM hallucination with real bookmaker-derived fair values.
     
+    SECURITY:
+    - API key MUST be set via ODDS_API_KEY environment variable
+    - Module will DISABLE itself if key is not found (self.active = False)
+    - All fetch methods return None when disabled, triggering Order Flow fallback
+    
     DEVIGGING MATH:
     - Bookmaker odds include a "vig" (fee/margin)
     - We must REMOVE the vig to get the TRUE PROBABILITY
@@ -233,6 +238,10 @@ class SportsOddsAnalyzer:
     - Sports markets use 85% Odds API + 15% Order Flow
     - LLM sentiment: BANNED (cannot predict live scores)
     - GitHub sentiment: BANNED (irrelevant to sports outcomes)
+    
+    QUOTA PROTECTION (Free Tier = 500 req/month):
+    - 60-minute cache TTL to preserve monthly quota
+    - Allows tracking ~2 sports without hitting limit
     """
     
     BASE_URL = "https://api.the-odds-api.com/v4"
@@ -240,27 +249,49 @@ class SportsOddsAnalyzer:
     # Fuzzy match threshold for matching questions to events
     FUZZY_MATCH_THRESHOLD = 80
     
+    # Cache TTL: 60 minutes (3600 seconds) for Free Tier quota protection
+    # Math: 24 hours * 2 sports * 30 days = 1440 reqs/month (exceeds 500)
+    # With 60-min cache: 24 * 2 * 30 / 2 = 720 reqs/month (still tight, be careful)
+    CACHE_TTL_SECONDS = 3600
+    
     def __init__(self):
-        # 30-minute cache to respect free tier limits (500 req/month)
-        # TTL = 1800 seconds = 30 minutes
-        self._cache = TTLCache(maxsize=500, ttl=1800)
-        self._events_cache = TTLCache(maxsize=100, ttl=1800)
+        # ================================================================
+        # SECURITY: Strict environment variable requirement
+        # ================================================================
+        self._api_key = os.getenv("ODDS_API_KEY")
         
-        self._api_key = ODDS_API_KEY
+        if not self._api_key:
+            logger.error(
+                "CRITICAL: ODDS_API_KEY not found in .env. "
+                "Sports Arbitrage Module DISABLED. "
+                "Add ODDS_API_KEY=your_key to backend/.env to enable."
+            )
+            self.active = False
+        else:
+            self.active = True
+            logger.info("Sports Odds API key loaded from environment variable")
+        
+        # ================================================================
+        # QUOTA PROTECTION: 60-minute cache for Free Tier (500 req/month)
+        # ================================================================
+        self._cache = TTLCache(maxsize=500, ttl=self.CACHE_TTL_SECONDS)
+        self._events_cache = TTLCache(maxsize=100, ttl=self.CACHE_TTL_SECONDS)
+        
         self._requests_made = 0
         self._requests_remaining = None
         self._last_request_time = None
         
-        # Log free tier warning with high visibility
-        warning_msg = """
-[WARNING] ============================================================
-[WARNING] RUNNING ON FREE TIER ODDS API.
-[WARNING] DATA CACHED FOR 30 MINS. DO NOT USE FOR HFT.
-[WARNING] Upgrade to paid tier for real-time data.
-[WARNING] ============================================================
-"""
-        logger.warning(warning_msg)
-        print(warning_msg)
+        # Log status
+        if self.active:
+            logger.warning(
+                "Free Tier Mode: Odds cached for 60 mins to preserve monthly quota. "
+                "500 requests/month limit. Upgrade for real-time data."
+            )
+        else:
+            logger.warning(
+                "Sports Odds Module INACTIVE. All sports markets will use "
+                "100% Order Flow fallback until ODDS_API_KEY is configured."
+            )
     
     def _detect_sport(self, question: str) -> Optional[str]:
         """Detect sport type from market question."""
