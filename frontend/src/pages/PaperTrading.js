@@ -110,7 +110,7 @@ const SessionTradesModal = ({ isOpen, session, trades, onClose }) => {
                 const duration = trade.hold_time_seconds ? `${Math.floor(trade.hold_time_seconds / 60)}m ${trade.hold_time_seconds % 60}s` : '-';
                 return (
                   <tr key={idx} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="py-2 px-3 text-white/80 max-w-xs truncate">{trade.market_question || trade.market_id?.substring(0, 30)}</td>
+                    <td className="py-2 px-3 text-white/80 max-w-xs truncate">{trade.market_question || trade.question || trade.market_id?.substring(0, 30)}</td>
                     <td className="py-2 px-3 text-white/60">{STRATEGY_INFO[trade.strategy]?.name || trade.strategy}</td>
                     <td className="py-2 px-3"><span className={`px-2 py-0.5 rounded text-xs ${trade.side === 'YES' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{trade.side}</span></td>
                     <td className="py-2 px-3 text-right text-white/80">${trade.entry_price?.toFixed(4)}</td>
