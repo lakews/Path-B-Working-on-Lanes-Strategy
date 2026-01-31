@@ -5,6 +5,9 @@ Sports Odds Integration for APEX TRADER - Statistical Arbitrage Engine
 Real-time sports betting odds from The Odds API to replace LLM hallucination
 on sports markets with actual arbitrage-derived fair values.
 
+SECURITY: API key MUST be set in environment variable ODDS_API_KEY
+         Module will DISABLE itself if key is not found.
+
 ARCHITECTURE:
 - Primary Truth Source for Sports Markets
 - Uses "Devigging" to extract True Probability from bookmaker odds
@@ -29,19 +32,6 @@ from cachetools import TTLCache
 from rapidfuzz import fuzz, process
 
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# TODO: SECURITY ALERT - MOVE THIS KEY TO .ENV FILE BEFORE LIVE DEPLOYMENT
-# =============================================================================
-# CRITICAL: This API key is hardcoded for rapid development ONLY.
-# Before deploying to production, this MUST be moved to an environment variable:
-#   1. Add to backend/.env: ODDS_API_KEY=your_key_here
-#   2. Replace the line below with: ODDS_API_KEY = os.environ.get('ODDS_API_KEY')
-#   3. Delete this comment block
-# FAILURE TO DO THIS WILL EXPOSE YOUR API KEY IN VERSION CONTROL
-# =============================================================================
-ODDS_API_KEY = os.environ.get('ODDS_API_KEY', "4c8d0ae8cc9df5fecafca3a874cfdc4f")
 
 
 # Sport key mappings for The Odds API
