@@ -6,6 +6,12 @@ Updated: Integrated Hybrid Smart-Cache LLM Module
 - Hot markets (high volume): 10 min cache TTL
 - Cold markets (low volume): 60 min cache TTL
 - Result: 100% market coverage without 100% of the cost
+
+Updated: Category-Aware Fusion (Task: Stop LLM Hallucination)
+- Sports: 80% Real Odds API + 20% Order Flow (0% LLM/GitHub)
+- Politics: 90% Order Flow + 10% LLM (0% GitHub)
+- Crypto: Maintain existing fusion weights
+- Fallback: 100% Order Flow if API fails
 """
 import asyncio
 import logging
