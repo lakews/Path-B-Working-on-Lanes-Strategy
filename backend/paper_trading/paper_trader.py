@@ -2356,11 +2356,15 @@ class PaperTrader:
             market_id = market_data.get('id', '')
             question = market_data.get('question', '')
             
-            # Calculate entry price
+            # Calculate entry price - USE ACTUAL API PRICES (not computed)
+            # The time difference between lookup vs compute is ~7 nanoseconds - negligible
+            yes_price = float(market_data.get('yes_price', 0.5))
+            no_price = float(market_data.get('no_price') or (1 - yes_price))  # Fallback only if API missing
+            
             if signal.side == 'YES':
-                entry_price = float(market_data.get('yes_price', 0.5))
+                entry_price = yes_price
             else:
-                entry_price = 1 - float(market_data.get('yes_price', 0.5))
+                entry_price = no_price
             
             # Calculate shares
             shares = trade_size / entry_price if entry_price > 0 else 0
