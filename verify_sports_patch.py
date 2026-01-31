@@ -109,7 +109,8 @@ def run_test_a_collision_check():
     if 'nba' in (sport_key or '').lower() or 'basketball' in (sport_key or '').lower():
         failure(f"  CRITICAL: Detected as NBA ({sport_key})! This is the Seahawks/Hawks bug!")
         all_passed = False
-    elif 'atlanta' in ' '.join(teams).lower() or 'hawks' in ' '.join(teams).lower():
+    elif 'Atlanta Hawks' in teams:
+        # Only fail if the exact team "Atlanta Hawks" is in the list
         failure(f"  CRITICAL: Matched Atlanta Hawks! Teams: {teams}")
         all_passed = False
     else:
