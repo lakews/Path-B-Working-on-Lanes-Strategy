@@ -505,8 +505,18 @@ class SportsOddsAnalyzer:
             logger.error(f"Error fetching events: {e}")
             return []
     
-    async def _fetch_odds(self, sport_key: str, event_id: str = None) -> List[Dict]:
-        """Fetch odds for events in a sport."""
+    async def _fetch_odds(self, sport_key: str, event_id: str = None) -> Optional[List[Dict]]:
+        """Fetch odds for events in a sport.
+        
+        Returns None if module is disabled (no API key).
+        """
+        # ================================================================
+        # SECURITY GUARD: Return None if module is disabled
+        # ================================================================
+        if not self.active:
+            logger.debug("Sports Odds Module disabled - skipping _fetch_odds")
+            return None
+        
         cache_key = f"odds_{sport_key}_{event_id or 'all'}"
         
         if cache_key in self._cache:
