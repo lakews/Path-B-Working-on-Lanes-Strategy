@@ -1,10 +1,16 @@
 """
 Paper Trading Engine with Full RL Integration
 Simulates live trading, tracks positions, and feeds rewards to RL for continuous learning
+
+Updated: Sports Strategy Injection (Task: Category Isolation)
+- Sports markets routed to SportsArbitrageStrategy
+- Dynamic filter overrides from SportsConfig
+- NO-side betting allowed for sports arbitrage
 """
 import asyncio
 import logging
 import os
+import re
 import uuid
 from typing import Dict, List, Optional, Callable, Tuple
 from datetime import datetime, timezone
@@ -25,6 +31,10 @@ from services.telemetry import get_telemetry_service, create_decision_snapshot
 from config import config, SPREAD_RULES, RISK_PARAMS
 import numpy as np
 from threading import Lock
+
+# Sports Strategy imports
+from risk_config import get_sports_config, is_sports_market, SportsConfig
+from strategies.sports_strategy import get_sports_strategy, SportsArbitrageStrategy, SportsSignal
 
 logger = logging.getLogger(__name__)
 
