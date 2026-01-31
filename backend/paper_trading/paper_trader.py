@@ -1207,14 +1207,23 @@ class PaperTrader:
                 # the edge may have flipped direction. In this case, the
                 # original thesis is invalidated - DO NOT TRADE.
                 #
+                # EXCEPTION: Sports markets can trade NO side (for arbitrage)
                 # We only trade if the current edge is POSITIVE (YES is underpriced)
                 # or if we're confident in the model's fair value prediction.
                 #
                 # TEMPORARY FIX: Only trade YES side until model is validated
                 # This prevents systematic losses from stale fair value predictions
+                is_sports = market_data.get('_is_sports', False) or is_sports_market(market_data.get('question', ''))
+                sports_config = get_sports_config()
+                
                 if side == 'NO':
-                    logger.info(f"[HFT-SKIP] Skipping NO trade (edge flipped or FV < market)")
-                    return None
+                    # Sports markets: Allow NO if enabled in config
+                    if is_sports and sports_config.enabled and sports_config.allow_no_bets:
+                        logger.info(f"[HFT-SPORTS] Sports NO taker trade allowed")
+                        pass  # Allow the trade
+                    else:
+                        logger.info(f"[HFT-SKIP] Skipping NO trade (edge flipped or FV < market)")
+                        return None
                 
                 logger.info(f"[HFT-SIDE] edge={edge:.4f} > 0 is {edge > 0} → side={side}")
                 
