@@ -611,16 +611,42 @@ const Positions = () => {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                          {/* Strategy Badge */}
+                          <span className={`px-2 py-1 rounded text-xs font-medium border ${
+                            isSportsPosition(position)
+                              ? 'bg-pink-500/20 text-pink-400 border-pink-500/30'
+                              : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+                          }`}>
                             {position.strategy?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           </span>
+                          
+                          {/* Side Badge */}
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            position.side === 'BUY' 
+                            position.side === 'BUY' || position.side === 'YES'
                               ? 'bg-green-500/20 text-green-400 border border-green-500/30'
                               : 'bg-red-500/20 text-red-400 border border-red-500/30'
                           }`}>
-                            {position.side === 'BUY' ? 'LONG' : 'SHORT'}
+                            {position.side === 'BUY' || position.side === 'YES' ? 'LONG' : 'SHORT'}
                           </span>
+                          
+                          {/* Polymorphic Signal Strength Badge */}
+                          {(() => {
+                            const signalDisplay = getSignalStrengthDisplay(position);
+                            return (
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${signalDisplay.bgColor} ${signalDisplay.color} border border-white/10`}
+                                    data-testid={`signal-strength-${signalDisplay.type}`}>
+                                {signalDisplay.value}
+                              </span>
+                            );
+                          })()}
+                          
+                          {/* Sports Lane Indicator */}
+                          {isSportsPosition(position) && (
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                              SPORTS
+                            </span>
+                          )}
+                          
                           <span className="px-2 py-1 rounded text-xs font-medium bg-white/10 text-white/60">
                             {portfolioPct.toFixed(1)}% of portfolio
                           </span>
@@ -645,7 +671,7 @@ const Positions = () => {
                       </div>
                       <div className="text-center p-2 rounded-lg bg-white/5">
                         <p className="text-xs text-white/50 mb-1">Entry</p>
-                        <p className="text-sm font-semibold text-white">${(position.avg_price || 0).toFixed(3)}</p>
+                        <p className="text-sm font-semibold text-white">${(position.avg_price || position.entry_price || 0).toFixed(3)}</p>
                       </div>
                       <div className="text-center p-2 rounded-lg bg-white/5">
                         <p className="text-xs text-white/50 mb-1">Current</p>
@@ -670,27 +696,143 @@ const Positions = () => {
                     </div>
                   </div>
 
-                  {/* Expanded Details */}
+                  {/* ================================================================
+                      EXPANDED DETAILS - POLYMORPHIC RENDERING
+                      Branch A: Sports Mode (Statistical Arbitrage)
+                      Branch B: Legacy Mode (Sentiment-Based)
+                      ================================================================ */}
                   {isExpanded && (
                     <div className="px-5 pb-5 pt-0 border-t border-white/10 mt-0">
-                      <div className="pt-4 grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-white/50 mb-1">Cost Basis</p>
-                          <p className="text-sm text-white">${((position.shares || 0) * (position.avg_price || 0)).toFixed(2)}</p>
+                      {isSportsPosition(position) ? (
+                        /* ============================================
+                           BRANCH A: SPORTS MODE (Statistical Arbitrage)
+                           ============================================ */
+                        <div className="pt-4 space-y-4" data-testid="sports-detail-card">
+                          {/* Header */}
+                          <div className="flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-pink-400" />
+                            <h4 className="text-sm font-semibold text-pink-400">Statistical Arbitrage Opportunity</h4>
+                          </div>
+                          
+                          {/* Implied vs Fair Value */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="p-3 rounded-lg bg-white/5">
+                              <p className="text-xs text-white/50 mb-1">Implied Probability</p>
+                              <p className="text-lg font-bold text-white">
+                                {((position.current_price || position.entry_price || 0) * 100).toFixed(1)}%
+                              </p>
+                              <p className="text-xs text-white/40">Market Price</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-pink-500/10 border border-pink-500/20">
+                              <p className="text-xs text-pink-400/80 mb-1">Fair Value</p>
+                              <p className="text-lg font-bold text-pink-400">
+                                {((position.fair_value || 0) * 100).toFixed(1)}%
+                              </p>
+                              <p className="text-xs text-white/40">Real Odds</p>
+                            </div>
+                          </div>
+                          
+                          {/* Edge & Kelly Stake */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-white/50 mb-1">Statistical Edge</p>
+                              <p className={`text-sm font-semibold ${(position.edge || 0) > 0.05 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                {((position.edge || position.edge_pct || 0) * 100).toFixed(2)}%
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-white/50 mb-1">Kelly Stake</p>
+                              <p className="text-sm font-semibold text-cyan-400">
+                                ${(position.size || positionValue).toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Arbitrage Explanation (replaces LLM reasoning) */}
+                          <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                            <p className="text-xs text-white/50 mb-1">Arbitrage Analysis</p>
+                            <p className="text-sm text-white/80">
+                              {position.sports_matched_event ? (
+                                <>
+                                  Arbitrage detected vs <span className="text-cyan-400">{position.bookmakers_used || 'multiple'} bookmakers</span>.
+                                  Market implies <span className="text-white">{((position.current_price || position.entry_price || 0) * 100).toFixed(1)}%</span>,
+                                  Real odds are <span className="text-pink-400">{((position.fair_value || 0) * 100).toFixed(1)}%</span>.
+                                  {position.sports_matched_event?.home_team && (
+                                    <span className="text-white/60 block mt-1">
+                                      Event: {position.sports_matched_event.home_team} vs {position.sports_matched_event.away_team}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                `Statistical edge of ${((position.edge || 0) * 100).toFixed(2)}% identified via sports odds aggregation.`
+                              )}
+                            </p>
+                          </div>
+                          
+                          {/* Stop/Target */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-white/50 mb-1">Stop Loss (25%)</p>
+                              <p className="text-sm text-red-400">${((position.avg_price || position.entry_price || 0) * 0.75).toFixed(4)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-white/50 mb-1">Take Profit (30%)</p>
+                              <p className="text-sm text-green-400">${((position.avg_price || position.entry_price || 0) * 1.3).toFixed(4)}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-white/50 mb-1">Break Even</p>
-                          <p className="text-sm text-white">${(position.avg_price || 0).toFixed(4)}</p>
+                      ) : (
+                        /* ============================================
+                           BRANCH B: LEGACY MODE (Sentiment-Based)
+                           ============================================ */
+                        <div className="pt-4 space-y-4" data-testid="sentiment-detail-card">
+                          {/* Sentiment Gauge (existing) */}
+                          {(position.sentiment_score || position.confidence) && (
+                            <div className="mb-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs text-white/50">Sentiment Score</p>
+                                <p className="text-sm font-semibold text-blue-400">
+                                  {((position.sentiment_score || position.confidence || 0) * (position.sentiment_score > 1 ? 1 : 100)).toFixed(0)}/100
+                                </p>
+                              </div>
+                              <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all"
+                                  style={{ width: `${Math.min(100, (position.sentiment_score || position.confidence || 0) * (position.sentiment_score > 1 ? 1 : 100))}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* LLM Reasoning */}
+                          {position.llm_explanation && (
+                            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                              <p className="text-xs text-white/50 mb-1">AI Analysis</p>
+                              <p className="text-sm text-white/80">{position.llm_explanation}</p>
+                            </div>
+                          )}
+                          
+                          {/* Legacy Stats */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-white/50 mb-1">Cost Basis</p>
+                              <p className="text-sm text-white">${((position.shares || 0) * (position.avg_price || position.entry_price || 0)).toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-white/50 mb-1">Break Even</p>
+                              <p className="text-sm text-white">${(position.avg_price || position.entry_price || 0).toFixed(4)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-white/50 mb-1">Target (10% profit)</p>
+                              <p className="text-sm text-green-400">${((position.avg_price || position.entry_price || 0) * 1.1).toFixed(4)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-white/50 mb-1">Stop Loss (5%)</p>
+                              <p className="text-sm text-red-400">${((position.avg_price || position.entry_price || 0) * 0.95).toFixed(4)}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-white/50 mb-1">Target (10% profit)</p>
-                          <p className="text-sm text-green-400">${((position.avg_price || 0) * 1.1).toFixed(4)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-white/50 mb-1">Stop Loss (5%)</p>
-                          <p className="text-sm text-red-400">${((position.avg_price || 0) * 0.95).toFixed(4)}</p>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>
