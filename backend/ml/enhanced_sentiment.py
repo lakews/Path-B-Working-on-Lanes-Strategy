@@ -257,6 +257,63 @@ class EnhancedSentimentAnalyzer:
             return self.smart_llm.get_cache_entries()
         return {'error': 'Smart LLM not initialized'}
     
+    def get_sports_odds_stats(self) -> Dict:
+        """Get Sports Odds API statistics"""
+        if self.sports_odds:
+            return self.sports_odds.get_api_stats()
+        return {'error': 'Sports Odds not initialized'}
+    
+    def _detect_category(self, market_data: Dict) -> str:
+        """
+        Detect the true category of a market for proper signal weighting.
+        
+        Categories:
+        - 'sports': Use real odds API, disable LLM
+        - 'crypto': Use GitHub + LLM + Order Flow
+        - 'politics': Use Order Flow + limited LLM
+        - 'other': Default fusion
+        """
+        category = market_data.get('category', '').lower()
+        question = market_data.get('question', '').lower()
+        
+        # Sports detection (expanded)
+        sports_keywords = [
+            'nba', 'nfl', 'mlb', 'nhl', 'mls', 'ufc', 'boxing',
+            'lakers', 'celtics', 'warriors', 'chiefs', 'eagles', 'cowboys',
+            'yankees', 'dodgers', 'astros', 'match', 'game', 'win against',
+            'beat', 'defeat', 'premier league', 'champions league', 'world cup',
+            'super bowl', 'playoffs', 'finals', 'championship', 'tournament',
+            'tennis', 'golf', 'pga', 'atp', 'wta', 'f1', 'formula 1', 'nascar',
+            'olympics', 'medal', 'esports', 'league of legends', 'dota', 'csgo'
+        ]
+        
+        if category == 'sports' or any(kw in question for kw in sports_keywords):
+            return 'sports'
+        
+        # Crypto detection
+        crypto_keywords = [
+            'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'solana', 'sol',
+            'cardano', 'polygon', 'avalanche', 'arbitrum', 'optimism', 'base',
+            'defi', 'nft', 'blockchain', 'token', 'coin', 'binance', 'coinbase',
+            'pectra', 'dencun', 'taproot', 'halving', 'merge'
+        ]
+        
+        if category == 'crypto' or any(kw in question for kw in crypto_keywords):
+            return 'crypto'
+        
+        # Politics detection
+        politics_keywords = [
+            'trump', 'biden', 'president', 'election', 'vote', 'congress',
+            'senate', 'republican', 'democrat', 'gop', 'primary', 'nominee',
+            'governor', 'mayor', 'cabinet', 'secretary', 'impeach', 'poll',
+            'campaign', 'electoral', 'swing state', 'ballot', 'legislation'
+        ]
+        
+        if category in ['politics', 'political'] or any(kw in question for kw in politics_keywords):
+            return 'politics'
+        
+        return 'other'
+    
     async def analyze(self, market_data: Dict, trades: List = None, order_book: Dict = None) -> Dict:
         """
         Comprehensive sentiment analysis combining all sources.
