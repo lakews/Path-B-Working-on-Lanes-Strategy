@@ -234,14 +234,32 @@ const TradeDetailsModal = ({ isOpen, trade, onClose }) => {
             <SectionHeader icon={BarChart3} title="Prices" color="amber" />
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <DetailRow label="Entry Price" value={`$${(trade.entry_price || trade.price || 0).toFixed(4)}`} valueClass="text-cyan-400" />
-                <DetailRow label="YES Entry Price" value={trade.yes_entry_price != null ? `$${trade.yes_entry_price.toFixed(4)}` : '-'} />
+                {/* Show the entry price for the side traded */}
+                <DetailRow 
+                  label={`${trade.side || 'YES'} Entry Price`} 
+                  value={`$${(trade.entry_price || trade.price || 0).toFixed(4)}`} 
+                  valueClass="text-cyan-400" 
+                />
+                {/* For NO trades, show the market price (YES side) for context */}
+                {trade.side === 'NO' && trade.yes_entry_price != null && (
+                  <DetailRow 
+                    label="Market Price (YES)" 
+                    value={`$${trade.yes_entry_price.toFixed(4)}`} 
+                    valueClass="text-white/60"
+                  />
+                )}
               </div>
               <div>
                 <DetailRow label="Exit Price" value={isComplete ? `$${(trade.exit_price || 0).toFixed(4)}` : '-'} valueClass="text-amber-400" />
                 <DetailRow label="Current Price" value={trade.current_price != null ? `$${trade.current_price.toFixed(4)}` : '-'} />
               </div>
             </div>
+            {/* Explanation for NO trades */}
+            {trade.side === 'NO' && (
+              <p className="text-xs text-white/40 mt-3 pt-3 border-t border-white/10">
+                Note: For NO positions, Entry Price is $1 - YES price. If YES was $0.265, NO entry = $0.735.
+              </p>
+            )}
           </div>
           
           {/* Time Info */}
