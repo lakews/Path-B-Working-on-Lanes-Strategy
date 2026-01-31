@@ -71,7 +71,7 @@ class SportsArbitrageStrategy:
     - Higher price cap (0.99 for heavy favorites)
     """
     
-    def __init__(self, sports_config: 'SportsConfig'):
+    def __init__(self, sports_config):
         """
         Initialize with dynamic configuration.
         
@@ -343,7 +343,7 @@ class SportsArbitrageStrategy:
 _sports_strategy: Optional[SportsArbitrageStrategy] = None
 
 
-def get_sports_strategy(sports_config: 'SportsConfig' = None) -> SportsArbitrageStrategy:
+def get_sports_strategy(sports_config=None) -> SportsArbitrageStrategy:
     """Get singleton sports strategy instance."""
     global _sports_strategy
     
