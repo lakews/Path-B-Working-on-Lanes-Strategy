@@ -34,6 +34,16 @@ except ImportError as e:
     logger.warning(f"Smart LLM module not available: {e}")
 
 
+# Import Sports Odds API module (Real arbitrage data - no hallucination)
+try:
+    from sentiment.sports_odds import get_sports_odds_analyzer
+    SPORTS_ODDS_AVAILABLE = True
+    logger.info("Sports Odds API module loaded successfully")
+except ImportError as e:
+    SPORTS_ODDS_AVAILABLE = False
+    logger.warning(f"Sports Odds API module not available: {e}")
+
+
 class CrossMarketCorrelation:
     """
     Tracks price movements across related markets to identify correlation patterns.
