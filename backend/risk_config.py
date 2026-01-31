@@ -1254,7 +1254,7 @@ class SportsConfig:
         if self.min_edge < 0:
             raise ValueError(f"min_edge must be >= 0, got {self.min_edge}")
         if self.max_price_cap <= self.min_price_cap:
-            raise ValueError(f"max_price_cap must be > min_price_cap")
+            raise ValueError("max_price_cap must be > min_price_cap")
 
 
 # Default sports config instance
