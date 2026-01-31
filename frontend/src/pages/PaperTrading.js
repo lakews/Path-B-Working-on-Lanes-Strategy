@@ -375,7 +375,7 @@ const SentimentModal = ({ isOpen, trade, onClose }) => {
         <div className="flex-1 overflow-auto p-4 space-y-6">
           {/* Market Info */}
           <div className="bg-white/5 rounded-lg p-3">
-            <p className="text-white/80 text-sm">{trade.market_question}</p>
+            <p className="text-white/80 text-sm">{trade.market_question || trade.question || 'N/A'}</p>
             <div className="flex gap-4 mt-2 text-xs text-white/50">
               <span>Strategy: <span className="text-white/80">{STRATEGY_INFO[trade.strategy]?.name}</span></span>
               <span>Side: <span className={trade.side === 'YES' ? 'text-green-400' : 'text-red-400'}>{trade.side}</span></span>
