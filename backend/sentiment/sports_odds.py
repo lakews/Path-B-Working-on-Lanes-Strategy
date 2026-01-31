@@ -280,13 +280,30 @@ class SportsOddsAnalyzer:
             if keyword in question_lower:
                 return sport_key
         
-        # Check for team names that imply sport
-        nba_teams = ['lakers', 'celtics', 'warriors', 'heat', 'nets', 'knicks', 
-                     'bucks', 'suns', 'nuggets', 'clippers', 'thunder', 'rockets']
-        nfl_teams = ['chiefs', 'eagles', 'bills', 'cowboys', 'ravens', 'bengals',
-                     '49ers', 'dolphins', 'lions', 'packers', 'jets', 'steelers']
-        mlb_teams = ['yankees', 'dodgers', 'astros', 'braves', 'mets', 'cubs',
-                     'phillies', 'padres', 'mariners', 'rays', 'blue jays']
+        # Check for team names that imply sport - EXPANDED lists
+        nba_teams = [
+            'lakers', 'celtics', 'warriors', 'heat', 'nets', 'knicks', 
+            'bucks', 'suns', 'nuggets', 'clippers', 'thunder', 'rockets',
+            'spurs', 'grizzlies', 'pelicans', 'timberwolves', 'blazers',
+            'jazz', 'kings', 'hawks', 'hornets', 'cavaliers', 'cavs',
+            'pistons', 'pacers', 'magic', 'raptors', 'wizards', 'mavericks',
+            'mavs', '76ers', 'sixers'
+        ]
+        nfl_teams = [
+            'chiefs', 'eagles', 'bills', 'cowboys', 'ravens', 'bengals',
+            '49ers', 'niners', 'dolphins', 'lions', 'packers', 'jets', 
+            'steelers', 'patriots', 'pats', 'broncos', 'raiders', 'chargers',
+            'rams', 'seahawks', 'cardinals', 'falcons', 'panthers', 'bears',
+            'browns', 'texans', 'colts', 'jaguars', 'titans', 'saints',
+            'vikings', 'commanders', 'bucs', 'buccaneers'
+        ]
+        mlb_teams = [
+            'yankees', 'dodgers', 'astros', 'braves', 'mets', 'cubs',
+            'phillies', 'padres', 'mariners', 'rays', 'blue jays',
+            'red sox', 'white sox', 'guardians', 'twins', 'orioles',
+            'royals', 'angels', 'athletics', 'rangers', 'diamondbacks',
+            'rockies', 'reds', 'brewers', 'pirates', 'nationals', 'marlins'
+        ]
         
         for team in nba_teams:
             if team in question_lower:
