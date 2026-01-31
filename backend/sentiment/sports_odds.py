@@ -502,14 +502,27 @@ class SportsOddsAnalyzer:
             logger.error(f"Error fetching odds: {e}")
             return []
     
-    def _fuzzy_match_event(self, teams: List[str], events: List[Dict], threshold: int = 60) -> Optional[Dict]:
+    def _fuzzy_match_event(self, teams: List[str], events: List[Dict], threshold: int = None) -> Optional[Dict]:
         """
         Fuzzy match extracted teams to API events.
         
         Uses rapidfuzz for fast approximate string matching.
+        Threshold > 80 required for a match (configurable via class constant).
+        
+        Args:
+            teams: List of team names extracted from market question
+            events: List of events from The Odds API
+            threshold: Minimum match score (default: FUZZY_MATCH_THRESHOLD = 80)
+            
+        Returns:
+            Best matching event dict or None
         """
         if not teams or not events:
             return None
+        
+        # Use class constant if no threshold provided
+        if threshold is None:
+            threshold = self.FUZZY_MATCH_THRESHOLD
         
         best_match = None
         best_score = 0
