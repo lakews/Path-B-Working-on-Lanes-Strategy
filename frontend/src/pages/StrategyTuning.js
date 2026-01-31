@@ -3,7 +3,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Sliders, Play, Square, TrendingUp, Target, BarChart3, Zap, Scale, GitBranch,
-  RefreshCw, CheckCircle, XCircle, Clock, Award, Activity, Loader2
+  RefreshCw, CheckCircle, XCircle, Clock, Award, Activity, Loader2, Crosshair
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 
