@@ -232,14 +232,27 @@ class SportsOddsAnalyzer:
     """
     Real sports odds analyzer using The Odds API.
     
-    Replaces LLM hallucination with real bookmaker-derived fair values.
-    Uses devigging to extract true probabilities from betting lines.
+    PURPOSE: Replace LLM hallucination with real bookmaker-derived fair values.
+    
+    DEVIGGING MATH:
+    - Bookmaker odds include a "vig" (fee/margin)
+    - We must REMOVE the vig to get the TRUE PROBABILITY
+    - Formula: True_Prob = Implied_Prob / Sum_of_All_Implied_Probs
+    
+    ISOLATION RULES (enforced in enhanced_sentiment.py):
+    - Sports markets use 85% Odds API + 15% Order Flow
+    - LLM sentiment: BANNED (cannot predict live scores)
+    - GitHub sentiment: BANNED (irrelevant to sports outcomes)
     """
     
     BASE_URL = "https://api.the-odds-api.com/v4"
     
+    # Fuzzy match threshold for matching questions to events
+    FUZZY_MATCH_THRESHOLD = 80
+    
     def __init__(self):
         # 30-minute cache to respect free tier limits (500 req/month)
+        # TTL = 1800 seconds = 30 minutes
         self._cache = TTLCache(maxsize=500, ttl=1800)
         self._events_cache = TTLCache(maxsize=100, ttl=1800)
         
@@ -248,19 +261,16 @@ class SportsOddsAnalyzer:
         self._requests_remaining = None
         self._last_request_time = None
         
-        # Log free tier warning
-        logger.warning(
-            "WARNING: RUNNING ON FREE TIER ODDS API. "
-            "DATA IS DELAYED/CACHED (30 MIN TTL). "
-            "UPGRADE TO PAID TIER FOR LIVE HFT."
-        )
-        print(
-            "\n" + "="*70 + "\n"
-            "WARNING: RUNNING ON FREE TIER ODDS API.\n"
-            "DATA IS DELAYED/CACHED (30 MIN TTL).\n"
-            "UPGRADE TO PAID TIER FOR LIVE HFT.\n"
-            + "="*70 + "\n"
-        )
+        # Log free tier warning with high visibility
+        warning_msg = """
+[WARNING] ============================================================
+[WARNING] RUNNING ON FREE TIER ODDS API.
+[WARNING] DATA CACHED FOR 30 MINS. DO NOT USE FOR HFT.
+[WARNING] Upgrade to paid tier for real-time data.
+[WARNING] ============================================================
+"""
+        logger.warning(warning_msg)
+        print(warning_msg)
     
     def _detect_sport(self, question: str) -> Optional[str]:
         """Detect sport type from market question."""
