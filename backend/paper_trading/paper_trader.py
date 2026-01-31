@@ -2444,7 +2444,6 @@ class PaperTrader:
                 self.max_position_size,
                 100.0  # Cap at $100 for Alpha
             )
-            )
             
             # Determine strategy
             yes_price = float(market_data.get('yes_price', 0.5))
