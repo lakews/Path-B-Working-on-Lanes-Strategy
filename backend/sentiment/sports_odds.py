@@ -454,8 +454,18 @@ class SportsOddsAnalyzer:
         """
         return self.remove_vig(outcomes, odds_format='decimal')
     
-    async def _fetch_events(self, sport_key: str) -> List[Dict]:
-        """Fetch upcoming events for a sport."""
+    async def _fetch_events(self, sport_key: str) -> Optional[List[Dict]]:
+        """Fetch upcoming events for a sport.
+        
+        Returns None if module is disabled (no API key).
+        """
+        # ================================================================
+        # SECURITY GUARD: Return None if module is disabled
+        # ================================================================
+        if not self.active:
+            logger.debug("Sports Odds Module disabled - skipping _fetch_events")
+            return None
+        
         cache_key = f"events_{sport_key}"
         
         if cache_key in self._events_cache:
