@@ -4438,7 +4438,9 @@ class PaperTrader:
             if side == 'YES':
                 display_entry_price = actual_entry_price
             else:
-                display_entry_price = 1 - actual_entry_price  # NO price = 1 - YES price
+                # Use actual NO price from API if available, else compute
+                api_no_price = market_data.get('no_price')
+                display_entry_price = float(api_no_price) if api_no_price else (1 - actual_entry_price)
             
             position = {
                 "position_id": str(uuid.uuid4()),
