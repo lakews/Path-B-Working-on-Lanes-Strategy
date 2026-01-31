@@ -120,61 +120,23 @@ class SportsOddsAnalyzer:
             )
     
     def _detect_sport(self, question: str) -> Optional[str]:
-        """Detect sport type from market question."""
-        question_lower = question.lower()
+        """
+        Detect sport type from market question.
         
-        for keyword, sport_key in SPORT_KEYS.items():
-            if keyword in question_lower:
-                return sport_key
-        
-        # Check for team names that imply sport - EXPANDED lists
-        nba_teams = [
-            'lakers', 'celtics', 'warriors', 'heat', 'nets', 'knicks', 
-            'bucks', 'suns', 'nuggets', 'clippers', 'thunder', 'rockets',
-            'spurs', 'grizzlies', 'pelicans', 'timberwolves', 'blazers',
-            'jazz', 'kings', 'hawks', 'hornets', 'cavaliers', 'cavs',
-            'pistons', 'pacers', 'magic', 'raptors', 'wizards', 'mavericks',
-            'mavs', '76ers', 'sixers'
-        ]
-        nfl_teams = [
-            'chiefs', 'eagles', 'bills', 'cowboys', 'ravens', 'bengals',
-            '49ers', 'niners', 'dolphins', 'lions', 'packers', 'jets', 
-            'steelers', 'patriots', 'pats', 'broncos', 'raiders', 'chargers',
-            'rams', 'seahawks', 'cardinals', 'falcons', 'panthers', 'bears',
-            'browns', 'texans', 'colts', 'jaguars', 'titans', 'saints',
-            'vikings', 'commanders', 'bucs', 'buccaneers'
-        ]
-        mlb_teams = [
-            'yankees', 'dodgers', 'astros', 'braves', 'mets', 'cubs',
-            'phillies', 'padres', 'mariners', 'rays', 'blue jays',
-            'red sox', 'white sox', 'guardians', 'twins', 'orioles',
-            'royals', 'angels', 'athletics', 'rangers', 'diamondbacks',
-            'rockies', 'reds', 'brewers', 'pirates', 'nationals', 'marlins'
-        ]
-        
-        for team in nba_teams:
-            if team in question_lower:
-                return 'basketball_nba'
-        
-        for team in nfl_teams:
-            if team in question_lower:
-                return 'americanfootball_nfl'
-        
-        for team in mlb_teams:
-            if team in question_lower:
-                return 'baseball_mlb'
-        
-        return None
+        Uses the new robust matching from utils/sports_constants.py
+        which implements word boundary matching to prevent collisions
+        like "Seahawks" matching "Hawks".
+        """
+        return detect_sport(question)
     
     def _extract_teams(self, question: str) -> List[str]:
-        """Extract team names from market question."""
-        question_lower = question.lower()
-        teams = []
+        """
+        Extract team names from market question.
         
-        # Check for known team aliases
-        for alias, full_name in TEAM_ALIASES.items():
-            if alias in question_lower:
-                teams.append(full_name)
+        Uses the new robust matching from utils/sports_constants.py
+        which implements longest-match-first strategy.
+        """
+        return extract_teams(question)
         
         # Also try to extract "Team A vs Team B" pattern
         vs_patterns = [
