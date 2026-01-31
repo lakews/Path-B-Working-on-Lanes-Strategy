@@ -539,22 +539,44 @@ const Positions = () => {
                       dataKey="value"
                     >
                       {strategyChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.name.toLowerCase().includes('sports') ? '#ec4899' : COLORS[index % COLORS.length]} 
+                        />
                       ))}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="mt-3 space-y-2">
-                  {strategyChartData.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                        <span className="text-white/70">{item.name}</span>
+                  {strategyChartData.map((item, idx) => {
+                    const isSports = item.name.toLowerCase().includes('sports');
+                    return (
+                      <div key={idx} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-2 h-2 rounded-full" 
+                            style={{ backgroundColor: isSports ? '#ec4899' : COLORS[idx % COLORS.length] }} 
+                          />
+                          <span className="text-white/70">{item.name}</span>
+                          {isSports && (
+                            <span className="px-1.5 py-0.5 rounded text-xs bg-pink-500/20 text-pink-400">SPORTS</span>
+                          )}
+                        </div>
+                        <span className="text-white font-medium">${item.value.toFixed(2)}</span>
                       </div>
-                      <span className="text-white font-medium">${item.value.toFixed(2)}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                
+                {/* Sports Allocation Alert */}
+                {sportsOverLimit && (
+                  <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2" data-testid="sports-allocation-warning">
+                    <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <p className="text-xs text-red-400">
+                      Sports allocation ({(sportsAllocationPct * 100).toFixed(1)}%) exceeds {(SPORTS_ALLOCATION_LIMIT * 100).toFixed(0)}% limit
+                    </p>
+                  </div>
+                )}
               </>
             ) : (
               <div className="h-48 flex items-center justify-center text-white/40">No data</div>
