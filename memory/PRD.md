@@ -62,6 +62,24 @@ Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven predicti
   - Step B: Sum all implied probabilities (will be > 1.0 due to vig)
   - Step C: True Probability = Implied / TotalImplied
 
+- ✅ **SECURITY & STABILITY POLISH COMPLETE (Jan 31, 2026)**
+
+  **Security Hardening:**
+  - Removed hardcoded API key from source code
+  - Strict environment variable requirement: `ODDS_API_KEY` in `.env`
+  - Module self-disables if key not found (`self.active = False`)
+  - All fetch methods return `None` when disabled, triggering Order Flow fallback
+  - Clear error logging: "CRITICAL: ODDS_API_KEY not found in .env"
+
+  **Quota Protection (Free Tier = 500 req/month):**
+  - Increased cache TTL from 30 mins to **60 mins** (3600 seconds)
+  - Math: Allows tracking ~2 sports without hitting monthly limit
+  - Warning: "Free Tier Mode: Odds cached for 60 mins to preserve monthly quota"
+
+  **Graceful Fallback:**
+  - If API returns `None` → Log: "Sports Odds unavailable. Falling back to Order Flow."
+  - Sports markets still use 100% Order Flow (LLM STILL BANNED)
+
   **Fallback Logic:**
   - If Sports Odds API fails → 100% Order Flow (never fallback to LLM for sports)
   - Detected category takes precedence over raw API category
