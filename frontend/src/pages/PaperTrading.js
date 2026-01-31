@@ -2544,7 +2544,7 @@ const PaperTrading = () => {
       case 'type':
         return dir * (a.type || '').localeCompare(b.type || '');
       case 'market':
-        return dir * ((a.market_question || a.market_id || '').localeCompare(b.market_question || b.market_id || ''));
+        return dir * ((a.market_question || a.question || a.market_id || '').localeCompare(b.market_question || b.question || b.market_id || ''));
       case 'strategy':
         return dir * (a.strategy || '').localeCompare(b.strategy || '');
       case 'side':
