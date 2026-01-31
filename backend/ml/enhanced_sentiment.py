@@ -400,6 +400,8 @@ class EnhancedSentimentAnalyzer:
         # ================================================================
         # 2. SPORTS ODDS API (ONLY for sports markets - REAL DATA)
         # ================================================================
+        # Returns None if module is disabled (no API key)
+        # In that case, we fallback gracefully to Order Flow
         sports_fair_value = 0.5
         sports_confidence = 0.0
         
@@ -407,7 +409,16 @@ class EnhancedSentimentAnalyzer:
             try:
                 sports_result = await self.sports_odds.analyze_market(market_data)
                 
-                if sports_result.get('is_sports_market'):
+                # Handle None return (module disabled or error)
+                if sports_result is None:
+                    logger.warning(
+                        "Sports Odds unavailable (disabled or error). "
+                        "Falling back to Order Flow."
+                    )
+                    result['sports_error'] = 'module_disabled_or_unavailable'
+                    result['sports_fallback_reason'] = 'API key not configured or module inactive'
+                
+                elif sports_result.get('is_sports_market'):
                     sports_fair_value = sports_result.get('sports_fair_value', 0.5)
                     sports_confidence = sports_result.get('sports_confidence', 0.0)
                     
@@ -425,7 +436,7 @@ class EnhancedSentimentAnalyzer:
                     result['sports_error'] = sports_result.get('error', 'not_sports_market')
                     
             except Exception as e:
-                logger.warning(f"Sports odds error: {e}")
+                logger.warning(f"Sports odds error: {e}. Falling back to Order Flow.")
                 result['sports_error'] = str(e)
         
         # ================================================================
