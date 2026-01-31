@@ -621,7 +621,6 @@ class SportsOddsAnalyzer:
                 - source: 'odds_api'
         """
         question = market_data.get('question', '')
-        market_id = market_data.get('id', '')
         
         result = {
             'sports_fair_value': 0.5,
