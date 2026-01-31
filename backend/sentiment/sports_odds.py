@@ -829,15 +829,21 @@ class SportsOddsAnalyzer:
     def get_api_stats(self) -> Dict:
         """Get API usage statistics."""
         return {
+            'active': self.active,
             'requests_made': self._requests_made,
             'requests_remaining': self._requests_remaining,
             'last_request': self._last_request_time.isoformat() if self._last_request_time else None,
             'cache_size': len(self._cache),
             'events_cache_size': len(self._events_cache),
-            'cache_ttl_seconds': 1800,
+            'cache_ttl_seconds': self.CACHE_TTL_SECONDS,
             'tier': 'FREE',
             'monthly_limit': 500,
+            'status': 'ACTIVE' if self.active else 'DISABLED (no API key)',
         }
+    
+    def is_active(self) -> bool:
+        """Check if the module is active (API key is configured)."""
+        return self.active
 
 
 # Singleton instance
