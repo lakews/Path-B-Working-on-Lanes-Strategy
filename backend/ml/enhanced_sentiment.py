@@ -494,41 +494,52 @@ class EnhancedSentimentAnalyzer:
         
         if detected_category == 'sports':
             # ============================================================
-            # SPORTS: 80% Real Odds + 20% Order Flow
-            # LLM = 0%, GitHub = 0% (COMPLETELY DISCONNECTED)
+            # SPORTS: 85% Real Odds + 15% Order Flow (STRICT ISOLATION)
+            # ============================================================
+            # BANNED SOURCES: LLM = 0%, GitHub = 0%, Social = 0%
+            # RATIONALE: GitHub activity does NOT influence sports outcomes.
+            #            LLM cannot predict live scores.
             # ============================================================
             if sports_confidence > 0:
-                # Real odds available - use them!
-                sports_weight = 0.80
-                orderflow_weight = 0.20
+                # Real odds available - PRIMARY TRUTH SOURCE
+                sports_weight = 0.85  # Primary truth from bookmakers
+                orderflow_weight = 0.15  # Secondary truth from order book
                 
                 combined_sentiment = (
                     sports_fair_value * sports_weight +
                     result['polymarket_sentiment'] * orderflow_weight
                 )
-                combined_confidence = min(0.95, sports_confidence * 0.8 + result['polymarket_confidence'] * 0.2)
+                combined_confidence = min(0.95, sports_confidence * 0.85 + result['polymarket_confidence'] * 0.15)
                 
                 weight_breakdown = {
                     'sports_odds': sports_weight,
                     'orderflow': orderflow_weight,
-                    'llm': 0.0,  # DISABLED
-                    'github': 0.0,  # DISABLED
+                    'llm': 0.0,  # BANNED
+                    'github': 0.0,  # BANNED
+                    'social': 0.0,  # BANNED
                     'correlation': 0.0,
                 }
-                result['fusion_strategy'] = 'SPORTS: 80% Real Odds + 20% Order Flow (LLM DISABLED)'
+                result['fusion_strategy'] = 'SPORTS: 85% Real Odds + 15% Order Flow (LLM/GitHub BANNED)'
+                result['banned_sources'] = ['llm', 'github', 'social']
             else:
-                # Fallback: 100% Order Flow if odds API fails
+                # ============================================================
+                # FAIL-SAFE: API failed/timeout/quota exceeded
+                # Fallback to 100% Order Flow - NEVER fallback to LLM for sports
+                # ============================================================
                 combined_sentiment = result['polymarket_sentiment']
                 combined_confidence = result['polymarket_confidence']
                 
                 weight_breakdown = {
                     'sports_odds': 0.0,  # API failed
-                    'orderflow': 1.0,  # 100% fallback
-                    'llm': 0.0,
+                    'orderflow': 1.0,  # 100% fallback - NOT LLM
+                    'llm': 0.0,  # STILL BANNED
                     'github': 0.0,
+                    'social': 0.0,
                     'correlation': 0.0,
                 }
-                result['fusion_strategy'] = 'SPORTS FALLBACK: 100% Order Flow (Odds API unavailable)'
+                result['fusion_strategy'] = 'SPORTS FALLBACK: 100% Order Flow (Odds API unavailable - LLM STILL BANNED)'
+                result['api_fallback_reason'] = result.get('sports_error', 'API unavailable')
+                logger.warning(f"Sports API fallback triggered: {result.get('sports_error')}")
                 
         elif detected_category == 'politics':
             # ============================================================
