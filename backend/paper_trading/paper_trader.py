@@ -2830,20 +2830,39 @@ class PaperTrader:
                     if not self.running:
                         break
                     
+                    market_id = market_data.get('id')
+                    question = market_data.get('question', '')
+                    
                     # Filter by asset class
                     asset_class = market_data.get('asset_class', market_data.get('category', 'unknown')).lower()
                     if asset_class not in [ac.lower() for ac in self.enabled_asset_classes]:
                         skipped_asset_class += 1
                         continue
                     
-                    # Check existing paper position
-                    market_id = market_data.get('id')
+                    # =================================================================
+                    # ROUTER PRIORITY (5-Lane Highway)
+                    # =================================================================
+                    # 1. Check existing position first (exits always take priority)
+                    # 2. SPORTS: Real odds arbitrage (isolated lane)
+                    # 3. GAMMA: Moonshot candidates (opportunistic)
+                    # 4. NEWS: Check cache for emergent signals (Lane 5)
+                    # 5. STANDARD: HFT/Alpha determination
+                    # =================================================================
+                    
                     if market_id in self.paper_positions:
                         # Always evaluate exits (even during graceful stop)
                         await self._evaluate_exit(market_id, market_data)
                         exit_evaluated += 1
                     elif not self.graceful_stop:
-                        # Only evaluate new entries if not in graceful stop mode
+                        # ===== LANE 5: NEWS/EMERGENT CHECK =====
+                        # Check if there's an injected news signal for this market
+                        news_signal = await self._check_news_signal(market_id)
+                        if news_signal and news_signal.get('bayes_factor', 0) >= 3.0:
+                            await self._execute_news_sniper(market_data, news_signal)
+                            entry_evaluated += 1
+                            continue
+                        
+                        # Standard entry evaluation (Sports/Gamma/HFT/Alpha)
                         await self._evaluate_entry(market_data)
                         entry_evaluated += 1
                     
