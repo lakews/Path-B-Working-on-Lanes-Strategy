@@ -148,21 +148,6 @@ class NewsInjector:
         
         logger.info(f"[NEWS INJECTOR] Initialized with config: {self.config}")
     
-    async def _get_llm_client(self):
-        """Lazy initialization of LLM client"""
-        if self._llm_client is None:
-            try:
-                from emergentintegrations.llm.chat import LlmChat
-                emergent_key = os.environ.get('EMERGENT_LLM_KEY') or os.environ.get('LLM_KEY')
-                if emergent_key:
-                    self._llm_client = LlmChat(api_key=emergent_key)
-                    logger.info("[NEWS INJECTOR] LLM client initialized")
-                else:
-                    logger.warning("[NEWS INJECTOR] No LLM key found")
-            except Exception as e:
-                logger.error(f"[NEWS INJECTOR] Failed to init LLM client: {e}")
-        return self._llm_client
-    
     def _check_rate_limit(self) -> bool:
         """Check if we're within rate limits for injections"""
         now = datetime.now(timezone.utc)
@@ -182,6 +167,9 @@ class NewsInjector:
         """
         Use LLM to analyze news relevance to markets.
         
+        Uses the Event Resolution Adjudicator prompt for strict,
+        calibrated analysis focusing on the YES outcome.
+        
         Returns:
             Dict mapping market_id to analysis:
             {
@@ -193,84 +181,30 @@ class NewsInjector:
                 }
             }
         """
-        llm = await self._get_llm_client()
-        if not llm:
-            return {}
-        
-        # Build market list for prompt (limit to avoid token overflow)
-        market_list = "\n".join([
-            f"- ID: {m['id'][:16]}... | Question: {m.get('question', 'Unknown')[:100]}"
-            for m in markets[:20]  # Limit to 20 markets
-        ])
-        
-        prompt = f"""Analyze this news headline and determine which prediction markets it affects.
-
-NEWS:
-Headline: {news.headline}
-Content: {news.content[:500]}
-Source: {news.source}
-
-ACTIVE MARKETS:
-{market_list}
-
-For each affected market, respond in this exact JSON format:
-{{
-    "affected_markets": [
-        {{
-            "market_id": "the market ID prefix",
-            "direction": "YES" or "NO" or "NEUTRAL",
-            "impact": "resolution" or "strong" or "moderate" or "weak",
-            "confidence": 0.0 to 1.0,
-            "reasoning": "brief explanation"
-        }}
-    ]
-}}
-
-Rules:
-- Only include markets that are DIRECTLY affected by this news
-- "resolution" = news definitively answers the market question
-- "strong" = news strongly suggests an outcome
-- "moderate" = news is relevant but not conclusive
-- "weak" = news is tangentially related
-- If no markets are affected, return {{"affected_markets": []}}
-
-Respond ONLY with the JSON, no other text."""
-
         try:
-            response = await llm.chat(
-                message=prompt,
-                model=self.config['llm_model']
+            # Use batch analysis for efficiency
+            results = await self.llm_service.batch_analyze(
+                news_headline=news.headline,
+                news_content=news.content,
+                markets=markets[:20]  # Limit to 20 markets
             )
             
-            # Parse JSON from response
-            import json
+            # Convert LLMAnalysisResult to the format expected by EventBayes
+            analyses = {}
+            for market_id, result in results.items():
+                if result.is_relevant and result.confidence > 0.50:
+                    analyses[market_id] = {
+                        'direction': result.direction,
+                        'impact': result.impact,
+                        'confidence': result.confidence,
+                        'reasoning': result.rationale
+                    }
             
-            # Try to extract JSON from response
-            json_match = re.search(r'\{[\s\S]*\}', response)
-            if json_match:
-                result = json.loads(json_match.group())
-                
-                # Convert to market_id -> analysis mapping
-                analyses = {}
-                for item in result.get('affected_markets', []):
-                    # Find full market ID from prefix
-                    prefix = item.get('market_id', '')
-                    for market in markets:
-                        if market['id'].startswith(prefix):
-                            analyses[market['id']] = {
-                                'direction': item.get('direction', 'NEUTRAL'),
-                                'impact': item.get('impact', 'weak'),
-                                'confidence': float(item.get('confidence', 0.5)),
-                                'reasoning': item.get('reasoning', '')
-                            }
-                            break
-                
-                return analyses
+            return analyses
             
         except Exception as e:
             logger.error(f"[NEWS INJECTOR] LLM analysis failed: {e}")
-        
-        return {}
+            return {}
     
     async def _fetch_from_exa(self, query: str) -> List[NewsItem]:
         """
