@@ -508,6 +508,10 @@ class PaperTrader:
         # Session timing
         self.session_start_time = None  # Set when session starts
         
+        # Lane 5: Signal cache for News/Emergent signals
+        # This connects to the NewsInjector's cache writes
+        self._signal_cache = None  # Will be set via set_signal_cache()
+        
         # Paper positions tracking
         self.paper_positions: Dict[str, Dict] = {}
         self.closed_trades: List[Dict] = []
