@@ -2759,6 +2759,177 @@ from paper_trading.strategy_optimizer import StrategyOptimizer
 paper_trader: Optional[PaperTrader] = None
 strategy_optimizer: Optional[StrategyOptimizer] = None
 
+# =============================================
+# NEWS/EMERGENT LANE (Lane 5) - Webhook Endpoints
+# =============================================
+
+class NewsWebhookPayload(BaseModel):
+    """Payload for news webhook"""
+    headline: str = Field(..., description="News headline")
+    content: str = Field("", description="Full news content")
+    source: str = Field("webhook", description="News source URL or name")
+    url: str = Field("", description="Original article URL")
+    priority: str = Field("normal", description="Priority: 'high' or 'normal'")
+
+
+@api_router.post("/hooks/news-alert")
+async def news_webhook(
+    payload: NewsWebhookPayload,
+    background_tasks: BackgroundTasks
+):
+    """
+    Webhook endpoint for news alerts.
+    
+    Lane 5: NEWS/EMERGENT
+    
+    This endpoint receives breaking news and processes it through:
+    1. LLM analysis to determine market relevance
+    2. Event Bayesian update to calculate Bayes Factor
+    3. Cache injection if BF > threshold (default 3.0)
+    
+    The HFT loop then reads from cache and executes at speed.
+    
+    Expected payload:
+    {
+        "headline": "Breaking: ...",
+        "content": "Full article text...",
+        "source": "reuters.com",
+        "url": "https://...",
+        "priority": "high"  // or "normal"
+    }
+    """
+    global news_injector
+    
+    try:
+        # Initialize news injector if not already
+        if news_injector is None:
+            news_injector = get_news_injector()
+        
+        # Process webhook (runs in background for high priority, inline for normal)
+        result = await news_injector.handle_webhook(payload.dict())
+        
+        return {
+            "status": "accepted",
+            "result": result,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"[NEWS WEBHOOK] Error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
+
+@api_router.get("/hooks/news-status")
+async def news_injector_status():
+    """Get status of the News Injector service"""
+    global news_injector
+    
+    if news_injector is None:
+        return {
+            "status": "not_initialized",
+            "is_running": False,
+            "config": {}
+        }
+    
+    return {
+        "status": "active" if news_injector.is_running else "stopped",
+        "is_running": news_injector.is_running,
+        "config": {
+            "min_bayes_factor": news_injector.config.get('min_bayes_factor', 3.0),
+            "poll_interval_seconds": news_injector.config.get('exa_poll_interval_seconds', 60),
+            "exa_enabled": bool(news_injector._exa_api_key)
+        },
+        "stats": {
+            "injections_this_minute": news_injector._injection_count
+        }
+    }
+
+
+@api_router.post("/hooks/news-start")
+async def start_news_injector(
+    background_tasks: BackgroundTasks,
+    username: str = Depends(verify_credentials_dual)
+):
+    """Start the News Injector background polling"""
+    global news_injector
+    
+    try:
+        if news_injector is None:
+            news_injector = get_news_injector()
+        
+        if news_injector.is_running:
+            return {"status": "already_running"}
+        
+        await news_injector.start()
+        
+        return {
+            "status": "started",
+            "message": "News Injector polling started",
+            "exa_enabled": bool(news_injector._exa_api_key)
+        }
+        
+    except Exception as e:
+        logger.error(f"[NEWS INJECTOR] Start error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
+
+@api_router.post("/hooks/news-stop")
+async def stop_news_injector(
+    username: str = Depends(verify_credentials_dual)
+):
+    """Stop the News Injector background polling"""
+    global news_injector
+    
+    if news_injector is None:
+        return {"status": "not_initialized"}
+    
+    if not news_injector.is_running:
+        return {"status": "already_stopped"}
+    
+    await news_injector.stop()
+    
+    return {
+        "status": "stopped",
+        "message": "News Injector polling stopped"
+    }
+
+
+@api_router.post("/hooks/news-config")
+async def update_news_config(
+    min_bayes_factor: float = 3.0,
+    poll_interval_seconds: int = 60,
+    username: str = Depends(verify_credentials_dual)
+):
+    """Update News Injector configuration"""
+    global news_injector
+    
+    if news_injector is None:
+        news_injector = get_news_injector()
+    
+    # Update config
+    news_injector.config['min_bayes_factor'] = min_bayes_factor
+    news_injector.config['exa_poll_interval_seconds'] = poll_interval_seconds
+    news_injector.event_bayes.config['min_bayes_factor'] = min_bayes_factor
+    
+    return {
+        "status": "updated",
+        "config": {
+            "min_bayes_factor": min_bayes_factor,
+            "poll_interval_seconds": poll_interval_seconds
+        }
+    }
+
+
+# =============================================
+# PAPER TRADING ENDPOINTS
+# =============================================
+
 @api_router.post("/paper/start")
 async def start_paper_trading(
     background_tasks: BackgroundTasks,
