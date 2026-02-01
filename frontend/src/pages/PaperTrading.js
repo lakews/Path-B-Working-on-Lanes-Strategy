@@ -2449,7 +2449,6 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
               <td className="py-2 px-2 text-right text-xs text-white/60">
                 {totals.closed_trades > 0 ? (totals.avg_hold_time < 1 ? `${Math.round(totals.avg_hold_time * 60)}m` : totals.avg_hold_time < 24 ? `${totals.avg_hold_time.toFixed(1)}h` : `${(totals.avg_hold_time / 24).toFixed(1)}d`) : '-'}
               </td>
-              </td>
             </tr>
           </tbody>
         </table>
