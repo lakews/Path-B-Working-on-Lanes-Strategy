@@ -30,6 +30,7 @@ import aiohttp
 
 # Internal imports
 from bayesian_math.event_bayes import EventBayesianUpdater, EventPosterior, get_event_bayes
+from services.llm_service import get_llm_service, EmergentLLMService, LLMAnalysisResult
 
 logger = logging.getLogger(__name__)
 
