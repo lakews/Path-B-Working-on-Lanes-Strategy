@@ -6686,7 +6686,11 @@ class PaperTrader:
             asset_class_unrealized[ac] += pos.get('unrealized_pnl', 0)
             asset_class_open_positions[ac] += 1
         
-        for asset_class, stats in self.asset_class_stats.items():
+        # Combine asset classes from both stats (closed trades) AND open positions
+        all_asset_classes = set(self.asset_class_stats.keys()) | set(asset_class_unrealized.keys())
+        
+        for asset_class in all_asset_classes:
+            stats = self.asset_class_stats.get(asset_class, {})
             trades = stats.get('trades', 0)
             wins = stats.get('wins', 0)
             pnl = stats.get('pnl', 0)
