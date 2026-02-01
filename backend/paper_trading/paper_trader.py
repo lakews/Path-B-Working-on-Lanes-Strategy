@@ -551,10 +551,13 @@ class PaperTrader:
         # Equity curve tracking - now with strategy and asset class breakdowns
         self.equity_curve: List[Dict] = []
         self.strategy_equity: Dict[str, float] = {
+            'hft_scalp': 0.0,
+            'hft_maker': 0.0,
             'delta_neutral': 0.0,
-            'volatility_exploitation': 0.0,
             'alpha_directional': 0.0,
-            'arbitrage': 0.0
+            'arbitrage': 0.0,
+            'gamma_scalp': 0.0,
+            'sports_arbitrage': 0.0,
         }
         
         # Three-Speed Lane Equity Tracking (Task 29)
