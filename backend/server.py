@@ -32,6 +32,7 @@ from auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from services.market_alerts import get_market_alerts_service, MarketAlertsService
+from services.news_injector import get_news_injector, NewsInjector
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
