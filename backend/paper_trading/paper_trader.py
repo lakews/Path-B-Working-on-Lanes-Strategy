@@ -4730,6 +4730,9 @@ class PaperTrader:
             # Update asset class stats with full metrics
             if asset_class not in self.asset_class_stats:
                 self.asset_class_stats[asset_class] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
+                # If we're creating stats for an asset class at exit time, it means the position
+                # was recovered/imported from a previous session - count it as a trade
+                self.asset_class_stats[asset_class]['trades'] += 1
             # Ensure gross_profit and gross_loss exist (for positions opened before fix)
             if 'gross_profit' not in self.asset_class_stats[asset_class]:
                 self.asset_class_stats[asset_class]['gross_profit'] = 0.0
