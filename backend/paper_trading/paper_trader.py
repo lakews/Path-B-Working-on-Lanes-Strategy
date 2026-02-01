@@ -3354,6 +3354,19 @@ class PaperTrader:
             'take_profit': 0.03,    # 3% - capture spread
             'stop_loss': -0.03,     # 3% - tight risk
             'max_hours': 6          # Standard hold
+        },
+        # =================================================================
+        # SPORTS ARBITRAGE - CRITICAL FIX (Jan 2026)
+        # =================================================================
+        # Sports bets are BINARY OUTCOME. Different exit logic:
+        # - If arb disappears after entry, selling early guarantees loss (spread)
+        # - Ride to settlement unless line moves massively in your favor
+        # =================================================================
+        'sports_arbitrage': {
+            'take_profit': 0.30,    # 30% - If line moves massively in your favor pre-game, take free money
+            'stop_loss': -1.00,     # 100% - Ride to binary outcome (selling early = guaranteed loss due to spread)
+            'max_hours': 24,        # 24h - If game hasn't settled, something is wrong (delayed/cancelled)
+            'force_exit_on_time': True  # Force sell at market if time limit hits
         }
     }
     
