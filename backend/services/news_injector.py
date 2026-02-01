@@ -134,14 +134,14 @@ class NewsInjector:
             'min_bayes_factor': self.config['min_bayes_factor']
         })
         
+        # LLM service for news analysis (uses Event Resolution Adjudicator prompt)
+        self.llm_service = get_llm_service(model=self.config['llm_model'])
+        
         # State
         self.is_running = False
         self._poll_task: Optional[asyncio.Task] = None
         self._injection_count = 0
         self._last_injection_reset = datetime.now(timezone.utc)
-        
-        # LLM client (lazy init)
-        self._llm_client = None
         
         # Exa.ai client (lazy init)
         self._exa_api_key = os.environ.get('EXA_API_KEY')
