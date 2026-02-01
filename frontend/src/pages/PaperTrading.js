@@ -2379,6 +2379,8 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
               <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Open</th>
               <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Closed</th>
               <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Win Rate</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">PF</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Avg Hold</th>
             </tr>
           </thead>
           <tbody>
@@ -2387,6 +2389,12 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
               const isLivePositive = rowData.unrealized_pnl >= 0;
               const isClosedPositive = rowData.closed_pnl >= 0;
               const info = dataType === 'strategy' ? STRATEGY_INFO[key] : ASSET_CLASS_INFO[key];
+              const formatHoldTime = (hours) => {
+                if (hours === 0) return '-';
+                if (hours < 1) return `${Math.round(hours * 60)}m`;
+                if (hours < 24) return `${hours.toFixed(1)}h`;
+                return `${(hours / 24).toFixed(1)}d`;
+              };
               return (
                 <tr key={key} className="border-b border-white/5 hover:bg-white/5">
                   <td className="py-2 px-2">
@@ -2409,6 +2417,12 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
                   <td className={`py-2 px-2 text-right text-xs ${rowData.win_rate >= 0.5 ? 'text-green-400' : rowData.closed_trades > 0 ? 'text-red-400' : 'text-white/40'}`}>
                     {rowData.closed_trades > 0 ? (rowData.win_rate * 100).toFixed(0) + '%' : '-'}
                   </td>
+                  <td className={`py-2 px-2 text-right text-xs ${rowData.profit_factor >= 1.5 ? 'text-green-400' : rowData.profit_factor >= 1 ? 'text-yellow-400' : rowData.closed_trades > 0 ? 'text-red-400' : 'text-white/40'}`}>
+                    {rowData.closed_trades > 0 ? rowData.profit_factor?.toFixed(2) : '-'}
+                  </td>
+                  <td className="py-2 px-2 text-right text-xs text-white/60">
+                    {formatHoldTime(rowData.avg_hold_time)}
+                  </td>
                 </tr>
               );
             })}
@@ -2428,6 +2442,13 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
               <td className="py-2 px-2 text-right text-xs text-white">{totals.closed_trades}</td>
               <td className={`py-2 px-2 text-right text-xs ${totals.win_rate >= 0.5 ? 'text-green-400' : totals.closed_trades > 0 ? 'text-red-400' : 'text-white/40'}`}>
                 {totals.closed_trades > 0 ? (totals.win_rate * 100).toFixed(0) + '%' : '-'}
+              </td>
+              <td className={`py-2 px-2 text-right text-xs ${totals.profit_factor >= 1.5 ? 'text-green-400' : totals.profit_factor >= 1 ? 'text-yellow-400' : totals.closed_trades > 0 ? 'text-red-400' : 'text-white/40'}`}>
+                {totals.closed_trades > 0 ? totals.profit_factor.toFixed(2) : '-'}
+              </td>
+              <td className="py-2 px-2 text-right text-xs text-white/60">
+                {totals.closed_trades > 0 ? (totals.avg_hold_time < 1 ? `${Math.round(totals.avg_hold_time * 60)}m` : totals.avg_hold_time < 24 ? `${totals.avg_hold_time.toFixed(1)}h` : `${(totals.avg_hold_time / 24).toFixed(1)}d`) : '-'}
+              </td>
               </td>
             </tr>
           </tbody>
