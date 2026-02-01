@@ -48,7 +48,8 @@ const STRATEGY_INFO = {
   alpha_directional: { name: 'Alpha Directional', color: '#10b981', icon: Target },
   arbitrage: { name: 'Alpha Arbitrage', color: '#22c55e', icon: GitBranch },
   gamma_scalp: { name: 'Gamma (Whale Zone)', color: '#8b5cf6', icon: Crosshair },
-  sports_arbitrage: { name: 'Sports Arbitrage', color: '#ec4899', icon: TrendingUp }
+  sports_arbitrage: { name: 'Sports Arbitrage', color: '#ec4899', icon: TrendingUp },
+  news_sniper: { name: 'News Sniper', color: '#f59e0b', icon: Zap },
 };
 
 const ASSET_CLASS_COLORS = {
