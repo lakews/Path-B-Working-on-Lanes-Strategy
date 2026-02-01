@@ -3512,6 +3512,17 @@ class PaperTrader:
             'stop_loss': -1.00,     # 100% - Ride to binary outcome (selling early = guaranteed loss due to spread)
             'max_hours': 24,        # 24h - If game hasn't settled, something is wrong (delayed/cancelled)
             'force_exit_on_time': True  # Force sell at market if time limit hits
+        },
+        # =================================================================
+        # NEWS SNIPER (Lane 5) - Event-driven trades
+        # =================================================================
+        # News trades have short validity windows - act fast, exit fast
+        # =================================================================
+        'news_sniper': {
+            'take_profit': 0.15,    # 15% - News edge decays quickly, take profits
+            'stop_loss': -0.10,     # 10% - Tighter stop since news can be wrong
+            'max_hours': 4,         # 4h - News is time-sensitive, don't hold too long
+            'force_exit_on_time': True
         }
     }
     
