@@ -2307,8 +2307,11 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
     Object.entries(data).map(([key, d]) => [
       key,
       {
-        total_pnl: d.total_pnl ?? d.pnl ?? 0,
-        total_trades: d.total_trades ?? d.trades ?? 0,
+        closed_pnl: d.pnl ?? d.total_pnl ?? 0,
+        unrealized_pnl: d.unrealized_pnl ?? 0,
+        total_pnl: d.total_pnl ?? ((d.pnl ?? 0) + (d.unrealized_pnl ?? 0)),
+        closed_trades: d.trades ?? d.total_trades ?? 0,
+        open_positions: d.open_positions ?? 0,
         total_wins: d.total_wins ?? d.wins ?? 0,
         win_rate: d.win_rate ?? 0,
         sessions: d.sessions ?? 0
@@ -2316,23 +2319,38 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
     ])
   );
 
-  // Filter out asset classes with 0 trades but non-zero P&L (data inconsistency from recovered positions)
+  // Filter out entries with 0 closed trades AND 0 open positions but non-zero P&L (data inconsistency)
   const filteredData = Object.fromEntries(
-    Object.entries(normalizedData).filter(([_, d]) => d.total_trades > 0 || d.total_pnl === 0)
+    Object.entries(normalizedData).filter(([_, d]) => 
+      (d.closed_trades > 0 || d.open_positions > 0) || (d.closed_pnl === 0 && d.unrealized_pnl === 0)
+    )
   );
 
   const entries = Object.entries(filteredData).sort((a, b) => b[1].total_pnl - a[1].total_pnl);
   
   // Calculate totals
   const totals = entries.reduce((acc, [_, d]) => ({
+    closed_pnl: acc.closed_pnl + (d.closed_pnl || 0),
+    unrealized_pnl: acc.unrealized_pnl + (d.unrealized_pnl || 0),
     total_pnl: acc.total_pnl + (d.total_pnl || 0),
-    total_trades: acc.total_trades + (d.total_trades || 0),
+    closed_trades: acc.closed_trades + (d.closed_trades || 0),
+    open_positions: acc.open_positions + (d.open_positions || 0),
     total_wins: acc.total_wins + (d.total_wins || 0),
     sessions: acc.sessions + (d.sessions || 0)
-  }), { total_pnl: 0, total_trades: 0, total_wins: 0, sessions: 0 });
+  }), { closed_pnl: 0, unrealized_pnl: 0, total_pnl: 0, closed_trades: 0, open_positions: 0, total_wins: 0, sessions: 0 });
   
-  totals.win_rate = totals.total_trades > 0 ? totals.total_wins / totals.total_trades : 0;
+  totals.win_rate = totals.closed_trades > 0 ? totals.total_wins / totals.closed_trades : 0;
   const totalReturnPct = (totals.total_pnl / initialCapital) * 100;
+  
+  // Asset class info for coloring
+  const ASSET_CLASS_INFO = {
+    finance: { color: '#ef4444' },
+    politics: { color: '#f59e0b' },
+    crypto: { color: '#10b981' },
+    entertainment: { color: '#06b6d4' },
+    science: { color: '#8b5cf6' },
+    sports: { color: '#ec4899' }
+  };
   
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
@@ -2350,55 +2368,63 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
         <table className="w-full">
           <thead>
             <tr className="bg-white/5 text-left">
-              <th className="py-2 px-3 text-xs text-white/60 uppercase">{dataType === 'strategy' ? 'Strategy' : 'Asset Class'}</th>
-              <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">P&L</th>
-              <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">% Return</th>
-              <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">Trades</th>
-              <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">Win Rate</th>
-              <th className="py-2 px-3 text-xs text-white/60 uppercase text-right">Wins</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase">{dataType === 'strategy' ? 'Strategy' : 'Asset Class'}</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Live P&L</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Closed P&L</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Total P&L</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Open</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Closed</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Win Rate</th>
             </tr>
           </thead>
           <tbody>
             {entries.map(([key, rowData]) => {
-              const isPositive = rowData.total_pnl >= 0;
-              const returnPct = (rowData.total_pnl / initialCapital) * 100;
-              const info = dataType === 'strategy' ? STRATEGY_INFO[key] : null;
+              const isTotalPositive = rowData.total_pnl >= 0;
+              const isLivePositive = rowData.unrealized_pnl >= 0;
+              const isClosedPositive = rowData.closed_pnl >= 0;
+              const info = dataType === 'strategy' ? STRATEGY_INFO[key] : ASSET_CLASS_INFO[key];
               return (
                 <tr key={key} className="border-b border-white/5 hover:bg-white/5">
-                  <td className="py-2 px-3">
+                  <td className="py-2 px-2">
                     <div className="flex items-center gap-2">
-                      {dataType === 'strategy' && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: info?.color }} />}
-                      <span className="text-sm text-white capitalize">{info?.name || key}</span>
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: info?.color || '#64748b' }} />
+                      <span className="text-xs text-white capitalize">{(dataType === 'strategy' ? STRATEGY_INFO[key]?.name : null) || key}</span>
                     </div>
                   </td>
-                  <td className={`py-2 px-3 text-right text-sm font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                    {isPositive ? '+' : ''}${rowData.total_pnl?.toFixed(2)}
+                  <td className={`py-2 px-2 text-right text-xs ${rowData.unrealized_pnl === 0 ? 'text-white/40' : isLivePositive ? 'text-cyan-400' : 'text-orange-400'}`}>
+                    {rowData.unrealized_pnl === 0 ? '-' : (isLivePositive ? '+' : '') + '$' + rowData.unrealized_pnl?.toFixed(2)}
                   </td>
-                  <td className={`py-2 px-3 text-right text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                    {isPositive ? '+' : ''}{returnPct.toFixed(2)}%
+                  <td className={`py-2 px-2 text-right text-xs ${rowData.closed_pnl === 0 ? 'text-white/40' : isClosedPositive ? 'text-green-400' : 'text-red-400'}`}>
+                    {rowData.closed_pnl === 0 ? '-' : (isClosedPositive ? '+' : '') + '$' + rowData.closed_pnl?.toFixed(2)}
                   </td>
-                  <td className="py-2 px-3 text-right text-sm text-white font-bold">{rowData.total_trades}</td>
-                  <td className={`py-2 px-3 text-right text-sm ${rowData.win_rate >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
-                    {(rowData.win_rate * 100).toFixed(1)}%
+                  <td className={`py-2 px-2 text-right text-xs font-bold ${isTotalPositive ? 'text-green-400' : 'text-red-400'}`}>
+                    {isTotalPositive ? '+' : ''}${rowData.total_pnl?.toFixed(2)}
                   </td>
-                  <td className="py-2 px-3 text-right text-sm text-white/60">{rowData.total_wins}</td>
+                  <td className="py-2 px-2 text-right text-xs text-cyan-400">{rowData.open_positions || 0}</td>
+                  <td className="py-2 px-2 text-right text-xs text-white">{rowData.closed_trades}</td>
+                  <td className={`py-2 px-2 text-right text-xs ${rowData.win_rate >= 0.5 ? 'text-green-400' : rowData.closed_trades > 0 ? 'text-red-400' : 'text-white/40'}`}>
+                    {rowData.closed_trades > 0 ? (rowData.win_rate * 100).toFixed(0) + '%' : '-'}
+                  </td>
                 </tr>
               );
             })}
             {/* Totals Row */}
             <tr className="bg-white/10 font-bold border-t-2 border-white/20">
-              <td className="py-3 px-3 text-white">TOTAL</td>
-              <td className={`py-3 px-3 text-right text-lg ${totals.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <td className="py-2 px-2 text-white text-xs">TOTAL</td>
+              <td className={`py-2 px-2 text-right text-xs ${totals.unrealized_pnl >= 0 ? 'text-cyan-400' : 'text-orange-400'}`}>
+                {totals.unrealized_pnl === 0 ? '-' : (totals.unrealized_pnl >= 0 ? '+' : '') + '$' + totals.unrealized_pnl.toFixed(2)}
+              </td>
+              <td className={`py-2 px-2 text-right text-xs ${totals.closed_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {totals.closed_pnl === 0 ? '-' : (totals.closed_pnl >= 0 ? '+' : '') + '$' + totals.closed_pnl.toFixed(2)}
+              </td>
+              <td className={`py-2 px-2 text-right text-sm font-bold ${totals.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {totals.total_pnl >= 0 ? '+' : ''}${totals.total_pnl.toFixed(2)}
               </td>
-              <td className={`py-3 px-3 text-right ${totalReturnPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {totalReturnPct >= 0 ? '+' : ''}{totalReturnPct.toFixed(2)}%
+              <td className="py-2 px-2 text-right text-xs text-cyan-400">{totals.open_positions}</td>
+              <td className="py-2 px-2 text-right text-xs text-white">{totals.closed_trades}</td>
+              <td className={`py-2 px-2 text-right text-xs ${totals.win_rate >= 0.5 ? 'text-green-400' : totals.closed_trades > 0 ? 'text-red-400' : 'text-white/40'}`}>
+                {totals.closed_trades > 0 ? (totals.win_rate * 100).toFixed(0) + '%' : '-'}
               </td>
-              <td className="py-3 px-3 text-right text-white text-lg">{totals.total_trades}</td>
-              <td className={`py-3 px-3 text-right ${totals.win_rate >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
-                {(totals.win_rate * 100).toFixed(1)}%
-              </td>
-              <td className="py-3 px-3 text-right text-white">{totals.total_wins}</td>
             </tr>
           </tbody>
         </table>
