@@ -6556,6 +6556,47 @@ class PaperTrader:
         else:
             duration_seconds = 0
         
+        # =================================================================
+        # RECALCULATE UNREALIZED P&L ON-DEMAND FOR ACCURACY
+        # =================================================================
+        # Don't rely on cached position values - calculate fresh using latest prices
+        total_unrealized = 0.0
+        for market_id, position in self.paper_positions.items():
+            size = position.get('size', 0)
+            if size <= 0:
+                continue
+                
+            side = position.get('side', 'YES')
+            yes_entry_price = position.get('yes_entry_price', position.get('entry_price', 0))
+            
+            # Get current price from market data if available, else use stored current_price
+            current_price = position.get('current_price', yes_entry_price)
+            
+            # For NO positions, current_price is stored as NO price, convert back to YES price for calculation
+            if side == 'NO' and current_price < 1:
+                # current_price is already the NO price, YES price = 1 - NO price
+                yes_current = 1 - current_price
+            else:
+                yes_current = current_price
+            
+            # Calculate unrealized P&L
+            if side == 'YES':
+                shares = size / yes_entry_price if yes_entry_price > 0 else 0
+                current_value = shares * yes_current
+                unrealized = current_value - size
+            else:
+                no_entry = 1 - yes_entry_price
+                no_current = 1 - yes_current
+                shares = size / no_entry if no_entry > 0 else 0
+                current_value = shares * no_current
+                unrealized = current_value - size
+            
+            # Update position with fresh calculation
+            position['unrealized_pnl'] = round(unrealized, 2)
+            total_unrealized += unrealized
+        
+        self.unrealized_pnl = round(total_unrealized, 2)
+        
         # Calculate strategy results with profit factors (like backtest)
         # Include unrealized P&L from open positions
         strategy_results = {}
