@@ -21,7 +21,7 @@ Usage:
 """
 
 import logging
-from typing import Tuple, Dict, Optional
+from typing import Tuple, Dict, Optional, List
 from dataclasses import dataclass, field, asdict
 
 logger = logging.getLogger(__name__)
