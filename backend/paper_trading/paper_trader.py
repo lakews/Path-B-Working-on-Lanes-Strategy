@@ -6650,18 +6650,36 @@ class PaperTrader:
         }
         
         # Calculate asset class results with profit factors
+        # Include unrealized P&L from open positions
         asset_class_results = {}
+        
+        # Calculate unrealized P&L by asset class from open positions
+        asset_class_unrealized = {}
+        asset_class_open_positions = {}
+        for pos in self.paper_positions.values():
+            ac = pos.get('asset_class', 'unknown')
+            if ac not in asset_class_unrealized:
+                asset_class_unrealized[ac] = 0.0
+                asset_class_open_positions[ac] = 0
+            asset_class_unrealized[ac] += pos.get('unrealized_pnl', 0)
+            asset_class_open_positions[ac] += 1
+        
         for asset_class, stats in self.asset_class_stats.items():
             trades = stats.get('trades', 0)
             wins = stats.get('wins', 0)
             pnl = stats.get('pnl', 0)
             gross_profit = stats.get('gross_profit', 0)
             gross_loss = stats.get('gross_loss', 0)
+            unrealized = asset_class_unrealized.get(asset_class, 0)
+            open_pos = asset_class_open_positions.get(asset_class, 0)
             
             asset_class_results[asset_class] = {
-                'trades': trades,
+                'trades': trades,  # Closed trades
+                'open_positions': open_pos,
                 'wins': wins,
-                'pnl': pnl,
+                'pnl': pnl,  # Realized P&L (closed)
+                'unrealized_pnl': round(unrealized, 2),  # Live P&L (open)
+                'total_pnl': round(pnl + unrealized, 2),  # Total P&L
                 'win_rate': wins / trades if trades > 0 else 0,
                 'profit_factor': gross_profit / gross_loss if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
                 'gross_profit': gross_profit,
