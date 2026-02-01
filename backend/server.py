@@ -104,6 +104,7 @@ analytics_engine: Optional[PerformanceAnalytics] = None
 backtest_engine: Optional[BacktestEngine] = None
 historical_collector: Optional[HistoricalDataCollector] = None
 rl_engine: Optional[RLAdaptiveEngine] = None
+news_injector: Optional[NewsInjector] = None  # Lane 5: News/Emergent
 trading_mode: str = "stopped"  # "stopped", "live", "backtest", "paper"
 paper_trading_enabled: bool = False  # Paper trading flag
 
