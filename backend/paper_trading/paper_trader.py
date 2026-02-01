@@ -6690,6 +6690,9 @@ class PaperTrader:
             gross_loss = stats.get('gross_loss', 0)
             unrealized = asset_class_unrealized.get(asset_class, 0)
             open_pos = asset_class_open_positions.get(asset_class, 0)
+            total_hold_time = stats.get('total_hold_time', 0)
+            closed_trades = stats.get('closed_trades', 0)
+            avg_hold_time = total_hold_time / closed_trades if closed_trades > 0 else 0
             
             asset_class_results[asset_class] = {
                 'trades': trades,  # Closed trades
@@ -6699,7 +6702,8 @@ class PaperTrader:
                 'unrealized_pnl': round(unrealized, 2),  # Live P&L (open)
                 'total_pnl': round(pnl + unrealized, 2),  # Total P&L
                 'win_rate': wins / trades if trades > 0 else 0,
-                'profit_factor': gross_profit / gross_loss if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
+                'profit_factor': round(gross_profit / gross_loss, 2) if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
+                'avg_hold_time': round(avg_hold_time, 2),  # Average hold time in hours
                 'gross_profit': gross_profit,
                 'gross_loss': gross_loss
             }
