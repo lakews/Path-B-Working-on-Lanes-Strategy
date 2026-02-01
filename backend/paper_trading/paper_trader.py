@@ -6700,11 +6700,8 @@ class PaperTrader:
             asset_class_unrealized[ac] += pos.get('unrealized_pnl', 0)
             asset_class_open_positions[ac] += 1
         
-        # Combine asset classes from both stats (closed trades) AND open positions
-        all_asset_classes = set(self.asset_class_stats.keys()) | set(asset_class_unrealized.keys())
-        
-        for asset_class in all_asset_classes:
-            stats = self.asset_class_stats.get(asset_class, {})
+        # Build results from pre-initialized asset_class_stats (single source of truth)
+        for asset_class, stats in self.asset_class_stats.items():
             trades = stats.get('trades', 0)
             wins = stats.get('wins', 0)
             pnl = stats.get('pnl', 0)
@@ -6716,19 +6713,21 @@ class PaperTrader:
             closed_trades = stats.get('closed_trades', 0)
             avg_hold_time = total_hold_time / closed_trades if closed_trades > 0 else 0
             
-            asset_class_results[asset_class] = {
-                'trades': trades,  # Closed trades
-                'open_positions': open_pos,
-                'wins': wins,
-                'pnl': pnl,  # Realized P&L (closed)
-                'unrealized_pnl': round(unrealized, 2),  # Live P&L (open)
-                'total_pnl': round(pnl + unrealized, 2),  # Total P&L
-                'win_rate': wins / trades if trades > 0 else 0,
-                'profit_factor': round(gross_profit / gross_loss, 2) if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
-                'avg_hold_time': round(avg_hold_time, 2),  # Average hold time in hours
-                'gross_profit': gross_profit,
-                'gross_loss': gross_loss
-            }
+            # Only include asset classes with activity (trades or open positions)
+            if trades > 0 or open_pos > 0:
+                asset_class_results[asset_class] = {
+                    'trades': trades,  # Closed trades
+                    'open_positions': open_pos,
+                    'wins': wins,
+                    'pnl': pnl,  # Realized P&L (closed)
+                    'unrealized_pnl': round(unrealized, 2),  # Live P&L (open)
+                    'total_pnl': round(pnl + unrealized, 2),  # Total P&L
+                    'win_rate': wins / trades if trades > 0 else 0,
+                    'profit_factor': round(gross_profit / gross_loss, 2) if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
+                    'avg_hold_time': round(avg_hold_time, 2),  # Average hold time in hours
+                    'gross_profit': gross_profit,
+                    'gross_loss': gross_loss
+                }
         
         # Calculate returns distribution (realized trades)
         returns_distribution = self._calculate_returns_distribution()
