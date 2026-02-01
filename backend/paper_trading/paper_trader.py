@@ -3383,9 +3383,9 @@ class PaperTrader:
             'time_mult': 1.5  # Political events take longer
         },
         'sports': {
-            'tp_mult': 1.0,
-            'sl_mult': 0.8,   # Tighter SL for sports
-            'time_mult': 0.25 # Events end quickly
+            'tp_mult': 1.0,   # No adjustment - sports_arbitrage params are already correct
+            'sl_mult': 1.0,   # No adjustment - binary outcome, ride to settlement
+            'time_mult': 1.0  # No adjustment - 24h is already appropriate for sports
         },
         'finance': {
             'tp_mult': 0.8,   # More predictable
