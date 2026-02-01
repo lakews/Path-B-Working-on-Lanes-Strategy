@@ -6556,7 +6556,11 @@ class PaperTrader:
             strategy_unrealized[strategy] += pos.get('unrealized_pnl', 0)
             strategy_open_positions[strategy] += 1
         
-        for strategy, stats in self.strategy_stats.items():
+        # Combine strategies from both stats (closed trades) AND open positions
+        all_strategies = set(self.strategy_stats.keys()) | set(strategy_unrealized.keys())
+        
+        for strategy in all_strategies:
+            stats = self.strategy_stats.get(strategy, {})
             trades = stats.get('trades', 0)
             wins = stats.get('wins', 0)
             pnl = stats.get('pnl', 0)
