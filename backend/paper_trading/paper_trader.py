@@ -523,15 +523,27 @@ class PaperTrader:
         self.circuit_breaker_triggered = False  # Circuit breaker flag
         
         # Strategy performance tracking (with full metrics like backtest)
+        # Initialize ALL strategies upfront so they appear in results even with 0 trades
         self.strategy_stats = {
-            'delta_neutral': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0},
-            'volatility_exploitation': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0},
-            'alpha_directional': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0},
-            'arbitrage': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
+            'hft_scalp': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'hft_maker': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'delta_neutral': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'alpha_directional': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'arbitrage': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'gamma_scalp': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'sports_arbitrage': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
         }
         
         # Asset class tracking (with full metrics like backtest)
-        self.asset_class_stats = {}
+        # Initialize ALL asset classes upfront
+        self.asset_class_stats = {
+            'finance': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'politics': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'crypto': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'entertainment': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'science': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'sports': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+        }
         
         # Returns distribution tracking
         self.trade_returns: List[float] = []
