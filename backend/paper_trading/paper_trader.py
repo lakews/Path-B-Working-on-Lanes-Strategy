@@ -532,6 +532,7 @@ class PaperTrader:
             'arbitrage': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
             'gamma_scalp': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
             'sports_arbitrage': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'news_sniper': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
         }
         
         # Asset class tracking (with full metrics like backtest)
