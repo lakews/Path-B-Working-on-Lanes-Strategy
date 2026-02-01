@@ -3618,16 +3618,31 @@ class PaperTrader:
         Asset class multipliers are also configurable via DB.
         """
         # Base params from user-configured strategy exit params (or defaults)
-        base = self.exit_params_by_strategy.get(strategy, self.DEFAULT_EXIT_PARAMS.get(strategy, self.DEFAULT_EXIT_PARAMS['arbitrage']))
+        strategy_params = self.exit_params_by_strategy.get(strategy)
+        if strategy_params:
+            base = strategy_params
+        elif strategy in self.DEFAULT_EXIT_PARAMS:
+            base = self.DEFAULT_EXIT_PARAMS[strategy]
+        else:
+            # CRITICAL WARNING: Unknown strategy falling back to arbitrage defaults
+            logger.warning(f"[EXIT PARAMS] Unknown strategy '{strategy}' - falling back to 'arbitrage' defaults")
+            base = self.DEFAULT_EXIT_PARAMS['arbitrage']
         
         # Adjustments from asset class (use DB-loaded or defaults)
         adj = self.asset_class_exit_multipliers.get(asset_class.lower(), {'tp_mult': 1.0, 'sl_mult': 1.0, 'time_mult': 1.0})
         
-        return {
+        # For sports_arbitrage, include force_exit_on_time flag
+        result = {
             'take_profit': base['take_profit'] * adj['tp_mult'],
             'stop_loss': base['stop_loss'] * adj['sl_mult'],
             'max_hours': base['max_hours'] * adj['time_mult']
         }
+        
+        # Pass through special flags for sports
+        if base.get('force_exit_on_time'):
+            result['force_exit_on_time'] = True
+        
+        return result
     
     # ============================================
     # DYNAMIC EXIT PARAMETERS (Option 4 Framework)
