@@ -2256,6 +2256,23 @@ class PaperTrader:
             return None
     
     # =============================================================================
+    # NEWS/EMERGENT LANE (Lane 5) - Signal Cache Management
+    # =============================================================================
+    
+    def set_signal_cache(self, cache):
+        """
+        Set the signal cache for Lane 5 news signals.
+        
+        This connects the PaperTrader to the NewsInjector's cache writes.
+        """
+        self._signal_cache = cache
+        logger.info("[PAPER TRADER] Signal cache connected for Lane 5")
+    
+    def get_signal_cache(self):
+        """Get the current signal cache instance"""
+        return self._signal_cache
+    
+    # =============================================================================
     # NEWS/EMERGENT LANE (Lane 5) - News Signal Processing
     # =============================================================================
     
