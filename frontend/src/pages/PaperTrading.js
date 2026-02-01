@@ -2311,6 +2311,8 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
         open_positions: d.open_positions ?? 0,
         total_wins: d.total_wins ?? d.wins ?? 0,
         win_rate: d.win_rate ?? 0,
+        profit_factor: d.profit_factor ?? 0,
+        avg_hold_time: d.avg_hold_time ?? 0,
         sessions: d.sessions ?? 0
       }
     ])
@@ -2333,10 +2335,15 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
     closed_trades: acc.closed_trades + (d.closed_trades || 0),
     open_positions: acc.open_positions + (d.open_positions || 0),
     total_wins: acc.total_wins + (d.total_wins || 0),
+    gross_profit: acc.gross_profit + (d.closed_pnl > 0 ? d.closed_pnl : 0),
+    gross_loss: acc.gross_loss + (d.closed_pnl < 0 ? Math.abs(d.closed_pnl) : 0),
+    total_hold_time: acc.total_hold_time + (d.avg_hold_time * d.closed_trades),
     sessions: acc.sessions + (d.sessions || 0)
-  }), { closed_pnl: 0, unrealized_pnl: 0, total_pnl: 0, closed_trades: 0, open_positions: 0, total_wins: 0, sessions: 0 });
+  }), { closed_pnl: 0, unrealized_pnl: 0, total_pnl: 0, closed_trades: 0, open_positions: 0, total_wins: 0, gross_profit: 0, gross_loss: 0, total_hold_time: 0, sessions: 0 });
   
   totals.win_rate = totals.closed_trades > 0 ? totals.total_wins / totals.closed_trades : 0;
+  totals.profit_factor = totals.gross_loss > 0 ? (totals.gross_profit / totals.gross_loss) : (totals.gross_profit > 0 ? 2.0 : 0);
+  totals.avg_hold_time = totals.closed_trades > 0 ? totals.total_hold_time / totals.closed_trades : 0;
   const totalReturnPct = (totals.total_pnl / initialCapital) * 100;
   
   // Asset class info for coloring
