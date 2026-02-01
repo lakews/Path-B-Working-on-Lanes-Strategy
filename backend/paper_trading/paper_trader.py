@@ -6571,11 +6571,8 @@ class PaperTrader:
             strategy_unrealized[strategy] += pos.get('unrealized_pnl', 0)
             strategy_open_positions[strategy] += 1
         
-        # Combine strategies from both stats (closed trades) AND open positions
-        all_strategies = set(self.strategy_stats.keys()) | set(strategy_unrealized.keys())
-        
-        for strategy in all_strategies:
-            stats = self.strategy_stats.get(strategy, {})
+        # Build results from pre-initialized strategy_stats (single source of truth)
+        for strategy, stats in self.strategy_stats.items():
             trades = stats.get('trades', 0)
             wins = stats.get('wins', 0)
             pnl = stats.get('pnl', 0)
@@ -6587,19 +6584,21 @@ class PaperTrader:
             closed_trades = stats.get('closed_trades', 0)
             avg_hold_time = total_hold_time / closed_trades if closed_trades > 0 else 0
             
-            strategy_results[strategy] = {
-                'trades': trades,  # Closed trades
-                'open_positions': open_pos,
-                'wins': wins,
-                'pnl': pnl,  # Realized P&L (closed)
-                'unrealized_pnl': round(unrealized, 2),  # Live P&L (open)
-                'total_pnl': round(pnl + unrealized, 2),  # Total P&L
-                'win_rate': wins / trades if trades > 0 else 0,
-                'profit_factor': round(gross_profit / gross_loss, 2) if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
-                'avg_hold_time': round(avg_hold_time, 2),  # Average hold time in hours
-                'gross_profit': gross_profit,
-                'gross_loss': gross_loss
-            }
+            # Only include strategies with activity (trades or open positions)
+            if trades > 0 or open_pos > 0:
+                strategy_results[strategy] = {
+                    'trades': trades,  # Closed trades
+                    'open_positions': open_pos,
+                    'wins': wins,
+                    'pnl': pnl,  # Realized P&L (closed)
+                    'unrealized_pnl': round(unrealized, 2),  # Live P&L (open)
+                    'total_pnl': round(pnl + unrealized, 2),  # Total P&L
+                    'win_rate': wins / trades if trades > 0 else 0,
+                    'profit_factor': round(gross_profit / gross_loss, 2) if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
+                    'avg_hold_time': round(avg_hold_time, 2),  # Average hold time in hours
+                    'gross_profit': gross_profit,
+                    'gross_loss': gross_loss
+                }
         
         # ==============================================================
         # TWO-SPEED ARCHITECTURE: HFT vs ALPHA BREAKDOWN
