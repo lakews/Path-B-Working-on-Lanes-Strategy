@@ -2250,6 +2250,130 @@ class PaperTrader:
             return None
     
     # =============================================================================
+    # NEWS/EMERGENT LANE (Lane 5) - News Signal Processing
+    # =============================================================================
+    
+    async def _check_news_signal(self, market_id: str) -> Optional[Dict]:
+        """
+        Check AsyncSignalCache for an injected news signal.
+        
+        Key format: emergent_signal:{market_id}
+        
+        Returns:
+            Dict with signal data if found and not expired, None otherwise
+        """
+        try:
+            # Check if we have access to the signal cache
+            if not hasattr(self, '_signal_cache') or self._signal_cache is None:
+                return None
+            
+            cache_key = f"emergent_signal:{market_id}"
+            signal = await self._signal_cache.get(cache_key)
+            
+            if signal:
+                # Check if signal has expired
+                expires_at = signal.get('expires_at')
+                if expires_at:
+                    from datetime import datetime
+                    expiry = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                    if datetime.now(timezone.utc) > expiry:
+                        return None
+                
+                return signal
+            
+            return None
+            
+        except Exception as e:
+            # CRITICAL: Never crash the trading loop for cache errors
+            logger.debug(f"[NEWS CACHE] Error checking signal for {market_id[:16]}: {e}")
+            return None
+    
+    async def _execute_news_sniper(self, market_data: Dict, news_signal: Dict):
+        """
+        Execute a trade based on an injected news signal.
+        
+        Lane 5: NEWS/EMERGENT - The Bridge
+        
+        This executes at HFT speed because:
+        - The slow analysis (LLM + Bayesian) already happened in background
+        - We're just reading from cache and executing
+        """
+        try:
+            market_id = market_data.get('id', '')
+            market_id_short = market_id[:16]
+            question = market_data.get('question', '')
+            
+            direction = news_signal.get('direction', 'NEUTRAL')
+            if direction == 'NEUTRAL':
+                return
+            
+            bayes_factor = news_signal.get('bayes_factor', 0)
+            posterior = news_signal.get('posterior', 0.5)
+            confidence = news_signal.get('confidence', 0)
+            news_headline = news_signal.get('news_headline', '')
+            
+            logger.info(
+                f"[NEWS SNIPER] {market_id_short} | Direction: {direction} | "
+                f"BF: {bayes_factor:.2f} | Posterior: {posterior:.2f} | "
+                f"News: {news_headline[:50]}..."
+            )
+            
+            # Determine side
+            side = 'YES' if direction == 'YES' else 'NO'
+            
+            # Get prices
+            yes_price = float(market_data.get('yes_price', 0.5))
+            
+            # Calculate position size using fractional Kelly with Bayesian posterior
+            # f* = posterior * kelly_fraction
+            kelly_fraction = 0.25
+            base_size_pct = posterior * kelly_fraction * confidence
+            
+            # Apply minimum edge check
+            if side == 'YES':
+                edge = posterior - yes_price
+            else:
+                edge = (1 - posterior) - (1 - yes_price)
+            
+            if edge < 0.02:  # 2% minimum edge
+                logger.debug(f"[NEWS SNIPER] {market_id_short} | Edge too small: {edge:.2%}")
+                return
+            
+            # Calculate position size
+            max_position_usd = self.deployed_capital * (self.portfolio_risk_config.get('max_position_pct', 5) / 100)
+            position_size = min(
+                self.deployed_capital * base_size_pct,
+                max_position_usd
+            )
+            
+            # Apply minimum trade size
+            min_trade_size = 5.0
+            if position_size < min_trade_size:
+                logger.debug(f"[NEWS SNIPER] {market_id_short} | Size too small: ${position_size:.2f}")
+                return
+            
+            # Execute the trade
+            await self._execute_paper_trade(
+                market_data=market_data,
+                side=side,
+                size=position_size,
+                strategy='news_sniper',
+                confidence=confidence,
+                sentiment_score=posterior,
+                signal_source='emergent_news'
+            )
+            
+            logger.info(
+                f"[NEWS SNIPER] EXECUTED {market_id_short} | "
+                f"Side: {side} | Size: ${position_size:.2f} | "
+                f"Edge: {edge:.2%} | BF: {bayes_factor:.2f}"
+            )
+            
+        except Exception as e:
+            # CRITICAL: Never crash the trading loop
+            logger.error(f"[NEWS SNIPER] Error executing trade: {e}")
+    
+    # =============================================================================
     # SPORTS STRATEGY PROCESSING (Task: Sports Strategy Injection)
     # =============================================================================
     
