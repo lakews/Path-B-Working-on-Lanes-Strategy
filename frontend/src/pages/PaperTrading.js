@@ -41,15 +41,17 @@ const AUTH_CONFIG = {
 };
 
 const STRATEGY_INFO = {
-  hft_maker: { name: 'HFT Market Making', color: '#06b6d4', icon: Zap },
-  hft_gamma_scalp: { name: 'HFT Gamma Scalp', color: '#f59e0b', icon: Activity },
+  // New Lane-Based Strategies (Three-Speed Architecture)
+  hft_scalp: { name: 'HFT Scalp', color: '#06b6d4', icon: Zap },
+  hft_maker: { name: 'HFT Market Making', color: '#0ea5e9', icon: Activity },
+  delta_neutral: { name: 'HFT Delta-Neutral', color: '#38bdf8', icon: Scale },
   alpha_directional: { name: 'Alpha Directional', color: '#10b981', icon: Target },
-  gamma_scalp: { name: 'Gamma (Whale)', color: '#8b5cf6', icon: Crosshair },
-  sports_arbitrage: { name: 'Sports Arbitrage', color: '#ec4899', icon: GitBranch },
-  delta_neutral: { name: 'Delta-Neutral', color: '#64748b', icon: Scale },
+  arbitrage: { name: 'Alpha Arbitrage', color: '#22c55e', icon: GitBranch },
+  gamma_scalp: { name: 'Gamma (Whale Zone)', color: '#8b5cf6', icon: Crosshair },
+  sports_arbitrage: { name: 'Sports Arbitrage', color: '#ec4899', icon: TrendingUp },
   // Legacy mappings for old data
   volatility_exploitation: { name: 'Volatility (Legacy)', color: '#64748b', icon: Zap },
-  arbitrage: { name: 'Arbitrage (Legacy)', color: '#64748b', icon: Layers }
+  hft_gamma_scalp: { name: 'HFT Gamma (Legacy)', color: '#64748b', icon: Activity }
 };
 
 const ASSET_CLASS_COLORS = {
