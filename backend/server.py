@@ -2944,7 +2944,7 @@ async def start_paper_trading(
     Args:
         continuous_mode: If True, runs indefinitely until manually stopped
     """
-    global paper_trader, trading_mode
+    global paper_trader, trading_mode, news_injector
     
     if trading_bot and trading_bot.running:
         return JSONResponse(
@@ -2966,6 +2966,21 @@ async def start_paper_trading(
         # PaperTrader now uses Config tab values for capital
         paper_trader = PaperTrader(continuous_mode=continuous_mode)
         
+        # =================================================================
+        # LANE 5: Connect Signal Cache for News/Emergent signals
+        # =================================================================
+        signal_cache = get_signal_cache()
+        paper_trader.set_signal_cache(signal_cache)
+        
+        # Initialize News Injector with the same cache
+        if news_injector is None:
+            news_injector = get_news_injector(signal_cache=signal_cache)
+        else:
+            news_injector.signal_cache = signal_cache
+        
+        logger.info("[PAPER TRADING] Lane 5 signal cache connected")
+        # =================================================================
+        
         # Set up WebSocket broadcast callback for real-time updates
         from paper_trading.paper_trader import set_broadcast_callback
         set_broadcast_callback(ws_manager.broadcast)
@@ -2980,6 +2995,7 @@ async def start_paper_trading(
             "deployed_capital": paper_trader.deployed_capital,
             "continuous_mode": continuous_mode,
             "mode": "paper",
+            "lane5_enabled": True,
             "config": {
                 "capital_deployment_pct": paper_trader.capital_deployment_pct,
                 "max_position_size_pct": paper_trader.max_position_size_pct,
