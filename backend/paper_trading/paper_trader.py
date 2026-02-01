@@ -4709,9 +4709,21 @@ class PaperTrader:
             if is_win:
                 self.winning_trades += 1
             
-            # Update strategy stats with full metrics
+            # Calculate hold time for this trade
+            entry_time = datetime.fromisoformat(position['entry_time'].replace('Z', '+00:00'))
+            exit_time = datetime.now(timezone.utc)
+            hold_time_seconds = (exit_time - entry_time).total_seconds()
+            hold_time_hours = hold_time_seconds / 3600
+            
+            # Update strategy stats with full metrics including hold time
             if strategy in self.strategy_stats:
                 self.strategy_stats[strategy]['pnl'] += pnl
+                # Track hold time for averaging
+                if 'total_hold_time' not in self.strategy_stats[strategy]:
+                    self.strategy_stats[strategy]['total_hold_time'] = 0.0
+                    self.strategy_stats[strategy]['closed_trades'] = 0
+                self.strategy_stats[strategy]['total_hold_time'] += hold_time_hours
+                self.strategy_stats[strategy]['closed_trades'] += 1
                 if is_win:
                     self.strategy_stats[strategy]['wins'] += 1
                     self.strategy_stats[strategy]['gross_profit'] += pnl
@@ -4727,18 +4739,24 @@ class PaperTrader:
             if strategy_lane in self.lane_equity:
                 self.lane_equity[strategy_lane] += pnl
             
-            # Update asset class stats with full metrics
+            # Update asset class stats with full metrics including hold time
             if asset_class not in self.asset_class_stats:
-                self.asset_class_stats[asset_class] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
+                self.asset_class_stats[asset_class] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0}
                 # If we're creating stats for an asset class at exit time, it means the position
                 # was recovered/imported from a previous session - count it as a trade
                 self.asset_class_stats[asset_class]['trades'] += 1
-            # Ensure gross_profit and gross_loss exist (for positions opened before fix)
+            # Ensure all fields exist (for positions opened before fix)
             if 'gross_profit' not in self.asset_class_stats[asset_class]:
                 self.asset_class_stats[asset_class]['gross_profit'] = 0.0
             if 'gross_loss' not in self.asset_class_stats[asset_class]:
                 self.asset_class_stats[asset_class]['gross_loss'] = 0.0
+            if 'total_hold_time' not in self.asset_class_stats[asset_class]:
+                self.asset_class_stats[asset_class]['total_hold_time'] = 0.0
+                self.asset_class_stats[asset_class]['closed_trades'] = 0
+            
             self.asset_class_stats[asset_class]['pnl'] += pnl
+            self.asset_class_stats[asset_class]['total_hold_time'] += hold_time_hours
+            self.asset_class_stats[asset_class]['closed_trades'] += 1
             if is_win:
                 self.asset_class_stats[asset_class]['wins'] += 1
                 self.asset_class_stats[asset_class]['gross_profit'] += pnl
@@ -4751,10 +4769,6 @@ class PaperTrader:
             self.asset_class_equity[asset_class] += pnl
             
             # Store closed trade with hold time calculation
-            entry_time = datetime.fromisoformat(position['entry_time'].replace('Z', '+00:00'))
-            exit_time = datetime.now(timezone.utc)
-            hold_time_seconds = (exit_time - entry_time).total_seconds()
-            hold_time_hours = hold_time_seconds / 3600
             
             # Calculate RISK-ADJUSTED reward for RL
             reward = self._calculate_rl_reward(
