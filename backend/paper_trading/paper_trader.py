@@ -6528,18 +6528,36 @@ class PaperTrader:
             duration_seconds = 0
         
         # Calculate strategy results with profit factors (like backtest)
+        # Include unrealized P&L from open positions
         strategy_results = {}
+        
+        # Calculate unrealized P&L by strategy from open positions
+        strategy_unrealized = {}
+        strategy_open_positions = {}
+        for pos in self.paper_positions.values():
+            strategy = pos.get('strategy', 'unknown')
+            if strategy not in strategy_unrealized:
+                strategy_unrealized[strategy] = 0.0
+                strategy_open_positions[strategy] = 0
+            strategy_unrealized[strategy] += pos.get('unrealized_pnl', 0)
+            strategy_open_positions[strategy] += 1
+        
         for strategy, stats in self.strategy_stats.items():
             trades = stats.get('trades', 0)
             wins = stats.get('wins', 0)
             pnl = stats.get('pnl', 0)
             gross_profit = stats.get('gross_profit', 0)
             gross_loss = stats.get('gross_loss', 0)
+            unrealized = strategy_unrealized.get(strategy, 0)
+            open_pos = strategy_open_positions.get(strategy, 0)
             
             strategy_results[strategy] = {
-                'trades': trades,
+                'trades': trades,  # Closed trades
+                'open_positions': open_pos,
                 'wins': wins,
-                'pnl': pnl,
+                'pnl': pnl,  # Realized P&L (closed)
+                'unrealized_pnl': round(unrealized, 2),  # Live P&L (open)
+                'total_pnl': round(pnl + unrealized, 2),  # Total P&L
                 'win_rate': wins / trades if trades > 0 else 0,
                 'profit_factor': gross_profit / gross_loss if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
                 'gross_profit': gross_profit,
