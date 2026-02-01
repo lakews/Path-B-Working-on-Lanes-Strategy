@@ -1,4 +1,4 @@
-# Math modules for Bayesian inference
+# Bayesian Math modules for inference
 # CRITICAL: These modules are QUARANTINED by lane
 # - alpha_bayes.py: ONLY for Alpha lane
 # - event_bayes.py: ONLY for News/Emergent lane
