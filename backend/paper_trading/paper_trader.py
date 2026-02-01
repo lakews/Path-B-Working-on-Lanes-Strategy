@@ -559,6 +559,7 @@ class PaperTrader:
             'arbitrage': 0.0,
             'gamma_scalp': 0.0,
             'sports_arbitrage': 0.0,
+            'news_sniper': 0.0,
         }
         
         # Three-Speed Lane Equity Tracking (Task 29)
