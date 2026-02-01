@@ -1319,3 +1319,88 @@ def is_sports_market(question: str) -> bool:
     # Import from the centralized sports constants module
     from utils.sports_constants import is_sports_market as _is_sports_market
     return _is_sports_market(question)
+
+
+# =============================================================================
+# NEWS/EMERGENT LANE CONFIGURATION (Lane 5)
+# =============================================================================
+
+@dataclass
+class NewsConfig:
+    """
+    Configuration for the News/Emergent lane.
+    
+    This lane bridges slow analysis (LLM + Bayesian) with fast execution (HFT cache).
+    """
+    # Enable/disable
+    enabled: bool = True
+    
+    # Bayes Factor thresholds
+    min_bayes_factor: float = 3.0           # Minimum BF to inject signal
+    strong_bayes_factor: float = 10.0       # High priority injection
+    
+    # Polling configuration
+    exa_poll_interval_seconds: int = 60     # How often to poll Exa.ai
+    exa_max_results: int = 10               # Max results per poll
+    
+    # Signal validity
+    default_ttl_seconds: int = 300          # 5 min default TTL
+    resolution_ttl_seconds: int = 3600      # 1 hour for resolution news
+    
+    # Rate limiting
+    max_injections_per_minute: int = 20
+    
+    # Position sizing (Kelly-based)
+    kelly_fraction: float = 0.25            # Fractional Kelly multiplier
+    max_position_pct: float = 5.0           # Max position as % of capital
+    min_edge: float = 0.02                  # 2% minimum edge to trade
+    
+    # LLM configuration
+    llm_model: str = 'gpt-4o-mini'
+    
+    # Priority news sources
+    priority_sources: List[str] = None
+    
+    def __post_init__(self):
+        if self.priority_sources is None:
+            self.priority_sources = [
+                'apnews.com',
+                'reuters.com',
+                'bloomberg.com',
+                'bbc.com',
+                'coindesk.com',
+                'theblock.co',
+                'fivethirtyeight.com',
+                'polymarket.com'
+            ]
+
+
+# Default news config instance
+_news_config: Optional[NewsConfig] = None
+
+
+def get_news_config() -> NewsConfig:
+    """Get the news configuration singleton."""
+    global _news_config
+    if _news_config is None:
+        _news_config = NewsConfig()
+        logger.info(f"[NEWS CONFIG] Initialized with defaults: "
+                   f"enabled={_news_config.enabled}, "
+                   f"min_bayes_factor={_news_config.min_bayes_factor}")
+    return _news_config
+
+
+def update_news_config(new_config: Dict) -> NewsConfig:
+    """Update news configuration from database settings."""
+    global _news_config
+    current = get_news_config()
+    
+    for field_name in ['enabled', 'min_bayes_factor', 'strong_bayes_factor',
+                      'exa_poll_interval_seconds', 'kelly_fraction', 
+                      'max_position_pct', 'min_edge']:
+        if field_name in new_config:
+            setattr(current, field_name, new_config[field_name])
+    
+    logger.info(f"[NEWS CONFIG] Updated: {new_config}")
+    return current
+
