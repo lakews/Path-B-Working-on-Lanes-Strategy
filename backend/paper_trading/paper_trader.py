@@ -3429,6 +3429,10 @@ class PaperTrader:
         },
         'arbitrage': {
             'disable_within_hours': 6    # Keep active longer, guaranteed resolution
+        },
+        'sports_arbitrage': {
+            'disable_within_hours': 1,   # Sports: Only disable 1h before game time
+            'ride_to_settlement': True   # Always hold to binary outcome
         }
     }
     
