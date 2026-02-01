@@ -29,7 +29,7 @@ from dataclasses import dataclass
 import aiohttp
 
 # Internal imports
-from math.event_bayes import EventBayesianUpdater, EventPosterior, get_event_bayes
+from bayesian_math.event_bayes import EventBayesianUpdater, EventPosterior, get_event_bayes
 
 logger = logging.getLogger(__name__)
 
