@@ -2314,7 +2314,12 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
     ])
   );
 
-  const entries = Object.entries(normalizedData).sort((a, b) => b[1].total_pnl - a[1].total_pnl);
+  // Filter out asset classes with 0 trades but non-zero P&L (data inconsistency from recovered positions)
+  const filteredData = Object.fromEntries(
+    Object.entries(normalizedData).filter(([_, d]) => d.total_trades > 0 || d.total_pnl === 0)
+  );
+
+  const entries = Object.entries(filteredData).sort((a, b) => b[1].total_pnl - a[1].total_pnl);
   
   // Calculate totals
   const totals = entries.reduce((acc, [_, d]) => ({
