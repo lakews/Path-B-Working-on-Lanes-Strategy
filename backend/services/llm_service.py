@@ -146,7 +146,11 @@ class EmergentLLMService:
             try:
                 from emergentintegrations.llm.chat import LlmChat
                 if self._api_key:
-                    self._client = LlmChat(api_key=self._api_key)
+                    self._client = LlmChat(
+                        api_key=self._api_key,
+                        session_id="emergent_news_lane5",
+                        system_message=SYSTEM_PROMPT_EMERGENT
+                    )
                     logger.info(f"[LLM SERVICE] Initialized with model: {self.model}")
                 else:
                     logger.warning("[LLM SERVICE] No API key found")
