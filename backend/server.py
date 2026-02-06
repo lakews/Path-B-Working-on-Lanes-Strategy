@@ -4000,6 +4000,166 @@ async def toggle_exit_engine(enable: bool = None):
 
 
 # ============================================================================
+# SSOT RISK CONFIG API (5-Lane Architecture)
+# ============================================================================
+# Single Source of Truth for all risk parameters.
+# JSON file at backend/config/risk_config.json drives everything.
+
+@api_router.get("/risk-config")
+async def get_risk_config():
+    """
+    Get the current risk configuration from the SSOT JSON file.
+    This is the master config that drives all 5 lanes.
+    """
+    from services.risk_manager import get_risk_manager
+    
+    try:
+        risk_manager = get_risk_manager()
+        config = risk_manager.get_config()
+        status = risk_manager.get_status()
+        
+        return {
+            "success": True,
+            "config": config,
+            "status": status,
+            "synced": True
+        }
+    except Exception as e:
+        logger.error(f"Error getting risk config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e), "synced": False}
+        )
+
+
+@api_router.post("/risk-config")
+async def update_risk_config(config_data: Dict[str, Any]):
+    """
+    Update the risk configuration and save to the SSOT JSON file.
+    This triggers a hot-reload of the risk manager.
+    """
+    from services.risk_manager import get_risk_manager
+    
+    try:
+        risk_manager = get_risk_manager()
+        success, message = risk_manager.update_config(config_data)
+        
+        if success:
+            logger.info(f"[RISK-CONFIG] Configuration updated via API")
+            return {
+                "success": True,
+                "message": message,
+                "config": risk_manager.get_config(),
+                "synced": True
+            }
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "error": message, "synced": False}
+            )
+    except Exception as e:
+        logger.error(f"Error updating risk config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e), "synced": False}
+        )
+
+
+@api_router.post("/risk-config/reload")
+async def reload_risk_config():
+    """
+    Hot-reload the risk configuration from the JSON file.
+    Use this after manually editing the config file.
+    """
+    from services.risk_manager import get_risk_manager
+    
+    try:
+        risk_manager = get_risk_manager()
+        success, message = risk_manager.reload_config()
+        
+        if success:
+            return {
+                "success": True,
+                "message": message,
+                "config": risk_manager.get_config(),
+                "synced": True
+            }
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": message, "synced": False}
+            )
+    except Exception as e:
+        logger.error(f"Error reloading risk config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e), "synced": False}
+        )
+
+
+@api_router.get("/risk-config/status")
+async def get_risk_config_status():
+    """
+    Get the status of the risk manager (loaded, version, etc.)
+    """
+    from services.risk_manager import get_risk_manager
+    
+    try:
+        risk_manager = get_risk_manager()
+        return {
+            "success": True,
+            "status": risk_manager.get_status(),
+            "synced": True
+        }
+    except Exception as e:
+        logger.error(f"Error getting risk config status: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e), "synced": False}
+        )
+
+
+@api_router.post("/risk-config/check-order")
+async def check_order_risk(
+    lane: str,
+    amount: float,
+    capital: float = 10000.0,
+    utilization: float = 0.0,
+    sector: Optional[str] = None,
+    sector_exposure: float = 0.0,
+    market_price: float = 0.5
+):
+    """
+    Test the risk manager's check_order function.
+    Useful for debugging and understanding why orders are blocked/trimmed.
+    """
+    from services.risk_manager import get_risk_manager
+    
+    try:
+        risk_manager = get_risk_manager()
+        result = risk_manager.check_order(
+            lane=lane,
+            amount=amount,
+            capital=capital,
+            current_utilization=utilization,
+            sector=sector,
+            sector_exposure=sector_exposure,
+            market_price=market_price
+        )
+        
+        return {
+            "success": True,
+            "result": result.to_dict()
+        }
+    except Exception as e:
+        logger.error(f"Error checking order risk: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+
+# ============================================================================
 # ALPHA MODEL WEIGHTS API (Task 19: Dynamic Alpha Tuning)
 # ============================================================================
 
