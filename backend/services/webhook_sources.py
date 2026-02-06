@@ -745,9 +745,6 @@ class WebhookSourcesManager:
             'whale_recent_alerts': len(self.whale.get_recent_alerts()),
             'cryptopanic_rss_stats': self.cryptopanic_rss.get_stats(),
         }
-            'last_poll': None,
-            'errors': 0,
-        }
         
         logger.info(f"[WEBHOOK SOURCES] Manager initialized")
         logger.info(f"  - Apify Twitter: {'✅ Enabled' if self.apify.is_enabled() else '❌ Disabled'}")
