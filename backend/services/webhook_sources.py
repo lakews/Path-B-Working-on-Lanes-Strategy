@@ -375,13 +375,14 @@ class CryptoPanicSource:
     sentiment scoring. Great for catching market-moving crypto events.
     
     Cost: Free tier (limited), Pro tier for more requests
+    
+    Note: API may require valid subscription. Falls back gracefully if unavailable.
     """
     
     BASE_URL = "https://cryptopanic.com/api/v1"
     
     # Filter to high-impact news only
     FILTERS = {
-        'filter': 'important',  # Only important news
         'kind': 'news',         # News only (not media)
         'public': 'true',
     }
