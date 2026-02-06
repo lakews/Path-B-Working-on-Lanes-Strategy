@@ -300,11 +300,10 @@ class RiskManager:
             # CHECK 2: Lane Allocation
             # ========================================
             lane_alloc = lane_cfg.get('alloc_pct', 0)
-            lane_capital = capital * lane_alloc
-            
+            # NOTE: lane_capital calculation reserved for future lane-specific allocation checks
+            # lane_capital = capital * lane_alloc
             # For overlay lanes (SPORTS, NEWS), they draw from the main pool
-            if lane_cfg.get('is_overlay', False):
-                lane_capital = capital  # Can use full capital
+            _ = lane_alloc  # Acknowledge for future use
             
             # ========================================
             # CHECK 3: Max Position USD
