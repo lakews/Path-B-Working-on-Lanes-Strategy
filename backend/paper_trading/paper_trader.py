@@ -538,6 +538,17 @@ class PaperTrader:
         # This connects to the NewsInjector's cache writes
         self._signal_cache = None  # Will be set via set_signal_cache()
         
+        # =================================================================
+        # ZERO-AWAIT ATOMIC CACHES (Thread-Safe Local Memory)
+        # =================================================================
+        # These are updated by background pollers and read synchronously
+        # by the HFT loop. NO AWAIT in the hot path.
+        from threading import Lock
+        self._news_atomic: Dict[str, Dict] = {}      # market_id -> {bf, direction, timestamp, ...}
+        self._news_atomic_lock = Lock()
+        self._alpha_atomic: Dict[str, Dict] = {}     # market_id -> {fair_value, bias, timestamp, ...}
+        self._alpha_atomic_lock = Lock()
+        
         # Paper positions tracking
         self.paper_positions: Dict[str, Dict] = {}
         self.closed_trades: List[Dict] = []
