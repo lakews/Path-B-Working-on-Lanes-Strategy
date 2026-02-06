@@ -1,61 +1,52 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: February 6, 2026 (Session 43 - SSOT Risk Layer Implementation)
+## Last Updated: February 6, 2026 (Session 43 - Execution Integration)
 
 ---
 
-### February 6, 2026 - Session 43 (SSOT Risk Layer - COMPLETE)
+### February 6, 2026 - Session 43 (Execution Integration - COMPLETE)
 
-- ✅ **SSOT RISK CONFIGURATION IMPLEMENTED**
+- ✅ **PHASE 2: EXECUTION INTEGRATION COMPLETE**
 
-  **Files Created:**
-  1. `/app/backend/config/risk_config.json` - **Single Source of Truth**
-     - Global safety rails (5% drawdown, 80% deployment)
-     - Lane configurations (HFT, ALPHA, GAMMA, SPORTS, NEWS)
-     - Kelly Criterion settings
-     - Exit strategies per lane
-     - Asset class modifiers
-     - Sector caps
+  **Files Created/Modified:**
   
-  2. `/app/backend/services/risk_manager.py` - **Risk Enforcer**
-     - Loads config from JSON file
-     - `check_order(lane, amount, capital)` → validates all trades
-     - `reload_config()` for hot-reload without restart
-     - `update_config()` for API-driven updates
-     - Logs WARNINGs when trades are blocked/trimmed
+  1. `/app/backend/services/news_service.py` - **NewsPoller (Lane 5)**
+     - Polls Exa.ai for relevant news
+     - Handles EXA_API_KEY from environment (graceful degradation if missing)
+     - Returns structured NewsEvent objects
+     - Tracks source reliability scores
+     - Singleton pattern for efficient resource usage
   
-  3. `/app/backend/utils/position_sizer.py` - **Stateless Math**
-     - `calculate_hft_size()` - Fixed 2% unit
-     - `calculate_kelly_size()` - Binary Kelly with utilization brake
-     - `calculate_gamma_size()` - Fixed 1% lottery
-     - `calculate_sports_size()` - Sports Kelly (5-20%)
-     - `calculate_news_size()` - News Kelly with Bayes Factor
+  2. `/app/backend/paper_trading/paper_trader.py` - **Chain of Command Integrated**
+     - Injected `RiskManager` and `NewsPoller` into `__init__`
+     - Added `execute_trade_cycle()` method enforcing:
+       - Step 1 (MATH): PositionSizer calculates raw size
+       - Step 2 (ENFORCEMENT): RiskManager validates/trims
+       - Step 3 (ACTION): Execute if approved
+       - Step 4 (LOG): Audit trail for all decisions
+     - Added `_run_news_loop()` for Lane 5 (10s cycle)
+     - Added helper methods: `_get_utilization()`, `_get_sector_exposure()`
 
-  4. `/app/frontend/src/components/RiskSettings.js` - **Settings UI**
-     - Fetches config from `GET /api/risk-config`
-     - Editable Global Safety Rails
-     - Expandable Lane Configuration (5 lanes)
-     - Kelly Criterion sliders
-     - Sector Caps editor
-     - "Save Changes" → `POST /api/risk-config`
-     - Sync status indicator (Green/Yellow/Red)
+  **Chain of Command Architecture:**
+  ```
+  Market Data → Strategy → PositionSizer → RiskManager → Execution
+                             (Math)        (Enforcement)   (Action)
+  ```
 
-  **API Endpoints Created:**
-  - `GET /api/risk-config` - Get current config
-  - `POST /api/risk-config` - Update and save config
-  - `POST /api/risk-config/reload` - Hot-reload from file
-  - `GET /api/risk-config/status` - Get risk manager status
-  - `POST /api/risk-config/check-order` - Test order validation
+  **Risk Validation Tested:**
+  - ✅ HFT: $100 → $50 (2% cap enforced)
+  - ✅ ALPHA: $500 → $100 (max_pos_usd enforced)
+  - ✅ GAMMA: $100 → $15 (whale zone max enforced)
+  - ✅ GAMMA: BLOCKED when price > $0.10 (zone violation)
+  - ✅ NEWS: $200 → $100 (max_pos_usd enforced)
 
-  **Testing Verified:**
-  - HFT orders trimmed to $50 max ✅
-  - GAMMA orders trimmed to $15 max ✅
-  - UI loads and displays all config ✅
+- ✅ **SSOT RISK CONFIGURATION IMPLEMENTED** (Previous Task)
 
-- ✅ **5-LANE ARCHITECTURE DOCUMENTATION CREATED**
-
-  **File Created:**
-  - `/app/docs/5_LANE_ARCHITECTURE.md` (801 lines, 31KB)
+  **Files:**
+  - `/app/backend/config/risk_config.json` - Single Source of Truth
+  - `/app/backend/services/risk_manager.py` - Risk Enforcer
+  - `/app/backend/utils/position_sizer.py` - Stateless Math
+  - `/app/frontend/src/components/RiskSettings.js` - Settings UI
 
   **Documentation Covers:**
   1. **Lane 1: HFT (The Market Maker)**
