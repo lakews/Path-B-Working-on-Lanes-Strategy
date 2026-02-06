@@ -34,7 +34,8 @@ logger = logging.getLogger(__name__)
 class WebhookSourceType(Enum):
     APIFY_TWITTER = "apify_twitter"
     WHALE_ALERT = "whale_alert"
-    CRYPTOPANIC = "cryptopanic"
+    CRYPTOPANIC_RSS = "cryptopanic_rss"  # Real-time RSS feed
+    CRYPTOPANIC_API = "cryptopanic_api"  # DISABLED - 24h delay
 
 
 @dataclass
