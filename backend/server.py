@@ -3025,6 +3025,91 @@ async def update_news_config(
     }
 
 
+@api_router.post("/hooks/news-poll")
+async def trigger_news_poll(
+    query: str = "prediction market breaking news",
+    num_results: int = 10,
+    hours_back: int = 24,
+    username: str = Depends(verify_credentials_dual)
+):
+    """
+    Manually trigger a news poll from Exa.ai.
+    
+    This endpoint allows testing the Exa.ai integration by
+    performing an immediate search without waiting for the
+    background polling interval.
+    
+    Args:
+        query: Search query for Exa.ai
+        num_results: Number of results to return (max 100)
+        hours_back: How far back to search
+        
+    Returns:
+        List of news events found
+    """
+    from services.news_service import get_news_poller
+    
+    try:
+        poller = get_news_poller()
+        
+        if not poller.is_enabled():
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "disabled",
+                    "message": "EXA_API_KEY not configured in backend/.env",
+                    "hint": "Add EXA_API_KEY=your-key to /app/backend/.env"
+                }
+            )
+        
+        # Perform the poll
+        events = await poller.poll_news(
+            query=query,
+            num_results=min(num_results, 100),
+            hours_back=hours_back
+        )
+        
+        # Get stats
+        stats = poller.get_stats()
+        
+        return {
+            "status": "success",
+            "query": query,
+            "events_found": len(events),
+            "events": [event.to_dict() for event in events[:20]],  # Limit response size
+            "stats": stats
+        }
+        
+    except Exception as e:
+        logger.error(f"[NEWS POLL] Manual poll error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
+
+@api_router.get("/hooks/exa-status")
+async def get_exa_status():
+    """
+    Get the status of the Exa.ai news polling service.
+    
+    Returns configuration and statistics about news polling.
+    """
+    from services.news_service import get_news_poller
+    
+    poller = get_news_poller()
+    stats = poller.get_stats()
+    
+    return {
+        "exa_enabled": poller.is_enabled(),
+        "exa_sdk_initialized": poller._exa_client is not None,
+        "default_queries": poller.DEFAULT_QUERIES,
+        "priority_sources": poller.PRIORITY_SOURCES,
+        "stats": stats,
+        "source_reliability_scores": poller.source_reliability
+    }
+
+
 # =============================================
 # PAPER TRADING ENDPOINTS
 # =============================================
