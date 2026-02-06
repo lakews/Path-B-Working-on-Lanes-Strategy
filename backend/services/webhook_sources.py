@@ -438,9 +438,6 @@ class CryptoPanicSource:
                         return []
                     
                     data = await resp.json()
-                        return []
-                    
-                    data = await resp.json()
                     results = data.get('results', [])
                 
                 news_items = []
