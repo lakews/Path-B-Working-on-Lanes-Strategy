@@ -329,9 +329,7 @@ Only include markets where is_relevant=true. Respond with ONLY the JSON."""
         try:
             response = await client.chat(
                 message=batch_prompt,
-                system_prompt=SYSTEM_PROMPT_EMERGENT,
-                model=self.model,
-                temperature=0.0
+                model=self.model
             )
             
             parsed = self._parse_json_response(response)
