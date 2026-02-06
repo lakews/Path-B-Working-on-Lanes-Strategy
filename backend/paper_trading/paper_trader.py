@@ -2130,10 +2130,6 @@ class PaperTrader:
         except Exception as e:
             logger.error(f"[HFT] Error evaluating scalp for {market_data.get('id', 'unknown')[:16]}: {e}")
             return None
-            
-            # =============================================================
-            # STEP 2A: Adaptive Signal Smoothing (STATE ISOLATED)
-            # =============================================================
             # The HFTMathEngine.smoother internally maintains state per market_id
             # Apply adaptive smoothing: EMA for noise, instant for jumps
             smoothed_price, signal_action, smooth_debug = self.hft_math_engine.smoother.smooth_signal(
