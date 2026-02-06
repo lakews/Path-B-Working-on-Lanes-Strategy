@@ -181,9 +181,9 @@ class TestNewsInjectorStatus:
     """Tests for NewsInjector status and control endpoints"""
     
     def test_news_injector_status(self):
-        """TEST: GET /api/news-injector/status returns injector status"""
+        """TEST: GET /api/hooks/news-status returns injector status"""
         response = requests.get(
-            f"{BASE_URL}/api/news-injector/status",
+            f"{BASE_URL}/api/hooks/news-status",
             timeout=10
         )
         
@@ -191,13 +191,13 @@ class TestNewsInjectorStatus:
         data = response.json()
         
         # Verify we get status info
-        assert 'status' in data or 'running' in data or 'enabled' in data
+        assert 'status' in data or 'running' in data or 'enabled' in data or 'injector_running' in data
         print(f"✅ NewsInjector status: {data}")
     
     def test_news_injector_start(self):
-        """TEST: POST /api/news-injector/start starts the injector"""
+        """TEST: POST /api/hooks/news-start starts the injector"""
         response = requests.post(
-            f"{BASE_URL}/api/news-injector/start",
+            f"{BASE_URL}/api/hooks/news-start",
             timeout=10
         )
         
@@ -205,6 +205,18 @@ class TestNewsInjectorStatus:
         assert response.status_code in [200, 400]
         data = response.json()
         print(f"✅ NewsInjector start response: {data}")
+    
+    def test_news_injector_stop(self):
+        """TEST: POST /api/hooks/news-stop stops the injector"""
+        response = requests.post(
+            f"{BASE_URL}/api/hooks/news-stop",
+            timeout=10
+        )
+        
+        # Should return 200 or 400 if not running
+        assert response.status_code in [200, 400]
+        data = response.json()
+        print(f"✅ NewsInjector stop response: {data}")
 
 
 class TestExaIntegration:
@@ -220,9 +232,10 @@ class TestExaIntegration:
         assert response.status_code == 200
         data = response.json()
         
-        # Verify we get status info
-        assert 'enabled' in data or 'status' in data or 'api_key_configured' in data
-        print(f"✅ Exa.ai status: {data}")
+        # Verify we get status info - actual field is 'exa_enabled'
+        assert 'exa_enabled' in data or 'exa_sdk_initialized' in data
+        assert data.get('exa_enabled') == True, "Exa.ai should be enabled"
+        print(f"✅ Exa.ai status: exa_enabled={data.get('exa_enabled')}, sdk_initialized={data.get('exa_sdk_initialized')}")
     
     def test_manual_news_poll(self):
         """TEST: POST /api/hooks/news-poll triggers manual Exa.ai poll"""
@@ -342,7 +355,7 @@ class TestEndToEndNewsPipeline:
         print(f"Step 1: ✅ {len(markets)} markets available")
         
         # Step 2: Check NewsInjector status
-        injector_response = requests.get(f"{BASE_URL}/api/news-injector/status", timeout=10)
+        injector_response = requests.get(f"{BASE_URL}/api/hooks/news-status", timeout=10)
         assert injector_response.status_code == 200
         print(f"Step 2: ✅ NewsInjector status: {injector_response.json()}")
         
