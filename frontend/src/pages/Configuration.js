@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Settings, Save, RefreshCw, DollarSign, Percent, Activity, Shield, Zap, AlertTriangle, Target, Clock, Info, Sliders, Layers, TrendingUp, Landmark, Trophy, Film, Bitcoin, Globe, Check, X, BarChart3, GitBranch, Crosshair, Scale, Bell, BellOff, Sparkles, Brain, Database, Timer, Flame, Snowflake } from 'lucide-react';
+import { Settings, Save, RefreshCw, DollarSign, Percent, Activity, Shield, Zap, AlertTriangle, Target, Clock, Info, Sliders, Layers, TrendingUp, Landmark, Trophy, Film, Bitcoin, Globe, Check, X, BarChart3, GitBranch, Crosshair, Scale, Bell, BellOff, Sparkles, Brain, Database, Timer, Flame, Snowflake, Newspaper } from 'lucide-react';
+import RiskSettings from '../components/RiskSettings';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
