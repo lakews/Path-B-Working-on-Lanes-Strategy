@@ -788,21 +788,33 @@ class WebhookSourcesManager:
     Manages all webhook sources and coordinates polling.
     
     Active Sources:
-    - Apify Twitter: @AP, @WojESPN, etc.
-    - Whale Alert: Polymarket large trades
+    - Apify Twitter: @AP, @WojESPN, etc. (→ LLM → Bayes → Cache)
+    - Whale Alert: Polymarket large trades (→ DIRECT Cache injection, skip LLM)
     - CryptoPanic API: Crypto news (⚠️ 24h delay on free tier)
     
     Deprecated:
     - CryptoPanic RSS: Endpoint returns HTML, no longer works
+    
+    Whale Alert Optimization:
+    - Whale trades are already quantified (size, side, price)
+    - No LLM interpretation needed - the trade IS the signal
+    - Direct injection saves ~3-5 seconds latency
     """
     
-    def __init__(self, news_callback: Optional[Callable] = None):
+    def __init__(
+        self, 
+        news_callback: Optional[Callable] = None,
+        signal_cache: Optional[Any] = None
+    ):
         """
         Args:
             news_callback: Async function to call with WebhookNews items
                           Typically NewsInjector.process_news()
+            signal_cache: Optional AsyncSignalCache for direct whale injection
+                          If provided, whale alerts bypass LLM entirely
         """
         self.news_callback = news_callback
+        self.signal_cache = signal_cache  # For direct whale injection
         
         # Initialize sources
         self.apify = ApifyTwitterSource()
