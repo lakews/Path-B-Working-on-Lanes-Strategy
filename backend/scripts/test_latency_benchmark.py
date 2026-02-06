@@ -91,18 +91,25 @@ async def test_websocket_cache_latency(iterations: int = 10) -> Dict:
     logger.info("=" * 60)
     
     try:
-        from data.realtime_market_service import get_realtime_market_service
+        from services.realtime_market_service import get_realtime_market_service
         
         service = get_realtime_market_service()
         
-        # Warm up - ensure service has data
-        await asyncio.sleep(0.5)
+        # Check if service is already running (from paper trader)
+        # If not, we can't start it here without async context properly
+        if not service._running:
+            logger.info("  Starting WebSocket service...")
+            await service.start()
+            await asyncio.sleep(5)  # Wait for cache to populate
         
         latencies = []
         market_counts = []
         
         for i in range(iterations):
-            latency, markets = measure_sync_latency(service.get_markets, limit=100)
+            start = time.perf_counter()
+            markets = service.get_markets(limit=100)
+            end = time.perf_counter()
+            latency = (end - start) * 1000
             latencies.append(latency)
             market_counts.append(len(markets) if markets else 0)
             logger.info(f"  Run {i+1}: {latency:.4f}ms ({len(markets) if markets else 0} markets)")
@@ -122,6 +129,8 @@ async def test_websocket_cache_latency(iterations: int = 10) -> Dict:
         
     except Exception as e:
         logger.warning(f"  WebSocket service not available: {e}")
+        import traceback
+        traceback.print_exc()
         return {'component': 'WebSocket Cache', 'error': str(e)}
 
 
