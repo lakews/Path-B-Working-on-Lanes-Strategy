@@ -11,10 +11,11 @@ Four Sources:
 4. CRYPTOPANIC API - DISABLED (24h delay on free tier = toxic for trading)
 
 Architecture:
-    WebhookSources -> NewsInjector -> LLM -> EventBayes -> SignalCache -> HFT
+    Apify/CryptoPanic -> NewsInjector -> LLM -> EventBayes -> SignalCache -> HFT
+    Whale Alerts -> DIRECT INJECTION -> SignalCache -> HFT (skip LLM - already quantified)
 
 Created: February 2026
-Updated: February 2026 - Swapped CryptoPanic API for RSS (real-time)
+Updated: February 2026 - Whale Alert Direct Injection (skip LLM for speed)
 """
 
 import asyncio
