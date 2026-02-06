@@ -3234,34 +3234,43 @@ async def test_whale_alert(
 
 
 @api_router.post("/hooks/test-cryptopanic")
-async def test_cryptopanic():
+async def test_cryptopanic_rss():
     """
-    Test the CryptoPanic API by fetching recent news.
+    Test the CryptoPanic RSS feed (REAL-TIME, free!).
     
-    Returns the most recent crypto news items.
+    Note: First run will cache existing links and return empty.
+    Subsequent runs will return only NEW items.
     """
     manager = get_webhook_sources_manager()
     
-    if not manager.cryptopanic.is_enabled():
+    # Use RSS source (API is disabled due to 24h delay)
+    rss_source = manager.cryptopanic_rss
+    
+    if not rss_source.is_enabled():
         return {
             "status": "disabled",
-            "message": "CryptoPanic API key not configured"
+            "message": "CryptoPanic RSS source not enabled"
         }
     
-    news_items = await manager.cryptopanic.fetch_recent_news(limit=5)
+    news_items = await rss_source.fetch_news()
+    stats = rss_source.get_stats()
     
     return {
         "status": "success",
+        "source": "RSS (real-time)",
+        "api_status": "DISABLED (24h delay = toxic)",
+        "first_run": not stats['first_run_complete'],
         "items_found": len(news_items),
+        "stats": stats,
         "news": [
             {
                 "headline": n.headline[:100],
                 "source": n.source,
                 "priority": n.priority,
-                "currencies": n.metadata.get('currencies', []),
+                "tags": n.metadata.get('tags', []),
                 "url": n.url
             }
-            for n in news_items
+            for n in news_items[:10]
         ]
     }
 
