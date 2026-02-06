@@ -36,6 +36,14 @@ from threading import Lock
 from risk_config import get_sports_config, is_sports_market, SportsConfig
 from strategies.sports_strategy import get_sports_strategy, SportsArbitrageStrategy, SportsSignal, SportsTradeSignal
 
+# =============================================================================
+# SSOT RISK MANAGEMENT (5-Lane Architecture)
+# =============================================================================
+# Chain of Command: Strategy -> PositionSizer -> RiskManager -> Execution
+from services.risk_manager import get_risk_manager, RiskManager, OrderCheckResult
+from utils.position_sizer import PositionSizer, SizingResult
+from services.news_service import get_news_poller, NewsPoller
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================
