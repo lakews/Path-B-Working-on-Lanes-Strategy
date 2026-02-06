@@ -374,12 +374,14 @@ class CryptoPanicSource:
     CryptoPanic aggregates news from 50+ crypto sources and provides
     sentiment scoring. Great for catching market-moving crypto events.
     
-    Cost: Free tier (limited), Pro tier for more requests
-    
-    Note: API may require valid subscription. Falls back gracefully if unavailable.
+    API Levels:
+    - DEVELOPER (Free): 24h delay, 100 req/mo, 20 items
+    - GROWTH ($199/mo): Real-time, 3k req/mo
+    - ENTERPRISE: Custom
     """
     
-    BASE_URL = "https://cryptopanic.com/api/v1"
+    # Updated endpoint (v2 developer API)
+    BASE_URL = "https://cryptopanic.com/api/developer/v2"
     
     # Filter to high-impact news only
     FILTERS = {
