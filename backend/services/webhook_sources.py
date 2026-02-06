@@ -1074,9 +1074,27 @@ class WebhookSourcesManager:
 _webhook_sources_manager: Optional[WebhookSourcesManager] = None
 
 
-def get_webhook_sources_manager(news_callback: Optional[Callable] = None) -> WebhookSourcesManager:
-    """Get or create the WebhookSourcesManager instance"""
+def get_webhook_sources_manager(
+    news_callback: Optional[Callable] = None,
+    signal_cache: Optional[Any] = None
+) -> WebhookSourcesManager:
+    """
+    Get or create the WebhookSourcesManager instance.
+    
+    Args:
+        news_callback: Function to process news through LLM pipeline
+        signal_cache: AsyncSignalCache for whale alert direct injection
+                      If provided, whale alerts skip LLM (~3s faster)
+    """
     global _webhook_sources_manager
     if _webhook_sources_manager is None:
-        _webhook_sources_manager = WebhookSourcesManager(news_callback=news_callback)
+        _webhook_sources_manager = WebhookSourcesManager(
+            news_callback=news_callback,
+            signal_cache=signal_cache
+        )
+    elif signal_cache is not None and _webhook_sources_manager.signal_cache is None:
+        # Allow setting signal_cache after initial creation
+        _webhook_sources_manager.signal_cache = signal_cache
+        logger.info("[WEBHOOK SOURCES] Signal cache attached for whale direct injection")
     return _webhook_sources_manager
+
