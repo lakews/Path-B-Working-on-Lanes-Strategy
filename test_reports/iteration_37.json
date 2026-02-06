@@ -1,0 +1,107 @@
+{
+  "summary": "Lane 5 News Pipeline Testing - Critical bug fix verified. 18/18 API tests passed. Market_fetcher is properly wired to NewsInjector. News processing pipeline works end-to-end: news → LLM analysis → Bayes update → signal injection.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/hooks/news-poll (Exa.ai)",
+        "issue": "Exa.ai API returns 401 Invalid API key - EXA_API_KEY in .env may be invalid or expired",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_news_pipeline_endpoints.py",
+    "/app/test_reports/pytest/pytest_results_iteration37.xml",
+    "/app/backend/scripts/test_news_pipeline.py",
+    "/app/backend/scripts/test_live_pipeline.py"
+  ],
+  "action_items": [
+    "OPTIONAL: Update EXA_API_KEY in /app/backend/.env if Exa.ai integration is needed (current key returns 401)"
+  ],
+  "critical_code_review_comments": [
+    "✅ get_active_markets_for_news() function correctly implemented at lines 118-175 in server.py",
+    "✅ market_fetcher is passed to get_news_injector() calls throughout the codebase",
+    "✅ NewsInjector.process_news() correctly fetches markets and analyzes news against them",
+    "✅ LLM Service (EmergentLLMService) correctly analyzes news for market relevance",
+    "✅ EventBayesianUpdater correctly calculates Bayes Factors for signal injection",
+    "✅ WebhookSourcesManager properly initialized with news_callback",
+    "✅ All webhook endpoints (/api/hooks/*) working correctly"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_news_pipeline_endpoints.py"
+  ],
+  "success_rate": {
+    "backend": "100% (18/18 API tests passed)",
+    "frontend": "N/A (backend only testing)"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Lane 5 News Pipeline is fully operational. Critical bug fix verified: market_fetcher is now properly wired to NewsInjector. The pipeline successfully processes news through LLM analysis and generates trading signals with Bayes Factors. Exa.ai integration has an invalid API key (401 error) but this is a configuration issue, not a code bug.",
+  "verified_features": {
+    "Critical Bug Fix": {
+      "get_active_markets_for_news()": "VERIFIED - Returns 100 markets from Gamma API",
+      "market_fetcher wiring": "VERIFIED - Passed to all get_news_injector() calls",
+      "News processing": "VERIFIED - News analyzed against real markets, signals injected"
+    },
+    "API Endpoints": {
+      "POST /api/hooks/news-alert": "VERIFIED - Accepts and processes news webhooks",
+      "GET /api/hooks/webhook-sources/status": "VERIFIED - Returns webhook sources status",
+      "POST /api/hooks/webhook-sources/start": "VERIFIED - Starts webhook polling",
+      "POST /api/hooks/webhook-sources/stop": "VERIFIED - Stops webhook polling",
+      "GET /api/hooks/news-status": "VERIFIED - Returns NewsInjector status",
+      "POST /api/hooks/news-start": "VERIFIED - Requires auth (401)",
+      "POST /api/hooks/news-stop": "VERIFIED - Requires auth (401)",
+      "GET /api/hooks/exa-status": "VERIFIED - Returns Exa.ai status (exa_enabled=true)",
+      "POST /api/hooks/news-poll": "VERIFIED - Triggers manual poll (Exa API key invalid)",
+      "GET /api/markets": "VERIFIED - Returns live markets from Gamma API"
+    },
+    "Pipeline Components": {
+      "LLM Service": "VERIFIED - Analyzes news for market relevance (gpt-4o-mini)",
+      "EventBayesianUpdater": "VERIFIED - Calculates Bayes Factors correctly",
+      "Signal Injection": "VERIFIED - Signals injected with BF >= 2.0 threshold"
+    }
+  },
+  "test_summary": {
+    "total_tests": 18,
+    "passed_tests": 18,
+    "failed_tests": 0,
+    "test_categories": {
+      "TestHealthAndMarkets": "2 tests - Health check and markets endpoint",
+      "TestNewsAlertWebhook": "3 tests - News alert webhook acceptance",
+      "TestWebhookSourcesStatus": "3 tests - Webhook sources status/start/stop",
+      "TestNewsInjectorStatus": "3 tests - NewsInjector status/start/stop",
+      "TestExaIntegration": "2 tests - Exa.ai status and manual poll",
+      "TestMarketFetcherIntegration": "3 tests - Market fetcher wiring verification",
+      "TestSignalCacheIntegration": "1 test - Signal cache status",
+      "TestEndToEndNewsPipeline": "1 test - Full pipeline flow"
+    }
+  },
+  "live_pipeline_test_results": {
+    "test_1_market_fetcher": "PASSED - Fetched 20 markets from Gamma API",
+    "test_2_live_injection": "PASSED - 2 signals injected against REAL markets (BF: 2.13)",
+    "test_3_api_endpoint": "PASSED - API endpoint accepted news"
+  },
+  "mock_pipeline_test_results": {
+    "test_1_llm": "PASSED - LLM correctly analyzed tweet (is_relevant=True, confidence=0.75)",
+    "test_2_bayes": "PASSED - Bayes Factor calculated correctly (BF: 2.125)",
+    "test_3_pipeline": "PASSED - 1 signal injected to cache",
+    "test_4_batch": "PASSED - Batch analysis returned 1 result"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "rca_of_the_issue": {
+    "original_bug": "NewsInjector was initialized WITHOUT market_fetcher, causing process_news() to exit early with 'No markets available'",
+    "root_cause": "get_news_injector() was called without passing the market_fetcher parameter",
+    "fix_applied": "Added get_active_markets_for_news() function and passed it to all get_news_injector() calls",
+    "verification": "Live pipeline test confirms signals are now being generated against real markets"
+  }
+}
