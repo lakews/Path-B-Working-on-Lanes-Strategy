@@ -869,6 +869,15 @@ class WebhookSourcesManager:
         """
         self._stats['whale_alerts'] += 1
         
+        # Try to get signal_cache if not set (lazy initialization)
+        if self.signal_cache is None:
+            try:
+                from services.signal_cache import get_signal_cache
+                self.signal_cache = get_signal_cache()
+                logger.info("[WHALE] Signal cache acquired via lazy init")
+            except Exception as e:
+                logger.debug(f"[WHALE] Could not get signal cache: {e}")
+        
         # Extract trade metadata
         metadata = news.metadata
         market_id = metadata.get('market_id', '')
