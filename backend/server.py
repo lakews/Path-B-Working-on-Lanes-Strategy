@@ -110,6 +110,71 @@ news_injector: Optional[NewsInjector] = None  # Lane 5: News/Emergent
 trading_mode: str = "stopped"  # "stopped", "live", "backtest", "paper"
 paper_trading_enabled: bool = False  # Paper trading flag
 
+
+# =============================================
+# MARKET FETCHER FOR NEWS INJECTOR (Lane 5)
+# =============================================
+
+async def get_active_markets_for_news() -> List[Dict]:
+    """
+    Fetch active markets for the NewsInjector to analyze news against.
+    
+    This function is passed to NewsInjector as market_fetcher.
+    Returns markets with valid prices from Gamma API or DB fallback.
+    """
+    try:
+        from data.polymarket_api import PolymarketAPI
+        
+        # Try Gamma API first for fresh data
+        try:
+            async with PolymarketAPI() as api:
+                raw_markets = await api.get_markets(limit=100)
+                
+                if raw_markets:
+                    markets = []
+                    for m in raw_markets:
+                        raw_yes = m.get('yes_price')
+                        if raw_yes is None or raw_yes == 0:
+                            continue
+                        
+                        yes_price = float(raw_yes)
+                        raw_no = m.get('no_price')
+                        no_price = float(raw_no) if raw_no and raw_no != 0 else (1 - yes_price)
+                        
+                        markets.append({
+                            "id": m.get('condition_id') or m.get('id'),
+                            "question": m.get('question', ''),
+                            "description": m.get('description', ''),
+                            "category": m.get('category', 'unknown'),
+                            "yes_price": yes_price,
+                            "no_price": no_price,
+                            "volume_24h": float(m.get('volume_24h', 0) or 0),
+                            "liquidity": float(m.get('liquidity', 0) or 0),
+                            "active": m.get('active', True)
+                        })
+                    
+                    if markets:
+                        logger.info(f"[MARKET FETCHER] Returning {len(markets)} markets from Gamma API")
+                        return markets
+        except Exception as api_error:
+            logger.warning(f"[MARKET FETCHER] Gamma API failed: {api_error}")
+        
+        # Fallback: Get from database
+        db = get_db()
+        cursor = db.markets.find(
+            {"active": True, "yes_price": {"$gt": 0}},
+            {"_id": 0}
+        ).limit(100)
+        
+        markets = await cursor.to_list(length=100)
+        logger.info(f"[MARKET FETCHER] Returning {len(markets)} markets from DB fallback")
+        return markets
+        
+    except Exception as e:
+        logger.error(f"[MARKET FETCHER] Error fetching markets: {e}")
+        return []
+
+
 # =============================================
 # WEBSOCKET CONNECTION MANAGER
 # =============================================
