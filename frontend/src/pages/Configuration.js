@@ -230,7 +230,7 @@ const Configuration = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('trading');
+  const [activeTab, setActiveTab] = useState('ssot');
   const [useDynamicExit, setUseDynamicExit] = useState(true);
   
   // LLM Cache state
