@@ -1,6 +1,67 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: January 31, 2026 (Session 42 - Sports Integrity Patch Verification)
+## Last Updated: February 6, 2026 (Session 43 - 5-Lane Architecture Documentation)
+
+---
+
+### February 6, 2026 - Session 43 (5-Lane Architecture Documentation - COMPLETE)
+
+- ✅ **5-LANE ARCHITECTURE DOCUMENTATION CREATED**
+
+  **File Created:**
+  - `/app/docs/5_LANE_ARCHITECTURE.md` (801 lines, 31KB)
+
+  **Documentation Covers:**
+  1. **Lane 1: HFT (The Market Maker)**
+     - 0.5s cycle, 35% capital allocation
+     - Reads signals from AsyncSignalCache (pre-computed by Alpha)
+     - Fixed 2% position sizing (never Kelly - too slow)
+     - Mechanical exits: +1.5%/-1.5%/4h
+     - Strategies: hft_scalp, hft_maker
+
+  2. **Lane 2: ALPHA (The Strategist)**
+     - 30s cycle, 55% capital allocation
+     - Deep analysis: LLM + RL + Bayesian + Sharp Detection
+     - Binary Kelly Criterion with utilization brake
+     - Asset class-modified exits (Politics, Crypto, Sports differ)
+     - Strategies: alpha_directional, arbitrage
+
+  3. **Lane 3: GAMMA (The Sniper)**
+     - 30s cycle, 10% capital allocation
+     - Opportunistic convexity hunting in Whale Zone (<$0.10)
+     - Fixed 1% sizing ($15 max - lottery tickets)
+     - Unique exits: 50% stop, 2x free roll, 5x moonbag
+     - Strategy: gamma_scalp
+
+  4. **Lane 4: SPORTS (The Bookie)**
+     - Isolated lane using The Odds API
+     - NO-side betting ALLOWED (for arbitrage)
+     - Sports-specific Kelly (0.05-0.20 range)
+     - Time-bounded exits: 48h max (before event)
+     - Strategy: sports_arbitrage
+
+  5. **Lane 5: NEWS (The Injector)**
+     - Async injection pattern: slow analysis → fast execution
+     - Uses Event Resolution Adjudicator LLM prompt
+     - Bayesian Factor threshold: BF > 3.0 to inject
+     - Signal TTL: 5 min default, 1h for resolution news
+     - Strategy: news_sniper (executed via HFT loop)
+
+  **Key Concepts Documented:**
+  - Async Injection Pattern (NEWS → Cache → HFT)
+  - Bayesian Quarantine (Alpha vs News models isolated)
+  - Category Routing (Sports → Lane 4, News → Lane 5, etc.)
+  - Exit Engine Hierarchy (State → Strategy → Asset Class → Zone)
+  - Kelly Criterion variations per lane
+
+  **Configuration Reference:**
+  - All key constants from risk_config.py
+  - Default exit parameters per strategy
+  - Alpha asset modifiers table
+
+---
+
+## Previous Session: January 31, 2026 (Session 42 - Sports Integrity Patch Verification)
 
 ## Original Problem Statement
 Build "APEX TRADER", a complete, production-ready, end-to-end AI-driven prediction market trading engine for high-frequency algorithmic trading on Polymarket.
