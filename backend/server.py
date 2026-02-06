@@ -3338,6 +3338,111 @@ async def test_apify_twitter(account: str = "Tier10k", hours_back: int = 720):
         }
 
 
+@api_router.post("/hooks/apify-live-fire")
+async def apify_live_fire_test(
+    hours_back: int = 48,
+    max_accounts: int = 15,
+    background_tasks: BackgroundTasks = None
+):
+    """
+    🔥 LIVE FIRE TEST: Full Apify scrape of ALL configured Twitter handles.
+    
+    This triggers the Apify scraping service for the complete target list
+    and returns aggregated results. Use to verify end-to-end functionality.
+    
+    Args:
+        hours_back: How far back to look for tweets (default: 48 hours)
+        max_accounts: Max accounts to scrape (default: 15 = all)
+        
+    Warning: This is expensive! Each account triggers an Apify actor run.
+    """
+    import aiohttp
+    from datetime import datetime, timezone
+    
+    manager = get_webhook_sources_manager()
+    
+    if not manager.apify.is_enabled():
+        return {
+            "status": "disabled",
+            "message": "Apify API key not configured",
+            "hint": "Add APIFY_API_KEY to backend/.env"
+        }
+    
+    start_time = datetime.now(timezone.utc)
+    logger.info(f"[APIFY LIVE FIRE] 🔥 Starting full scrape of {len(manager.apify.TARGET_ACCOUNTS)} accounts")
+    
+    results = {
+        "status": "running",
+        "start_time": start_time.isoformat(),
+        "hours_back": hours_back,
+        "accounts_total": len(manager.apify.TARGET_ACCOUNTS),
+        "accounts_scraped": 0,
+        "accounts_failed": 0,
+        "total_tweets": 0,
+        "tweets_by_account": {},
+        "sample_headlines": [],
+        "errors": [],
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            accounts_to_scrape = manager.apify.TARGET_ACCOUNTS[:max_accounts]
+            
+            for i, account in enumerate(accounts_to_scrape, 1):
+                logger.info(f"[APIFY LIVE FIRE] 📡 Scraping {i}/{len(accounts_to_scrape)}: @{account}")
+                
+                try:
+                    news_items = await manager.apify._fetch_account_tweets(
+                        session=session,
+                        account=account,
+                        hours_back=hours_back
+                    )
+                    
+                    results["accounts_scraped"] += 1
+                    results["total_tweets"] += len(news_items)
+                    results["tweets_by_account"][account] = len(news_items)
+                    
+                    # Collect sample headlines
+                    for item in news_items[:2]:
+                        results["sample_headlines"].append({
+                            "account": f"@{account}",
+                            "headline": item.headline[:80],
+                            "priority": item.priority,
+                            "likes": item.metadata.get('likes', 0),
+                        })
+                    
+                    if news_items:
+                        logger.info(f"[APIFY LIVE FIRE] ✅ @{account}: {len(news_items)} tweets")
+                    else:
+                        logger.info(f"[APIFY LIVE FIRE] ⚪ @{account}: 0 tweets (none in time window)")
+                    
+                    # Small delay between accounts to avoid rate limits
+                    await asyncio.sleep(1)
+                    
+                except Exception as e:
+                    results["accounts_failed"] += 1
+                    results["errors"].append(f"@{account}: {str(e)[:50]}")
+                    logger.error(f"[APIFY LIVE FIRE] ❌ @{account}: {e}")
+        
+        end_time = datetime.now(timezone.utc)
+        duration = (end_time - start_time).total_seconds()
+        
+        results["status"] = "completed"
+        results["end_time"] = end_time.isoformat()
+        results["duration_seconds"] = round(duration, 1)
+        
+        logger.info(f"[APIFY LIVE FIRE] 🏁 Completed in {duration:.1f}s")
+        logger.info(f"[APIFY LIVE FIRE] 📊 Total: {results['total_tweets']} tweets from {results['accounts_scraped']} accounts")
+        
+        return results
+        
+    except Exception as e:
+        logger.error(f"[APIFY LIVE FIRE] 💥 Fatal error: {e}")
+        results["status"] = "error"
+        results["error"] = str(e)
+        return results
+
+
 # =============================================
 # PAPER TRADING ENDPOINTS
 # =============================================
