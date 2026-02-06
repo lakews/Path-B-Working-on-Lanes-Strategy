@@ -2804,7 +2804,8 @@ async def news_webhook(
     try:
         # Initialize news injector if not already
         if news_injector is None:
-            news_injector = get_news_injector()
+            signal_cache = get_signal_cache()
+            news_injector = get_news_injector(signal_cache=signal_cache)
         
         # Process webhook (runs in background for high priority, inline for normal)
         result = await news_injector.handle_webhook(payload.dict())
@@ -2820,6 +2821,103 @@ async def news_webhook(
         return JSONResponse(
             status_code=500,
             content={"status": "error", "message": str(e)}
+        )
+
+
+class NewsTestPayload(BaseModel):
+    """Payload for testing the full news pipeline"""
+    headline: str = Field(..., description="News headline")
+    content: str = Field("", description="Full news content")
+    source: str = Field("test", description="News source")
+    market_question: str = Field(..., description="Market question to test against")
+    current_price: float = Field(0.5, description="Current YES price")
+
+
+@api_router.post("/hooks/news-test")
+async def test_news_pipeline(payload: NewsTestPayload):
+    """
+    TEST ENDPOINT: Verify the full Lane 5 pipeline.
+    
+    This endpoint simulates the complete flow:
+    1. LLM Analysis (Event Resolution Adjudicator)
+    2. Bayesian Update
+    3. Signal Generation
+    
+    Use this to verify the pipeline without needing live markets.
+    """
+    from services.llm_service import get_llm_service
+    from bayesian_math.event_bayes import get_event_bayes
+    
+    try:
+        # Step 1: LLM Analysis
+        llm_service = get_llm_service()
+        llm_result = await llm_service.analyze_news_for_market(
+            news_headline=payload.headline,
+            news_content=payload.content,
+            market_question=payload.market_question
+        )
+        
+        # Step 2: Bayesian Update
+        event_bayes = get_event_bayes()
+        bayes_result = event_bayes.update(
+            market_id="test_market",
+            market_question=payload.market_question,
+            current_price=payload.current_price,
+            news_headline=payload.headline,
+            news_content=payload.content,
+            news_source=payload.source,
+            llm_analysis={
+                'direction': llm_result.direction,
+                'impact': llm_result.impact,
+                'confidence': llm_result.confidence,
+                'reasoning': llm_result.rationale
+            }
+        )
+        
+        # Step 3: Calculate Kelly Size (simulate)
+        posterior = bayes_result.posterior
+        confidence = bayes_result.confidence
+        edge = abs(posterior - payload.current_price)
+        kelly_fraction = 0.25
+        base_size_pct = posterior * kelly_fraction * confidence
+        simulated_capital = 10000
+        position_size = simulated_capital * base_size_pct if edge >= 0.02 else 0
+        
+        return {
+            "status": "success",
+            "pipeline_results": {
+                "step_1_llm": {
+                    "is_relevant": llm_result.is_relevant,
+                    "is_bullish_for_yes": llm_result.is_bullish_for_yes,
+                    "confidence": llm_result.confidence,
+                    "direction": llm_result.direction,
+                    "impact": llm_result.impact,
+                    "rationale": llm_result.rationale
+                },
+                "step_2_bayes": {
+                    "prior": round(bayes_result.prior, 4),
+                    "posterior": round(bayes_result.posterior, 4),
+                    "bayes_factor": round(bayes_result.bayes_factor, 4),
+                    "is_actionable": bayes_result.is_actionable(),
+                    "news_impact": bayes_result.news_impact.value
+                },
+                "step_3_kelly": {
+                    "edge": round(edge, 4),
+                    "kelly_fraction": kelly_fraction,
+                    "position_size_usd": round(position_size, 2),
+                    "would_trade": position_size > 5.0
+                }
+            },
+            "verdict": "TRADE" if bayes_result.is_actionable() and position_size > 5.0 else "NO_TRADE",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"[NEWS TEST] Error: {e}")
+        import traceback
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e), "trace": traceback.format_exc()}
         )
 
 
