@@ -3236,17 +3236,24 @@ async def test_whale_alert(
 @api_router.post("/hooks/test-cryptopanic")
 async def test_cryptopanic_api():
     """
-    Test CryptoPanic API (⚠️ 24h delayed news on free tier).
+    Test CryptoPanic API status.
     
-    Note: RSS endpoint is deprecated (returns HTML).
-    API works but has 24-hour delay on DEVELOPER tier.
+    Currently PAUSED - waiting for Premium subscription.
     """
     manager = get_webhook_sources_manager()
     
     if not manager.cryptopanic_api.is_enabled():
         return {
-            "status": "disabled",
-            "message": "CryptoPanic API key not configured"
+            "status": "paused",
+            "message": "CryptoPanic is PAUSED (CRYPTOPANIC_ENABLED=false)",
+            "reason": "Waiting for Premium subscription - free tier has 24h delay",
+            "rss_status": "DEPRECATED - endpoint returns HTML",
+            "how_to_reactivate": [
+                "1. Upgrade to CryptoPanic GROWTH plan ($199/mo)",
+                "2. Set CRYPTOPANIC_ENABLED=true in backend/.env",
+                "3. Restart backend"
+            ],
+            "alternative": "Using Apify Twitter with crypto alpha accounts instead"
         }
     
     news_items = await manager.cryptopanic_api.fetch_news(limit=5)
@@ -3255,7 +3262,6 @@ async def test_cryptopanic_api():
     return {
         "status": "success",
         "source": "API (⚠️ 24h delay on free tier)",
-        "rss_status": "DEPRECATED - returns HTML",
         "items_found": len(news_items),
         "stats": stats,
         "news": [
@@ -3267,8 +3273,7 @@ async def test_cryptopanic_api():
                 "url": n.url
             }
             for n in news_items[:10]
-        ],
-        "upgrade_note": "For real-time: Upgrade to GROWTH plan ($199/mo)"
+        ]
     }
 
 
