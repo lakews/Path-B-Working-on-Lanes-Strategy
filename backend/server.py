@@ -3111,6 +3111,162 @@ async def get_exa_status():
 
 
 # =============================================
+# WEBHOOK SOURCES ENDPOINTS (Lane 5 Enhancement)
+# =============================================
+
+@api_router.get("/hooks/webhook-sources/status")
+async def get_webhook_sources_status():
+    """
+    Get status of all webhook sources.
+    
+    Sources:
+    - Apify Twitter: @AP, @WojESPN, @ShamsCharania, @Polymarket
+    - Whale Alerts: Polymarket trades > $5,000
+    - CryptoPanic: Macro crypto news
+    """
+    manager = get_webhook_sources_manager()
+    return {
+        "status": "running" if manager.is_running else "stopped",
+        "stats": manager.get_stats()
+    }
+
+
+@api_router.post("/hooks/webhook-sources/start")
+async def start_webhook_sources(background_tasks: BackgroundTasks):
+    """
+    Start all webhook source polling loops.
+    
+    Polling intervals:
+    - Apify Twitter: Every 5 minutes
+    - CryptoPanic: Every 1 minute
+    - Whale Alerts: Real-time (WebSocket)
+    """
+    global news_injector
+    
+    # Ensure news injector is initialized
+    if news_injector is None:
+        signal_cache = get_signal_cache()
+        news_injector = get_news_injector(signal_cache=signal_cache)
+    
+    # Create callback to process news through injector
+    async def process_webhook_news(payload: Dict):
+        from services.news_injector import NewsItem
+        news = NewsItem(
+            headline=payload.get('headline', ''),
+            content=payload.get('content', ''),
+            source=payload.get('source', 'webhook'),
+            url=payload.get('url', ''),
+            published_at=datetime.now(timezone.utc)
+        )
+        await news_injector.process_news(news)
+    
+    manager = get_webhook_sources_manager(news_callback=process_webhook_news)
+    
+    if manager.is_running:
+        return {"status": "already_running", "message": "Webhook sources already running"}
+    
+    # Start in background
+    background_tasks.add_task(manager.start)
+    
+    return {
+        "status": "starting",
+        "message": "Webhook sources starting...",
+        "sources": {
+            "apify_twitter": manager.apify.is_enabled(),
+            "whale_alerts": manager.whale.is_enabled(),
+            "cryptopanic": manager.cryptopanic.is_enabled(),
+        }
+    }
+
+
+@api_router.post("/hooks/webhook-sources/stop")
+async def stop_webhook_sources():
+    """Stop all webhook source polling loops"""
+    manager = get_webhook_sources_manager()
+    
+    if not manager.is_running:
+        return {"status": "already_stopped", "message": "Webhook sources not running"}
+    
+    await manager.stop()
+    
+    return {"status": "stopped", "message": "Webhook sources stopped"}
+
+
+@api_router.post("/hooks/test-whale-alert")
+async def test_whale_alert(
+    size_usd: float = 10000,
+    side: str = "YES",
+    price: float = 0.65,
+    market_id: str = "test_market_123"
+):
+    """
+    Test the whale alert system by simulating a large trade.
+    
+    This will process the fake trade through the news pipeline.
+    """
+    manager = get_webhook_sources_manager()
+    
+    # Simulate a trade
+    trade_data = {
+        'market': market_id,
+        'side': side,
+        'price': price,
+        'size': size_usd / price,  # Shares = USD / price
+    }
+    
+    news = await manager.whale.process_trade(trade_data)
+    
+    if news:
+        return {
+            "status": "alert_triggered",
+            "headline": news.headline,
+            "priority": news.priority,
+            "size_usd": size_usd,
+            "threshold": manager.whale.threshold_usd
+        }
+    else:
+        return {
+            "status": "below_threshold",
+            "size_usd": size_usd,
+            "threshold": manager.whale.threshold_usd,
+            "message": f"Trade ${size_usd:,.0f} below threshold ${manager.whale.threshold_usd:,.0f}"
+        }
+
+
+@api_router.post("/hooks/test-cryptopanic")
+async def test_cryptopanic():
+    """
+    Test the CryptoPanic API by fetching recent news.
+    
+    Returns the most recent crypto news items.
+    """
+    manager = get_webhook_sources_manager()
+    
+    if not manager.cryptopanic.is_enabled():
+        return {
+            "status": "disabled",
+            "message": "CryptoPanic API key not configured"
+        }
+    
+    news_items = await manager.cryptopanic.fetch_recent_news(limit=5)
+    
+    return {
+        "status": "success",
+        "items_found": len(news_items),
+        "news": [
+            {
+                "headline": n.headline[:100],
+                "source": n.source,
+                "priority": n.priority,
+                "currencies": n.metadata.get('currencies', []),
+                "url": n.url
+            }
+            for n in news_items
+        ]
+    }
+
+
+# =============================================
 # PAPER TRADING ENDPOINTS
 # =============================================
 
