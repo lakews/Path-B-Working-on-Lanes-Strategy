@@ -428,16 +428,16 @@ class CryptoPanicSource:
         
         try:
             async with aiohttp.ClientSession() as session:
-                params = {
-                    'auth_token': self.api_key,
-                    **self.FILTERS,
-                }
+                # CryptoPanic is strict about URL structure - build it exactly as documented
+                # Correct format: https://cryptopanic.com/api/v1/posts/?auth_token=KEY&public=true
+                url = f"https://cryptopanic.com/api/v1/posts/?auth_token={self.api_key}&public=true"
                 
-                url = f"{self.BASE_URL}/posts/"
-                
-                async with session.get(url, params=params, timeout=30) as resp:
+                async with session.get(url, timeout=30) as resp:
                     if resp.status != 200:
                         logger.warning(f"[CRYPTOPANIC] API error: {resp.status}")
+                        return []
+                    
+                    data = await resp.json()
                         return []
                     
                     data = await resp.json()
