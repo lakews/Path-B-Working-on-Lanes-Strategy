@@ -80,15 +80,60 @@ class ApifyTwitterSource:
     Cost: ~$49/month for regular polling
     """
     
-    # High-value Twitter accounts for prediction markets
+    # ==========================================================================
+    # TARGET ACCOUNTS (Merged: Politics + Sports + Crypto Alpha)
+    # ==========================================================================
+    # 
+    # POLITICAL / BREAKING NEWS
+    # -------------------------
+    # @AP              - Associated Press (gold standard)
+    # @Reuters         - Reuters (gold standard)
+    # @WSJ             - Wall Street Journal
+    # @FiveThirtyEight - Election/polling data
+    #
+    # SPORTS INSIDERS
+    # ---------------
+    # @WojESPN         - Adrian Wojnarowski (NBA)
+    # @ShamsCharania   - Shams Charania (NBA)
+    #
+    # PREDICTION MARKETS
+    # ------------------
+    # @Polymarket      - Official Polymarket account
+    #
+    # CRYPTO ALPHA (NEW - High Signal)
+    # --------------------------------
+    # @Tier10k         - Essential: Fast breaking financial news
+    # @WuBlockchain    - Essential: Asian market flows/regulation
+    # @WatcherGuru     - Fastest headlines (sometimes noisy)
+    # @CoinDesk        - Standard major reporting
+    # @Cointelegraph   - Standard major reporting
+    # @Tree_of_Alpha   - High signal trader news
+    # @TheBlock__      - Deep industry reporting
+    # @db              - Deltaone (Bloomberg terminal feed, extremely fast)
+    #
     TARGET_ACCOUNTS = [
+        # === BREAKING NEWS (Politics/General) ===
         'AP',              # Associated Press - breaking news
-        'WojESPN',         # Adrian Wojnarowski - NBA insider
-        'ShamsCharania',   # Shams Charania - NBA insider
-        'Polymarket',      # Official Polymarket account
         'Reuters',         # Reuters breaking news
         'WSJ',             # Wall Street Journal
         'FiveThirtyEight', # Election/polling data
+        
+        # === SPORTS INSIDERS ===
+        'WojESPN',         # Adrian Wojnarowski - NBA insider
+        'ShamsCharania',   # Shams Charania - NBA insider
+        
+        # === PREDICTION MARKETS ===
+        'Polymarket',      # Official Polymarket account
+        
+        # === CRYPTO ALPHA (High Signal) ===
+        'Tier10k',         # Essential: Fast breaking financial news
+        'WuBlockchain',    # Essential: Asian market flows/regulation
+        'WatcherGuru',     # Fastest crypto headlines
+        'CoinDesk',        # Standard major crypto reporting
+        'Cointelegraph',   # Standard major crypto reporting
+        'Tree_of_Alpha',   # High signal trader news
+        'TheBlock__',      # Deep crypto industry reporting
+        'db',              # Deltaone - Bloomberg terminal feed
     ]
     
     # Keywords that indicate high-priority news
