@@ -972,8 +972,139 @@ class PaperTrader:
             self._position_monitoring_loop(),  # Exit monitoring
             self._learning_loop(),             # RL training
             self._continuous_mode_handler(),   # Session management
-            self._emergency_stoploss_task()    # Safety net
+            self._emergency_stoploss_task(),   # Safety net
+            self._run_news_loop()              # Lane 5: NEWS
         )
+    
+    # =================================================================
+    # NEWS LOOP: THE INJECTOR (Lane 5)
+    # =================================================================
+    # Runs every 10 seconds
+    # - Polls external news sources (Exa.ai)
+    # - Analyzes news with LLM for market impact
+    # - Injects signals into the trading system
+    # =================================================================
+    
+    async def _run_news_loop(self):
+        """
+        News Injector Loop - Lane 5 of the 5-Lane Architecture.
+        
+        This loop:
+        1. Polls Exa.ai for relevant news
+        2. Matches news to active markets
+        3. Analyzes with LLM (if available)
+        4. Injects trade signals via execute_trade_cycle
+        
+        Runs every 10 seconds.
+        """
+        NEWS_CYCLE_INTERVAL = 10  # 10 seconds between cycles
+        
+        # Check if news polling is enabled
+        if not self.news_poller.is_enabled():
+            logger.warning("📰 [NEWS] News Loop DISABLED - EXA_API_KEY not configured")
+            logger.warning("📰 [NEWS] To enable: export EXA_API_KEY='your-exa-api-key'")
+            return
+        
+        logger.info("📰 NEWS Injector Loop Started")
+        
+        news_cycle_count = 0
+        
+        # Track recently processed headlines to avoid duplicates
+        processed_headlines = set()
+        
+        while self.running:
+            try:
+                news_cycle_count += 1
+                
+                # Skip if in graceful stop mode
+                if self.graceful_stop:
+                    await asyncio.sleep(NEWS_CYCLE_INTERVAL)
+                    continue
+                
+                # Get active markets to find relevant queries
+                markets = await self._get_active_markets()
+                if not markets:
+                    await asyncio.sleep(NEWS_CYCLE_INTERVAL)
+                    continue
+                
+                # Build search queries from market questions
+                # Focus on markets with high volume or recent activity
+                top_markets = sorted(
+                    markets[:20],
+                    key=lambda m: float(m.get('volume', 0) or 0),
+                    reverse=True
+                )[:5]
+                
+                for market_data in top_markets:
+                    if not self.running:
+                        break
+                    
+                    market_id = market_data.get('id', '')
+                    question = market_data.get('question', '')
+                    
+                    # Skip if we already have a position
+                    if market_id in self.paper_positions:
+                        continue
+                    
+                    # Build search query from market question
+                    # Extract key terms (simplified - could use NLP)
+                    query = question[:100]  # Use first 100 chars
+                    
+                    # Poll for news
+                    try:
+                        events = await self.news_poller.poll_news(query, num_results=3)
+                        
+                        for event in events:
+                            # Skip if already processed
+                            headline_hash = hash(event.title[:50])
+                            if headline_hash in processed_headlines:
+                                continue
+                            processed_headlines.add(headline_hash)
+                            
+                            # Log the news event
+                            logger.info(f"📰 [NEWS] Found: {event.title[:60]}... ({event.source})")
+                            
+                            # TODO: Analyze with LLM (EmergentLLMService)
+                            # For now, log and skip actual execution
+                            # In production, this would:
+                            # 1. Call EmergentLLMService for analysis
+                            # 2. Calculate Bayesian posterior
+                            # 3. If BF > 3.0, call execute_trade_cycle('NEWS', ...)
+                            
+                            source_reliability = self.news_poller.get_source_reliability(event.source)
+                            
+                            # Placeholder for future LLM integration
+                            logger.info(
+                                f"📰 [NEWS] Would analyze: '{event.title[:40]}...' "
+                                f"(reliability={source_reliability:.0%})"
+                            )
+                        
+                    except Exception as e:
+                        logger.debug(f"[NEWS] Poll error for {market_id[:16]}: {e}")
+                
+                # Limit processed headlines cache size
+                if len(processed_headlines) > 1000:
+                    processed_headlines.clear()
+                
+                # Log cycle completion periodically
+                if news_cycle_count % 30 == 0:
+                    stats = self.news_poller.get_stats()
+                    logger.info(
+                        f"📰 [NEWS] Cycle {news_cycle_count}: "
+                        f"{stats['total_events_found']} events found, "
+                        f"{stats['successful_polls']}/{stats['total_polls']} polls succeeded"
+                    )
+                
+                await asyncio.sleep(NEWS_CYCLE_INTERVAL)
+                
+            except asyncio.CancelledError:
+                logger.info("📰 [NEWS] Loop cancelled")
+                break
+            except Exception as e:
+                logger.error(f"📰 [NEWS] Loop error: {e}")
+                await asyncio.sleep(NEWS_CYCLE_INTERVAL)
+        
+        logger.info("📰 NEWS Injector Loop Stopped")
     
     # =================================================================
     # HFT LOOP: THE REFLEX (Fast Path)
