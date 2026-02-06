@@ -12,21 +12,26 @@ The NewsPoller:
 1. Periodically polls Exa.ai for relevant news
 2. Filters and scores articles by relevance
 3. Returns structured events for LLM analysis
+
+Updated: Feb 2026 - Now uses official exa-py SDK
 """
 
 import asyncio
-import aiohttp
 import logging
 import os
 from typing import Dict, List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 
-logger = logging.getLogger(__name__)
+# Official Exa SDK
+try:
+    from exa_py import Exa
+    EXA_SDK_AVAILABLE = True
+except ImportError:
+    EXA_SDK_AVAILABLE = False
+    Exa = None
 
-# Exa.ai API configuration
-EXA_API_BASE = "https://api.exa.ai"
-EXA_SEARCH_ENDPOINT = f"{EXA_API_BASE}/search"
+logger = logging.getLogger(__name__)
 
 
 @dataclass
