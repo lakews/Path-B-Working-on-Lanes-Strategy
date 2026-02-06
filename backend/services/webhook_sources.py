@@ -210,12 +210,13 @@ class ApifyTwitterSource:
         account: str,
         hours_back: int
     ) -> List[WebhookNews]:
-        """Fetch tweets from a single account"""
+        """Fetch tweets from a single account using apidojo/tweet-scraper"""
         
-        # Apify actor input
+        # apidojo/tweet-scraper V2 input format (startUrls is most reliable)
         actor_input = {
-            "handles": [account],
-            "tweetsDesired": 10,
+            "startUrls": [f"https://twitter.com/{account}"],
+            "maxTweets": 10,
+            "sort": "Latest",
             "proxyConfig": {"useApifyProxy": True},
         }
         
