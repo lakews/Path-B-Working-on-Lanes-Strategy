@@ -662,9 +662,9 @@ class WebhookSourcesManager:
         }
         
         logger.info(f"[WEBHOOK SOURCES] Manager initialized")
-        logger.info(f"  - Apify Twitter: {'✅ Enabled' if self.apify.is_enabled() else '❌ Disabled'}")
+        logger.info(f"  - Apify Twitter: {'✅ Enabled' if self.apify.is_enabled() else '❌ Disabled'} ({len(self.apify.TARGET_ACCOUNTS)} accounts)")
         logger.info(f"  - Whale Alerts: {'✅ Enabled' if self.whale.is_enabled() else '❌ Disabled'}")
-        logger.info(f"  - CryptoPanic API: {'✅ Enabled (⚠️ 24h delay)' if self.cryptopanic_api.is_enabled() else '❌ Disabled'}")
+        logger.info(f"  - CryptoPanic API: {'⏸️ PAUSED' if not self.cryptopanic_api.is_enabled() else '✅ Enabled (⚠️ 24h delay)'}")
         logger.info(f"  - CryptoPanic RSS: ❌ Deprecated (returns HTML)")
     
     async def _handle_whale_alert(self, news: WebhookNews):
