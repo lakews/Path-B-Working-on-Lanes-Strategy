@@ -217,6 +217,21 @@ EXIT_STRATEGY_CONFIG = {
         'moonbag_multiple': 5.0,      # Sell 100% at 5x
         'max_hours': 168,             # 7 days
     },
+    # =========================================================================
+    # SPORTS ARBITRAGE (Prediction Markets - Binary Options)
+    # =========================================================================
+    # Optimized for prediction market dynamics:
+    # - Wider stop-loss (5%) to handle game score swings
+    # - Take-profit at 5% to lock in arb spread
+    # - Shorter max hold (12h) - close before event resolution
+    # All values configurable via environment variables
+    'sports_arbitrage': {
+        'type': 'mechanical',
+        'action': 'CLOSE_ALL',
+        'tp_pct': float(os.getenv('SPORTS_ARB_TP_PCT', '0.05')),       # 5% take profit
+        'sl_pct': float(os.getenv('SPORTS_ARB_SL_PCT', '0.05')),       # 5% stop loss (wider for game swings)
+        'max_hours': float(os.getenv('SPORTS_ARB_MAX_HOURS', '12')),   # 12 hours max hold
+    },
 }
 
 # 3. Asset Modifiers (APPLIED TO ALPHA STRATEGY ONLY)
