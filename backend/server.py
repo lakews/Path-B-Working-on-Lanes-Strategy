@@ -3029,8 +3029,7 @@ async def update_news_config(
 async def trigger_news_poll(
     query: str = "prediction market breaking news",
     num_results: int = 10,
-    hours_back: int = 24,
-    username: str = Depends(verify_credentials_dual)
+    hours_back: int = 24
 ):
     """
     Manually trigger a news poll from Exa.ai.
