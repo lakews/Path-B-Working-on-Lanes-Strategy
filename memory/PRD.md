@@ -1,52 +1,50 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: February 6, 2026 (Session 44 - Sports Exit Fix + Exa.ai Integration)
+## Last Updated: February 6, 2026 (Session 44 - Webhook Sources Integration)
 
 ---
 
-### February 6, 2026 - Session 44 (Sports Exit Fix + Exa.ai NEWS Lane Integration)
+### February 6, 2026 - Session 44 (Sports Exit Fix + NEWS Lane Full Integration)
 
 - ✅ **CRITICAL BUG FIX: Sports positions now close correctly**
+  - Added `sports_arbitrage` to `EXIT_STRATEGY_CONFIG`
+  - Prediction market-optimized: 5% TP/SL, 12h max hold
 
-  **Root Cause:**
-  - `sports_arbitrage` strategy was MISSING from `EXIT_STRATEGY_CONFIG` in `risk_config.py`
-  - Exit engine fell back to `alpha_directional` defaults (15% stop, 72h hold)
-  - These parameters were wrong for prediction market sports arbitrage
+- ✅ **Exa.ai NEWS Lane Integration**
+  - Official `exa-py` SDK integrated
+  - Neural search with 7 default prediction market queries
 
-  **The Fix:**
-  - Added `sports_arbitrage` entry to `EXIT_STRATEGY_CONFIG` (line ~219)
-  - Prediction market-optimized parameters:
-    - `tp_pct`: 5% take profit (lock in arb spread)
-    - `sl_pct`: 5% stop loss (wider for game score swings)
-    - `max_hours`: 12h (close before event resolution)
-  - All values configurable via environment variables:
-    - `SPORTS_ARB_TP_PCT`, `SPORTS_ARB_SL_PCT`, `SPORTS_ARB_MAX_HOURS`
+- ✅ **Webhook Sources Integration (3 New Sources)**
 
-  **File Changed:** `/app/backend/risk_config.py`
+  **1. Apify Twitter Scraper** ($49/mo)
+  - Targets: @AP, @WojESPN, @ShamsCharania, @Polymarket, @Reuters, @WSJ
+  - Poll interval: 5 minutes
+  - Priority keywords for BREAKING/CONFIRMED news
+  - File: `/app/backend/services/webhook_sources.py`
 
-- ✅ **Exa.ai NEWS Lane Integration Complete**
+  **2. Whale Alert (Internal - FREE)**
+  - Monitors Polymarket WebSocket for trades > $5,000
+  - Integrated into paper_trader.py WebSocket handler
+  - Priority: $50k+ = critical, $20k+ = high
+  - Real-time (no polling - uses existing WebSocket)
 
-  **What Was Implemented:**
-  - Integrated official `exa-py` SDK (v2.3.0) for reliable API access
-  - Updated `news_service.py` to use new SDK with correct parameters
-  - Added `EXA_API_KEY` to backend/.env
-  - Created default prediction market queries for automated polling
-  - Added API endpoints for manual testing and status:
-    - `GET /api/hooks/exa-status` - Check Exa.ai configuration
-    - `POST /api/hooks/news-poll` - Manual trigger for news search
+  **3. CryptoPanic API (Free tier)**
+  - Macro crypto news aggregation
+  - Poll interval: 1 minute
+  - Note: API key may require valid subscription
 
-  **Testing Results:**
-  - ✅ Exa SDK initialized successfully
-  - ✅ Neural search working with `category="news"`
-  - ✅ Article text extraction working
-  - ✅ 67 unique events found across 7 default queries
-  - ✅ 100% polling success rate
+  **API Endpoints Added:**
+  - `GET /api/hooks/webhook-sources/status` - Check all sources
+  - `POST /api/hooks/webhook-sources/start` - Start polling
+  - `POST /api/hooks/webhook-sources/stop` - Stop polling
+  - `POST /api/hooks/test-whale-alert` - Test whale detection
+  - `POST /api/hooks/test-cryptopanic` - Test CryptoPanic
 
   **Files Changed:**
-  - `/app/backend/services/news_service.py` - Updated to use exa-py SDK
-  - `/app/backend/.env` - Added EXA_API_KEY
-  - `/app/backend/server.py` - Added polling/status endpoints
-  - `/app/backend/requirements.txt` - Added exa-py dependency
+  - `/app/backend/services/webhook_sources.py` (NEW)
+  - `/app/backend/server.py` - Added webhook endpoints
+  - `/app/backend/paper_trading/paper_trader.py` - Whale handler
+  - `/app/backend/.env` - Added APIFY_API_KEY, CRYPTOPANIC_API_KEY
 
 ---
 
