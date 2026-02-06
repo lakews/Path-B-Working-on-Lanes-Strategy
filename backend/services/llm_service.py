@@ -327,10 +327,8 @@ For each RELEVANT market, provide analysis in this JSON format:
 Only include markets where is_relevant=true. Respond with ONLY the JSON."""
 
         try:
-            response = await client.send_message(
-                message=batch_prompt,
-                model=self.model
-            )
+            user_msg = self._UserMessage(text=batch_prompt)
+            response = await client.send_message(user_msg)
             
             parsed = self._parse_json_response(response)
             
