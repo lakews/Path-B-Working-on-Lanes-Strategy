@@ -2132,23 +2132,6 @@ class PaperTrader:
             return None
             
             # =============================================================
-            # STEP 2B: Real-Time Volatility Adaptation (STATE ISOLATED)
-            # =============================================================
-            # Store price tick in market-specific history for volatility calc
-            if market_id not in self.volatility_memory:
-                self.volatility_memory[market_id] = []
-            
-            # Keep last 20 ticks per market
-            self.volatility_memory[market_id].append(yes_price)
-            if len(self.volatility_memory[market_id]) > 20:
-                self.volatility_memory[market_id] = self.volatility_memory[market_id][-20:]
-            
-            # Calculate volatility from stored price history
-            vol_calc = get_volatility_calculator()
-            vol_calc.add_tick(market_id, yes_price)  # Feed real-time service too
-            vol_multiplier = vol_calc.get_vol_multiplier(market_id, params.reference_volatility)
-            
-            # =============================================================
             # STEP 3: Cubic Inventory Skew (STATE ISOLATED)
             # =============================================================
             # Calculate current inventory for this market type
