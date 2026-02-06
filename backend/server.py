@@ -34,6 +34,7 @@ from auth import (
 from services.market_alerts import get_market_alerts_service, MarketAlertsService
 from services.news_injector import get_news_injector, NewsInjector
 from services.signal_cache import get_signal_cache, EmergentSignalCache
+from services.webhook_sources import get_webhook_sources_manager, WebhookSourcesManager
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
