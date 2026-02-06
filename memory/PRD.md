@@ -1,52 +1,55 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: February 6, 2026 (Session 43 - Execution Integration)
+## Last Updated: February 6, 2026 (Session 43 - Signal Hierarchy Integration)
 
 ---
 
-### February 6, 2026 - Session 43 (Execution Integration - COMPLETE)
+### February 6, 2026 - Session 43 (Signal Hierarchy Integration - COMPLETE)
 
-- ✅ **PHASE 2: EXECUTION INTEGRATION COMPLETE**
+- ✅ **MASTER INTEGRATION: Signal Hierarchy Implemented**
 
-  **Files Created/Modified:**
-  
-  1. `/app/backend/services/news_service.py` - **NewsPoller (Lane 5)**
-     - Polls Exa.ai for relevant news
-     - Handles EXA_API_KEY from environment (graceful degradation if missing)
-     - Returns structured NewsEvent objects
-     - Tracks source reliability scores
-     - Singleton pattern for efficient resource usage
-  
-  2. `/app/backend/paper_trading/paper_trader.py` - **Chain of Command Integrated**
-     - Injected `RiskManager` and `NewsPoller` into `__init__`
-     - Added `execute_trade_cycle()` method enforcing:
-       - Step 1 (MATH): PositionSizer calculates raw size
-       - Step 2 (ENFORCEMENT): RiskManager validates/trims
-       - Step 3 (ACTION): Execute if approved
-       - Step 4 (LOG): Audit trail for all decisions
-     - Added `_run_news_loop()` for Lane 5 (10s cycle)
-     - Added helper methods: `_get_utilization()`, `_get_sector_exposure()`
-
-  **Chain of Command Architecture:**
+  **Architecture: Zero-Await Hot Path**
   ```
-  Market Data → Strategy → PositionSizer → RiskManager → Execution
-                             (Math)        (Enforcement)   (Action)
+  SIGNAL HIERARCHY (Priority Order):
+  1. NEWS (Highest) - BF >= 3.0 → OVERRIDE Alpha
+  2. ALPHA (Medium) - Age-decay weighting (Fresh <2s → Stale >10s)
+  3. ORDER BOOK (Lowest) - Pure microstructure fallback
   ```
 
-  **Risk Validation Tested:**
-  - ✅ HFT: $100 → $50 (2% cap enforced)
-  - ✅ ALPHA: $500 → $100 (max_pos_usd enforced)
-  - ✅ GAMMA: $100 → $15 (whale zone max enforced)
-  - ✅ GAMMA: BLOCKED when price > $0.10 (zone violation)
-  - ✅ NEWS: $200 → $100 (max_pos_usd enforced)
+  **New Methods in `paper_trader.py`:**
+  1. `_news_atomic_poller()` - Background task polling every 75ms
+     - Reads from signal cache
+     - Calculates Bayes Factor: `BF = adj_prob / (1 - adj_prob)`
+     - Updates `_news_atomic[market_id]` with thread-safe snapshots
+  
+  2. `_check_for_news_signal(market_id)` - SYNCHRONOUS (zero-await)
+     - Reads from local atomic cache
+     - Returns: action (PAUSE/OVERRIDE/WEAK/IGNORE), multipliers
+     - Staleness: >60s = IGNORE
+     - BF thresholds: >10 = PAUSE, >=3 = OVERRIDE
+  
+  3. `_evaluate_hft_scalp()` - REWRITTEN with full hierarchy
+     - Step 1: News Check (ZERO AWAIT from atomic cache)
+     - Step 2: Alpha Check (age-decay weight: Fresh/Decay/Stale)
+     - Step 3: Order Book Fallback (safety spread 1.5x)
+     - Step 4: Target Price (blend or forced direction)
+     - Step 5: Apply multipliers (spread, size)
+     - Step 6: Position sizing
+     - Step 7: Inventory guard
 
-- ✅ **SSOT RISK CONFIGURATION IMPLEMENTED** (Previous Task)
+  **Graceful Degradation:**
+  - News unavailable → Use Alpha
+  - Alpha stale (>10s) → Use Order Book with 1.5x safety spread
+  - All fail → Return None (don't trade blind)
 
-  **Files:**
-  - `/app/backend/config/risk_config.json` - Single Source of Truth
-  - `/app/backend/services/risk_manager.py` - Risk Enforcer
-  - `/app/backend/utils/position_sizer.py` - Stateless Math
-  - `/app/frontend/src/components/RiskSettings.js` - Settings UI
+  **Signal Multipliers:**
+  | Signal | Spread Mult | Size Mult | Action |
+  |--------|------------|-----------|--------|
+  | NEWS OVERRIDE | 0.5 (aggressive) | 2.0 | Skip Alpha |
+  | NEWS WEAK | 0.9 | 1.2 | Continue to Alpha |
+  | ALPHA FRESH | 1.0 | 1.0 | Full weight |
+  | ALPHA STALE | 1.5 (safety) | 0.5 | Order book fallback |
+  | PAUSE | 2.0 | 0.0 | Stop quoting |
 
   **Documentation Covers:**
   1. **Lane 1: HFT (The Market Maker)**
