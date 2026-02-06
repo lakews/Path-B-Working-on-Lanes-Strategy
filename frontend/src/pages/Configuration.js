@@ -671,6 +671,11 @@ const Configuration = () => {
         ))}
       </div>
 
+      {/* SSOT 5-Lane Risk Configuration Tab */}
+      {activeTab === 'ssot' && (
+        <RiskSettings />
+      )}
+
       {activeTab === 'portfolio' && (
         <div className="space-y-6">
           {/* Header with Save and Reset */}
