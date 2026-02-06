@@ -2871,7 +2871,10 @@ async def news_webhook(
         # Initialize news injector if not already
         if news_injector is None:
             signal_cache = get_signal_cache()
-            news_injector = get_news_injector(signal_cache=signal_cache)
+            news_injector = get_news_injector(
+                signal_cache=signal_cache,
+                market_fetcher=get_active_markets_for_news
+            )
         
         # Process webhook (runs in background for high priority, inline for normal)
         result = await news_injector.handle_webhook(payload.dict())
@@ -3023,7 +3026,11 @@ async def start_news_injector(
     
     try:
         if news_injector is None:
-            news_injector = get_news_injector()
+            signal_cache = get_signal_cache()
+            news_injector = get_news_injector(
+                signal_cache=signal_cache,
+                market_fetcher=get_active_markets_for_news
+            )
         
         if news_injector.is_running:
             return {"status": "already_running"}
@@ -3075,7 +3082,11 @@ async def update_news_config(
     global news_injector
     
     if news_injector is None:
-        news_injector = get_news_injector()
+        signal_cache = get_signal_cache()
+        news_injector = get_news_injector(
+            signal_cache=signal_cache,
+            market_fetcher=get_active_markets_for_news
+        )
     
     # Update config
     news_injector.config['min_bayes_factor'] = min_bayes_factor
@@ -3211,7 +3222,10 @@ async def start_webhook_sources(background_tasks: BackgroundTasks):
     # Ensure news injector is initialized
     if news_injector is None:
         signal_cache = get_signal_cache()
-        news_injector = get_news_injector(signal_cache=signal_cache)
+        news_injector = get_news_injector(
+            signal_cache=signal_cache,
+            market_fetcher=get_active_markets_for_news
+        )
     
     # Create callback to process news through injector
     async def process_webhook_news(payload: Dict):
@@ -3555,9 +3569,15 @@ async def start_paper_trading(
         
         # Initialize News Injector with the same cache
         if news_injector is None:
-            news_injector = get_news_injector(signal_cache=signal_cache)
+            news_injector = get_news_injector(
+                signal_cache=signal_cache,
+                market_fetcher=get_active_markets_for_news
+            )
         else:
             news_injector.signal_cache = signal_cache
+            # Ensure market_fetcher is set even on existing instance
+            if news_injector.market_fetcher is None:
+                news_injector.market_fetcher = get_active_markets_for_news
         
         logger.info("[PAPER TRADING] Lane 5 signal cache connected")
         # =================================================================
