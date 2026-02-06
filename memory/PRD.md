@@ -1,10 +1,10 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: February 6, 2026 (Session 44 - Sports Arbitrage Exit Bug Fix)
+## Last Updated: February 6, 2026 (Session 44 - Sports Exit Fix + Exa.ai Integration)
 
 ---
 
-### February 6, 2026 - Session 44 (Sports Arbitrage Exit Bug Fix - COMPLETE)
+### February 6, 2026 - Session 44 (Sports Exit Fix + Exa.ai NEWS Lane Integration)
 
 - ✅ **CRITICAL BUG FIX: Sports positions now close correctly**
 
@@ -22,13 +22,31 @@
   - All values configurable via environment variables:
     - `SPORTS_ARB_TP_PCT`, `SPORTS_ARB_SL_PCT`, `SPORTS_ARB_MAX_HOURS`
 
-  **Testing:**
-  - ✅ Stop loss triggers at -5%
-  - ✅ Take profit triggers at +5%
-  - ✅ Time decay triggers at 12h
-  - ✅ Hold within bounds works correctly
-
   **File Changed:** `/app/backend/risk_config.py`
+
+- ✅ **Exa.ai NEWS Lane Integration Complete**
+
+  **What Was Implemented:**
+  - Integrated official `exa-py` SDK (v2.3.0) for reliable API access
+  - Updated `news_service.py` to use new SDK with correct parameters
+  - Added `EXA_API_KEY` to backend/.env
+  - Created default prediction market queries for automated polling
+  - Added API endpoints for manual testing and status:
+    - `GET /api/hooks/exa-status` - Check Exa.ai configuration
+    - `POST /api/hooks/news-poll` - Manual trigger for news search
+
+  **Testing Results:**
+  - ✅ Exa SDK initialized successfully
+  - ✅ Neural search working with `category="news"`
+  - ✅ Article text extraction working
+  - ✅ 67 unique events found across 7 default queries
+  - ✅ 100% polling success rate
+
+  **Files Changed:**
+  - `/app/backend/services/news_service.py` - Updated to use exa-py SDK
+  - `/app/backend/.env` - Added EXA_API_KEY
+  - `/app/backend/server.py` - Added polling/status endpoints
+  - `/app/backend/requirements.txt` - Added exa-py dependency
 
 ---
 
