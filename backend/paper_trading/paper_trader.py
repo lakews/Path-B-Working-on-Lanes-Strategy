@@ -1119,6 +1119,240 @@ class PaperTrader:
         logger.info("📰 NEWS Injector Loop Stopped")
     
     # =================================================================
+    # NEWS ATOMIC POLLER (75ms Background Task)
+    # =================================================================
+    # Polls the signal cache and updates thread-safe local memory.
+    # This enables ZERO-AWAIT reads in the HFT hot path.
+    # =================================================================
+    
+    async def _news_atomic_poller(self):
+        """
+        Background task that polls the signal cache every 75ms.
+        
+        Updates self._news_atomic[market_id] with:
+        - bayes_factor: Calculated BF from signal
+        - direction: YES or NO
+        - timestamp: When signal was created
+        - expires_at: Signal expiration time
+        - action: OVERRIDE, PAUSE, or IGNORE
+        
+        The HFT loop reads this atomically without await.
+        """
+        POLL_INTERVAL_MS = 75
+        POLL_INTERVAL_S = POLL_INTERVAL_MS / 1000.0
+        
+        logger.info("🔄 [NEWS ATOMIC] Poller started (75ms interval)")
+        
+        while self.running:
+            try:
+                # Skip if no signal cache configured
+                if not hasattr(self, '_signal_cache') or self._signal_cache is None:
+                    await asyncio.sleep(POLL_INTERVAL_S)
+                    continue
+                
+                # Get list of markets we're tracking
+                markets_to_check = list(self.paper_positions.keys())
+                
+                # Also check markets from recent HFT activity
+                if hasattr(self, '_recent_hft_markets'):
+                    markets_to_check.extend(self._recent_hft_markets)
+                
+                markets_to_check = list(set(markets_to_check))[:50]  # Limit to 50 markets
+                
+                for market_id in markets_to_check:
+                    try:
+                        cache_key = f"emergent_signal:{market_id}"
+                        signal = await self._signal_cache.get(cache_key)
+                        
+                        if signal:
+                            # Calculate Bayes Factor
+                            posterior = signal.get('posterior', 0.5)
+                            prior = signal.get('prior', 0.5)
+                            source_reliability = signal.get('source_reliability', 0.7)
+                            
+                            # Adjusted probability: shrink toward 0.5 by reliability
+                            adj_prob = 0.5 + (posterior - 0.5) * source_reliability
+                            adj_prob = max(0.01, min(0.99, adj_prob))
+                            
+                            # Bayes Factor: P(YES) / P(NO)
+                            bayes_factor = adj_prob / (1 - adj_prob)
+                            
+                            # Determine action based on BF thresholds
+                            action = self._determine_news_action(bayes_factor, signal)
+                            
+                            # Update atomic cache (thread-safe)
+                            snapshot = {
+                                'bayes_factor': bayes_factor,
+                                'direction': signal.get('direction', 'NEUTRAL'),
+                                'timestamp': signal.get('timestamp', datetime.now(timezone.utc).isoformat()),
+                                'expires_at': signal.get('expires_at'),
+                                'posterior': posterior,
+                                'prior': prior,
+                                'confidence': signal.get('confidence', 0.5),
+                                'action': action,
+                                'is_resolution': signal.get('is_resolution', False),
+                                'spread_multiplier': 0.5 if action == 'OVERRIDE' else 1.0,
+                                'size_multiplier': 2.0 if action == 'OVERRIDE' else 1.0,
+                            }
+                            
+                            with self._news_atomic_lock:
+                                self._news_atomic[market_id] = snapshot
+                        else:
+                            # No signal - remove from atomic cache
+                            with self._news_atomic_lock:
+                                if market_id in self._news_atomic:
+                                    del self._news_atomic[market_id]
+                    
+                    except Exception as e:
+                        logger.debug(f"[NEWS ATOMIC] Error polling {market_id[:8]}: {e}")
+                
+                await asyncio.sleep(POLL_INTERVAL_S)
+                
+            except asyncio.CancelledError:
+                logger.info("🔄 [NEWS ATOMIC] Poller cancelled")
+                break
+            except Exception as e:
+                logger.error(f"🔄 [NEWS ATOMIC] Poller error: {e}")
+                await asyncio.sleep(1.0)  # Back off on error
+        
+        logger.info("🔄 [NEWS ATOMIC] Poller stopped")
+    
+    def _determine_news_action(self, bayes_factor: float, signal: Dict) -> str:
+        """
+        Determine action based on Bayes Factor thresholds.
+        
+        Returns:
+            'OVERRIDE' - Strong signal, override Alpha, aggressive execution
+            'PAUSE' - Extreme volatility, stop quoting
+            'IGNORE' - Noise, continue with Alpha/Book
+        """
+        # Check for resolution signal (special case)
+        if signal.get('is_resolution', False):
+            return 'PAUSE'  # Market resolving - stop all activity
+        
+        # Extreme volatility: BF > 10.0
+        if bayes_factor > 10.0:
+            return 'PAUSE'
+        
+        # Actionable signal: BF >= 3.0
+        if bayes_factor >= 3.0:
+            return 'OVERRIDE'
+        
+        # Weak signal: 1.5 <= BF < 3.0
+        if bayes_factor >= 1.5:
+            return 'WEAK'  # May influence Alpha weight, but not override
+        
+        # Noise: BF < 1.5
+        return 'IGNORE'
+    
+    def _check_for_news_signal(self, market_id: str) -> Dict:
+        """
+        SYNCHRONOUS check for news signal in atomic cache.
+        
+        This is the ZERO-AWAIT entry point for the HFT hot path.
+        All data comes from local memory, updated by _news_atomic_poller().
+        
+        Args:
+            market_id: Market to check
+            
+        Returns:
+            Dict with:
+            - action: 'OVERRIDE', 'PAUSE', 'IGNORE'
+            - direction: 'YES', 'NO', 'NEUTRAL'
+            - spread_multiplier: 0.5 (aggressive) to 1.5 (defensive)
+            - size_multiplier: 0.5 to 2.0
+            - reason: Human-readable explanation
+        """
+        result = {
+            'action': 'IGNORE',
+            'direction': 'NEUTRAL',
+            'spread_multiplier': 1.0,
+            'size_multiplier': 1.0,
+            'bayes_factor': 1.0,
+            'reason': 'No news signal'
+        }
+        
+        try:
+            # Thread-safe read from atomic cache
+            with self._news_atomic_lock:
+                snapshot = self._news_atomic.get(market_id)
+            
+            if not snapshot:
+                return result
+            
+            # STALENESS CHECK: Signals older than 60s are ignored
+            timestamp_str = snapshot.get('timestamp')
+            if timestamp_str:
+                try:
+                    signal_time = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                    age_seconds = (datetime.now(timezone.utc) - signal_time).total_seconds()
+                    
+                    if age_seconds > 60.0:
+                        result['reason'] = f'Stale signal ({age_seconds:.0f}s old)'
+                        return result
+                except Exception:
+                    pass  # Ignore timestamp parsing errors
+            
+            # EXPIRATION CHECK
+            expires_at = snapshot.get('expires_at')
+            if expires_at:
+                try:
+                    expiry = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                    if datetime.now(timezone.utc) > expiry:
+                        result['reason'] = 'Signal expired'
+                        return result
+                except Exception:
+                    pass
+            
+            # Get action from snapshot
+            action = snapshot.get('action', 'IGNORE')
+            bf = snapshot.get('bayes_factor', 1.0)
+            direction = snapshot.get('direction', 'NEUTRAL')
+            
+            if action == 'PAUSE':
+                # Extreme volatility or resolution - stop quoting
+                result.update({
+                    'action': 'PAUSE',
+                    'direction': direction,
+                    'spread_multiplier': 2.0,  # Widen spread if we do quote
+                    'size_multiplier': 0.0,    # No new positions
+                    'bayes_factor': bf,
+                    'reason': f'PAUSE: BF={bf:.1f}, high volatility/resolution'
+                })
+            
+            elif action == 'OVERRIDE':
+                # Strong actionable signal - override Alpha
+                result.update({
+                    'action': 'OVERRIDE',
+                    'direction': direction,
+                    'spread_multiplier': 0.5,  # Aggressive - tighter spread
+                    'size_multiplier': 2.0,    # Double size
+                    'bayes_factor': bf,
+                    'reason': f'OVERRIDE: BF={bf:.1f}, direction={direction}'
+                })
+            
+            elif action == 'WEAK':
+                # Weak signal - note but don't override
+                result.update({
+                    'action': 'WEAK',
+                    'direction': direction,
+                    'spread_multiplier': 0.9,  # Slightly tighter
+                    'size_multiplier': 1.2,    # Slight size boost
+                    'bayes_factor': bf,
+                    'reason': f'WEAK: BF={bf:.1f}, direction={direction}'
+                })
+            
+            else:
+                # Noise
+                result['reason'] = f'Noise: BF={bf:.1f}'
+            
+            return result
+            
+        except Exception as e:
+            logger.debug(f"[NEWS CHECK] Error for {market_id[:8]}: {e}")
+            return result
+    
+    # =================================================================
     # HFT LOOP: THE REFLEX (Fast Path)
     # =================================================================
     # Runs every 0.5-1.0s
