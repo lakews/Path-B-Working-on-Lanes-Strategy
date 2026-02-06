@@ -563,10 +563,10 @@ class WebhookSourcesManager:
     Active Sources:
     - Apify Twitter: @AP, @WojESPN, etc.
     - Whale Alert: Polymarket large trades
-    - CryptoPanic RSS: Real-time crypto news (FREE!)
+    - CryptoPanic API: Crypto news (⚠️ 24h delay on free tier)
     
-    Disabled:
-    - CryptoPanic API: 24h delay = toxic for trading
+    Deprecated:
+    - CryptoPanic RSS: Endpoint returns HTML, no longer works
     """
     
     def __init__(self, news_callback: Optional[Callable] = None):
@@ -580,11 +580,11 @@ class WebhookSourcesManager:
         # Initialize sources
         self.apify = ApifyTwitterSource()
         self.whale = WhaleAlertSource()
-        self.cryptopanic_rss = CryptoPanicRSSSource()  # Real-time RSS (active)
-        self.cryptopanic_api = CryptoPanicAPISource()  # API disabled (24h delay)
+        self.cryptopanic_api = CryptoPanicAPISource()  # API works (24h delay)
+        self.cryptopanic_rss = CryptoPanicRSSSource()  # RSS deprecated (returns HTML)
         
         # Legacy alias
-        self.cryptopanic = self.cryptopanic_rss
+        self.cryptopanic = self.cryptopanic_api
         
         # Set up whale callback
         if news_callback:
@@ -599,8 +599,8 @@ class WebhookSourcesManager:
             'apify_polls': 0,
             'apify_items': 0,
             'whale_alerts': 0,
-            'cryptopanic_rss_polls': 0,
-            'cryptopanic_rss_items': 0,
+            'cryptopanic_api_polls': 0,
+            'cryptopanic_api_items': 0,
             'last_poll': None,
             'errors': 0,
         }
@@ -608,8 +608,8 @@ class WebhookSourcesManager:
         logger.info(f"[WEBHOOK SOURCES] Manager initialized")
         logger.info(f"  - Apify Twitter: {'✅ Enabled' if self.apify.is_enabled() else '❌ Disabled'}")
         logger.info(f"  - Whale Alerts: {'✅ Enabled' if self.whale.is_enabled() else '❌ Disabled'}")
-        logger.info(f"  - CryptoPanic RSS: {'✅ Enabled (REAL-TIME!)' if self.cryptopanic_rss.is_enabled() else '❌ Disabled'}")
-        logger.info(f"  - CryptoPanic API: ❌ Disabled (24h delay = toxic)")
+        logger.info(f"  - CryptoPanic API: {'✅ Enabled (⚠️ 24h delay)' if self.cryptopanic_api.is_enabled() else '❌ Disabled'}")
+        logger.info(f"  - CryptoPanic RSS: ❌ Deprecated (returns HTML)")
     
     async def _handle_whale_alert(self, news: WebhookNews):
         """Handle whale alert from internal monitor"""
@@ -644,24 +644,26 @@ class WebhookSourcesManager:
             
             await asyncio.sleep(interval_seconds)
     
-    async def _poll_cryptopanic_rss(self, interval_seconds: int = 300):
-        """Poll CryptoPanic RSS feed (default every 5 minutes)"""
-        logger.info(f"[WEBHOOK SOURCES] CryptoPanic RSS poll loop started ({interval_seconds}s interval)")
+    async def _poll_cryptopanic_api(self, interval_seconds: int = 300):
+        """Poll CryptoPanic API (default every 5 minutes)"""
+        logger.info(f"[WEBHOOK SOURCES] CryptoPanic API poll loop started ({interval_seconds}s interval)")
+        logger.info(f"  ⚠️ Note: Free tier has 24h delay - useful for research, not real-time trading")
         
         while self.is_running:
             try:
-                news_items = await self.cryptopanic_rss.fetch_news()
-                self._stats['cryptopanic_rss_polls'] += 1
-                self._stats['cryptopanic_rss_items'] += len(news_items)
-                self._stats['last_poll'] = datetime.now(timezone.utc).isoformat()
-                
-                for news in news_items:
-                    if self.news_callback:
-                        await self.news_callback(news.to_news_payload())
-                    await asyncio.sleep(0.3)  # Rate limit
+                if self.cryptopanic_api.is_enabled():
+                    news_items = await self.cryptopanic_api.fetch_news(limit=10)
+                    self._stats['cryptopanic_api_polls'] += 1
+                    self._stats['cryptopanic_api_items'] += len(news_items)
+                    self._stats['last_poll'] = datetime.now(timezone.utc).isoformat()
+                    
+                    for news in news_items:
+                        if self.news_callback:
+                            await self.news_callback(news.to_news_payload())
+                        await asyncio.sleep(0.3)  # Rate limit
                 
             except Exception as e:
-                logger.error(f"[WEBHOOK SOURCES] CryptoPanic RSS poll error: {e}")
+                logger.error(f"[WEBHOOK SOURCES] CryptoPanic API poll error: {e}")
                 self._stats['errors'] += 1
             
             await asyncio.sleep(interval_seconds)
@@ -677,12 +679,12 @@ class WebhookSourcesManager:
         # Start poll tasks
         self._poll_tasks = [
             asyncio.create_task(self._poll_apify(interval_seconds=300)),           # 5 min
-            asyncio.create_task(self._poll_cryptopanic_rss(interval_seconds=300)), # 5 min
+            asyncio.create_task(self._poll_cryptopanic_api(interval_seconds=300)), # 5 min
         ]
         
         logger.info("[WEBHOOK SOURCES] All polling loops started")
         logger.info("  📰 Apify Twitter: every 5 min")
-        logger.info("  📰 CryptoPanic RSS: every 5 min (REAL-TIME news!)")
+        logger.info("  📰 CryptoPanic API: every 5 min (⚠️ 24h delayed news)")
         logger.info("  🐋 Whale Alerts: real-time via WebSocket")
     
     async def stop(self):
@@ -713,12 +715,16 @@ class WebhookSourcesManager:
             'sources': {
                 'apify_enabled': self.apify.is_enabled(),
                 'whale_enabled': self.whale.is_enabled(),
-                'cryptopanic_rss_enabled': self.cryptopanic_rss.is_enabled(),
-                'cryptopanic_api_enabled': False,  # Always disabled
+                'cryptopanic_api_enabled': self.cryptopanic_api.is_enabled(),
+                'cryptopanic_rss_enabled': False,  # Deprecated
             },
             'whale_threshold': self.whale.threshold_usd,
             'whale_recent_alerts': len(self.whale.get_recent_alerts()),
-            'cryptopanic_rss_stats': self.cryptopanic_rss.get_stats(),
+            'cryptopanic_api_stats': self.cryptopanic_api.get_stats(),
+            'notes': {
+                'cryptopanic_rss': 'DEPRECATED - endpoint returns HTML',
+                'cryptopanic_api': '24h delay on free tier',
+            }
         }
 
 
