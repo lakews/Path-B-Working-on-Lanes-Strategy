@@ -139,12 +139,14 @@ class EmergentLLMService:
         self.model = model
         self._api_key = api_key or os.environ.get('EMERGENT_LLM_KEY') or os.environ.get('LLM_KEY')
         self._client = None
+        self._UserMessage = None
         
     async def _get_client(self):
         """Lazy initialization of LLM client"""
         if self._client is None:
             try:
-                from emergentintegrations.llm.chat import LlmChat
+                from emergentintegrations.llm.chat import LlmChat, UserMessage
+                self._UserMessage = UserMessage
                 if self._api_key:
                     self._client = LlmChat(
                         api_key=self._api_key,
