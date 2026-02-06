@@ -984,7 +984,8 @@ class PaperTrader:
             self._learning_loop(),             # RL training
             self._continuous_mode_handler(),   # Session management
             self._emergency_stoploss_task(),   # Safety net
-            self._run_news_loop()              # Lane 5: NEWS
+            self._run_news_loop(),             # Lane 5: NEWS (10s cycle)
+            self._news_atomic_poller()         # Lane 5: Atomic cache updater (75ms)
         )
     
     # =================================================================
