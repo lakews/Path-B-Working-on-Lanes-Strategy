@@ -236,11 +236,10 @@ Respond with ONLY the JSON object as specified. No other text."""
 
         try:
             # Call LLM with temperature=0.0 for consistent, logical output
+            # Note: system_prompt is set in the LlmChat constructor
             response = await client.chat(
                 message=user_prompt,
-                system_prompt=SYSTEM_PROMPT_EMERGENT,
-                model=self.model,
-                temperature=0.0
+                model=self.model
             )
             
             # Parse response
