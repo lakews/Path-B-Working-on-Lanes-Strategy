@@ -1926,22 +1926,51 @@ class PaperTrader:
                     return None
                 
                 else:
-                    # Alpha context available - calculate weight based on age
+                    # =============================================================
+                    # ALPHA AGE-DECAY: Time-Stretched Model for 30s Heartbeat
+                    # =============================================================
+                    # Alpha Lane produces signals every 30 seconds.
+                    # We must align our trust windows to this cadence.
+                    #
+                    # Phase A: TRUST ZONE (0-35s) - Full confidence
+                    # Phase B: DRIFT ZONE (35-65s) - Linear decay  
+                    # Phase C: DEAD ZONE (>65s) - Alpha disconnected
+                    # =============================================================
+                    
                     alpha_age = params.get_age_seconds()
                     
-                    if alpha_age < 2.0:
-                        # FRESH Alpha (<2s): Full weight
+                    # TRUST WINDOW CONSTANTS (aligned to 30s Alpha cycle)
+                    TRUST_ZONE_END = 35.0      # Full trust for cycle + 5s buffer
+                    DRIFT_ZONE_END = 65.0      # Decay over next 30s (missed 1 cycle)
+                    DRIFT_DURATION = 30.0      # Length of drift zone
+                    
+                    if alpha_age <= TRUST_ZONE_END:
+                        # PHASE A: TRUST ZONE (0-35s)
+                        # Signal is within expected cycle time + buffer
+                        # Full weight - 100% Alpha Fair Value
                         alpha_weight = 1.0
-                        signal_source = 'ALPHA_FRESH' if signal_source == 'NONE' else signal_source
-                    elif alpha_age < 10.0:
-                        # DECAYING Alpha (2-10s): Linear decay from 1.0 to 0.0
-                        alpha_weight = 1.0 - ((alpha_age - 2.0) / 8.0)
-                        signal_source = 'ALPHA_DECAY' if signal_source == 'NONE' else signal_source
+                        signal_source = 'ALPHA_TRUST' if signal_source == 'NONE' else signal_source
+                    
+                    elif alpha_age < DRIFT_ZONE_END:
+                        # PHASE B: DRIFT ZONE (35-65s)
+                        # Alpha missed its 30s deadline - slowly lose confidence
+                        # Linear interpolation: 1.0 at 35s → 0.0 at 65s
+                        alpha_weight = 1.0 - ((alpha_age - TRUST_ZONE_END) / DRIFT_DURATION)
+                        signal_source = 'ALPHA_DRIFT' if signal_source == 'NONE' else signal_source
+                        
+                        # Log drift warning (once per market per drift event)
+                        if alpha_age > 45.0:  # Only log after significant drift
+                            logger.debug(f"[HFT] Alpha drifting for {market_id[:16]}... age={alpha_age:.0f}s, weight={alpha_weight:.2f}")
+                    
                     else:
-                        # STALE Alpha (>10s): No weight, use Order Book
+                        # PHASE C: DEAD ZONE (>65s)
+                        # Alpha is confirmed disconnected (missed 2+ full cycles)
+                        # Fallback to Order Book with safety spread
                         alpha_weight = 0.0
-                        signal_source = 'BOOK_ONLY' if signal_source == 'NONE' else signal_source
+                        signal_source = 'ALPHA_DEAD' if signal_source == 'NONE' else signal_source
                         spread_multiplier = max(spread_multiplier, 1.5)  # Safety spread
+                        
+                        logger.warning(f"[HFT] Alpha DEAD for {market_id[:16]}... age={alpha_age:.0f}s, using Book fallback")
                     
                     # Calculate target price: blend Alpha FV with Order Book Mid
                     if alpha_weight > 0 and params.fair_value:
