@@ -1,6 +1,34 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: February 6, 2026 (Session 43 - Signal Hierarchy Integration)
+## Last Updated: February 6, 2026 (Session 44 - Sports Arbitrage Exit Bug Fix)
+
+---
+
+### February 6, 2026 - Session 44 (Sports Arbitrage Exit Bug Fix - COMPLETE)
+
+- ✅ **CRITICAL BUG FIX: Sports positions now close correctly**
+
+  **Root Cause:**
+  - `sports_arbitrage` strategy was MISSING from `EXIT_STRATEGY_CONFIG` in `risk_config.py`
+  - Exit engine fell back to `alpha_directional` defaults (15% stop, 72h hold)
+  - These parameters were wrong for prediction market sports arbitrage
+
+  **The Fix:**
+  - Added `sports_arbitrage` entry to `EXIT_STRATEGY_CONFIG` (line ~219)
+  - Prediction market-optimized parameters:
+    - `tp_pct`: 5% take profit (lock in arb spread)
+    - `sl_pct`: 5% stop loss (wider for game score swings)
+    - `max_hours`: 12h (close before event resolution)
+  - All values configurable via environment variables:
+    - `SPORTS_ARB_TP_PCT`, `SPORTS_ARB_SL_PCT`, `SPORTS_ARB_MAX_HOURS`
+
+  **Testing:**
+  - ✅ Stop loss triggers at -5%
+  - ✅ Take profit triggers at +5%
+  - ✅ Time decay triggers at 12h
+  - ✅ Hold within bounds works correctly
+
+  **File Changed:** `/app/backend/risk_config.py`
 
 ---
 
