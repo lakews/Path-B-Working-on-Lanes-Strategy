@@ -2,7 +2,8 @@
   "_metadata": {
     "version": "1.0.0",
     "description": "SSOT Risk Configuration for 5-Lane Trading Architecture",
-    "last_updated": "2026-02-06T00:00:00Z"
+    "last_updated": "2026-02-06T00:00:00Z",
+    "spec_reference": "/app/docs/5_LANE_ARCHITECTURE.md"
   },
   
   "global": {
@@ -15,12 +16,14 @@
     "min_bet_floor": 5.0,
     "taker_fee": 0.02,
     "maker_fee": 0.00,
-    "max_open_positions": 50
+    "max_open_positions": 50,
+    "price_zone_threshold": 0.10
   },
   
   "lanes": {
     "HFT": {
       "name": "Market Maker",
+      "description": "High-frequency, low-latency market making. Never blocks for slow operations.",
       "alloc_pct": 0.35,
       "max_pos_usd": 50.0,
       "max_pos_pct": 0.02,
@@ -33,6 +36,7 @@
     },
     "ALPHA": {
       "name": "Strategist",
+      "description": "Slower, conviction-driven directional trading based on deep analysis.",
       "alloc_pct": 0.55,
       "max_pos_usd": 100.0,
       "max_pos_pct": 0.03,
@@ -47,6 +51,7 @@
     },
     "GAMMA": {
       "name": "Sniper",
+      "description": "Opportunistic convexity hunting in low-liquidity, OTM markets.",
       "alloc_pct": 0.10,
       "max_pos_usd": 15.0,
       "max_pos_pct": 0.01,
@@ -54,27 +59,31 @@
       "min_liquidity": 250.0,
       "min_volume_24h": 250.0,
       "max_spread_cents": 0.03,
-      "sizing_method": "fixed_unit",
       "whale_price_ceiling": 0.10,
+      "sizing_method": "fixed_unit",
       "strategies": ["gamma_scalp"]
     },
     "SPORTS": {
       "name": "Bookie",
+      "description": "Isolated lane for sports arbitrage against real bookmaker odds.",
       "alloc_pct": 0.15,
+      "is_overlay": true,
       "max_pos_usd": 100.0,
       "max_pos_pct": 0.03,
       "cycle_seconds": 30.0,
       "min_liquidity": 250.0,
       "min_volume_24h": 250.0,
       "max_spread_pct": 0.15,
-      "sizing_method": "sports_kelly",
-      "allow_no_bets": true,
       "min_edge": 0.02,
+      "allow_no_bets": true,
+      "sizing_method": "sports_kelly",
       "strategies": ["sports_arbitrage"]
     },
     "NEWS": {
       "name": "Injector",
-      "alloc_pct": 0.00,
+      "description": "Bridge between slow LLM analysis and fast HFT execution.",
+      "alloc_pct": 0.05,
+      "is_overlay": true,
       "max_pos_usd": 100.0,
       "max_pos_pct": 0.05,
       "min_bayes_factor": 3.0,
@@ -93,7 +102,9 @@
     "max_fraction": 0.50,
     "utilization_exponent": 1.5,
     "utilization_hard_stop": 0.95,
-    "edge_retention_pct": 0.20
+    "edge_retention_pct": 0.20,
+    "time_penalty_max_days": 90,
+    "time_penalty_floor": 0.50
   },
   
   "exit_strategies": {
@@ -119,7 +130,8 @@
       "type": "complex",
       "base_tp_pct": 0.30,
       "base_sl_pct": 0.15,
-      "base_max_hours": 72
+      "base_max_hours": 72,
+      "use_asset_modifiers": true
     },
     "arbitrage": {
       "type": "mechanical",
@@ -131,6 +143,7 @@
       "type": "whale",
       "stop_multiple": 0.50,
       "free_roll_multiple": 2.0,
+      "free_roll_sell_pct": 0.50,
       "moonbag_multiple": 5.0,
       "max_hours": 168
     },
@@ -149,46 +162,76 @@
   
   "asset_modifiers": {
     "politics": {
+      "description": "Trending markets. Momentum matters.",
       "tp_mult": 1.2,
       "sl_mult": 1.0,
       "time_mult": 3.0,
-      "use_trailing": true
+      "use_trailing": true,
+      "use_thesis_fail": true
     },
     "finance": {
+      "description": "Stable, predictable markets.",
       "tp_mult": 1.0,
       "sl_mult": 1.2,
       "time_mult": 1.0,
-      "use_trailing": true
+      "use_trailing": true,
+      "use_thesis_fail": true
     },
     "crypto": {
+      "description": "High correlation, volatile assets.",
       "tp_mult": 1.5,
       "sl_mult": 1.5,
       "time_mult": 0.5,
-      "use_trailing": true
+      "use_trailing": true,
+      "use_thesis_fail": true
     },
     "sports": {
+      "description": "High vol events. Fixed duration.",
       "tp_mult": 1.0,
       "sl_mult": 1.5,
       "time_mult": 0.25,
-      "use_trailing": false
+      "use_trailing": false,
+      "use_thesis_fail": false
     },
     "entertainment": {
+      "description": "Pop culture, viral events.",
       "tp_mult": 2.0,
       "sl_mult": 0.8,
       "time_mult": 2.0,
-      "use_trailing": false
+      "use_trailing": false,
+      "use_thesis_fail": false
     },
     "science": {
+      "description": "Binary/Lotto outcomes. Long holds.",
       "tp_mult": 2.0,
       "sl_mult": 0.5,
       "time_mult": 5.0,
-      "use_trailing": false
+      "use_trailing": false,
+      "use_thesis_fail": false
+    },
+    "conflict": {
+      "description": "Geopolitical events.",
+      "tp_mult": 1.0,
+      "sl_mult": 1.2,
+      "time_mult": 2.0,
+      "use_trailing": false,
+      "use_thesis_fail": false
+    },
+    "social": {
+      "description": "Social media/tweets.",
+      "tp_mult": 1.5,
+      "sl_mult": 1.0,
+      "time_mult": 0.5,
+      "use_trailing": true,
+      "use_thesis_fail": true
     },
     "default": {
+      "description": "Default/Unknown category.",
       "tp_mult": 1.0,
       "sl_mult": 1.0,
       "time_mult": 1.0,
-      "use_trailing": true
+      "use_trailing": true,
+      "use_thesis_fail": true
     }
   },
   
