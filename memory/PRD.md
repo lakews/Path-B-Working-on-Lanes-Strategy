@@ -1,10 +1,56 @@
 # APEX TRADER - Product Requirements Document
 
-## Last Updated: February 6, 2026 (Session 43 - 5-Lane Architecture Documentation)
+## Last Updated: February 6, 2026 (Session 43 - SSOT Risk Layer Implementation)
 
 ---
 
-### February 6, 2026 - Session 43 (5-Lane Architecture Documentation - COMPLETE)
+### February 6, 2026 - Session 43 (SSOT Risk Layer - COMPLETE)
+
+- ✅ **SSOT RISK CONFIGURATION IMPLEMENTED**
+
+  **Files Created:**
+  1. `/app/backend/config/risk_config.json` - **Single Source of Truth**
+     - Global safety rails (5% drawdown, 80% deployment)
+     - Lane configurations (HFT, ALPHA, GAMMA, SPORTS, NEWS)
+     - Kelly Criterion settings
+     - Exit strategies per lane
+     - Asset class modifiers
+     - Sector caps
+  
+  2. `/app/backend/services/risk_manager.py` - **Risk Enforcer**
+     - Loads config from JSON file
+     - `check_order(lane, amount, capital)` → validates all trades
+     - `reload_config()` for hot-reload without restart
+     - `update_config()` for API-driven updates
+     - Logs WARNINGs when trades are blocked/trimmed
+  
+  3. `/app/backend/utils/position_sizer.py` - **Stateless Math**
+     - `calculate_hft_size()` - Fixed 2% unit
+     - `calculate_kelly_size()` - Binary Kelly with utilization brake
+     - `calculate_gamma_size()` - Fixed 1% lottery
+     - `calculate_sports_size()` - Sports Kelly (5-20%)
+     - `calculate_news_size()` - News Kelly with Bayes Factor
+
+  4. `/app/frontend/src/components/RiskSettings.js` - **Settings UI**
+     - Fetches config from `GET /api/risk-config`
+     - Editable Global Safety Rails
+     - Expandable Lane Configuration (5 lanes)
+     - Kelly Criterion sliders
+     - Sector Caps editor
+     - "Save Changes" → `POST /api/risk-config`
+     - Sync status indicator (Green/Yellow/Red)
+
+  **API Endpoints Created:**
+  - `GET /api/risk-config` - Get current config
+  - `POST /api/risk-config` - Update and save config
+  - `POST /api/risk-config/reload` - Hot-reload from file
+  - `GET /api/risk-config/status` - Get risk manager status
+  - `POST /api/risk-config/check-order` - Test order validation
+
+  **Testing Verified:**
+  - HFT orders trimmed to $50 max ✅
+  - GAMMA orders trimmed to $15 max ✅
+  - UI loads and displays all config ✅
 
 - ✅ **5-LANE ARCHITECTURE DOCUMENTATION CREATED**
 
