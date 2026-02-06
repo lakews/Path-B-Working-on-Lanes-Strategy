@@ -963,6 +963,23 @@ class PaperTrader:
                 self.realtime_market_service = get_realtime_market_service()
                 await self.realtime_market_service.start()
                 logger.info("✅ WebSocket market service started - using real-time data")
+                
+                # Register whale alert handler for large trades
+                try:
+                    from services.webhook_sources import get_webhook_sources_manager
+                    webhook_manager = get_webhook_sources_manager()
+                    
+                    # Get the WebSocket manager and register trade handler
+                    if self.realtime_market_service.ws_manager:
+                        async def whale_trade_handler(trade_data: Dict):
+                            """Process trades through whale alert system"""
+                            await webhook_manager.whale.process_trade(trade_data)
+                        
+                        self.realtime_market_service.ws_manager.register_trade_handler(whale_trade_handler)
+                        logger.info(f"🐋 Whale alert handler registered (threshold: ${webhook_manager.whale.threshold_usd:,.0f})")
+                except Exception as e:
+                    logger.warning(f"Could not register whale handler: {e}")
+                    
             except Exception as e:
                 logger.warning(f"⚠️ Could not start WebSocket service: {e} - falling back to REST polling")
                 self.use_websocket_data = False
