@@ -1896,6 +1896,249 @@ class PaperTrader:
             logger.error(f"[HFT] Error executing trade: {e}")
     
     # =================================================================
+    # CHAIN OF COMMAND: UNIFIED EXECUTION PIPELINE
+    # =================================================================
+    # All trades flow through this pipeline:
+    # 1. Strategy -> 2. PositionSizer -> 3. RiskManager -> 4. Execution
+    # This ensures SSOT risk limits are ALWAYS enforced.
+    # =================================================================
+    
+    async def execute_trade_cycle(
+        self, 
+        lane: str, 
+        market_data: Dict, 
+        strategy: str,
+        side: str,
+        edge: float,
+        raw_size_hint: float = None,
+        signals: Dict = None,
+        **kwargs
+    ) -> Dict:
+        """
+        CHAIN OF COMMAND: Unified trade execution pipeline.
+        
+        All trades (HFT, ALPHA, GAMMA, SPORTS, NEWS) MUST flow through this method.
+        
+        Steps:
+            1. MATH (PositionSizer): Calculate raw theoretical size
+            2. ENFORCEMENT (RiskManager): Validate and trim/block
+            3. ACTION: Execute if approved
+            4. LOG: Record decision for audit
+        
+        Args:
+            lane: Trading lane (HFT, ALPHA, GAMMA, SPORTS, NEWS)
+            market_data: Market data dict
+            strategy: Strategy name (hft_scalp, alpha_directional, etc.)
+            side: Trade side (YES or NO)
+            edge: Model edge (probability delta)
+            raw_size_hint: Optional pre-calculated size hint
+            signals: Additional signal data
+            **kwargs: Additional strategy-specific params
+        
+        Returns:
+            Dict with execution result
+        """
+        market_id = market_data.get('id', 'unknown')
+        market_price = float(market_data.get('yes_price', 0.5))
+        
+        result = {
+            'lane': lane,
+            'strategy': strategy,
+            'market_id': market_id,
+            'side': side,
+            'edge': edge,
+            'executed': False,
+            'blocked': False,
+            'trimmed': False,
+            'reason': '',
+            'raw_size': 0.0,
+            'approved_size': 0.0,
+        }
+        
+        try:
+            # ==========================================================
+            # STEP 1: MATH (PositionSizer) - Calculate raw theoretical size
+            # ==========================================================
+            kelly_config = self.risk_manager.get_kelly_config()
+            lane_config = self.risk_manager.get_lane_config(lane)
+            
+            # Get sizing based on lane
+            if lane == 'HFT':
+                sizing_result = PositionSizer.calculate_hft_size(
+                    capital=self.deployed_capital,
+                    max_pos_pct=lane_config.get('max_pos_pct', 0.02),
+                    max_pos_usd=lane_config.get('max_pos_usd', 50.0),
+                    min_size=self.min_position_size
+                )
+            elif lane == 'ALPHA':
+                sizing_result = PositionSizer.calculate_kelly_size(
+                    edge=edge,
+                    market_price=market_price,
+                    capital=self.deployed_capital,
+                    kelly_config=kelly_config,
+                    confidence=kwargs.get('confidence', 1.0),
+                    liquidity=float(market_data.get('liquidity', 10000)),
+                    current_utilization=self._get_utilization(),
+                    max_pos_usd=lane_config.get('max_pos_usd', 100.0),
+                    min_size=self.min_position_size
+                )
+            elif lane == 'GAMMA':
+                sizing_result = PositionSizer.calculate_gamma_size(
+                    capital=self.deployed_capital,
+                    max_pos_pct=lane_config.get('max_pos_pct', 0.01),
+                    max_pos_usd=lane_config.get('max_pos_usd', 15.0),
+                    min_size=self.min_position_size
+                )
+            elif lane == 'SPORTS':
+                implied_odds = kwargs.get('implied_odds', market_price)
+                sizing_result = PositionSizer.calculate_sports_size(
+                    edge=edge,
+                    implied_odds=implied_odds,
+                    capital=self.deployed_capital * lane_config.get('alloc_pct', 0.15),
+                    kelly_fraction=kelly_config.get('scaling_factor', 0.25),
+                    max_pos_usd=lane_config.get('max_pos_usd', 100.0),
+                    min_size=self.min_position_size
+                )
+            elif lane == 'NEWS':
+                bayes_factor = kwargs.get('bayes_factor', 1.0)
+                posterior = kwargs.get('posterior', market_price)
+                sizing_result = PositionSizer.calculate_news_size(
+                    bayes_factor=bayes_factor,
+                    posterior=posterior,
+                    prior=market_price,
+                    capital=self.deployed_capital,
+                    kelly_fraction=kelly_config.get('scaling_factor', 0.25),
+                    max_pos_pct=lane_config.get('max_pos_pct', 0.05),
+                    max_pos_usd=lane_config.get('max_pos_usd', 100.0),
+                    min_size=self.min_position_size,
+                    confidence=kwargs.get('confidence', 1.0)
+                )
+            else:
+                # Default to Kelly for unknown lanes
+                sizing_result = PositionSizer.calculate_kelly_size(
+                    edge=edge,
+                    market_price=market_price,
+                    capital=self.deployed_capital,
+                    kelly_config=kelly_config,
+                    max_pos_usd=100.0,
+                    min_size=self.min_position_size
+                )
+            
+            raw_size = raw_size_hint if raw_size_hint else sizing_result.size
+            result['raw_size'] = raw_size
+            result['sizing_method'] = sizing_result.method
+            result['sizing_details'] = sizing_result.to_dict()
+            
+            if raw_size <= 0:
+                result['blocked'] = True
+                result['reason'] = f"PositionSizer returned zero size: {sizing_result.reason}"
+                logger.info(f"🚫 [{lane}] BLOCKED (Sizer): ${raw_size:.2f} - {sizing_result.reason}")
+                return result
+            
+            # ==========================================================
+            # STEP 2: ENFORCEMENT (RiskManager) - Validate and trim/block
+            # ==========================================================
+            asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
+            
+            check_result: OrderCheckResult = self.risk_manager.check_order(
+                lane=lane,
+                amount=raw_size,
+                capital=self.deployed_capital,
+                current_utilization=self._get_utilization(),
+                sector=asset_class,
+                sector_exposure=self._get_sector_exposure(asset_class),
+                market_price=market_price
+            )
+            
+            result['risk_check'] = check_result.to_dict()
+            
+            if not check_result.approved:
+                result['blocked'] = True
+                result['reason'] = check_result.reason
+                logger.warning(f"🚫 [{lane}] TRADE BLOCKED by RiskManager: {check_result.reason}")
+                return result
+            
+            if check_result.adjusted_amount < raw_size:
+                result['trimmed'] = True
+                logger.warning(
+                    f"✂️ [{lane}] TRADE TRIMMED: ${raw_size:.2f} → ${check_result.adjusted_amount:.2f} "
+                    f"({', '.join(check_result.warnings)})"
+                )
+            
+            approved_size = check_result.adjusted_amount
+            result['approved_size'] = approved_size
+            
+            # ==========================================================
+            # STEP 3: ACTION - Execute the trade
+            # ==========================================================
+            logger.info(
+                f"✅ [{lane}] TRADE APPROVED: {side} ${approved_size:.2f} in {market_id[:16]}... | "
+                f"Strategy: {strategy} | Edge: {edge:.2%}"
+            )
+            
+            # Execute via the existing _execute_paper_entry method
+            await self._execute_paper_entry(
+                market_id=market_id,
+                market_data=market_data,
+                side=side,
+                size=approved_size,
+                strategy=strategy,
+                signals=signals or {},
+                rl_action=f'{lane}_ENTRY',
+                rl_confidence=kwargs.get('confidence', 0.5),
+                sizing_breakdown={
+                    'lane': lane,
+                    'raw_size': raw_size,
+                    'approved_size': approved_size,
+                    'edge': edge,
+                    'sizing_method': sizing_result.method,
+                    'risk_warnings': check_result.warnings,
+                }
+            )
+            
+            result['executed'] = True
+            result['reason'] = "Trade executed successfully"
+            
+            # ==========================================================
+            # STEP 4: LOG - Record decision for audit trail
+            # ==========================================================
+            logger.info(
+                f"📝 [{lane}] AUDIT: {strategy} {side} ${approved_size:.2f} | "
+                f"Sizer: {sizing_result.method} → Risk: {'TRIMMED' if result['trimmed'] else 'PASS'}"
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"[{lane}] Chain of Command error: {e}")
+            result['blocked'] = True
+            result['reason'] = f"Execution error: {str(e)}"
+            return result
+    
+    def _get_utilization(self) -> float:
+        """Get current capital utilization (0-1)"""
+        try:
+            total_invested = sum(
+                pos.get('size', 0) 
+                for pos in self.paper_positions.values()
+            )
+            return total_invested / max(1, self.deployed_capital)
+        except Exception:
+            return 0.0
+    
+    def _get_sector_exposure(self, sector: str) -> float:
+        """Get current exposure to a specific sector"""
+        try:
+            sector_exposure = sum(
+                pos.get('size', 0)
+                for pos in self.paper_positions.values()
+                if pos.get('asset_class', '').lower() == sector.lower()
+            )
+            return sector_exposure
+        except Exception:
+            return 0.0
+
+    # =================================================================
     # ALPHA LOOP: THE BRAIN (Slow Path)
     # =================================================================
     # Runs every 30 seconds
