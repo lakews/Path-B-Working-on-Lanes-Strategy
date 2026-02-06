@@ -183,19 +183,19 @@ class NewsPoller:
             
             logger.info(f"[NEWS POLLER] 🔍 Searching: '{query}' (last {hours_back}h, {num_results} results)")
             
-            # Use Exa SDK's search_and_contents for semantic search with text extraction
+            # Use Exa SDK's search method (updated API)
             # Run in executor since exa-py is synchronous
             loop = asyncio.get_event_loop()
             results = await loop.run_in_executor(
                 None,
-                lambda: self._exa_client.search_and_contents(
+                lambda: self._exa_client.search(
                     query=query,
                     num_results=min(num_results, 100),  # Exa limits to 100
                     type="neural",  # Neural/semantic search
-                    use_autoprompt=True,  # Let Exa optimize the query
+                    category="news",  # Focus on news content
                     start_published_date=start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
                     end_published_date=end_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    text=True,  # Include article text
+                    contents={"text": {"maxCharacters": 2000}},  # Include article text
                 )
             )
             
