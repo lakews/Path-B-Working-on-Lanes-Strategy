@@ -450,13 +450,17 @@ class CryptoPanicAPISource:
     """
     CryptoPanic API for crypto news.
     
-    ⚠️ WARNING: Free tier (DEVELOPER) has 24-HOUR DELAY on news!
-    For real-time, upgrade to GROWTH plan ($199/mo).
+    ⚠️ PAUSED: Waiting for Premium subscription.
     
-    Despite the delay, this is still useful for:
-    - Backtesting and research
-    - Catching news that persists (regulations, ETF decisions)
-    - Backup when other sources fail
+    Current Issues:
+    - Free tier (DEVELOPER) has 24-HOUR DELAY on news
+    - RSS endpoint deprecated (returns HTML)
+    
+    To reactivate: 
+    1. Upgrade to GROWTH plan ($199/mo) for real-time API
+    2. Set CRYPTOPANIC_ENABLED=true in .env
+    
+    The codebase is preserved for future reactivation.
     """
     
     BASE_URL = "https://cryptopanic.com/api/developer/v2"
@@ -469,7 +473,11 @@ class CryptoPanicAPISource:
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get('CRYPTOPANIC_API_KEY')
-        self._enabled = bool(self.api_key)
+        
+        # Check enable flag (PAUSED by default)
+        enabled_flag = os.environ.get('CRYPTOPANIC_ENABLED', 'false').lower()
+        self._enabled = self.api_key and enabled_flag in ('true', '1', 'yes')
+        
         self._last_fetch_id: Optional[str] = None
         self._stats = {
             'polls': 0,
@@ -477,10 +485,13 @@ class CryptoPanicAPISource:
             'last_poll': None,
         }
         
-        if self._enabled:
-            logger.info("[CRYPTOPANIC API] ✅ Enabled (⚠️ 24h delay on free tier)")
+        if not self.api_key:
+            logger.info("[CRYPTOPANIC API] No API key configured")
+        elif not self._enabled:
+            logger.info("[CRYPTOPANIC API] ⏸️ PAUSED (CRYPTOPANIC_ENABLED=false)")
+            logger.info("[CRYPTOPANIC API] Waiting for Premium subscription. Codebase preserved.")
         else:
-            logger.warning("[CRYPTOPANIC API] No API key - disabled")
+            logger.info("[CRYPTOPANIC API] ✅ Enabled (⚠️ 24h delay on free tier)")
     
     def is_enabled(self) -> bool:
         return self._enabled
