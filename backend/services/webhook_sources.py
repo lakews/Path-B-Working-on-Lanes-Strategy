@@ -145,7 +145,8 @@ class ApifyTwitterSource:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get('APIFY_API_KEY')
         self.base_url = "https://api.apify.com/v2"
-        self.actor_id = "apidojo/tweet-scraper"  # Apify's Twitter scraper actor
+        # NOTE: Apify uses ~ not / for actor IDs in API calls
+        self.actor_id = "apidojo~tweet-scraper"  # Tweet Scraper V2
         self.last_tweet_ids: Dict[str, str] = {}  # Track last seen tweet per account
         self._enabled = bool(self.api_key)
         
