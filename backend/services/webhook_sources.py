@@ -732,16 +732,24 @@ class WebhookSourcesManager:
         
         self.is_running = True
         
-        # Start poll tasks
+        # Start poll tasks (only enabled sources)
         self._poll_tasks = [
-            asyncio.create_task(self._poll_apify(interval_seconds=300)),           # 5 min
-            asyncio.create_task(self._poll_cryptopanic_api(interval_seconds=300)), # 5 min
+            asyncio.create_task(self._poll_apify(interval_seconds=300)),  # 5 min
         ]
         
-        logger.info("[WEBHOOK SOURCES] All polling loops started")
-        logger.info("  📰 Apify Twitter: every 5 min")
-        logger.info("  📰 CryptoPanic API: every 5 min (⚠️ 24h delayed news)")
-        logger.info("  🐋 Whale Alerts: real-time via WebSocket")
+        # Only start CryptoPanic if enabled (not paused)
+        if self.cryptopanic_api.is_enabled():
+            self._poll_tasks.append(
+                asyncio.create_task(self._poll_cryptopanic_api(interval_seconds=300))
+            )
+        
+        logger.info("[WEBHOOK SOURCES] Polling loops started:")
+        logger.info(f"  📰 Apify Twitter: every 5 min ({len(self.apify.TARGET_ACCOUNTS)} accounts)")
+        logger.info(f"  🐋 Whale Alerts: real-time via WebSocket")
+        if self.cryptopanic_api.is_enabled():
+            logger.info(f"  📰 CryptoPanic API: every 5 min (⚠️ 24h delayed)")
+        else:
+            logger.info(f"  ⏸️ CryptoPanic: PAUSED (set CRYPTOPANIC_ENABLED=true to activate)")
     
     async def stop(self):
         """Stop all polling loops"""
