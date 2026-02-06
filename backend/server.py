@@ -3207,6 +3207,33 @@ async def get_webhook_sources_status():
     }
 
 
+@api_router.get("/hooks/signal-cache/status")
+async def get_signal_cache_status():
+    """
+    Get status of the signal cache (for debugging).
+    
+    Shows all cached signals with their TTL and metadata.
+    """
+    cache = get_signal_cache()
+    
+    # Get all non-expired signals
+    signals = {}
+    for key, entry in list(cache._cache.items()):
+        if not entry.is_expired():
+            signals[key] = {
+                'value': entry.value,
+                'expires_at': entry.expires_at.isoformat(),
+                'ttl_remaining': (entry.expires_at - datetime.now(timezone.utc)).total_seconds()
+            }
+    
+    return {
+        "status": "active",
+        "signal_count": len(signals),
+        "signals": signals,
+        "stats": cache._stats
+    }
+
+
 @api_router.post("/hooks/webhook-sources/start")
 async def start_webhook_sources(background_tasks: BackgroundTasks):
     """
