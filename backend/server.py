@@ -3234,32 +3234,28 @@ async def test_whale_alert(
 
 
 @api_router.post("/hooks/test-cryptopanic")
-async def test_cryptopanic_rss():
+async def test_cryptopanic_api():
     """
-    Test the CryptoPanic RSS feed (REAL-TIME, free!).
+    Test CryptoPanic API (⚠️ 24h delayed news on free tier).
     
-    Note: First run will cache existing links and return empty.
-    Subsequent runs will return only NEW items.
+    Note: RSS endpoint is deprecated (returns HTML).
+    API works but has 24-hour delay on DEVELOPER tier.
     """
     manager = get_webhook_sources_manager()
     
-    # Use RSS source (API is disabled due to 24h delay)
-    rss_source = manager.cryptopanic_rss
-    
-    if not rss_source.is_enabled():
+    if not manager.cryptopanic_api.is_enabled():
         return {
             "status": "disabled",
-            "message": "CryptoPanic RSS source not enabled"
+            "message": "CryptoPanic API key not configured"
         }
     
-    news_items = await rss_source.fetch_news()
-    stats = rss_source.get_stats()
+    news_items = await manager.cryptopanic_api.fetch_news(limit=5)
+    stats = manager.cryptopanic_api.get_stats()
     
     return {
         "status": "success",
-        "source": "RSS (real-time)",
-        "api_status": "DISABLED (24h delay = toxic)",
-        "first_run": not stats['first_run_complete'],
+        "source": "API (⚠️ 24h delay on free tier)",
+        "rss_status": "DEPRECATED - returns HTML",
         "items_found": len(news_items),
         "stats": stats,
         "news": [
@@ -3267,11 +3263,12 @@ async def test_cryptopanic_rss():
                 "headline": n.headline[:100],
                 "source": n.source,
                 "priority": n.priority,
-                "tags": n.metadata.get('tags', []),
+                "currencies": n.metadata.get('currencies', []),
                 "url": n.url
             }
             for n in news_items[:10]
-        ]
+        ],
+        "upgrade_note": "For real-time: Upgrade to GROWTH plan ($199/mo)"
     }
 
 
