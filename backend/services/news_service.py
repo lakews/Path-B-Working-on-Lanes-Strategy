@@ -65,6 +65,8 @@ class NewsPoller:
     Polls Exa.ai for news related to prediction markets and returns
     structured events for LLM analysis and Bayesian updating.
     
+    Uses the official exa-py SDK for reliable API access.
+    
     Usage:
         poller = NewsPoller()
         events = await poller.poll_news("Bitcoin ETF approval")
@@ -73,17 +75,50 @@ class NewsPoller:
             ...
     """
     
+    # Prediction market relevant search queries
+    DEFAULT_QUERIES = [
+        "Federal Reserve interest rate decision impact markets",
+        "presidential election prediction polling results",
+        "cryptocurrency bitcoin ethereum regulation SEC",
+        "sports betting odds NFL NBA major upset",
+        "breaking news market moving events today",
+        "technology company earnings announcement surprise",
+        "geopolitical conflict escalation market impact",
+    ]
+    
+    # Priority news sources for prediction markets
+    PRIORITY_SOURCES = [
+        'apnews.com',
+        'reuters.com', 
+        'bloomberg.com',
+        'wsj.com',
+        'nytimes.com',
+        'bbc.com',
+        'coindesk.com',
+        'theblock.co',
+        'fivethirtyeight.com',
+        'espn.com',
+        'polymarket.com',
+    ]
+    
     def __init__(self):
         self.api_key = os.environ.get('EXA_API_KEY')
+        self._exa_client: Optional[Exa] = None
+        
         if not self.api_key:
             logger.warning("[NEWS POLLER] EXA_API_KEY not configured - news polling disabled")
-            logger.warning("[NEWS POLLER] To enable: export EXA_API_KEY='your-key-here'")
+            logger.warning("[NEWS POLLER] To enable: Add EXA_API_KEY to backend/.env")
+        elif not EXA_SDK_AVAILABLE:
+            logger.error("[NEWS POLLER] exa-py SDK not installed. Run: pip install exa-py")
         else:
-            logger.info("[NEWS POLLER] Exa.ai API key configured ✓")
+            try:
+                self._exa_client = Exa(api_key=self.api_key)
+                logger.info("[NEWS POLLER] ✅ Exa.ai SDK initialized successfully")
+            except Exception as e:
+                logger.error(f"[NEWS POLLER] Failed to initialize Exa client: {e}")
         
         # Polling configuration
-        self.default_num_results = 5
-        self.use_autoprompt = True
+        self.default_num_results = 10
         self.include_text = True
         
         # Source reliability scores
@@ -93,10 +128,13 @@ class NewsPoller:
             'bloomberg.com': 0.90,
             'wsj.com': 0.90,
             'nytimes.com': 0.85,
+            'bbc.com': 0.90,
             'coindesk.com': 0.85,
             'cointelegraph.com': 0.80,
             'decrypt.co': 0.80,
             'theblock.co': 0.85,
+            'fivethirtyeight.com': 0.90,
+            'espn.com': 0.85,
             'twitter.com': 0.60,
             'x.com': 0.60,
             'reddit.com': 0.50,
@@ -119,7 +157,7 @@ class NewsPoller:
         hours_back: int = 24
     ) -> List[NewsEvent]:
         """
-        Poll Exa.ai for news related to a query.
+        Poll Exa.ai for news related to a query using the official SDK.
         
         Args:
             query: Search query (e.g., "Bitcoin ETF approval SEC")
@@ -132,104 +170,102 @@ class NewsPoller:
         self._stats['total_polls'] += 1
         self._stats['last_poll'] = datetime.now(timezone.utc).isoformat()
         
-        if not self.api_key:
-            logger.warning("[NEWS POLLER] Skipping poll - no API key configured")
+        if not self._exa_client:
+            logger.warning("[NEWS POLLER] Skipping poll - Exa client not initialized")
             return []
         
         num_results = num_results or self.default_num_results
         
         try:
-            async with aiohttp.ClientSession() as session:
-                headers = {
-                    'Content-Type': 'application/json',
-                    'x-api-key': self.api_key
-                }
+            # Calculate date range
+            end_date = datetime.now(timezone.utc)
+            start_date = end_date - timedelta(hours=hours_back)
+            
+            logger.info(f"[NEWS POLLER] 🔍 Searching: '{query}' (last {hours_back}h, {num_results} results)")
+            
+            # Use Exa SDK's search_and_contents for semantic search with text extraction
+            # Run in executor since exa-py is synchronous
+            loop = asyncio.get_event_loop()
+            results = await loop.run_in_executor(
+                None,
+                lambda: self._exa_client.search_and_contents(
+                    query=query,
+                    num_results=min(num_results, 100),  # Exa limits to 100
+                    type="neural",  # Neural/semantic search
+                    use_autoprompt=True,  # Let Exa optimize the query
+                    start_published_date=start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    end_published_date=end_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    text=True,  # Include article text
+                )
+            )
+            
+            events = []
+            for result in results.results:
+                # Extract source domain from URL
+                source = self._extract_source(result.url)
                 
-                payload = {
-                    'query': query,
-                    'numResults': num_results,
-                    'useAutoprompt': self.use_autoprompt,
-                    'contents': {
-                        'text': self.include_text
-                    },
-                    'type': 'neural',  # Neural search for semantic matching
-                }
-                
-                logger.info(f"[NEWS POLLER] Searching: '{query}' (last {hours_back}h, {num_results} results)")
-                
-                async with session.post(
-                    EXA_SEARCH_ENDPOINT,
-                    headers=headers,
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    
-                    if response.status == 200:
-                        data = await response.json()
-                        results = data.get('results', [])
-                        
-                        events = []
-                        for result in results:
-                            # Extract source domain from URL
-                            url = result.get('url', '')
-                            source = self._extract_source(url)
-                            
-                            event = NewsEvent(
-                                title=result.get('title', ''),
-                                url=url,
-                                source=source,
-                                published_date=result.get('publishedDate'),
-                                text=result.get('text', ''),
-                                score=result.get('score', 0.0),
-                                query=query
-                            )
-                            events.append(event)
-                        
-                        self._stats['successful_polls'] += 1
-                        self._stats['total_events_found'] += len(events)
-                        
-                        logger.info(f"[NEWS POLLER] Found {len(events)} news events for '{query}'")
-                        for event in events[:3]:
-                            logger.debug(f"  - {event.title[:60]}... ({event.source})")
-                        
-                        return events
-                    
-                    elif response.status == 401:
-                        logger.error("[NEWS POLLER] Invalid API key - check EXA_API_KEY")
-                        self._stats['failed_polls'] += 1
-                        self._stats['last_error'] = "Invalid API key"
-                        return []
-                    
-                    elif response.status == 429:
-                        logger.warning("[NEWS POLLER] Rate limited - backing off")
-                        self._stats['failed_polls'] += 1
-                        self._stats['last_error'] = "Rate limited"
-                        return []
-                    
-                    else:
-                        error_text = await response.text()
-                        logger.error(f"[NEWS POLLER] API error {response.status}: {error_text[:200]}")
-                        self._stats['failed_polls'] += 1
-                        self._stats['last_error'] = f"HTTP {response.status}"
-                        return []
-        
-        except asyncio.TimeoutError:
-            logger.error("[NEWS POLLER] Request timed out")
-            self._stats['failed_polls'] += 1
-            self._stats['last_error'] = "Timeout"
-            return []
-        
-        except aiohttp.ClientError as e:
-            logger.error(f"[NEWS POLLER] Network error: {e}")
-            self._stats['failed_polls'] += 1
-            self._stats['last_error'] = f"Network error: {str(e)}"
-            return []
+                event = NewsEvent(
+                    title=result.title or '',
+                    url=result.url,
+                    source=source,
+                    published_date=result.published_date if hasattr(result, 'published_date') else None,
+                    text=result.text if hasattr(result, 'text') and result.text else '',
+                    score=result.score if hasattr(result, 'score') else 0.5,
+                    query=query
+                )
+                events.append(event)
+            
+            self._stats['successful_polls'] += 1
+            self._stats['total_events_found'] += len(events)
+            
+            logger.info(f"[NEWS POLLER] ✅ Found {len(events)} news events for '{query}'")
+            for event in events[:3]:
+                reliability = self.get_source_reliability(event.source)
+                logger.info(f"  📰 {event.title[:60]}... ({event.source}, reliability: {reliability:.0%})")
+            
+            return events
         
         except Exception as e:
-            logger.error(f"[NEWS POLLER] Unexpected error: {e}")
+            error_msg = str(e)
+            logger.error(f"[NEWS POLLER] ❌ Error polling Exa: {error_msg}")
             self._stats['failed_polls'] += 1
-            self._stats['last_error'] = str(e)
+            self._stats['last_error'] = error_msg
+            
+            # Check for specific error types
+            if "401" in error_msg or "unauthorized" in error_msg.lower():
+                logger.error("[NEWS POLLER] Invalid API key - check EXA_API_KEY in .env")
+            elif "429" in error_msg or "rate" in error_msg.lower():
+                logger.warning("[NEWS POLLER] Rate limited - backing off")
+            
             return []
+    
+    async def poll_all_queries(self, hours_back: int = 24) -> List[NewsEvent]:
+        """
+        Poll all default prediction market queries.
+        
+        Returns combined results from all queries, deduplicated by URL.
+        """
+        all_events = []
+        seen_urls = set()
+        
+        for query in self.DEFAULT_QUERIES:
+            try:
+                events = await self.poll_news(query, hours_back=hours_back)
+                
+                for event in events:
+                    if event.url not in seen_urls:
+                        seen_urls.add(event.url)
+                        all_events.append(event)
+                
+                # Small delay between queries to respect rate limits
+                await asyncio.sleep(0.5)
+                
+            except Exception as e:
+                logger.error(f"[NEWS POLLER] Error with query '{query}': {e}")
+                continue
+        
+        logger.info(f"[NEWS POLLER] 📊 Total unique events from all queries: {len(all_events)}")
+        return all_events
     
     def _extract_source(self, url: str) -> str:
         """Extract source domain from URL"""
