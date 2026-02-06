@@ -3278,12 +3278,16 @@ async def test_cryptopanic_api():
 
 
 @api_router.post("/hooks/test-apify")
-async def test_apify_twitter(account: str = "Tier10k"):
+async def test_apify_twitter(account: str = "Tier10k", hours_back: int = 720):
     """
     Smoke test for Apify Twitter scraper.
     
     Fetches tweets from a single account and returns raw structure + parsed results.
     Use this to verify the parser handles apidojo/tweet-scraper output correctly.
+    
+    Args:
+        account: Twitter handle to fetch (default: Tier10k)
+        hours_back: How far back to look for tweets (default: 720 = 30 days)
     """
     import aiohttp
     
@@ -3302,13 +3306,14 @@ async def test_apify_twitter(account: str = "Tier10k"):
             news_items = await manager.apify._fetch_account_tweets(
                 session=session,
                 account=account,
-                hours_back=24
+                hours_back=hours_back  # Use longer window for testing
             )
             
             return {
                 "status": "success",
                 "account": f"@{account}",
                 "actor_id": manager.apify.actor_id,
+                "hours_back": hours_back,
                 "tweets_parsed": len(news_items),
                 "target_accounts": manager.apify.TARGET_ACCOUNTS,
                 "results": [
