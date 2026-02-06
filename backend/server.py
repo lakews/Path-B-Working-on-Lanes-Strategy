@@ -3215,19 +3215,21 @@ async def start_webhook_sources(background_tasks: BackgroundTasks):
     Polling intervals:
     - Apify Twitter: Every 5 minutes
     - CryptoPanic: Every 1 minute
-    - Whale Alerts: Real-time (WebSocket)
+    - Whale Alerts: Real-time (WebSocket) with DIRECT INJECTION (skip LLM)
     """
     global news_injector
     
+    # Get signal cache for whale direct injection
+    signal_cache = get_signal_cache()
+    
     # Ensure news injector is initialized
     if news_injector is None:
-        signal_cache = get_signal_cache()
         news_injector = get_news_injector(
             signal_cache=signal_cache,
             market_fetcher=get_active_markets_for_news
         )
     
-    # Create callback to process news through injector
+    # Create callback to process news through injector (for Apify, CryptoPanic)
     async def process_webhook_news(payload: Dict):
         from services.news_injector import NewsItem
         news = NewsItem(
@@ -3239,7 +3241,11 @@ async def start_webhook_sources(background_tasks: BackgroundTasks):
         )
         await news_injector.process_news(news)
     
-    manager = get_webhook_sources_manager(news_callback=process_webhook_news)
+    # Pass signal_cache for whale direct injection
+    manager = get_webhook_sources_manager(
+        news_callback=process_webhook_news,
+        signal_cache=signal_cache
+    )
     
     if manager.is_running:
         return {"status": "already_running", "message": "Webhook sources already running"}
