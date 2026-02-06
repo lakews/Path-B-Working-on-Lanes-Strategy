@@ -849,14 +849,106 @@ class WebhookSourcesManager:
         logger.info(f"  - Whale Alerts: {'✅ Enabled' if self.whale.is_enabled() else '❌ Disabled'}")
         logger.info(f"  - CryptoPanic API: {'⏸️ PAUSED' if not self.cryptopanic_api.is_enabled() else '✅ Enabled (⚠️ 24h delay)'}")
         logger.info(f"  - CryptoPanic RSS: ❌ Deprecated (returns HTML)")
+        logger.info(f"  - Whale Direct Injection: {'✅ Enabled (skip LLM)' if signal_cache else '❌ Disabled (using LLM path)'}")
     
     async def _handle_whale_alert(self, news: WebhookNews):
-        """Handle whale alert from internal monitor"""
+        """
+        Handle whale alert from internal monitor.
+        
+        OPTIMIZATION: If signal_cache is available, bypass LLM entirely.
+        
+        Why skip LLM for whale alerts?
+        - The trade IS the signal (already quantified: size, side, price)
+        - LLM would just confirm "yes, a big trade is relevant"
+        - Saves 3-5 seconds latency
+        
+        Signal calculation:
+        - Direction: BUY = bullish (YES), SELL = bearish (NO)
+        - Confidence: Based on trade size ($5k=0.5, $50k+=0.9)
+        - Bayes Factor: Size-weighted (larger trade = stronger evidence)
+        """
         self._stats['whale_alerts'] += 1
         
+        # Extract trade metadata
+        metadata = news.metadata
+        market_id = metadata.get('market_id', '')
+        side = metadata.get('side', 'BUY').upper()
+        size_usd = float(metadata.get('size_usd', 0))
+        price = float(metadata.get('price', 0.5))
+        
+        # DIRECT INJECTION PATH (skip LLM)
+        if self.signal_cache and market_id:
+            try:
+                # Calculate confidence based on trade size
+                # $5k = 0.50, $10k = 0.60, $20k = 0.70, $50k+ = 0.90
+                if size_usd >= 50000:
+                    confidence = 0.90
+                elif size_usd >= 20000:
+                    confidence = 0.75
+                elif size_usd >= 10000:
+                    confidence = 0.65
+                else:
+                    confidence = 0.55
+                
+                # Determine direction from trade side
+                # BUY = bullish for YES, SELL = bearish for YES
+                direction = 'YES' if side == 'BUY' else 'NO'
+                
+                # Calculate Bayes Factor based on size and confidence
+                # BF = confidence / (1 - confidence)
+                # Adjusted by size weight (cap at 10.0)
+                size_multiplier = min(size_usd / 10000, 3.0)  # 1x at $10k, 3x at $30k+
+                bayes_factor = min((confidence / (1 - confidence)) * size_multiplier, 10.0)
+                
+                # Calculate posterior (simple Bayesian update from market price)
+                prior = price if direction == 'YES' else (1 - price)
+                posterior = (prior * bayes_factor) / (prior * bayes_factor + (1 - prior))
+                posterior = max(0.01, min(0.99, posterior))
+                
+                # Build signal payload
+                signal = {
+                    'direction': direction,
+                    'posterior': posterior,
+                    'prior': prior,
+                    'bayes_factor': bayes_factor,
+                    'confidence': confidence,
+                    'news_headline': news.headline,
+                    'source': 'whale_alert_direct',
+                    'source_reliability': 0.85,  # High reliability - actual trade data
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                    'expires_at': (datetime.now(timezone.utc) + timedelta(seconds=120)).isoformat(),  # 2 min TTL
+                    'is_resolution': False,
+                    'metadata': {
+                        'size_usd': size_usd,
+                        'trade_side': side,
+                        'trade_price': price,
+                        'injection_type': 'direct'
+                    }
+                }
+                
+                # Inject directly to cache
+                cache_key = f"emergent_signal:{market_id}"
+                await self.signal_cache.set(cache_key, signal, ttl=120)
+                
+                logger.info(
+                    f"[WHALE DIRECT] 🐋⚡ INJECTED: {market_id[:16]}... | "
+                    f"${size_usd:,.0f} {side} | Direction: {direction} | "
+                    f"BF: {bayes_factor:.2f} | Confidence: {confidence:.0%} | "
+                    f"(LLM bypassed, ~3s saved)"
+                )
+                
+                self._stats['whale_direct_injections'] = self._stats.get('whale_direct_injections', 0) + 1
+                return
+                
+            except Exception as e:
+                logger.error(f"[WHALE DIRECT] Injection failed, falling back to LLM: {e}")
+                # Fall through to LLM path
+        
+        # FALLBACK: LLM PATH (if no signal_cache or direct injection fails)
         if self.news_callback:
             try:
                 await self.news_callback(news.to_news_payload())
+                logger.info(f"[WHALE] Processed via LLM path: {news.headline[:50]}...")
             except Exception as e:
                 logger.error(f"[WEBHOOK SOURCES] Error processing whale alert: {e}")
                 self._stats['errors'] += 1
