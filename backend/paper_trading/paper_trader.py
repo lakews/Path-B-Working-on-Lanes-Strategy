@@ -304,6 +304,24 @@ class PaperTrader:
         # Portfolio manager tracks equity, utilization, sector exposure
         self.portfolio_manager = PortfolioManager()
         
+        # =================================================================
+        # SSOT RISK MANAGEMENT (5-Lane Architecture)
+        # =================================================================
+        # Inject RiskManager (SSOT Gatekeeper) and NewsPoller (Lane 5)
+        self.risk_manager: RiskManager = get_risk_manager()
+        self.news_poller: NewsPoller = get_news_poller()
+        
+        # Log SSOT config loaded
+        logger.info("=" * 60)
+        logger.info("🛡️ SSOT RISK MANAGER INITIALIZED")
+        rm_status = self.risk_manager.get_status()
+        logger.info(f"  Config Version: {rm_status.get('version', 'unknown')}")
+        logger.info(f"  Lanes: {', '.join(rm_status.get('lanes', []))}")
+        logger.info(f"  Max Drawdown: {rm_status.get('global_max_drawdown', 0)*100:.0f}%")
+        logger.info(f"  Max Deployment: {rm_status.get('global_max_deployment', 0)*100:.0f}%")
+        logger.info(f"  News Poller: {'✓ Enabled' if self.news_poller.is_enabled() else '✗ Disabled (no API key)'}")
+        logger.info("=" * 60)
+        
         self.running = False
         self.session_id = str(uuid.uuid4())[:8]
         
