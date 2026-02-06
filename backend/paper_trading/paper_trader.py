@@ -1830,23 +1830,25 @@ class PaperTrader:
 
     async def _evaluate_hft_scalp(self, market_data: Dict) -> Optional[Dict]:
         """
-        Evaluate HFT scalping opportunity using Async-Skewed-Adaptive Architecture
-        with Advanced HFT Math Integration (State Isolated).
+        Evaluate HFT scalping opportunity with SIGNAL HIERARCHY integration.
         
-        ARCHITECTURE: 5-Step Workflow (Upgraded Jan 2026)
-        1. Non-Blocking Context Fetch - Get AI guidance from HFTContext
-        2. Adaptive Signal Smoothing - Filter noise, react to jumps (STATE ISOLATED)
-        3. Cubic Inventory Skew - Non-linear risk management (STATE ISOLATED)
-        4. Cliff Protection Spread - Widen spreads near 0/1 boundaries
-        5. Inventory Guard - Block trades that would over-concentrate position
+        SIGNAL HIERARCHY (Priority Order):
+        1. NEWS (Highest) - Overrides everything if BF >= 3.0
+        2. ALPHA (Medium) - AI fair value with age-decay weighting
+        3. ORDER BOOK (Lowest) - Pure microstructure fallback
         
-        STATE ISOLATION: Each market has its own smoothing_memory and volatility_memory
-        to prevent data leaks between tickers.
+        ZERO-AWAIT HOT PATH:
+        - News signals read from _news_atomic (local memory)
+        - Alpha signals read from HFTContext (local cache)
+        - No async calls in the decision logic
         
-        HFT NEVER trades blind - requires valid context from Thinking Engine.
+        GRACEFUL DEGRADATION:
+        - If News unavailable → Use Alpha
+        - If Alpha stale → Use Order Book with safety spread
+        - If all fail → Return None (don't trade blind)
         
         Author: APEX TRADER Quantitative Architecture Team
-        Date: January 2026 (HFT Math Integration + State Isolation)
+        Date: February 2026 (Signal Hierarchy Integration)
         """
         try:
             market_id = market_data.get('id', '')
@@ -1858,34 +1860,106 @@ class PaperTrader:
             
             yes_price = float(yes_price)
             
+            # Track this market for news polling
+            if not hasattr(self, '_recent_hft_markets'):
+                self._recent_hft_markets = []
+            if market_id not in self._recent_hft_markets:
+                self._recent_hft_markets.append(market_id)
+                self._recent_hft_markets = self._recent_hft_markets[-100:]  # Keep last 100
+            
             # =============================================================
-            # STEP 1: Non-Blocking Context Fetch (The Brain's Guidance)
+            # STEP 1: NEWS CHECK (Highest Priority) - ZERO AWAIT
             # =============================================================
-            hft_ctx = get_hft_context()
-            params = hft_ctx.get(market_id)
+            # Read from atomic cache - no async call
+            news_signal = self._check_for_news_signal(market_id)
             
-            # SAFETY CHECK: HFT NEVER trades blind
-            if params is None:
-                logger.debug(f"[HFT] No context for {market_id[:16]}... - skipping (no blind trades)")
+            # Initialize multipliers (will be overridden by signals)
+            spread_multiplier = 1.0
+            size_multiplier = 1.0
+            target_price = None
+            signal_source = 'NONE'
+            forced_direction = None
+            
+            if news_signal['action'] == 'PAUSE':
+                # Extreme volatility or resolution - STOP QUOTING
+                logger.info(f"[HFT] 📰 PAUSE: {market_id[:16]}... - {news_signal['reason']}")
                 return None
             
-            if params.status == ContextStatus.KILL:
-                logger.debug(f"[HFT] KILL switch active for {market_id[:16]}...")
-                return None
+            elif news_signal['action'] == 'OVERRIDE':
+                # Strong news signal - OVERRIDE Alpha
+                signal_source = 'NEWS'
+                spread_multiplier = news_signal['spread_multiplier']  # 0.5 (aggressive)
+                size_multiplier = news_signal['size_multiplier']      # 2.0
+                forced_direction = news_signal['direction']
+                logger.info(f"[HFT] 📰 NEWS OVERRIDE: {market_id[:16]}... BF={news_signal['bayes_factor']:.1f} → {forced_direction}")
+                # Skip Alpha checks - go directly to execution
             
-            if params.status == ContextStatus.PAUSED:
-                logger.debug(f"[HFT] PAUSED for {market_id[:16]}...")
-                return None
+            elif news_signal['action'] == 'WEAK':
+                # Weak news signal - note but continue to Alpha
+                signal_source = 'NEWS_WEAK'
+                spread_multiplier = news_signal['spread_multiplier']  # 0.9
+                size_multiplier = news_signal['size_multiplier']      # 1.2
+                # Continue to Alpha for additional guidance
             
-            if params.is_stale():
-                logger.debug(f"[HFT] Stale context for {market_id[:16]}... (age: {params.get_age_seconds():.0f}s)")
-                return None
+            # =============================================================
+            # STEP 2: ALPHA CHECK (Medium Priority) - Only if no News Override
+            # =============================================================
+            if signal_source != 'NEWS':
+                hft_ctx = get_hft_context()
+                params = hft_ctx.get(market_id)
+                
+                if params is None:
+                    # No Alpha context - check if we can fall back to Order Book
+                    if signal_source != 'NEWS_WEAK':
+                        logger.debug(f"[HFT] No context for {market_id[:16]}... - checking Order Book fallback")
+                        signal_source = 'BOOK_ONLY'
+                        spread_multiplier = 1.5  # Safety spread
+                        size_multiplier = 0.5   # Half size
+                    # If NEWS_WEAK, continue with that signal
+                
+                elif params.status == ContextStatus.KILL:
+                    logger.debug(f"[HFT] KILL switch active for {market_id[:16]}...")
+                    return None
+                
+                elif params.status == ContextStatus.PAUSED:
+                    logger.debug(f"[HFT] PAUSED for {market_id[:16]}...")
+                    return None
+                
+                else:
+                    # Alpha context available - calculate weight based on age
+                    alpha_age = params.get_age_seconds()
+                    
+                    if alpha_age < 2.0:
+                        # FRESH Alpha (<2s): Full weight
+                        alpha_weight = 1.0
+                        signal_source = 'ALPHA_FRESH' if signal_source == 'NONE' else signal_source
+                    elif alpha_age < 10.0:
+                        # DECAYING Alpha (2-10s): Linear decay from 1.0 to 0.0
+                        alpha_weight = 1.0 - ((alpha_age - 2.0) / 8.0)
+                        signal_source = 'ALPHA_DECAY' if signal_source == 'NONE' else signal_source
+                    else:
+                        # STALE Alpha (>10s): No weight, use Order Book
+                        alpha_weight = 0.0
+                        signal_source = 'BOOK_ONLY' if signal_source == 'NONE' else signal_source
+                        spread_multiplier = max(spread_multiplier, 1.5)  # Safety spread
+                    
+                    # Calculate target price: blend Alpha FV with Order Book Mid
+                    if alpha_weight > 0 and params.fair_value:
+                        alpha_fv = params.fair_value
+                    else:
+                        alpha_fv = yes_price
+            else:
+                # News OVERRIDE - skip Alpha entirely
+                alpha_weight = 0.0
+                params = None
+                alpha_fv = yes_price
             
-            # Get orderbook data for spread calculation
+            # =============================================================
+            # STEP 3: ORDER BOOK ANALYSIS (Lowest Priority / Fallback)
+            # =============================================================
             best_bid = market_data.get('best_bid', 0)
             best_ask = market_data.get('best_ask', 0)
             
-            # If no orderbook data, try to extract from nested structure
             if best_bid == 0 or best_ask == 0:
                 order_book = market_data.get('order_book', {})
                 bids = order_book.get('bids', [])
@@ -1894,24 +1968,168 @@ class PaperTrader:
                     best_bid = float(bids[0]['price'])
                     best_ask = float(asks[0]['price'])
                 else:
-                    return None  # No orderbook data, can't scalp
+                    return None  # No orderbook data
             
+            book_mid = (best_bid + best_ask) / 2
             market_spread = best_ask - best_bid
             
-            # Basic volume filter
-            MIN_SCALP_VOLUME = 500  # $500 minimum daily volume
+            # Basic filters
+            MIN_SCALP_VOLUME = 500
             if volume_24h < MIN_SCALP_VOLUME:
                 return None
             
-            # Safety: Check we don't already have a position in this market
             if market_id in self.paper_positions:
                 return None  # Already have position
             
-            # Check capital availability
             current_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
             available_capital = self.deployed_capital - current_deployed
             if available_capital < 10:
-                return None  # Not enough capital
+                return None
+            
+            # =============================================================
+            # STEP 4: CALCULATE TARGET PRICE (Blended or Forced)
+            # =============================================================
+            if forced_direction:
+                # News OVERRIDE - use forced direction
+                if forced_direction == 'YES':
+                    target_price = best_ask  # Buy YES at ask
+                    side = 'YES'
+                    edge = 0.05  # Assumed edge from news signal
+                elif forced_direction == 'NO':
+                    # Check if NO bets are allowed
+                    is_sports = is_sports_market(market_data.get('question', ''))
+                    sports_config = get_sports_config()
+                    if is_sports and sports_config.allow_no_bets:
+                        target_price = 1 - best_bid  # Buy NO
+                        side = 'NO'
+                        edge = 0.05
+                    else:
+                        return None  # NO bets not allowed
+                else:
+                    return None  # Invalid direction
+            else:
+                # Blend Alpha FV with Book Mid based on alpha_weight
+                if signal_source == 'BOOK_ONLY':
+                    target_price = book_mid
+                    alpha_weight = 0.0
+                else:
+                    target_price = (alpha_fv * alpha_weight) + (book_mid * (1 - alpha_weight))
+                
+                # Calculate edge
+                edge = target_price - yes_price
+                
+                # Determine side
+                if abs(edge) < 0.005:  # Less than 0.5% edge
+                    return None
+                
+                side = 'YES' if edge > 0 else 'NO'
+                
+                # Safety: Only YES unless sports
+                if side == 'NO':
+                    is_sports = is_sports_market(market_data.get('question', ''))
+                    sports_config = get_sports_config()
+                    if not (is_sports and sports_config.allow_no_bets):
+                        return None
+            
+            # =============================================================
+            # STEP 5: APPLY SPREAD & SIZE MULTIPLIERS
+            # =============================================================
+            # Get base spread from Alpha or default
+            if params and hasattr(params, 'base_spread_bps'):
+                base_spread = params.base_spread_bps / 10000
+            else:
+                base_spread = 0.005  # 50 bps default
+            
+            final_spread = base_spread * spread_multiplier
+            
+            # Cliff protection (near 0 or 1)
+            dist_from_edge = min(yes_price, 1.0 - yes_price)
+            if dist_from_edge < 0.05:
+                final_spread *= 3.0  # Triple spread near extremes
+            elif dist_from_edge < 0.15:
+                final_spread *= 2.0  # Double spread in cliff zone
+            
+            # =============================================================
+            # STEP 6: CALCULATE POSITION SIZE
+            # =============================================================
+            confidence = params.confidence if params else 0.5
+            confidence_mult = min(1.0, confidence * 1.5)
+            edge_mult = min(1.0, abs(edge) * 20)
+            
+            scalp_size_usd = min(
+                available_capital * 0.02 * confidence_mult * edge_mult * size_multiplier,
+                25.0 * size_multiplier,  # Cap scales with multiplier
+                self.max_position_size * 0.4
+            )
+            scalp_size_usd = max(scalp_size_usd, 5.0)
+            
+            # Entry price
+            entry_price = round(best_ask if side == 'YES' else (1 - best_bid), 2)
+            
+            # Integer share conversion
+            order_qty = self._calculate_order_qty(scalp_size_usd, entry_price)
+            if order_qty < 1:
+                return None
+            
+            scalp_size = order_qty * entry_price
+            
+            # =============================================================
+            # STEP 7: INVENTORY GUARD
+            # =============================================================
+            hft_positions = [p for p in self.paper_positions.values() 
+                           if self._get_strategy_path(p.get('strategy', '')) == 'HFT']
+            total_hft_value = sum(p.get('size', 0) for p in hft_positions)
+            hft_long_value = sum(p.get('size', 0) for p in hft_positions if p.get('side') == 'YES')
+            
+            max_inventory_skew = params.max_inventory_skew if params else 0.30
+            
+            if total_hft_value > 0:
+                current_skew_ratio = hft_long_value / total_hft_value
+            else:
+                current_skew_ratio = 0.5
+            
+            bias = params.bias if params else 0.0
+            
+            if bias > 0 and side == 'YES' and current_skew_ratio > (0.5 + max_inventory_skew):
+                logger.debug(f"[HFT] Inventory guard: Already {current_skew_ratio:.0%} long")
+                return None
+            
+            if bias < 0 and side == 'NO' and current_skew_ratio < (0.5 - max_inventory_skew):
+                logger.debug(f"[HFT] Inventory guard: Already {(1-current_skew_ratio):.0%} short")
+                return None
+            
+            # =============================================================
+            # RETURN HFT PARAMS
+            # =============================================================
+            regime = params.regime if params else 'TAKER_TIGHT'
+            strategy = 'hft_scalp' if regime == 'TAKER_TIGHT' else 'hft_maker'
+            
+            logger.info(
+                f"[HFT] {signal_source}: {market_id[:16]}... | {side} ${scalp_size:.2f} | "
+                f"edge={abs(edge):.2%} | spread_mult={spread_multiplier:.1f} | size_mult={size_multiplier:.1f}"
+            )
+            
+            return {
+                'market_id': market_id,
+                'strategy': strategy,
+                'side': side,
+                'size': scalp_size,
+                'entry_price': entry_price,
+                'edge': abs(edge),
+                'order_qty': order_qty,
+                'tick_aligned': True,
+                'fair_value': target_price,
+                'regime': regime,
+                'signal_source': signal_source,
+                'spread_multiplier': spread_multiplier,
+                'size_multiplier': size_multiplier,
+                'alpha_weight': alpha_weight if 'alpha_weight' in dir() else 0.0,
+                'news_bf': news_signal.get('bayes_factor', 1.0),
+            }
+            
+        except Exception as e:
+            logger.error(f"[HFT] Error evaluating scalp for {market_data.get('id', 'unknown')[:16]}: {e}")
+            return None
             
             # =============================================================
             # STEP 2A: Adaptive Signal Smoothing (STATE ISOLATED)
