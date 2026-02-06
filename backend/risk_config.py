@@ -20,6 +20,7 @@ Usage:
     await RISK.load_from_db()
 """
 
+import os
 import logging
 from typing import Tuple, Dict, Optional, List
 from dataclasses import dataclass, field, asdict
