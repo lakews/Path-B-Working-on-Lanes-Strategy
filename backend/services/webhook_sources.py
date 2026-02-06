@@ -433,6 +433,12 @@ class CryptoPanicSource:
                 url = f"https://cryptopanic.com/api/v1/posts/?auth_token={self.api_key}&public=true"
                 
                 async with session.get(url, timeout=30) as resp:
+                    # Check content type - CryptoPanic returns HTML on errors
+                    content_type = resp.headers.get('content-type', '')
+                    if 'text/html' in content_type:
+                        logger.warning(f"[CRYPTOPANIC] API returned HTML (likely invalid key or changed endpoint)")
+                        return []
+                    
                     if resp.status != 200:
                         logger.warning(f"[CRYPTOPANIC] API error: {resp.status}")
                         return []
