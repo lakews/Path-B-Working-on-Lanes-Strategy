@@ -4,22 +4,26 @@ WEBHOOK SOURCES SERVICE
 
 Lane 5 News Enhancement: Multiple webhook sources for real-time news.
 
-Three Sources:
+Four Sources:
 1. APIFY TWITTER SCRAPER - @AP, @WojESPN, @ShamsCharania, @Polymarket
 2. WHALE WEBHOOK - Internal Polymarket WebSocket monitor (>$5k trades)
-3. CRYPTOPANIC API - Macro crypto news feed
+3. CRYPTOPANIC RSS - Real-time crypto news via RSS feed (FREE, no delay!)
+4. CRYPTOPANIC API - DISABLED (24h delay on free tier = toxic for trading)
 
 Architecture:
     WebhookSources -> NewsInjector -> LLM -> EventBayes -> SignalCache -> HFT
 
 Created: February 2026
+Updated: February 2026 - Swapped CryptoPanic API for RSS (real-time)
 """
 
 import asyncio
 import aiohttp
 import logging
 import os
-from typing import Dict, List, Optional, Callable, Any
+import feedparser
+from concurrent.futures import ThreadPoolExecutor
+from typing import Dict, List, Optional, Callable, Any, Set
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from enum import Enum
