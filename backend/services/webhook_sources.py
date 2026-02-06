@@ -369,65 +369,212 @@ class WhaleAlertSource:
 
 
 # =============================================================================
-# 3. CRYPTOPANIC API
+# 3. CRYPTOPANIC RSS (Real-time, FREE!)
 # =============================================================================
 
-class CryptoPanicSource:
+class CryptoPanicRSSSource:
     """
-    Polls CryptoPanic API for macro crypto news.
+    Real-time CryptoPanic news via RSS feed.
     
-    CryptoPanic aggregates news from 50+ crypto sources and provides
-    sentiment scoring. Great for catching market-moving crypto events.
+    This replaces the API poller which has a 24-hour delay on the free tier.
+    The RSS feed is FREE and provides REAL-TIME news!
     
-    API Levels:
-    - DEVELOPER (Free): 24h delay, 100 req/mo, 20 items
-    - GROWTH ($199/mo): Real-time, 3k req/mo
-    - ENTERPRISE: Custom
+    RSS Feed: https://cryptopanic.com/news/rss/
+    Polling: Every 5 minutes (300 seconds)
+    
+    Features:
+    - No API key required
+    - Real-time news (no 24h delay)
+    - Deduplication via seen_links set
+    - First-run startup protection (don't spam old news)
     """
     
-    # Updated endpoint (v2 developer API)
-    BASE_URL = "https://cryptopanic.com/api/developer/v2"
+    RSS_URL = "https://cryptopanic.com/news/rss/"
     
-    # Filter to high-impact news only
-    FILTERS = {
-        'kind': 'news',         # News only (not media)
-        'public': 'true',
+    # Priority keywords for crypto news
+    PRIORITY_KEYWORDS = {
+        'critical': ['BREAKING', 'JUST IN', 'URGENT', 'HACK', 'EXPLOIT', 'CRASH', 'DUMP'],
+        'high': ['SEC', 'ETF', 'APPROVED', 'REJECTED', 'REGULATION', 'BAN', 'LAWSUIT', 
+                 'BITCOIN', 'ETHEREUM', 'BINANCE', 'COINBASE', 'FED', 'RATE'],
     }
     
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get('CRYPTOPANIC_API_KEY')
-        self._enabled = bool(self.api_key)
-        self._last_fetch_id: Optional[str] = None
+    def __init__(self):
+        self._enabled = True
+        self._seen_links: Set[str] = set()
+        self._first_run = True
+        self._executor = ThreadPoolExecutor(max_workers=1)
+        self._stats = {
+            'polls': 0,
+            'items_found': 0,
+            'new_items': 0,
+            'last_poll': None,
+        }
         
-        if self._enabled:
-            logger.info("[CRYPTOPANIC] News source initialized")
-        else:
-            logger.warning("[CRYPTOPANIC] No API key - source disabled")
+        logger.info("[CRYPTOPANIC RSS] ✅ Real-time RSS source initialized (FREE, no delay!)")
     
     def is_enabled(self) -> bool:
         return self._enabled
     
-    def _classify_priority(self, item: Dict) -> str:
-        """Classify news priority based on CryptoPanic data"""
-        votes = item.get('votes', {})
+    def _classify_priority(self, title: str) -> str:
+        """Classify news priority based on keywords"""
+        title_upper = title.upper()
         
-        # High engagement = high priority
-        positive = votes.get('positive', 0)
-        negative = votes.get('negative', 0)
-        total_votes = positive + negative
+        for keyword in self.PRIORITY_KEYWORDS['critical']:
+            if keyword in title_upper:
+                return 'critical'
         
-        if total_votes >= 50:
-            return 'critical'
-        elif total_votes >= 20:
-            return 'high'
-        
-        # Check for important keywords
-        title = item.get('title', '').upper()
-        if any(kw in title for kw in ['BREAKING', 'JUST IN', 'URGENT', 'SEC', 'ETF', 'APPROVED', 'REJECTED']):
-            return 'high'
+        for keyword in self.PRIORITY_KEYWORDS['high']:
+            if keyword in title_upper:
+                return 'high'
         
         return 'normal'
     
+    def _parse_feed_sync(self) -> List[Dict]:
+        """Synchronous feed parsing (runs in executor)"""
+        try:
+            feed = feedparser.parse(self.RSS_URL)
+            return feed.entries
+        except Exception as e:
+            logger.error(f"[CRYPTOPANIC RSS] Parse error: {e}")
+            return []
+    
+    async def fetch_news(self) -> List[WebhookNews]:
+        """
+        Fetch news from CryptoPanic RSS feed.
+        
+        On first run: Populates seen_links without returning items (prevents old news spam).
+        On subsequent runs: Returns only NEW items not in seen_links.
+        """
+        self._stats['polls'] += 1
+        self._stats['last_poll'] = datetime.now(timezone.utc).isoformat()
+        
+        try:
+            # Parse feed in executor (non-blocking)
+            loop = asyncio.get_event_loop()
+            entries = await loop.run_in_executor(self._executor, self._parse_feed_sync)
+            
+            self._stats['items_found'] = len(entries)
+            
+            if not entries:
+                logger.warning("[CRYPTOPANIC RSS] No entries in feed")
+                return []
+            
+            # First run: populate seen_links, don't return anything
+            if self._first_run:
+                for entry in entries:
+                    link = entry.get('link', '')
+                    if link:
+                        self._seen_links.add(link)
+                
+                self._first_run = False
+                logger.info(f"[CRYPTOPANIC RSS] First run: cached {len(self._seen_links)} existing links (no alerts sent)")
+                return []
+            
+            # Subsequent runs: find new items
+            new_items = []
+            for entry in entries:
+                link = entry.get('link', '')
+                
+                # Skip if already seen
+                if link in self._seen_links:
+                    continue
+                
+                # Mark as seen
+                self._seen_links.add(link)
+                
+                # Keep seen_links bounded (max 1000)
+                if len(self._seen_links) > 1000:
+                    # Remove oldest (convert to list, slice, back to set)
+                    self._seen_links = set(list(self._seen_links)[-500:])
+                
+                title = entry.get('title', '')
+                source = entry.get('source', {}).get('title', 'CryptoPanic') if isinstance(entry.get('source'), dict) else 'CryptoPanic'
+                
+                # Parse published date
+                published = entry.get('published_parsed')
+                if published:
+                    try:
+                        timestamp = datetime(*published[:6], tzinfo=timezone.utc)
+                    except:
+                        timestamp = datetime.now(timezone.utc)
+                else:
+                    timestamp = datetime.now(timezone.utc)
+                
+                news = WebhookNews(
+                    headline=title,
+                    content=entry.get('summary', title),
+                    source=source,
+                    source_type=WebhookSourceType.CRYPTOPANIC_RSS,
+                    url=link,
+                    priority=self._classify_priority(title),
+                    metadata={
+                        'rss_id': entry.get('id', link),
+                        'tags': [tag.get('term', '') for tag in entry.get('tags', [])],
+                    },
+                    timestamp=timestamp
+                )
+                new_items.append(news)
+            
+            self._stats['new_items'] += len(new_items)
+            
+            if new_items:
+                logger.info(f"[CRYPTOPANIC RSS] 📰 Found {len(new_items)} NEW items")
+                for item in new_items[:3]:
+                    logger.info(f"  → {item.headline[:60]}... [{item.priority}]")
+            
+            return new_items
+            
+        except Exception as e:
+            logger.error(f"[CRYPTOPANIC RSS] Error: {e}")
+            return []
+    
+    def get_stats(self) -> Dict:
+        return {
+            **self._stats,
+            'seen_links_count': len(self._seen_links),
+            'first_run_complete': not self._first_run,
+        }
+
+
+# =============================================================================
+# 4. CRYPTOPANIC API (DISABLED - 24h delay is toxic for trading)
+# =============================================================================
+
+class CryptoPanicAPISource:
+    """
+    ⚠️ DISABLED: CryptoPanic API Poller
+    
+    The free tier (DEVELOPER) has a 24-HOUR DELAY on news.
+    This is TOXIC for trading - by the time we get the news, it's already priced in.
+    
+    Use CryptoPanicRSSSource instead (real-time, free).
+    
+    To re-enable: Upgrade to GROWTH plan ($199/mo) for real-time API access.
+    """
+    
+    def __init__(self, api_key: Optional[str] = None):
+        # DISABLED - Do not use API with 24h delay
+        self._enabled = False
+        logger.warning("[CRYPTOPANIC API] ⚠️ DISABLED - 24h delay is toxic for trading. Using RSS instead.")
+    
+    def is_enabled(self) -> bool:
+        return False  # Always disabled
+    
+    async def fetch_recent_news(self, limit: int = 20) -> List[WebhookNews]:
+        # Return empty - API is disabled
+        return []
+
+
+# =============================================================================
+# LEGACY: CryptoPanicSource (aliased to disabled API for backwards compatibility)
+# =============================================================================
+
+class CryptoPanicSource(CryptoPanicAPISource):
+    """
+    Legacy alias - redirects to disabled API source.
+    Use CryptoPanicRSSSource for real-time news.
+    """
+    pass
     async def fetch_recent_news(self, limit: int = 20) -> List[WebhookNews]:
         """Fetch recent important crypto news from CryptoPanic"""
         if not self._enabled:
