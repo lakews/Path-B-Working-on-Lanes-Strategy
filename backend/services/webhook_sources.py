@@ -263,25 +263,34 @@ class ApifyTwitterSource:
                 return []
             tweets = await resp.json()
         
-        # Convert to WebhookNews format
+        # Log raw structure for debugging (first item only)
+        if tweets:
+            logger.info(f"[APIFY] Raw tweet keys for @{account}: {list(tweets[0].keys())[:10]}")
+        
+        # Convert to WebhookNews format using robust extraction
         news_items = []
         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
         
         for tweet in tweets:
             try:
-                # Parse tweet timestamp
-                created_at_str = tweet.get('createdAt', '')
-                if created_at_str:
-                    tweet_time = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
-                else:
-                    tweet_time = datetime.now(timezone.utc)
+                # Extract tweet data using robust helper (handles multiple schemas)
+                extracted = self._extract_tweet_data(tweet)
+                
+                if not extracted:
+                    logger.debug(f"[APIFY] Could not extract data from tweet structure")
+                    continue
+                
+                tweet_text = extracted['text']
+                tweet_id = extracted['id']
+                tweet_time = extracted['timestamp']
                 
                 # Skip old tweets
                 if tweet_time < cutoff_time:
                     continue
                 
-                tweet_text = tweet.get('text', '')
-                tweet_id = tweet.get('id', '')
+                # Skip empty tweets
+                if not tweet_text.strip():
+                    continue
                 
                 # Skip if we've seen this tweet
                 if self.last_tweet_ids.get(account) == tweet_id:
@@ -299,8 +308,9 @@ class ApifyTwitterSource:
                     metadata={
                         'account': account,
                         'tweet_id': tweet_id,
-                        'likes': tweet.get('likeCount', 0),
-                        'retweets': tweet.get('retweetCount', 0),
+                        'likes': extracted.get('likes', 0),
+                        'retweets': extracted.get('retweets', 0),
+                        'schema': extracted.get('schema', 'unknown'),
                     },
                     timestamp=tweet_time
                 ))
@@ -310,6 +320,164 @@ class ApifyTwitterSource:
                 continue
         
         return news_items
+    
+    def _extract_tweet_data(self, item: Dict) -> Optional[Dict]:
+        """
+        Robust tweet data extraction that handles multiple JSON schemas.
+        
+        apidojo/tweet-scraper returns complex nested structures that can vary:
+        - Standard format: item['text'], item['id'], item['createdAt']
+        - Legacy format: item['legacy']['full_text']
+        - GraphQL format: item['content']['itemContent']['tweet_results']['result']['legacy']
+        
+        Returns dict with: text, id, timestamp, likes, retweets, schema
+        """
+        
+        # ====================================================================
+        # SCHEMA 1: Standard/Simple format (most common)
+        # Keys: text, id, createdAt, likeCount, retweetCount
+        # ====================================================================
+        if 'text' in item and 'id' in item:
+            try:
+                timestamp = self._parse_timestamp(item.get('createdAt', ''))
+                return {
+                    'text': item.get('text', '') or item.get('full_text', ''),
+                    'id': str(item.get('id', '')),
+                    'timestamp': timestamp,
+                    'likes': item.get('likeCount', 0) or item.get('favorite_count', 0),
+                    'retweets': item.get('retweetCount', 0) or item.get('retweet_count', 0),
+                    'schema': 'standard',
+                }
+            except Exception:
+                pass
+        
+        # ====================================================================
+        # SCHEMA 2: Legacy nested format
+        # Keys: legacy.full_text, legacy.id_str, legacy.created_at
+        # ====================================================================
+        if 'legacy' in item:
+            try:
+                legacy = item['legacy']
+                timestamp = self._parse_timestamp(legacy.get('created_at', ''))
+                return {
+                    'text': legacy.get('full_text', '') or legacy.get('text', ''),
+                    'id': str(legacy.get('id_str', '') or item.get('rest_id', '')),
+                    'timestamp': timestamp,
+                    'likes': legacy.get('favorite_count', 0),
+                    'retweets': legacy.get('retweet_count', 0),
+                    'schema': 'legacy',
+                }
+            except Exception:
+                pass
+        
+        # ====================================================================
+        # SCHEMA 3: GraphQL deep nested format
+        # Path: content.itemContent.tweet_results.result.legacy
+        # ====================================================================
+        if 'content' in item:
+            try:
+                # Navigate the deep path
+                content = item.get('content', {})
+                item_content = content.get('itemContent', {})
+                tweet_results = item_content.get('tweet_results', {})
+                result = tweet_results.get('result', {})
+                legacy = result.get('legacy', {})
+                
+                if legacy:
+                    timestamp = self._parse_timestamp(legacy.get('created_at', ''))
+                    return {
+                        'text': legacy.get('full_text', '') or legacy.get('text', ''),
+                        'id': str(legacy.get('id_str', '') or result.get('rest_id', '')),
+                        'timestamp': timestamp,
+                        'likes': legacy.get('favorite_count', 0),
+                        'retweets': legacy.get('retweet_count', 0),
+                        'schema': 'graphql',
+                    }
+            except Exception:
+                pass
+        
+        # ====================================================================
+        # SCHEMA 4: Apidojo V2 specific format
+        # Keys: full_text, id_str, created_at (at root level)
+        # ====================================================================
+        if 'full_text' in item:
+            try:
+                timestamp = self._parse_timestamp(item.get('created_at', ''))
+                return {
+                    'text': item.get('full_text', ''),
+                    'id': str(item.get('id_str', '') or item.get('id', '')),
+                    'timestamp': timestamp,
+                    'likes': item.get('favorite_count', 0),
+                    'retweets': item.get('retweet_count', 0),
+                    'schema': 'apidojo_v2',
+                }
+            except Exception:
+                pass
+        
+        # ====================================================================
+        # SCHEMA 5: Tweet object wrapper
+        # Keys: tweet.text, tweet.id, tweet.created_at
+        # ====================================================================
+        if 'tweet' in item:
+            try:
+                tweet = item['tweet']
+                return self._extract_tweet_data(tweet)  # Recursive call
+            except Exception:
+                pass
+        
+        # ====================================================================
+        # FALLBACK: Log unknown structure for debugging
+        # ====================================================================
+        logger.warning(f"[APIFY] Unknown tweet schema. Keys: {list(item.keys())[:15]}")
+        
+        # Last resort: try to find any text-like field
+        for key in ['text', 'full_text', 'body', 'content', 'message']:
+            if key in item and isinstance(item[key], str) and len(item[key]) > 10:
+                return {
+                    'text': item[key],
+                    'id': str(item.get('id', item.get('id_str', 'unknown'))),
+                    'timestamp': datetime.now(timezone.utc),
+                    'likes': 0,
+                    'retweets': 0,
+                    'schema': 'fallback',
+                }
+        
+        return None
+    
+    def _parse_timestamp(self, ts_str: str) -> datetime:
+        """Parse timestamp from various formats"""
+        if not ts_str:
+            return datetime.now(timezone.utc)
+        
+        # Try ISO format first (2024-01-15T10:30:00Z)
+        try:
+            return datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
+        except:
+            pass
+        
+        # Try Twitter's format (Mon Jan 15 10:30:00 +0000 2024)
+        try:
+            from email.utils import parsedate_to_datetime
+            return parsedate_to_datetime(ts_str)
+        except:
+            pass
+        
+        # Try common formats
+        formats = [
+            '%a %b %d %H:%M:%S %z %Y',  # Twitter format
+            '%Y-%m-%dT%H:%M:%S.%fZ',     # ISO with milliseconds
+            '%Y-%m-%d %H:%M:%S',          # Simple datetime
+        ]
+        for fmt in formats:
+            try:
+                dt = datetime.strptime(ts_str, fmt)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt
+            except:
+                continue
+        
+        return datetime.now(timezone.utc)
 
 
 # =============================================================================
