@@ -825,9 +825,8 @@ class WebhookSourcesManager:
         # Legacy alias
         self.cryptopanic = self.cryptopanic_api
         
-        # Set up whale callback
-        if news_callback:
-            self.whale.set_callback(self._handle_whale_alert)
+        # Set up whale callback (ALWAYS - for direct injection even without news_callback)
+        self.whale.set_callback(self._handle_whale_alert)
         
         # Polling state
         self.is_running = False
