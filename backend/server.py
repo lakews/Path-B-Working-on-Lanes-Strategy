@@ -3277,6 +3277,62 @@ async def test_cryptopanic_api():
     }
 
 
+@api_router.post("/hooks/test-apify")
+async def test_apify_twitter(account: str = "Tier10k"):
+    """
+    Smoke test for Apify Twitter scraper.
+    
+    Fetches tweets from a single account and returns raw structure + parsed results.
+    Use this to verify the parser handles apidojo/tweet-scraper output correctly.
+    """
+    import aiohttp
+    
+    manager = get_webhook_sources_manager()
+    
+    if not manager.apify.is_enabled():
+        return {
+            "status": "disabled",
+            "message": "Apify API key not configured",
+            "hint": "Add APIFY_API_KEY to backend/.env"
+        }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Fetch tweets for the test account
+            news_items = await manager.apify._fetch_account_tweets(
+                session=session,
+                account=account,
+                hours_back=24
+            )
+            
+            return {
+                "status": "success",
+                "account": f"@{account}",
+                "actor_id": manager.apify.actor_id,
+                "tweets_parsed": len(news_items),
+                "target_accounts": manager.apify.TARGET_ACCOUNTS,
+                "results": [
+                    {
+                        "headline": n.headline[:80],
+                        "priority": n.priority,
+                        "schema_detected": n.metadata.get('schema', 'unknown'),
+                        "tweet_id": n.metadata.get('tweet_id', ''),
+                        "likes": n.metadata.get('likes', 0),
+                        "retweets": n.metadata.get('retweets', 0),
+                    }
+                    for n in news_items[:5]
+                ]
+            }
+            
+    except Exception as e:
+        logger.error(f"[APIFY TEST] Error: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "account": f"@{account}"
+        }
+
+
 # =============================================
 # PAPER TRADING ENDPOINTS
 # =============================================
