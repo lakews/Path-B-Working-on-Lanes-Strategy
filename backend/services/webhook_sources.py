@@ -575,87 +575,6 @@ class CryptoPanicSource(CryptoPanicAPISource):
     Use CryptoPanicRSSSource for real-time news.
     """
     pass
-    async def fetch_recent_news(self, limit: int = 20) -> List[WebhookNews]:
-        """Fetch recent important crypto news from CryptoPanic"""
-        if not self._enabled:
-            return []
-        
-        try:
-            async with aiohttp.ClientSession() as session:
-                # CryptoPanic Developer API v2 endpoint
-                # Format: https://cryptopanic.com/api/developer/v2/posts/?auth_token=KEY
-                url = f"{self.BASE_URL}/posts/"
-                params = {
-                    "auth_token": self.api_key,
-                    "public": "true",
-                }
-                
-                async with session.get(url, params=params, timeout=30) as resp:
-                    # Check content type - CryptoPanic returns HTML on errors
-                    content_type = resp.headers.get('content-type', '')
-                    if 'text/html' in content_type:
-                        logger.warning(f"[CRYPTOPANIC] API returned HTML (likely invalid key or changed endpoint)")
-                        return []
-                    
-                    if resp.status != 200:
-                        logger.warning(f"[CRYPTOPANIC] API error: {resp.status}")
-                        return []
-                    
-                    data = await resp.json()
-                    results = data.get('results', [])
-                
-                news_items = []
-                for item in results[:limit]:
-                    try:
-                        # Skip if we've seen this
-                        item_id = str(item.get('id', ''))
-                        if item_id == self._last_fetch_id:
-                            break
-                        
-                        if not news_items:
-                            self._last_fetch_id = item_id
-                        
-                        # Parse timestamp
-                        published_at = item.get('published_at', '')
-                        if published_at:
-                            timestamp = datetime.fromisoformat(published_at.replace('Z', '+00:00'))
-                        else:
-                            timestamp = datetime.now(timezone.utc)
-                        
-                        # Get source domain
-                        source_info = item.get('source', {})
-                        source_domain = source_info.get('domain', 'cryptopanic.com')
-                        
-                        # Get currencies mentioned
-                        currencies = [c.get('code', '') for c in item.get('currencies', [])]
-                        currencies_str = ', '.join(currencies[:5]) if currencies else 'crypto'
-                        
-                        news_items.append(WebhookNews(
-                            headline=item.get('title', ''),
-                            content=f"{item.get('title', '')} - Currencies: {currencies_str}",
-                            source=source_domain,
-                            source_type=WebhookSourceType.CRYPTOPANIC,
-                            url=item.get('url', ''),
-                            priority=self._classify_priority(item),
-                            metadata={
-                                'cryptopanic_id': item_id,
-                                'currencies': currencies,
-                                'votes': item.get('votes', {}),
-                                'kind': item.get('kind', 'news'),
-                            },
-                            timestamp=timestamp
-                        ))
-                        
-                    except Exception as e:
-                        logger.debug(f"[CRYPTOPANIC] Error parsing item: {e}")
-                        continue
-                
-                logger.info(f"[CRYPTOPANIC] Fetched {len(news_items)} news items")
-                return news_items
-                
-        except Exception as e:
-            logger.error(f"[CRYPTOPANIC] Fetch error: {e}")
-            return []
 
 
 # =============================================================================
@@ -666,8 +585,13 @@ class WebhookSourcesManager:
     """
     Manages all webhook sources and coordinates polling.
     
-    Integrates with NewsInjector to process news through the standard
-    LLM -> EventBayes -> SignalCache pipeline.
+    Active Sources:
+    - Apify Twitter: @AP, @WojESPN, etc.
+    - Whale Alert: Polymarket large trades
+    - CryptoPanic RSS: Real-time crypto news (FREE!)
+    
+    Disabled:
+    - CryptoPanic API: 24h delay = toxic for trading
     """
     
     def __init__(self, news_callback: Optional[Callable] = None):
@@ -681,7 +605,11 @@ class WebhookSourcesManager:
         # Initialize sources
         self.apify = ApifyTwitterSource()
         self.whale = WhaleAlertSource()
-        self.cryptopanic = CryptoPanicSource()
+        self.cryptopanic_rss = CryptoPanicRSSSource()  # Real-time RSS (active)
+        self.cryptopanic_api = CryptoPanicAPISource()  # API disabled (24h delay)
+        
+        # Legacy alias
+        self.cryptopanic = self.cryptopanic_rss
         
         # Set up whale callback
         if news_callback:
@@ -696,8 +624,127 @@ class WebhookSourcesManager:
             'apify_polls': 0,
             'apify_items': 0,
             'whale_alerts': 0,
-            'cryptopanic_polls': 0,
-            'cryptopanic_items': 0,
+            'cryptopanic_rss_polls': 0,
+            'cryptopanic_rss_items': 0,
+            'last_poll': None,
+            'errors': 0,
+        }
+        
+        logger.info(f"[WEBHOOK SOURCES] Manager initialized")
+        logger.info(f"  - Apify Twitter: {'✅ Enabled' if self.apify.is_enabled() else '❌ Disabled'}")
+        logger.info(f"  - Whale Alerts: {'✅ Enabled' if self.whale.is_enabled() else '❌ Disabled'}")
+        logger.info(f"  - CryptoPanic RSS: {'✅ Enabled (REAL-TIME!)' if self.cryptopanic_rss.is_enabled() else '❌ Disabled'}")
+        logger.info(f"  - CryptoPanic API: ❌ Disabled (24h delay = toxic)")
+    
+    async def _handle_whale_alert(self, news: WebhookNews):
+        """Handle whale alert from internal monitor"""
+        self._stats['whale_alerts'] += 1
+        
+        if self.news_callback:
+            try:
+                await self.news_callback(news.to_news_payload())
+            except Exception as e:
+                logger.error(f"[WEBHOOK SOURCES] Error processing whale alert: {e}")
+                self._stats['errors'] += 1
+    
+    async def _poll_apify(self, interval_seconds: int = 300):
+        """Poll Apify Twitter scraper (default every 5 minutes)"""
+        logger.info(f"[WEBHOOK SOURCES] Apify poll loop started ({interval_seconds}s interval)")
+        
+        while self.is_running:
+            try:
+                if self.apify.is_enabled():
+                    news_items = await self.apify.fetch_recent_tweets(hours_back=1)
+                    self._stats['apify_polls'] += 1
+                    self._stats['apify_items'] += len(news_items)
+                    
+                    for news in news_items:
+                        if self.news_callback:
+                            await self.news_callback(news.to_news_payload())
+                        await asyncio.sleep(0.5)  # Rate limit
+                
+            except Exception as e:
+                logger.error(f"[WEBHOOK SOURCES] Apify poll error: {e}")
+                self._stats['errors'] += 1
+            
+            await asyncio.sleep(interval_seconds)
+    
+    async def _poll_cryptopanic_rss(self, interval_seconds: int = 300):
+        """Poll CryptoPanic RSS feed (default every 5 minutes)"""
+        logger.info(f"[WEBHOOK SOURCES] CryptoPanic RSS poll loop started ({interval_seconds}s interval)")
+        
+        while self.is_running:
+            try:
+                news_items = await self.cryptopanic_rss.fetch_news()
+                self._stats['cryptopanic_rss_polls'] += 1
+                self._stats['cryptopanic_rss_items'] += len(news_items)
+                self._stats['last_poll'] = datetime.now(timezone.utc).isoformat()
+                
+                for news in news_items:
+                    if self.news_callback:
+                        await self.news_callback(news.to_news_payload())
+                    await asyncio.sleep(0.3)  # Rate limit
+                
+            except Exception as e:
+                logger.error(f"[WEBHOOK SOURCES] CryptoPanic RSS poll error: {e}")
+                self._stats['errors'] += 1
+            
+            await asyncio.sleep(interval_seconds)
+    
+    async def start(self):
+        """Start all polling loops"""
+        if self.is_running:
+            logger.warning("[WEBHOOK SOURCES] Already running")
+            return
+        
+        self.is_running = True
+        
+        # Start poll tasks
+        self._poll_tasks = [
+            asyncio.create_task(self._poll_apify(interval_seconds=300)),           # 5 min
+            asyncio.create_task(self._poll_cryptopanic_rss(interval_seconds=300)), # 5 min
+        ]
+        
+        logger.info("[WEBHOOK SOURCES] All polling loops started")
+        logger.info("  📰 Apify Twitter: every 5 min")
+        logger.info("  📰 CryptoPanic RSS: every 5 min (REAL-TIME news!)")
+        logger.info("  🐋 Whale Alerts: real-time via WebSocket")
+    
+    async def stop(self):
+        """Stop all polling loops"""
+        self.is_running = False
+        
+        for task in self._poll_tasks:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        
+        self._poll_tasks = []
+        logger.info("[WEBHOOK SOURCES] All polling loops stopped")
+    
+    def process_websocket_trade(self, trade_data: Dict):
+        """
+        Called by Polymarket WebSocket handler for each trade.
+        Checks if trade qualifies as whale alert.
+        """
+        asyncio.create_task(self.whale.process_trade(trade_data))
+    
+    def get_stats(self) -> Dict:
+        """Get webhook sources statistics"""
+        return {
+            **self._stats,
+            'sources': {
+                'apify_enabled': self.apify.is_enabled(),
+                'whale_enabled': self.whale.is_enabled(),
+                'cryptopanic_rss_enabled': self.cryptopanic_rss.is_enabled(),
+                'cryptopanic_api_enabled': False,  # Always disabled
+            },
+            'whale_threshold': self.whale.threshold_usd,
+            'whale_recent_alerts': len(self.whale.get_recent_alerts()),
+            'cryptopanic_rss_stats': self.cryptopanic_rss.get_stats(),
+        }
             'last_poll': None,
             'errors': 0,
         }
