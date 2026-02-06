@@ -237,12 +237,10 @@ class EmergentLLMService:
 Respond with ONLY the JSON object as specified. No other text."""
 
         try:
-            # Call LLM with temperature=0.0 for consistent, logical output
-            # Note: system_prompt is set in the LlmChat constructor
-            response = await client.send_message(
-                message=user_prompt,
-                model=self.model
-            )
+            # Call LLM with the Event Resolution Adjudicator prompt
+            # Use UserMessage wrapper as required by emergentintegrations
+            user_msg = self._UserMessage(text=user_prompt)
+            response = await client.send_message(user_msg)
             
             # Parse response
             parsed = self._parse_json_response(response)
