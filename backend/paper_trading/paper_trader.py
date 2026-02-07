@@ -7958,20 +7958,20 @@ class PaperTrader:
             "start_time": self.session_start_time.isoformat() if self.session_start_time else None,
             "duration_seconds": duration_seconds,
             "initial_capital": self.initial_capital,
-            "current_capital": self.current_capital,
+            "current_capital": current_capital_snapshot,  # Use snapshot for consistency
             "peak_capital": self.peak_capital,  # Highest capital reached
             "total_equity": round(total_equity, 2),  # Cash + Deployed + Unrealized
             "current_drawdown_pct": round(max(0, true_drawdown_pct), 2),  # True drawdown based on equity
             "deployed_capital": round(actual_deployed, 2),  # ACTUAL deployed (sum of position sizes)
             "max_deployed_capital": self.deployed_capital,  # Max allowed deployment (config setting)
-            "total_pnl": self.total_pnl,  # Realized P&L (closed trades)
+            "total_pnl": total_pnl_snapshot,  # Realized P&L (closed trades) - use snapshot
             "unrealized_pnl": self.unrealized_pnl,  # Unrealized P&L (open positions)
             "combined_pnl": combined_pnl,  # Total = Realized + Unrealized
             # Return percentages based on deployed capital (what was actually risked)
-            "total_pnl_pct": (self.total_pnl / self.deployed_capital) * 100 if self.deployed_capital > 0 else 0,
+            "total_pnl_pct": (total_pnl_snapshot / self.deployed_capital) * 100 if self.deployed_capital > 0 else 0,
             "combined_pnl_pct": (combined_pnl / self.deployed_capital) * 100 if self.deployed_capital > 0 else 0,
             # Also show returns based on total capital for reference
-            "total_pnl_pct_on_total": (self.total_pnl / self.initial_capital) * 100,
+            "total_pnl_pct_on_total": (total_pnl_snapshot / self.initial_capital) * 100,
             "combined_pnl_pct_on_total": (combined_pnl / self.initial_capital) * 100,
             "total_trades": self.total_trades,
             "winning_trades": self.winning_trades,
