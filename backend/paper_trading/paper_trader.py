@@ -5647,8 +5647,13 @@ class PaperTrader:
             self.trade_returns.append(return_pct)
             logger.info(f"📊 Trade return recorded: {return_pct:.2f}% | Total returns tracked: {len(self.trade_returns)}")
             
-            # Update metrics atomically
+            # Update metrics atomically - MUST remove position and update capital together
             async with self._capital_lock:
+                # FIRST: Remove position from tracking (before updating capital)
+                if market_id in self.paper_positions:
+                    del self.paper_positions[market_id]
+                
+                # THEN: Update capital (position is now removed, so deployed is correct)
                 self.total_pnl += pnl
                 self.current_capital += size + pnl
                 
@@ -5665,6 +5670,9 @@ class PaperTrader:
                 # Calculate drawdown based on total equity
                 drawdown = (self.peak_capital - total_equity) / self.peak_capital if self.peak_capital > 0 else 0
                 self.max_drawdown = max(self.max_drawdown, drawdown)
+            
+            # PERSIST: Delete position from database (after lock release)
+            await self._delete_position_from_db(market_id)
             
             # CIRCUIT BREAKER: Check if drawdown exceeds max allowed (from Settings)
             drawdown_pct = drawdown * 100
