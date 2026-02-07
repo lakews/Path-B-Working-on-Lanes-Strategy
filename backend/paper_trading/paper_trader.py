@@ -3205,6 +3205,15 @@ class PaperTrader:
             # Add to positions
             self.paper_positions[market_id] = position
             
+            # CRITICAL: Deduct capital when opening position (BUG FIX - was missing)
+            if self.current_capital >= trade_size:
+                self.current_capital -= trade_size
+            else:
+                # Limit to available capital
+                actual_size = max(0, self.current_capital)
+                self.current_capital = 0
+                position['size'] = actual_size
+            
             # Track P&L by strategy
             if 'sports_arbitrage' not in self.strategy_equity:
                 self.strategy_equity['sports_arbitrage'] = 0.0
@@ -3212,6 +3221,13 @@ class PaperTrader:
             # Track in lane equity
             if 'SPORTS' not in self.lane_equity:
                 self.lane_equity['SPORTS'] = 0.0
+            
+            # Increment trade counter
+            self.total_trades += 1
+            
+            # Track strategy stats
+            if 'sports_arbitrage' in self.strategy_stats:
+                self.strategy_stats['sports_arbitrage']['trades'] += 1
             
             # Log the trade
             logger.info(
