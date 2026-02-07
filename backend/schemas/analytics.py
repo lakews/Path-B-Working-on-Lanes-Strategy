@@ -117,10 +117,10 @@ class ComprehensiveMetricsResponse(BaseModel):
         description="Performance by asset class"
     )
     
-    # Three-Speed Lane Breakdown (NEW)
+    # Five-Lane Breakdown
     lane_performance: Dict[str, LaneMetric] = Field(
         default_factory=dict,
-        description="Performance by lane (HFT, ALPHA, GAMMA)"
+        description="Performance by lane (HFT, ALPHA, GAMMA, SPORTS, NEWS)"
     )
     
     # Advanced Metrics
