@@ -3246,11 +3246,11 @@ const PaperTrading = () => {
             <HftAlphaPerformanceCard executionPathStats={status?.execution_path_stats} showLive={running} />
           )}
 
-          {/* Lane Performance Cards - Three-Speed Analytics */}
+          {/* Lane Performance Cards - Five-Lane Analytics */}
           <LanePerformance 
             data={
               // Use live status.lane_equity if available, otherwise fall back to database analytics
-              (status?.lane_equity?.HFT || status?.lane_equity?.ALPHA || status?.lane_equity?.GAMMA) 
+              (status?.lane_equity?.HFT || status?.lane_equity?.ALPHA || status?.lane_equity?.GAMMA || status?.lane_equity?.SPORTS || status?.lane_equity?.NEWS) 
                 ? {
                     HFT: {
                       total_pnl: status.lane_equity.HFT || 0,
@@ -3289,6 +3289,32 @@ const PaperTrading = () => {
                       total_volume: status?.execution_path_stats?.gamma?.volume || 0,
                       avg_pnl_per_trade: status?.execution_path_stats?.gamma?.trades > 0 
                         ? (status.lane_equity.GAMMA || 0) / status.execution_path_stats.gamma.trades 
+                        : 0
+                    },
+                    SPORTS: {
+                      total_pnl: status.lane_equity.SPORTS || 0,
+                      total_trades: status?.execution_path_stats?.sports?.trades || 0,
+                      win_rate: status?.execution_path_stats?.sports?.trades > 0 
+                        ? ((status?.execution_path_stats?.sports?.wins || 0) / status.execution_path_stats.sports.trades) * 100 
+                        : 0,
+                      wins: status?.execution_path_stats?.sports?.wins || 0,
+                      losses: (status?.execution_path_stats?.sports?.trades || 0) - (status?.execution_path_stats?.sports?.wins || 0),
+                      total_volume: status?.execution_path_stats?.sports?.volume || 0,
+                      avg_pnl_per_trade: status?.execution_path_stats?.sports?.trades > 0 
+                        ? (status.lane_equity.SPORTS || 0) / status.execution_path_stats.sports.trades 
+                        : 0
+                    },
+                    NEWS: {
+                      total_pnl: status.lane_equity.NEWS || 0,
+                      total_trades: status?.execution_path_stats?.news?.trades || 0,
+                      win_rate: status?.execution_path_stats?.news?.trades > 0 
+                        ? ((status?.execution_path_stats?.news?.wins || 0) / status.execution_path_stats.news.trades) * 100 
+                        : 0,
+                      wins: status?.execution_path_stats?.news?.wins || 0,
+                      losses: (status?.execution_path_stats?.news?.trades || 0) - (status?.execution_path_stats?.news?.wins || 0),
+                      total_volume: status?.execution_path_stats?.news?.volume || 0,
+                      avg_pnl_per_trade: status?.execution_path_stats?.news?.trades > 0 
+                        ? (status.lane_equity.NEWS || 0) / status.execution_path_stats.news.trades 
                         : 0
                     }
                   }
