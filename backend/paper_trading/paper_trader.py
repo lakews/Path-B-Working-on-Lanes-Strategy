@@ -6909,12 +6909,15 @@ class PaperTrader:
                                     else:
                                         exit_value = exit_order.size  # Fallback
                                     
-                                    position['size'] = position['size'] - exit_order.size
-                                    self.current_capital += exit_value
+                                    # Update position and capital atomically
+                                    async with self._capital_lock:
+                                        position['size'] = position['size'] - exit_order.size
+                                        self.current_capital += exit_value
+                                        
+                                        # Track realized P&L for free roll
+                                        free_roll_pnl = exit_value - exit_order.size
+                                        self.total_pnl += free_roll_pnl
                                     
-                                    # Track realized P&L for free roll
-                                    free_roll_pnl = exit_value - exit_order.size
-                                    self.total_pnl += free_roll_pnl
                                     logger.info(f"🐋 [FREE ROLL] Sold ${exit_order.size:.2f} @ {exit_order.price:.4f} -> ${exit_value:.2f} (P&L: ${free_roll_pnl:.2f})")
                                 else:
                                     # Full exit (moonbag or stop_loss)
