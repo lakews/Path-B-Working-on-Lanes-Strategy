@@ -3205,8 +3205,13 @@ class PaperTrader:
                 'lane': 'SPORTS',
             }
             
-            # Add to positions and deduct capital atomically
+            # Add to positions and deduct capital atomically (with duplicate check inside lock)
             async with self._capital_lock:
+                # Check for duplicate INSIDE lock to prevent race condition
+                if market_id in self.paper_positions:
+                    logger.warning(f"[SPORTS-SKIP] Already have position in {market_id[:16]} (race prevented)")
+                    return
+                
                 self.paper_positions[market_id] = position
                 
                 # CRITICAL: Deduct capital when opening position
