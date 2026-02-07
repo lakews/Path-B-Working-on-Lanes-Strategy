@@ -202,8 +202,8 @@ const LaneCard = ({ laneName, metrics, config }) => {
  * Loading Skeleton
  */
 const LoadingSkeleton = () => (
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-    {[1, 2, 3].map((i) => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+    {[1, 2, 3, 4, 5].map((i) => (
       <div key={i} className="animate-pulse rounded-xl bg-white/5 border border-white/10 p-4 h-40">
         <div className="h-4 bg-white/10 rounded w-24 mb-3"></div>
         <div className="h-8 bg-white/10 rounded w-32 mb-2"></div>
@@ -227,7 +227,7 @@ const LanePerformance = ({ data, isLoading = false, showHeader = true }) => {
       <div className="rounded-xl bg-white/5 border border-white/10 p-6 text-center">
         <Activity className="w-8 h-8 text-white/20 mx-auto mb-2" />
         <p className="text-white/40 text-sm">No lane performance data yet</p>
-        <p className="text-white/20 text-xs mt-1">Start trading to see HFT/Alpha/Gamma breakdown</p>
+        <p className="text-white/20 text-xs mt-1">Start trading to see HFT/Alpha/Gamma/Sports/News breakdown</p>
       </div>
     );
   }
@@ -259,7 +259,7 @@ const LanePerformance = ({ data, isLoading = false, showHeader = true }) => {
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-cyan-400" />
             <span className="text-sm font-medium text-white/80">Lane Performance</span>
-            <span className="text-xs text-white/40">(Three-Speed Architecture)</span>
+            <span className="text-xs text-white/40">(5-Lane Architecture)</span>
           </div>
           <div className="flex items-center gap-4 text-xs">
             <span className={`font-mono ${totals.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -272,8 +272,8 @@ const LanePerformance = ({ data, isLoading = false, showHeader = true }) => {
         </div>
       )}
       
-      {/* Lane Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Lane Cards Grid - Responsive for 5 lanes */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {sortedLanes.map(([laneName, metrics]) => (
           <LaneCard
             key={laneName}
