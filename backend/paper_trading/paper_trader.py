@@ -3095,6 +3095,9 @@ class PaperTrader:
                 sports_analysis=analysis
             )
             
+            # Debug logging for signal generation
+            logger.info(f"[SPORTS] Signal for {question[:30]}...: {signal.signal.value} | Reason: {signal.reason} | Edge: {signal.edge:.2%}")
+            
             # ==========================================================
             # STEP 3: Execute if signal is valid
             # ==========================================================
