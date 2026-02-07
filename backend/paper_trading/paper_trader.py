@@ -7871,10 +7871,10 @@ class PaperTrader:
         # Include unrealized P&L from open positions
         asset_class_results = {}
         
-        # Calculate unrealized P&L by asset class from open positions
+        # Calculate unrealized P&L by asset class from open positions (using snapshot)
         asset_class_unrealized = {}
         asset_class_open_positions = {}
-        for pos in self.paper_positions.values():
+        for pos in positions_snapshot.values():
             ac = pos.get('asset_class', 'unknown')
             if ac not in asset_class_unrealized:
                 asset_class_unrealized[ac] = 0.0
