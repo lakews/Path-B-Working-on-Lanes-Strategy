@@ -481,6 +481,45 @@ class TestUniversalExitEngineIntegration:
         assert config['max_hours'] == 12
         
         print(f"✅ ExitEngine has sports_arbitrage config: {config}")
+    
+    def test_universal_exit_engine_code_exists(self):
+        """Verify Universal Exit Engine code exists in _position_monitoring_loop."""
+        # Read the paper_trader.py file and verify the fix is in place
+        with open('/app/backend/paper_trading/paper_trader.py', 'r') as f:
+            content = f.read()
+        
+        # Check for the Universal Exit Engine section
+        assert 'UNIVERSAL EXIT ENGINE' in content, \
+            "paper_trader.py should contain 'UNIVERSAL EXIT ENGINE' section"
+        
+        # Check for the key fix: iterating through all positions
+        assert 'for market_id, position in list(self.paper_positions.items())' in content, \
+            "Universal Exit Engine should iterate through all paper_positions"
+        
+        # Check for ExitEngine.check_exit() call
+        assert 'self.exit_engine.check_exit(' in content, \
+            "Universal Exit Engine should call self.exit_engine.check_exit()"
+        
+        # Check for sports_arbitrage handling
+        assert "strategy = position.get('strategy'" in content, \
+            "Universal Exit Engine should get strategy from position"
+        
+        print(f"✅ Universal Exit Engine code exists in paper_trader.py")
+    
+    def test_exit_decision_logged_with_emoji(self):
+        """Verify exit decisions are logged with correct emoji format."""
+        with open('/app/backend/paper_trading/paper_trader.py', 'r') as f:
+            content = f.read()
+        
+        # Check for sports emoji in exit logging
+        assert '🏈' in content, \
+            "paper_trader.py should use 🏈 emoji for sports exits"
+        
+        # Check for the emoji selection logic
+        assert "emoji = \"🏈\" if strategy == 'sports_arbitrage' else \"📊\"" in content, \
+            "Exit logging should use 🏈 for sports_arbitrage, 📊 for others"
+        
+        print(f"✅ Exit decision logging uses correct emoji format")
 
 
 if __name__ == '__main__':
