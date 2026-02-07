@@ -37,7 +37,7 @@ const formatCompactCurrency = (value) => {
   return formatCurrency(value);
 };
 
-// Lane configuration with colors and icons
+// Lane configuration with colors and icons (5-Lane Architecture)
 const LANE_CONFIG = {
   HFT: {
     label: 'HFT',
@@ -53,7 +53,7 @@ const LANE_CONFIG = {
   ALPHA: {
     label: 'ALPHA',
     sublabel: 'Directional',
-    allocation: '55%',
+    allocation: '40%',
     icon: Target,
     borderColor: 'border-amber-500',
     bgColor: 'bg-amber-500/10',
@@ -72,6 +72,28 @@ const LANE_CONFIG = {
     accentColor: 'text-purple-300',
     glowColor: 'shadow-purple-500/20',
   },
+  SPORTS: {
+    label: 'SPORTS',
+    sublabel: 'Arbitrage',
+    allocation: '10%',
+    icon: Activity,
+    borderColor: 'border-pink-500',
+    bgColor: 'bg-pink-500/10',
+    textColor: 'text-pink-400',
+    accentColor: 'text-pink-300',
+    glowColor: 'shadow-pink-500/20',
+  },
+  NEWS: {
+    label: 'NEWS',
+    sublabel: 'Event Driven',
+    allocation: '5%',
+    icon: Zap,
+    borderColor: 'border-orange-500',
+    bgColor: 'bg-orange-500/10',
+    textColor: 'text-orange-400',
+    accentColor: 'text-orange-300',
+    glowColor: 'shadow-orange-500/20',
+  },
   DEFAULT: {
     label: 'UNKNOWN',
     sublabel: 'Strategy',
@@ -85,8 +107,8 @@ const LANE_CONFIG = {
   }
 };
 
-// Lane order for consistent display
-const LANE_ORDER = ['HFT', 'ALPHA', 'GAMMA'];
+// Lane order for consistent display (5-Lane Architecture)
+const LANE_ORDER = ['HFT', 'ALPHA', 'GAMMA', 'SPORTS', 'NEWS'];
 
 /**
  * Single Lane Card Component

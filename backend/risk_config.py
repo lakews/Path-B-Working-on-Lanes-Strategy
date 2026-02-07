@@ -595,14 +595,22 @@ class RiskConfig:
         """
         Determine the capital allocation path for a given strategy.
         
-        Returns: 'HFT', 'ALPHA', or 'GAMMA'
+        Returns: 'HFT', 'ALPHA', 'GAMMA', 'SPORTS', or 'NEWS'
         
-        Architecture Note (Jan 2026 - Async-Skewed-Adaptive HFT Refactor):
-        - ARBITRAGE moved from HFT to ALPHA: Requires cross-market validation
-          which is too slow for the micro-scalper's sub-second execution.
-        - HFT is now strictly for market-making and scalping with AI guidance.
+        Architecture Note (Jan 2026 - Five-Lane Architecture):
+        - HFT: Pure speed strategies - market making, scalping (NO cross-market ops)
+        - ALPHA: Directional + cross-market (includes ARBITRAGE - too slow for HFT)
+        - GAMMA: High-volatility moonshot plays
+        - SPORTS: Sports arbitrage on prediction markets
+        - NEWS: Event-driven news sniper strategies
         """
         st = (strategy_name or '').upper()
+        
+        # SPORTS: Sports arbitrage strategies (Lane 4)
+        SPORTS_STRATEGIES = {'SPORTS', 'SPORTS_ARBITRAGE', 'SPORTS_ARB'}
+        
+        # NEWS: Event-driven strategies (Lane 5)
+        NEWS_STRATEGIES = {'NEWS', 'NEWS_SNIPER', 'NEWS_EVENT', 'NEWS_SENTIMENT'}
         
         # HFT: Pure speed strategies - market making, scalping (NO cross-market ops)
         HFT_STRATEGIES = {'HFT', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER', 'SCALP', 'HFT_SCALP'}
@@ -611,9 +619,13 @@ class RiskConfig:
         GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY', 'VOLATILITY_EXPLOITATION'}
         
         # ALPHA: Directional + cross-market (includes ARBITRAGE - too slow for HFT)
-        # Note: ARBITRAGE requires similar-market detection & validation - not HFT-suitable
         ALPHA_STRATEGIES = {'ALPHA', 'ALPHA_DIRECTIONAL', 'ARBITRAGE', 'MULTI_MARKET_ARBITRAGE'}
         
+        # Check in order: SPORTS, NEWS, HFT, GAMMA, ALPHA
+        if st in SPORTS_STRATEGIES or st.startswith('SPORTS'):
+            return 'SPORTS'
+        if st in NEWS_STRATEGIES or st.startswith('NEWS'):
+            return 'NEWS'
         if st in HFT_STRATEGIES or st.startswith('HFT'):
             return 'HFT'
         if st in GAMMA_STRATEGIES or st.startswith('GAMMA') or st.startswith('VOLATILITY'):
