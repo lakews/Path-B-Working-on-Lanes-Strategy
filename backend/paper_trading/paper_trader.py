@@ -3560,18 +3560,22 @@ class PaperTrader:
                         continue
                     
                     current_price = float(current_price)
-                    entry_price = position.get('entry_price', 0)
-                    if entry_price == 0:
+                    
+                    # Get entry prices - use yes_entry_price for consistent calculation
+                    yes_entry_price = position.get('yes_entry_price', position.get('entry_price', 0))
+                    if yes_entry_price == 0:
                         continue
                         
                     side = position.get('side', 'NO')
                     size = position.get('size', 0)
                     
-                    # Calculate P&L %
+                    # Calculate P&L % using YES prices for both sides
                     if side == 'YES':
-                        pnl_pct = (current_price - entry_price) / entry_price if entry_price > 0 else 0
+                        # YES position: profit when YES price goes UP
+                        pnl_pct = (current_price - yes_entry_price) / yes_entry_price if yes_entry_price > 0 else 0
                     else:  # NO position
-                        no_entry = 1 - entry_price
+                        # NO position: profit when YES price goes DOWN (NO price goes UP)
+                        no_entry = 1 - yes_entry_price
                         no_current = 1 - current_price
                         pnl_pct = (no_current - no_entry) / no_entry if no_entry > 0 else 0
                     
