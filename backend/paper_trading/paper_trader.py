@@ -7978,7 +7978,7 @@ class PaperTrader:
             "win_rate": win_rate,
             "max_drawdown": self.max_drawdown,
             "circuit_breaker_triggered": self.circuit_breaker_triggered,  # Whether max drawdown was hit
-            "open_positions": len(self.paper_positions),
+            "open_positions": len(positions_snapshot),  # Use snapshot for consistency
             "strategy_results": strategy_results,
             "asset_class_results": asset_class_results,
             "execution_path_stats": execution_path_stats,  # HFT vs Alpha breakdown
