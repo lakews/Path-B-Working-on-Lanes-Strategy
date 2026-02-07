@@ -3164,9 +3164,9 @@ const PaperTrading = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {/* Row 1: Key Metrics */}
               <MetricCard 
-                title="Capital" 
-                value={`$${(status.current_capital || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`} 
-                subtitle={`Initial: $${(status.initial_capital || 10000).toLocaleString()}`} 
+                title="Total Equity" 
+                value={`$${(status.total_equity || status.current_capital || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`} 
+                subtitle={`Cash: $${(status.current_capital || 0).toLocaleString(undefined, {maximumFractionDigits: 0})} | Deployed: $${(status.deployed_capital || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}`} 
                 icon={Wallet} 
                 color="blue" 
               />
