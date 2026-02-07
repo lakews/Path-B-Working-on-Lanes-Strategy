@@ -5169,11 +5169,6 @@ class PaperTrader:
                                     sizing_breakdown: Dict = None):
         """Execute a paper trade entry with adaptive sizing info"""
         try:
-            # Check if we already have a position (shouldn't happen but let's be safe)
-            if market_id in self.paper_positions:
-                logger.warning(f"[ENTRY-SKIP] Already have position in {market_id[:16]}")
-                return
-            
             # ============================================
             # STRICT PRICE VALIDATION - NO FALLBACKS
             # ============================================
