@@ -2610,6 +2610,7 @@ class PaperTrader:
                     # Do NOT skip/block - process through sports pipeline instead
                     if is_sports:
                         sports_config = get_sports_config()
+                        logger.info(f"[SPORTS ROUTING] Market: {question[:40]}... | Enabled: {sports_config.enabled}")
                         
                         if sports_config.enabled:
                             # Route to Sports Strategy (bypass Alpha filters)
