@@ -2150,7 +2150,7 @@ class PaperTrader:
             # STEP 7: INVENTORY GUARD
             # =============================================================
             hft_positions = [p for p in self.paper_positions.values() 
-                           if self._get_strategy_path(p.get('strategy', '')) == 'HFT']
+                           if RISK.get_strategy_path(p.get('strategy', '')) == 'HFT']
             total_hft_value = sum(p.get('size', 0) for p in hft_positions)
             hft_long_value = sum(p.get('size', 0) for p in hft_positions if p.get('side') == 'YES')
             
