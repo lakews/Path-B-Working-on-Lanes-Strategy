@@ -262,6 +262,9 @@ class PaperTrader:
     """
     
     def __init__(self, continuous_mode: bool = False, use_config_capital: bool = True):
+        import asyncio
+        self._capital_lock = asyncio.Lock()  # Lock for thread-safe capital operations
+        
         self.db = get_db()
         self.rl_engine = RLAdaptiveEngine()
         self.market_data_service = MarketDataService()
