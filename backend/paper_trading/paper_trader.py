@@ -5404,21 +5404,23 @@ class PaperTrader:
                 }
             }
             
-            self.paper_positions[market_id] = position
+            # Add position and deduct capital atomically
+            async with self._capital_lock:
+                self.paper_positions[market_id] = position
+                
+                # Only deduct from capital if we have enough
+                if self.current_capital >= size:
+                    self.current_capital -= size
+                else:
+                    # Limit the actual size to available capital
+                    actual_size = max(0, self.current_capital)
+                    self.current_capital = 0
+                    position['size'] = actual_size  # Update position with actual size
+                
+                self.total_trades += 1
             
             # PERSIST: Save position to database for survival across restarts
             await self._save_position_to_db(market_id, position)
-            
-            # Only deduct from capital if we have enough
-            if self.current_capital >= size:
-                self.current_capital -= size
-            else:
-                # Limit the actual size to available capital
-                actual_size = max(0, self.current_capital)
-                self.current_capital = 0
-                position['size'] = actual_size  # Update position with actual size
-            
-            self.total_trades += 1
             
             # Track strategy stats
             if strategy in self.strategy_stats:
