@@ -6999,7 +6999,7 @@ class PaperTrader:
                                     'strategy': strategy,
                                     'pnl_pct': (current_price - entry_price) / entry_price if entry_price > 0 else 0
                                 })
-                            elif decision.action == ExitAction.PARTIAL_EXIT:
+                            elif decision.action == ExitAction.PARTIAL_CLOSE:
                                 # Handle partial exit (e.g., free roll)
                                 if not position.get('free_roll_done'):
                                     position['free_roll_done'] = True
