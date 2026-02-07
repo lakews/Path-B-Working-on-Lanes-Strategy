@@ -9,7 +9,7 @@ import asyncio
 import websockets
 import json
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://newshub-trader.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://quanthub-14.preview.emergentagent.com').rstrip('/')
 
 class TestHealthEndpoint:
     """Test /api/health endpoint"""
