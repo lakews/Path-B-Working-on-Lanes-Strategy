@@ -5601,23 +5601,24 @@ class PaperTrader:
             self.trade_returns.append(return_pct)
             logger.info(f"📊 Trade return recorded: {return_pct:.2f}% | Total returns tracked: {len(self.trade_returns)}")
             
-            # Update metrics
-            self.total_pnl += pnl
-            self.current_capital += size + pnl
-            
-            # Calculate total equity for accurate peak tracking
-            # total_equity = cash + deployed + unrealized
-            actual_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
-            total_equity = self.current_capital + actual_deployed + self.unrealized_pnl
-            
-            # Track peak based on TOTAL EQUITY (not just cash)
-            # This ensures peak reflects true highest value including open positions
-            if total_equity > self.peak_capital:
-                self.peak_capital = total_equity
-            
-            # Calculate drawdown based on total equity
-            drawdown = (self.peak_capital - total_equity) / self.peak_capital if self.peak_capital > 0 else 0
-            self.max_drawdown = max(self.max_drawdown, drawdown)
+            # Update metrics atomically
+            async with self._capital_lock:
+                self.total_pnl += pnl
+                self.current_capital += size + pnl
+                
+                # Calculate total equity for accurate peak tracking
+                # total_equity = cash + deployed + unrealized
+                actual_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+                total_equity = self.current_capital + actual_deployed + self.unrealized_pnl
+                
+                # Track peak based on TOTAL EQUITY (not just cash)
+                # This ensures peak reflects true highest value including open positions
+                if total_equity > self.peak_capital:
+                    self.peak_capital = total_equity
+                
+                # Calculate drawdown based on total equity
+                drawdown = (self.peak_capital - total_equity) / self.peak_capital if self.peak_capital > 0 else 0
+                self.max_drawdown = max(self.max_drawdown, drawdown)
             
             # CIRCUIT BREAKER: Check if drawdown exceeds max allowed (from Settings)
             drawdown_pct = drawdown * 100
