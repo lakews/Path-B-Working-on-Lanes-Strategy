@@ -7679,11 +7679,19 @@ class PaperTrader:
             duration_seconds = 0
         
         # =================================================================
+        # TAKE SNAPSHOT FOR CONSISTENT STATE
+        # =================================================================
+        # Copy current values to avoid race conditions during calculation
+        current_capital_snapshot = self.current_capital
+        total_pnl_snapshot = self.total_pnl
+        positions_snapshot = dict(self.paper_positions)  # Shallow copy
+        
+        # =================================================================
         # RECALCULATE UNREALIZED P&L ON-DEMAND FOR ACCURACY
         # =================================================================
         # Don't rely on cached position values - calculate fresh using latest prices
         total_unrealized = 0.0
-        for market_id, position in self.paper_positions.items():
+        for market_id, position in positions_snapshot.items():
             size = position.get('size', 0)
             if size <= 0:
                 continue
