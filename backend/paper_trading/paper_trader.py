@@ -7940,14 +7940,14 @@ class PaperTrader:
         
         unrealized_distribution = self._calculate_distribution_from_returns(unrealized_returns) if unrealized_returns else {}
         
-        # Calculate total P&L including unrealized
-        combined_pnl = self.total_pnl + self.unrealized_pnl
+        # Calculate total P&L including unrealized (using snapshots)
+        combined_pnl = total_pnl_snapshot + self.unrealized_pnl
         
-        # Calculate ACTUAL deployed capital (sum of open position sizes)
-        actual_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+        # Calculate ACTUAL deployed capital (sum of open position sizes from snapshot)
+        actual_deployed = sum(p.get('size', 0) for p in positions_snapshot.values())
         
-        # Calculate total equity = cash + deployed + unrealized
-        total_equity = self.current_capital + actual_deployed + self.unrealized_pnl
+        # Calculate total equity = cash + deployed + unrealized (using snapshot)
+        total_equity = current_capital_snapshot + actual_deployed + self.unrealized_pnl
         
         # Calculate TRUE drawdown based on total equity, not just cash
         true_drawdown_pct = ((self.peak_capital - total_equity) / self.peak_capital * 100) if self.peak_capital > 0 else 0
