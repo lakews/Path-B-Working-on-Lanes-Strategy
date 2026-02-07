@@ -6865,13 +6865,34 @@ class PaperTrader:
                                 if exit_order.reason.value == 'free_roll':
                                     # Mark free roll as done, reduce position
                                     position['free_roll_done'] = True
+                                    
+                                    # CORRECT CALCULATION: Return value based on shares sold
+                                    # Size is in USD, we need to calculate shares and exit value
+                                    entry_price = position.get('yes_entry_price', position.get('entry_price', 0.5))
+                                    if entry_price > 0:
+                                        shares_sold = exit_order.size / entry_price
+                                        exit_value = shares_sold * exit_order.price
+                                    else:
+                                        exit_value = exit_order.size  # Fallback
+                                    
                                     position['size'] = position['size'] - exit_order.size
-                                    self.current_capital += exit_order.size * exit_order.price
+                                    self.current_capital += exit_value
+                                    
+                                    # Track realized P&L for free roll
+                                    free_roll_pnl = exit_value - exit_order.size
+                                    self.total_pnl += free_roll_pnl
+                                    logger.info(f"🐋 [FREE ROLL] Sold ${exit_order.size:.2f} @ {exit_order.price:.4f} -> ${exit_value:.2f} (P&L: ${free_roll_pnl:.2f})")
                                 else:
                                     # Full exit (moonbag or stop_loss)
-                                    await self._close_position(
+                                    # Build market_data from position and current prices
+                                    market_data = {
+                                        'yes_price': exit_order.price,
+                                        'token_ids': position.get('token_ids', []),
+                                        'order_book': {'bids': [], 'asks': []}  # Will fetch fresh
+                                    }
+                                    await self._execute_paper_exit(
                                         exit_order.market_id,
-                                        exit_order.price,
+                                        market_data,
                                         f"gamma_{exit_order.reason.value}"
                                     )
                     except Exception as e:
