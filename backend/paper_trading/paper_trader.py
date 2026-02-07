@@ -6867,6 +6867,132 @@ class PaperTrader:
                     except Exception as e:
                         logger.debug(f"[GAMMA] Exit signal check error: {e}")
                     
+                    # =========================================================
+                    # UNIVERSAL EXIT ENGINE (All Strategies Including Sports)
+                    # =========================================================
+                    # This ensures ALL positions are evaluated for exit regardless
+                    # of which loop created them (Alpha, Sports, HFT, Gamma, News)
+                    # 
+                    # Root cause fix: Sports positions were skipping exit evaluation
+                    # because they `continue` in the Alpha loop before reaching
+                    # the _evaluate_exit() call.
+                    # =========================================================
+                    try:
+                        positions_to_close = []
+                        
+                        for market_id, position in list(self.paper_positions.items()):
+                            strategy = position.get('strategy', 'arbitrage')
+                            asset_class = position.get('asset_class', 'unknown')
+                            side = position.get('side', 'YES')
+                            
+                            # Get entry price (use yes_entry_price for consistency)
+                            yes_entry_price = position.get('yes_entry_price', position.get('entry_price', 0.5))
+                            
+                            # Get current price from market_prices (already fetched above)
+                            current_yes_price = market_prices.get(market_id)
+                            if current_yes_price is None:
+                                # Try to find in the markets list
+                                for m in markets:
+                                    if m.get('id') == market_id:
+                                        current_yes_price = m.get('yes_price')
+                                        break
+                            
+                            if current_yes_price is None or current_yes_price == 0:
+                                # Can't evaluate without price
+                                continue
+                            
+                            current_yes_price = float(current_yes_price)
+                            
+                            # Calculate current price for the side we're holding
+                            if side == 'YES':
+                                entry_price = yes_entry_price
+                                current_price = current_yes_price
+                            else:
+                                entry_price = 1 - yes_entry_price
+                                current_price = 1 - current_yes_price
+                            
+                            # Calculate duration
+                            entry_time_str = position.get('entry_time')
+                            if entry_time_str:
+                                try:
+                                    entry_time = datetime.fromisoformat(entry_time_str.replace('Z', '+00:00'))
+                                    duration_hours = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
+                                except:
+                                    duration_hours = 0
+                            else:
+                                duration_hours = 0
+                            
+                            # Get trade status and peak price
+                            trade_status = position.get('trade_status', 'ACTIVE')
+                            peak_price = position.get('peak_price', entry_price)
+                            
+                            # Call ExitEngine
+                            decision = self.exit_engine.check_exit(
+                                strategy=strategy,
+                                asset_class=asset_class,
+                                entry_price=entry_price,
+                                current_price=current_price,
+                                position_size_usd=position.get('size', 0),
+                                duration_hours=duration_hours,
+                                hours_to_expiry=48.0,  # Default for sports
+                                current_spread_pct=0.02,
+                                trade_status=trade_status,
+                                peak_price=peak_price,
+                                side=side
+                            )
+                            
+                            # Update position with exit engine decision
+                            position['exit_engine_decision'] = {
+                                'action': decision.action.value,
+                                'reason': decision.reason.value,
+                                'checked_at': datetime.now(timezone.utc).isoformat()
+                            }
+                            
+                            # Check if we should close
+                            if decision.action == ExitAction.CLOSE_ALL:
+                                positions_to_close.append({
+                                    'market_id': market_id,
+                                    'current_price': current_price,
+                                    'reason': decision.reason.value,
+                                    'strategy': strategy,
+                                    'pnl_pct': (current_price - entry_price) / entry_price if entry_price > 0 else 0
+                                })
+                            elif decision.action == ExitAction.PARTIAL_EXIT:
+                                # Handle partial exit (e.g., free roll)
+                                if not position.get('free_roll_done'):
+                                    position['free_roll_done'] = True
+                                    position['trade_status'] = 'FREE_RIDE'
+                                    logger.info(
+                                        f"🎢 [FREE RIDE] {strategy} | {market_id[:16]}... | "
+                                        f"Letting profits run"
+                                    )
+                        
+                        # Execute closures
+                        for close_info in positions_to_close:
+                            market_id = close_info['market_id']
+                            strategy = close_info['strategy']
+                            reason = close_info['reason']
+                            pnl_pct = close_info['pnl_pct']
+                            
+                            # Log the exit
+                            emoji = "🏈" if strategy == 'sports_arbitrage' else "📊"
+                            logger.info(
+                                f"{emoji} [EXIT] {strategy} | {market_id[:16]}... | "
+                                f"Reason: {reason} | P&L: {pnl_pct:.2%}"
+                            )
+                            
+                            # Close the position
+                            await self._close_position(
+                                market_id,
+                                close_info['current_price'],
+                                f"{strategy}_{reason}"
+                            )
+                            
+                    except Exception as e:
+                        logger.error(f"[EXIT ENGINE] Error in universal exit check: {e}")
+                        import traceback
+                        traceback.print_exc()
+                    
                     # Calculate DEPLOYED capital (sum of position sizes)
                     deployed_capital = sum(p.get('size', 0) for p in self.paper_positions.values())
                     
