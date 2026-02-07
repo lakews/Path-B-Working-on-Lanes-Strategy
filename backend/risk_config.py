@@ -565,10 +565,10 @@ class RiskConfig:
         
         # Map specific strategies to paths (Jan 2026: Aligned with get_strategy_path)
         # HFT: Pure speed strategies - market making, scalping (NO cross-market ops)
-        HFT_STRATEGIES = {'HFT', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER', 'SCALP', 'HFT_SCALP'}
+        HFT_STRATEGIES = {'HFT', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER', 'SCALP', 'HFT_SCALP', 'VOLATILITY_EXPLOITATION'}
         
         # GAMMA: High-volatility moonshot plays
-        GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY', 'VOLATILITY_EXPLOITATION'}
+        GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY'}
         
         # ALPHA: Directional + cross-market (includes ARBITRAGE - too slow for HFT)
         ALPHA_STRATEGIES = {'ALPHA', 'ALPHA_DIRECTIONAL', 'ARBITRAGE', 'MULTI_MARKET_ARBITRAGE'}
@@ -614,10 +614,10 @@ class RiskConfig:
         NEWS_STRATEGIES = {'NEWS', 'NEWS_SNIPER', 'NEWS_EVENT', 'NEWS_SENTIMENT'}
         
         # HFT: Pure speed strategies - market making, scalping (NO cross-market ops)
-        HFT_STRATEGIES = {'HFT', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER', 'SCALP', 'HFT_SCALP'}
+        HFT_STRATEGIES = {'HFT', 'DELTA_NEUTRAL', 'MARKET_MAKING', 'MAKER', 'SCALP', 'HFT_SCALP', 'VOLATILITY_EXPLOITATION'}
         
         # GAMMA: High-volatility moonshot plays
-        GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY', 'VOLATILITY_EXPLOITATION'}
+        GAMMA_STRATEGIES = {'GAMMA', 'GAMMA_SCALP', 'WHALE', 'MOONSHOT', 'CONVEXITY'}
         
         # ALPHA: Directional + cross-market (includes ARBITRAGE - too slow for HFT)
         ALPHA_STRATEGIES = {'ALPHA', 'ALPHA_DIRECTIONAL', 'ARBITRAGE', 'MULTI_MARKET_ARBITRAGE'}
