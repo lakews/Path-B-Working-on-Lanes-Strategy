@@ -5399,8 +5399,13 @@ class PaperTrader:
                 }
             }
             
-            # Add position and deduct capital atomically
+            # Add position and deduct capital atomically (with duplicate check inside lock)
             async with self._capital_lock:
+                # Check for duplicate INSIDE lock to prevent race condition
+                if market_id in self.paper_positions:
+                    logger.warning(f"[ENTRY-SKIP] Already have position in {market_id[:16]} (race prevented)")
+                    return
+                
                 self.paper_positions[market_id] = position
                 
                 # Only deduct from capital if we have enough
