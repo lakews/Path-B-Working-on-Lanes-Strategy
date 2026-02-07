@@ -5030,7 +5030,7 @@ class PaperTrader:
                 'pnl': realized_pnl,
                 'pnl_pct': pnl_pct,
                 'strategy': position.get('strategy', 'unknown'),
-                'strategy_lane': strategy_lane,  # Five-Lane: HFT, ALPHA, or GAMMA
+                'strategy_lane': strategy_lane,  # Five-Lane: HFT, ALPHA, GAMMA, SPORTS, or NEWS
                 'asset_class': position.get('asset_class', 'unknown'),
                 'exit_reason': f"partial_{reason}",
                 'entry_time': position.get('entry_time'),
@@ -5425,7 +5425,7 @@ class PaperTrader:
                 "entry_price": display_entry_price,  # Display price for the side traded
                 "yes_entry_price": actual_entry_price,  # Keep YES price for reference
                 "strategy": strategy,
-                "strategy_lane": strategy_lane,  # Five-Lane: HFT, ALPHA, or GAMMA
+                "strategy_lane": strategy_lane,  # Five-Lane: HFT, ALPHA, GAMMA, SPORTS, or NEWS
                 "asset_class": asset_class,
                 "rl_action": rl_action,
                 "rl_confidence": rl_confidence,
@@ -5737,7 +5737,7 @@ class PaperTrader:
                 "pnl_pct": pnl_pct,
                 "hold_time_seconds": hold_time_seconds,
                 "strategy": strategy,
-                "strategy_lane": strategy_lane,  # Five-Lane: HFT, ALPHA, or GAMMA
+                "strategy_lane": strategy_lane,  # Five-Lane: HFT, ALPHA, GAMMA, SPORTS, or NEWS
                 "asset_class": asset_class,
                 "exit_reason": exit_reason,
                 "reward_signal": reward,
