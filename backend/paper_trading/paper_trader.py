@@ -7919,7 +7919,7 @@ class PaperTrader:
             "trade_returns": self.trade_returns[-100:],  # Last 100 returns for charts
             "equity_curve": self.equity_curve[-200:],  # Last 200 points for better charts
             "strategy_equity": self.strategy_equity,  # Running P&L by strategy
-            "lane_equity": self.lane_equity,  # Five-Lane Lane P&L (HFT/ALPHA/GAMMA)
+            "lane_equity": self.lane_equity,  # Five-Lane P&L (HFT/ALPHA/GAMMA/SPORTS/NEWS)
             "asset_class_equity": self.asset_class_equity,  # Running P&L by asset class
             "enabled_strategies": self.enabled_strategies,
             "enabled_asset_classes": self.enabled_asset_classes,
