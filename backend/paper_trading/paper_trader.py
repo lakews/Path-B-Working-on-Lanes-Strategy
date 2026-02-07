@@ -7703,89 +7703,100 @@ class PaperTrader:
                 }
         
         # ==============================================================
-        # TWO-SPEED ARCHITECTURE: HFT vs ALPHA BREAKDOWN
+        # FIVE-LANE ARCHITECTURE: Complete Lane Breakdown
         # ==============================================================
-        # HFT Path: delta_neutral, volatility_exploitation (fast, reactive)
-        # Alpha Path: alpha_directional, arbitrage (slower, ML-driven)
-        HFT_STRATEGIES = {'delta_neutral', 'volatility_exploitation'}
-        ALPHA_STRATEGIES = {'alpha_directional', 'arbitrage'}
-        
-        # Aggregate by execution path
-        hft_stats = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
-        alpha_stats = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
-        
-        for strategy, stats in self.strategy_stats.items():
-            if strategy in HFT_STRATEGIES:
-                hft_stats['trades'] += stats.get('trades', 0)
-                hft_stats['wins'] += stats.get('wins', 0)
-                hft_stats['pnl'] += stats.get('pnl', 0)
-                hft_stats['gross_profit'] += stats.get('gross_profit', 0)
-                hft_stats['gross_loss'] += stats.get('gross_loss', 0)
-            elif strategy in ALPHA_STRATEGIES:
-                alpha_stats['trades'] += stats.get('trades', 0)
-                alpha_stats['wins'] += stats.get('wins', 0)
-                alpha_stats['pnl'] += stats.get('pnl', 0)
-                alpha_stats['gross_profit'] += stats.get('gross_profit', 0)
-                alpha_stats['gross_loss'] += stats.get('gross_loss', 0)
-        
-        # Calculate HFT/Alpha capital allocation
-        hft_capital = self.deployed_capital * (self.hft_allocation_pct / 100)
-        alpha_capital = self.deployed_capital * (self.alpha_allocation_pct / 100)
-        
-        # Calculate deployed capital by path (from open positions)
-        hft_deployed = sum(
-            p.get('size', 0) for p in self.paper_positions.values()
-            if p.get('strategy') in HFT_STRATEGIES
-        )
-        alpha_deployed = sum(
-            p.get('size', 0) for p in self.paper_positions.values()
-            if p.get('strategy') in ALPHA_STRATEGIES
-        )
-        
-        # Calculate unrealized P&L by path
-        hft_unrealized = sum(
-            p.get('unrealized_pnl', 0) for p in self.paper_positions.values()
-            if p.get('strategy') in HFT_STRATEGIES
-        )
-        alpha_unrealized = sum(
-            p.get('unrealized_pnl', 0) for p in self.paper_positions.values()
-            if p.get('strategy') in ALPHA_STRATEGIES
-        )
-        
-        execution_path_stats = {
-            'hft': {
-                'name': 'HFT (Fast Path)',
-                'strategies': list(HFT_STRATEGIES),
-                'allocated_capital': round(hft_capital, 2),
-                'deployed_capital': round(hft_deployed, 2),
-                'utilization_pct': round((hft_deployed / hft_capital * 100) if hft_capital > 0 else 0, 1),
-                'realized_pnl': round(hft_stats['pnl'], 2),
-                'unrealized_pnl': round(hft_unrealized, 2),
-                'total_pnl': round(hft_stats['pnl'] + hft_unrealized, 2),
-                'return_pct': round((hft_stats['pnl'] / hft_capital * 100) if hft_capital > 0 else 0, 2),
-                'total_return_pct': round(((hft_stats['pnl'] + hft_unrealized) / hft_capital * 100) if hft_capital > 0 else 0, 2),
-                'trades': hft_stats['trades'],
-                'wins': hft_stats['wins'],
-                'win_rate': round(hft_stats['wins'] / hft_stats['trades'] * 100 if hft_stats['trades'] > 0 else 0, 1),
-                'profit_factor': round(hft_stats['gross_profit'] / hft_stats['gross_loss'] if hft_stats['gross_loss'] > 0 else (2.0 if hft_stats['gross_profit'] > 0 else 0), 2)
-            },
-            'alpha': {
-                'name': 'Alpha (Slow Path)',
-                'strategies': list(ALPHA_STRATEGIES),
-                'allocated_capital': round(alpha_capital, 2),
-                'deployed_capital': round(alpha_deployed, 2),
-                'utilization_pct': round((alpha_deployed / alpha_capital * 100) if alpha_capital > 0 else 0, 1),
-                'realized_pnl': round(alpha_stats['pnl'], 2),
-                'unrealized_pnl': round(alpha_unrealized, 2),
-                'total_pnl': round(alpha_stats['pnl'] + alpha_unrealized, 2),
-                'return_pct': round((alpha_stats['pnl'] / alpha_capital * 100) if alpha_capital > 0 else 0, 2),
-                'total_return_pct': round(((alpha_stats['pnl'] + alpha_unrealized) / alpha_capital * 100) if alpha_capital > 0 else 0, 2),
-                'trades': alpha_stats['trades'],
-                'wins': alpha_stats['wins'],
-                'win_rate': round(alpha_stats['wins'] / alpha_stats['trades'] * 100 if alpha_stats['trades'] > 0 else 0, 1),
-                'profit_factor': round(alpha_stats['gross_profit'] / alpha_stats['gross_loss'] if alpha_stats['gross_loss'] > 0 else (2.0 if alpha_stats['gross_profit'] > 0 else 0), 2)
-            }
+        # Lane 1: HFT - delta_neutral, volatility_exploitation (fast, reactive)
+        # Lane 2: ALPHA - alpha_directional, arbitrage (slower, ML-driven)
+        # Lane 3: GAMMA - gamma_scalp, whale (moonshot plays)
+        # Lane 4: SPORTS - sports_arbitrage (real odds arbitrage)
+        # Lane 5: NEWS - news_sniper (event-driven)
+        LANE_STRATEGIES = {
+            'HFT': {'delta_neutral', 'volatility_exploitation', 'hft_scalp', 'market_making'},
+            'ALPHA': {'alpha_directional', 'arbitrage', 'multi_market_arbitrage'},
+            'GAMMA': {'gamma_scalp', 'whale', 'moonshot', 'convexity'},
+            'SPORTS': {'sports_arbitrage', 'sports_arb'},
+            'NEWS': {'news_sniper', 'news_event', 'news_sentiment'}
         }
+        
+        # Initialize stats for all 5 lanes
+        lane_stats = {}
+        for lane in ['HFT', 'ALPHA', 'GAMMA', 'SPORTS', 'NEWS']:
+            lane_stats[lane] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
+        
+        # Aggregate by lane using RISK.get_strategy_path for accurate mapping
+        for strategy, stats in self.strategy_stats.items():
+            lane = RISK.get_strategy_path(strategy)
+            if lane in lane_stats:
+                lane_stats[lane]['trades'] += stats.get('trades', 0)
+                lane_stats[lane]['wins'] += stats.get('wins', 0)
+                lane_stats[lane]['pnl'] += stats.get('pnl', 0)
+                lane_stats[lane]['gross_profit'] += stats.get('gross_profit', 0)
+                lane_stats[lane]['gross_loss'] += stats.get('gross_loss', 0)
+        
+        # Calculate capital allocation by lane
+        # Default allocations: HFT=35%, ALPHA=40%, GAMMA=10%, SPORTS=15% (overlay), NEWS=5% (overlay)
+        lane_allocation = {
+            'HFT': self.hft_allocation_pct / 100,
+            'ALPHA': self.alpha_allocation_pct / 100,
+            'GAMMA': self.gamma_allocation_pct / 100 if hasattr(self, 'gamma_allocation_pct') else 0.10,
+            'SPORTS': 0.15,  # 15% overlay allocation per spec
+            'NEWS': 0.05    # 5% overlay allocation
+        }
+        
+        # Calculate deployed capital and unrealized P&L by lane
+        lane_deployed = {lane: 0.0 for lane in lane_stats}
+        lane_unrealized = {lane: 0.0 for lane in lane_stats}
+        
+        for pos in self.paper_positions.values():
+            strategy = pos.get('strategy', 'unknown')
+            lane = RISK.get_strategy_path(strategy)
+            if lane in lane_deployed:
+                lane_deployed[lane] += pos.get('size', 0)
+                lane_unrealized[lane] += pos.get('unrealized_pnl', 0)
+        
+        # Build execution_path_stats with all 5 lanes
+        execution_path_stats = {}
+        lane_names = {
+            'HFT': 'HFT (Lane 1 - Fast Path)',
+            'ALPHA': 'Alpha (Lane 2 - Directional)',
+            'GAMMA': 'Gamma (Lane 3 - Moonshots)',
+            'SPORTS': 'Sports (Lane 4 - Arbitrage)',
+            'NEWS': 'News (Lane 5 - Event Driven)'
+        }
+        
+        for lane in ['HFT', 'ALPHA', 'GAMMA', 'SPORTS', 'NEWS']:
+            stats = lane_stats[lane]
+            allocated = self.deployed_capital * lane_allocation[lane]
+            deployed = lane_deployed[lane]
+            unrealized = lane_unrealized[lane]
+            
+            execution_path_stats[lane.lower()] = {
+                'name': lane_names[lane],
+                'strategies': list(LANE_STRATEGIES.get(lane, set())),
+                'allocated_capital': round(allocated, 2),
+                'deployed_capital': round(deployed, 2),
+                'utilization_pct': round((deployed / allocated * 100) if allocated > 0 else 0, 1),
+                'realized_pnl': round(stats['pnl'], 2),
+                'unrealized_pnl': round(unrealized, 2),
+                'total_pnl': round(stats['pnl'] + unrealized, 2),
+                'return_pct': round((stats['pnl'] / allocated * 100) if allocated > 0 else 0, 2),
+                'total_return_pct': round(((stats['pnl'] + unrealized) / allocated * 100) if allocated > 0 else 0, 2),
+                'trades': stats['trades'],
+                'wins': stats['wins'],
+                'win_rate': round(stats['wins'] / stats['trades'] * 100 if stats['trades'] > 0 else 0, 1),
+                'volume': round(deployed, 2),
+                'profit_factor': round(stats['gross_profit'] / stats['gross_loss'] if stats['gross_loss'] > 0 else (2.0 if stats['gross_profit'] > 0 else 0), 2)
+            }
+        
+        # Keep legacy hft/alpha keys for backward compatibility
+        hft_stats = lane_stats['HFT']
+        alpha_stats = lane_stats['ALPHA']
+        hft_capital = self.deployed_capital * lane_allocation['HFT']
+        alpha_capital = self.deployed_capital * lane_allocation['ALPHA']
+        hft_deployed = lane_deployed['HFT']
+        alpha_deployed = lane_deployed['ALPHA']
+        hft_unrealized = lane_unrealized['HFT']
+        alpha_unrealized = lane_unrealized['ALPHA']
         
         # Calculate asset class results with profit factors
         # Include unrealized P&L from open positions
