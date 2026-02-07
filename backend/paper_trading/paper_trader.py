@@ -964,6 +964,9 @@ class PaperTrader:
         # Load user configuration
         await self._load_user_config()
         
+        # Mark session as started (prevents capital reset on hot reload)
+        self._session_started = True
+        
         # Load RL model
         await self.rl_engine.load_model()
         
