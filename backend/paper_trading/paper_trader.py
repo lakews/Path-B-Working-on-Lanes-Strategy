@@ -5441,6 +5441,11 @@ class PaperTrader:
                     logger.warning(f"[ENTRY-SKIP] Already have position in {market_id[:16]} (race prevented)")
                     return
                 
+                # Store pre-state for debugging
+                pre_capital = self.current_capital
+                pre_positions = len(self.paper_positions)
+                pre_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+                
                 self.paper_positions[market_id] = position
                 
                 # Only deduct from capital if we have enough
@@ -5453,6 +5458,12 @@ class PaperTrader:
                     position['size'] = actual_size  # Update position with actual size
                 
                 self.total_trades += 1
+                
+                # Validate accounting after entry
+                post_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+                expected_capital = pre_capital - size
+                if abs(self.current_capital - expected_capital) > 0.01:
+                    logger.error(f"[CAPITAL BUG] Entry: Expected capital ${expected_capital:.2f} but got ${self.current_capital:.2f}")
             
             # PERSIST: Save position to database for survival across restarts
             await self._save_position_to_db(market_id, position)
