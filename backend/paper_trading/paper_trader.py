@@ -7012,12 +7012,19 @@ class PaperTrader:
                                 f"Reason: {reason} | P&L: {pnl_pct:.2%}"
                             )
                             
-                            # Close the position
-                            await self._close_position(
-                                market_id,
-                                close_info['current_price'],
-                                f"{strategy}_{reason}"
-                            )
+                            # Close the position using proper exit method
+                            position = self.paper_positions.get(market_id)
+                            if position:
+                                market_data = {
+                                    'yes_price': close_info['current_price'],
+                                    'token_ids': position.get('token_ids', []),
+                                    'order_book': {'bids': [], 'asks': []}  # Will fetch fresh
+                                }
+                                await self._execute_paper_exit(
+                                    market_id,
+                                    market_data,
+                                    f"{strategy}_{reason}"
+                                )
                             
                     except Exception as e:
                         logger.error(f"[EXIT ENGINE] Error in universal exit check: {e}")
