@@ -5570,17 +5570,25 @@ class PaperTrader:
             self.total_pnl += pnl
             self.current_capital += size + pnl
             
-            # Track drawdown
-            if self.current_capital > self.peak_capital:
-                self.peak_capital = self.current_capital
-            drawdown = (self.peak_capital - self.current_capital) / self.peak_capital
+            # Calculate total equity for accurate peak tracking
+            # total_equity = cash + deployed + unrealized
+            actual_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+            total_equity = self.current_capital + actual_deployed + self.unrealized_pnl
+            
+            # Track peak based on TOTAL EQUITY (not just cash)
+            # This ensures peak reflects true highest value including open positions
+            if total_equity > self.peak_capital:
+                self.peak_capital = total_equity
+            
+            # Calculate drawdown based on total equity
+            drawdown = (self.peak_capital - total_equity) / self.peak_capital if self.peak_capital > 0 else 0
             self.max_drawdown = max(self.max_drawdown, drawdown)
             
             # CIRCUIT BREAKER: Check if drawdown exceeds max allowed (from Settings)
             drawdown_pct = drawdown * 100
             if drawdown_pct >= self.max_drawdown_pct:
                 logger.warning(f"🚨 CIRCUIT BREAKER TRIGGERED! Drawdown {drawdown_pct:.2f}% >= {self.max_drawdown_pct}% limit")
-                logger.warning(f"   Peak: ${self.peak_capital:.2f} | Current: ${self.current_capital:.2f} | Loss: ${self.peak_capital - self.current_capital:.2f}")
+                logger.warning(f"   Peak: ${self.peak_capital:.2f} | Equity: ${total_equity:.2f} (Cash: ${self.current_capital:.2f} + Deployed: ${actual_deployed:.2f} + Unrealized: ${self.unrealized_pnl:.2f})")
                 self.circuit_breaker_triggered = True
                 # Stop accepting new trades - will be checked in main loop
             
