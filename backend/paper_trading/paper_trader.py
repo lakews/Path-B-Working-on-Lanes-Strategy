@@ -707,10 +707,18 @@ class PaperTrader:
                     self.enabled_asset_classes = user_config["enabled_asset_classes"]
                 
                 # Load trading parameters - DB IS THE SOURCE OF TRUTH
+                # NOTE: initial_capital should only be set at session START, not during hot reload
+                # Hot reload should preserve current_capital (accumulated P&L)
                 if "initial_capital" in user_config:
-                    self.initial_capital = float(user_config["initial_capital"])
-                    self.current_capital = self.initial_capital
-                    self.peak_capital = self.initial_capital
+                    new_initial = float(user_config["initial_capital"])
+                    # Only reset capital if this is a NEW session (current_capital == 0 or uninitialized)
+                    if self.current_capital == 0 or not hasattr(self, '_session_started'):
+                        self.initial_capital = new_initial
+                        self.current_capital = new_initial
+                        self.peak_capital = new_initial
+                    else:
+                        # Hot reload: update initial_capital for reference but DON'T reset current_capital
+                        self.initial_capital = new_initial
                 if "capital_deployment_pct" in user_config:
                     self.capital_deployment_pct = float(user_config["capital_deployment_pct"])
                 if "max_position_size_pct" in user_config:
