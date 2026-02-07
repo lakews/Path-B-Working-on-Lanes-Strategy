@@ -3482,13 +3482,25 @@ class PaperTrader:
             
             if positions:
                 logger.info(f"[PERSIST] Loading {len(positions)} open positions from database")
+                total_deployed = 0
                 for pos in positions:
                     market_id = pos.get("market_id")
                     if market_id:
                         # Remove MongoDB _id field
                         pos.pop("_id", None)
                         self.paper_positions[market_id] = pos
-                        logger.info(f"[PERSIST] Restored position: {pos.get('market_question', market_id)[:40]}... @ {pos.get('entry_price', 0):.4f}")
+                        
+                        # Track capital deployed in restored positions
+                        position_size = pos.get('size', 0)
+                        total_deployed += position_size
+                        
+                        logger.info(f"[PERSIST] Restored position: {pos.get('market_question', market_id)[:40]}... @ {pos.get('entry_price', 0):.4f} (${position_size:.2f})")
+                
+                # CRITICAL: Adjust current_capital to account for capital deployed in restored positions
+                # Without this, exiting these positions would add capital that was never deducted
+                async with self._capital_lock:
+                    self.current_capital -= total_deployed
+                    logger.info(f"[PERSIST] Adjusted capital for restored positions: -${total_deployed:.2f} (Cash now: ${self.current_capital:.2f})")
                 
                 logger.info(f"[PERSIST] Successfully restored {len(self.paper_positions)} positions")
             else:
