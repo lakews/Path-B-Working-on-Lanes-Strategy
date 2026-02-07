@@ -228,9 +228,10 @@ EXIT_STRATEGY_CONFIG = {
     'sports_arbitrage': {
         'type': 'mechanical',
         'action': 'CLOSE_ALL',
-        'tp_pct': float(os.getenv('SPORTS_ARB_TP_PCT', '0.05')),       # 5% take profit
-        'sl_pct': float(os.getenv('SPORTS_ARB_SL_PCT', '0.05')),       # 5% stop loss (wider for game swings)
-        'max_hours': float(os.getenv('SPORTS_ARB_MAX_HOURS', '12')),   # 12 hours max hold
+        # LANE 4: SPORTS - Per spec: +30% TP, -25% SL, 48h time exit
+        'tp_pct': float(os.getenv('SPORTS_ARB_TP_PCT', '0.30')),       # 30% take profit (per spec)
+        'sl_pct': float(os.getenv('SPORTS_ARB_SL_PCT', '0.25')),       # 25% stop loss (per spec)
+        'max_hours': float(os.getenv('SPORTS_ARB_MAX_HOURS', '48')),   # 48 hours max hold (per spec)
     },
 }
 
