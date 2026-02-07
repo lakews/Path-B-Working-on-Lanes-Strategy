@@ -47,7 +47,7 @@ from services.news_service import get_news_poller, NewsPoller
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# TWO-SPEED ARCHITECTURE: SHARED STATE MANAGEMENT
+# FIVE-LANE ARCHITECTURE: SHARED STATE MANAGEMENT
 # =============================================================================
 # The "Bridge" between HFT (Fast Path) and Alpha (Slow Path) loops
 # - Alpha Loop WRITES theoretical prices and analysis
@@ -464,7 +464,7 @@ class PaperTrader:
         }
         
         # ==============================================================
-        # TWO-SPEED ARCHITECTURE DEFAULTS (HFT/Alpha)
+        # FIVE-LANE ARCHITECTURE DEFAULTS (HFT/Alpha)
         # ==============================================================
         self.config = {}  # Full config storage
         self.hft_allocation_pct = 40.0      # % of deployed capital to HFT
@@ -816,7 +816,7 @@ class PaperTrader:
                     self.polymarket_sizer.event_config.update(self.event_caps)
                 
                 # ==============================================================
-                # TWO-SPEED ARCHITECTURE CONFIGURATION (HFT/Alpha)
+                # FIVE-LANE ARCHITECTURE CONFIGURATION (HFT/Alpha)
                 # ==============================================================
                 
                 # Store full config for components that need it
@@ -941,11 +941,11 @@ class PaperTrader:
         }
     
     async def start(self):
-        """Start paper trading session with TWO-SPEED ARCHITECTURE"""
+        """Start paper trading session with FIVE-LANE ARCHITECTURE"""
         self.running = True
         logger.info(f"🚀 Starting Paper Trading Session: {self.session_id}")
         logger.info("=" * 60)
-        logger.info("TWO-SPEED ARCHITECTURE ENABLED")
+        logger.info("FIVE-LANE ARCHITECTURE ENABLED")
         logger.info("  HFT Loop:   Fast (0.5s) - Microstructure, Scalping")
         logger.info("  Alpha Loop: Slow (30s)  - Bayesian, LLM Analysis")
         logger.info("=" * 60)
@@ -1016,7 +1016,7 @@ class PaperTrader:
         await self._init_session()
         
         # =================================================================
-        # TWO-SPEED ARCHITECTURE: Run HFT and Alpha loops CONCURRENTLY
+        # FIVE-LANE ARCHITECTURE: Run HFT and Alpha loops CONCURRENTLY
         # =================================================================
         # - HFT Loop: Fast reactions, market microstructure, no LLM
         # - Alpha Loop: Slow analysis, Bayesian fusion, LLM sentiment
@@ -2747,7 +2747,7 @@ class PaperTrader:
                     f"Bridge: {bridge_stats['active_targets']} targets"
                 )
                 
-                # Record equity curve with Three-Speed lane breakdowns
+                # Record equity curve with Five-Lane lane breakdowns
                 self.equity_curve.append({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "capital": self.current_capital,
@@ -2759,7 +2759,7 @@ class PaperTrader:
                     "volatility_pnl": self.strategy_equity.get('volatility_exploitation', 0),
                     "alpha_pnl": self.strategy_equity.get('alpha_directional', 0),
                     "arbitrage_pnl": self.strategy_equity.get('arbitrage', 0),
-                    # Three-Speed Lane P&L breakdown (Task 29)
+                    # Five-Lane Lane P&L breakdown (Task 29)
                     "hft_pnl": self.lane_equity.get('HFT', 0),
                     "alpha_lane_pnl": self.lane_equity.get('ALPHA', 0),
                     "gamma_pnl": self.lane_equity.get('GAMMA', 0),
@@ -3302,13 +3302,13 @@ class PaperTrader:
     
     async def _trading_loop(self):
         """
-        Legacy trading loop - NOW DISABLED in favor of Two-Speed Architecture.
+        Legacy trading loop - NOW DISABLED in favor of Five-Lane Architecture.
         
         The functionality is split into:
         - _run_hft_loop(): Fast microstructure trading
         - _run_alpha_loop(): Slow Bayesian analysis
         """
-        logger.info("Legacy _trading_loop is disabled - using Two-Speed Architecture")
+        logger.info("Legacy _trading_loop is disabled - using Five-Lane Architecture")
         # This loop is now effectively a no-op as HFT and Alpha loops handle everything
         while self.running:
             await asyncio.sleep(60)  # Sleep and let HFT/Alpha do the work
@@ -3698,7 +3698,7 @@ class PaperTrader:
                     "volatility_pnl": self.strategy_equity.get('volatility_exploitation', 0),
                     "alpha_pnl": self.strategy_equity.get('alpha_directional', 0),
                     "arbitrage_pnl": self.strategy_equity.get('arbitrage', 0),
-                    # Three-Speed Lane P&L breakdown (Task 29)
+                    # Five-Lane Lane P&L breakdown (Task 29)
                     "hft_pnl": self.lane_equity.get('HFT', 0),
                     "alpha_lane_pnl": self.lane_equity.get('ALPHA', 0),
                     "gamma_pnl": self.lane_equity.get('GAMMA', 0),
@@ -5030,7 +5030,7 @@ class PaperTrader:
                 'pnl': realized_pnl,
                 'pnl_pct': pnl_pct,
                 'strategy': position.get('strategy', 'unknown'),
-                'strategy_lane': strategy_lane,  # Three-Speed: HFT, ALPHA, or GAMMA
+                'strategy_lane': strategy_lane,  # Five-Lane: HFT, ALPHA, or GAMMA
                 'asset_class': position.get('asset_class', 'unknown'),
                 'exit_reason': f"partial_{reason}",
                 'entry_time': position.get('entry_time'),
@@ -5425,7 +5425,7 @@ class PaperTrader:
                 "entry_price": display_entry_price,  # Display price for the side traded
                 "yes_entry_price": actual_entry_price,  # Keep YES price for reference
                 "strategy": strategy,
-                "strategy_lane": strategy_lane,  # Three-Speed: HFT, ALPHA, or GAMMA
+                "strategy_lane": strategy_lane,  # Five-Lane: HFT, ALPHA, or GAMMA
                 "asset_class": asset_class,
                 "rl_action": rl_action,
                 "rl_confidence": rl_confidence,
@@ -5635,7 +5635,7 @@ class PaperTrader:
             if strategy in self.strategy_equity:
                 self.strategy_equity[strategy] += pnl
             
-            # Update lane equity for Three-Speed equity curve (Task 29)
+            # Update lane equity for Five-Lane equity curve (Task 29)
             strategy_lane = RISK.get_strategy_path(strategy)
             if strategy_lane in self.lane_equity:
                 self.lane_equity[strategy_lane] += pnl
@@ -5737,7 +5737,7 @@ class PaperTrader:
                 "pnl_pct": pnl_pct,
                 "hold_time_seconds": hold_time_seconds,
                 "strategy": strategy,
-                "strategy_lane": strategy_lane,  # Three-Speed: HFT, ALPHA, or GAMMA
+                "strategy_lane": strategy_lane,  # Five-Lane: HFT, ALPHA, or GAMMA
                 "asset_class": asset_class,
                 "exit_reason": exit_reason,
                 "reward_signal": reward,
@@ -7919,14 +7919,14 @@ class PaperTrader:
             "trade_returns": self.trade_returns[-100:],  # Last 100 returns for charts
             "equity_curve": self.equity_curve[-200:],  # Last 200 points for better charts
             "strategy_equity": self.strategy_equity,  # Running P&L by strategy
-            "lane_equity": self.lane_equity,  # Three-Speed Lane P&L (HFT/ALPHA/GAMMA)
+            "lane_equity": self.lane_equity,  # Five-Lane Lane P&L (HFT/ALPHA/GAMMA)
             "asset_class_equity": self.asset_class_equity,  # Running P&L by asset class
             "enabled_strategies": self.enabled_strategies,
             "enabled_asset_classes": self.enabled_asset_classes,
             "continuous_mode": self.continuous_mode,
             "graceful_stop": self.graceful_stop,
             # =============================================================
-            # TWO-SPEED ARCHITECTURE: Health Metrics
+            # FIVE-LANE ARCHITECTURE: Health Metrics
             # =============================================================
             "two_speed_architecture": {
                 "active_regime": "HYBRID_PARALLEL",  # Both loops running
