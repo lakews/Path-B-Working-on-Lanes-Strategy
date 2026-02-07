@@ -7004,11 +7004,15 @@ class PaperTrader:
                     # Calculate DEPLOYED capital (sum of position sizes)
                     deployed_capital = sum(p.get('size', 0) for p in self.paper_positions.values())
                     
-                    # CIRCUIT BREAKER: Check drawdown based on TOTAL EQUITY (cash + deployed + unrealized)
-                    # Equity = cash + position_value + unrealized_pnl
-                    # Position value = deployed_capital (what we paid for positions)
+                    # Calculate TOTAL EQUITY (cash + deployed + unrealized)
                     total_equity = self.current_capital + deployed_capital + self.unrealized_pnl
                     
+                    # Update peak capital based on TOTAL EQUITY (not just cash)
+                    # This ensures peak tracks true highest value during trading
+                    if total_equity > self.peak_capital:
+                        self.peak_capital = total_equity
+                    
+                    # CIRCUIT BREAKER: Check drawdown based on TOTAL EQUITY
                     if self.peak_capital > 0:
                         # Drawdown should only trigger if total equity drops below peak
                         # NOT when we simply deploy cash to positions
