@@ -3581,7 +3581,10 @@ class PaperTrader:
                     
                     # Check for emergency stop loss
                     if pnl_pct <= EMERGENCY_SL_THRESHOLD:
-                        logger.warning(f"🚨 [EMERGENCY SL] {position.get('market_question', market_id)[:40]}... at {pnl_pct:.1%} (threshold: {EMERGENCY_SL_THRESHOLD:.0%})")
+                        logger.warning(
+                            f"🚨 [EMERGENCY SL] {position.get('market_question', market_id)[:40]}... at {pnl_pct:.1%} (threshold: {EMERGENCY_SL_THRESHOLD:.0%}) | "
+                            f"Side: {side} | Entry(YES): {yes_entry_price:.4f} | Current(YES): {current_price:.4f}"
+                        )
                         positions_to_close.append((market_id, market_data, pnl_pct))
                 
                 # Close positions that hit emergency stop loss
