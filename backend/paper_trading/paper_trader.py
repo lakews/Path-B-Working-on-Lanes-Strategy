@@ -7721,7 +7721,7 @@ class PaperTrader:
                 current_value = shares * no_current
                 unrealized = current_value - size
             
-            # Update position with fresh calculation
+            # Update position with fresh calculation (in snapshot, not original)
             position['unrealized_pnl'] = round(unrealized, 2)
             total_unrealized += unrealized
         
@@ -7731,10 +7731,10 @@ class PaperTrader:
         # Include unrealized P&L from open positions
         strategy_results = {}
         
-        # Calculate unrealized P&L by strategy from open positions
+        # Calculate unrealized P&L by strategy from open positions (using snapshot)
         strategy_unrealized = {}
         strategy_open_positions = {}
-        for pos in self.paper_positions.values():
+        for pos in positions_snapshot.values():
             strategy = pos.get('strategy', 'unknown')
             if strategy not in strategy_unrealized:
                 strategy_unrealized[strategy] = 0.0
