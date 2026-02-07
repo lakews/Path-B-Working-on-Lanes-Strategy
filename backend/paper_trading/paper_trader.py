@@ -3532,6 +3532,7 @@ class PaperTrader:
             
             # Reconstruct open positions
             reconstructed = 0
+            total_deployed = 0  # Track capital deployed in reconstructed positions
             for entry in entries:
                 market_id = entry.get("market_id")
                 entry_price = entry.get("entry_price")
