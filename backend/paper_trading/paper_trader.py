@@ -603,11 +603,13 @@ class PaperTrader:
             'news_sniper': 0.0,
         }
         
-        # Three-Speed Lane Equity Tracking (Task 29)
+        # Five-Lane Equity Tracking (Updated Jan 2026)
         self.lane_equity: Dict[str, float] = {
             'HFT': 0.0,
             'ALPHA': 0.0,
-            'GAMMA': 0.0
+            'GAMMA': 0.0,
+            'SPORTS': 0.0,
+            'NEWS': 0.0
         }
         
         # =============================================================
