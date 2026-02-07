@@ -3542,12 +3542,13 @@ class PaperTrader:
                     continue
                 
                 if market_id and market_id not in closed_markets and market_id not in self.paper_positions:
+                    position_size = entry.get("size", 0)
                     position = {
                         "market_id": market_id,
                         "market_question": entry.get("market_question", "Unknown"),
                         "entry_price": float(entry_price),
                         "side": entry.get("side", "NO"),
-                        "size": entry.get("size", 0),
+                        "size": position_size,
                         "shares": entry.get("shares", 0),
                         "strategy": entry.get("strategy", "unknown"),
                         "asset_class": entry.get("asset_class", "other"),
@@ -3557,9 +3558,14 @@ class PaperTrader:
                     self.paper_positions[market_id] = position
                     await self._save_position_to_db(market_id, position)
                     reconstructed += 1
-                    logger.info(f"[RECONSTRUCT] Restored: {position.get('market_question', '')[:40]}...")
+                    total_deployed += position_size
+                    logger.info(f"[RECONSTRUCT] Restored: {position.get('market_question', '')[:40]}... (${position_size:.2f})")
             
             if reconstructed > 0:
+                # CRITICAL: Adjust capital for reconstructed positions
+                async with self._capital_lock:
+                    self.current_capital -= total_deployed
+                    logger.info(f"[RECONSTRUCT] Adjusted capital: -${total_deployed:.2f} (Cash now: ${self.current_capital:.2f})")
                 logger.warning(f"[RECONSTRUCT] Reconstructed {reconstructed} positions from trade history")
             
             return reconstructed
