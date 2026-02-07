@@ -7914,9 +7914,9 @@ class PaperTrader:
         # Calculate returns distribution (realized trades)
         returns_distribution = self._calculate_returns_distribution()
         
-        # Calculate unrealized P&L distribution (open positions)
+        # Calculate unrealized P&L distribution (open positions) - using snapshot
         unrealized_returns = []
-        for pos in self.paper_positions.values():
+        for pos in positions_snapshot.values():
             if pos.get('size', 0) > 0:
                 entry = pos.get('entry_price', 0)
                 current = pos.get('current_price', entry)
