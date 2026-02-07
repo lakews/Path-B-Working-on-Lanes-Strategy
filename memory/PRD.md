@@ -7,6 +7,7 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 - Sports Arbitrage exit logic fix (COMPLETED)
 - News Lane (Lane 5) expansion with multi-source ingestion (COMPLETED)
 - Cortex Audit to understand existing LLM/sentiment fusion (COMPLETED)
+- **5-Lane Performance Dashboard UI Enhancement (COMPLETED - Feb 2026)**
 
 ---
 
@@ -112,14 +113,15 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 
 ## Prioritized Backlog
 
-### P0 - Critical
+### P0 - Critical (COMPLETED)
 - [x] Sports Arbitrage Exit Logic Fix
 - [x] Cortex Audit
-- [ ] Verify live LLM connection with Apify data
-- [ ] Run integration test for full pipeline
+- [x] **5-Lane Performance Dashboard Enhancement** - Updated UI to display all 5 trading lanes (HFT, ALPHA, GAMMA, SPORTS, NEWS)
 
 ### P1 - High Priority
 - [ ] SSOT Refactoring: Move `EXIT_STRATEGY_CONFIG` to `risk_config.json`
+- [ ] Verify live LLM connection with Apify data
+- [ ] Run integration test for full pipeline
 
 ### P2 - Future
 - [ ] Reactivate CryptoPanic with premium API key
