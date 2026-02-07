@@ -1,14 +1,14 @@
 /**
  * LanePerformance Component
  * =========================
- * Displays Three-Speed Architecture lane analytics (HFT, ALPHA, GAMMA)
+ * Displays Five-Lane Architecture analytics (HFT, ALPHA, GAMMA, SPORTS, NEWS)
  * 
  * Features:
  * - Professional currency formatting via Intl.NumberFormat
  * - Dark mode compatible (uses dark: classes)
  * - Dynamic lane colors with fallback
  * - Loading skeleton state
- * - Responsive grid layout
+ * - Responsive grid layout for 5 lanes
  * 
  * @author APEX TRADER
  * @date January 2026
