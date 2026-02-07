@@ -7812,11 +7812,11 @@ class PaperTrader:
             'NEWS': 0.05    # 5% overlay allocation
         }
         
-        # Calculate deployed capital and unrealized P&L by lane
+        # Calculate deployed capital and unrealized P&L by lane (using snapshot)
         lane_deployed = {lane: 0.0 for lane in lane_stats}
         lane_unrealized = {lane: 0.0 for lane in lane_stats}
         
-        for pos in self.paper_positions.values():
+        for pos in positions_snapshot.values():
             strategy = pos.get('strategy', 'unknown')
             lane = RISK.get_strategy_path(strategy)
             if lane in lane_deployed:
