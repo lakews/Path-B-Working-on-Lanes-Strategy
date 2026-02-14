@@ -492,7 +492,7 @@ Be conservative. Only return high bayes_factor for direct, clear evidence.
                 opportunities.append(opportunity)
             
             # Batch insert to MongoDB
-            if opportunities and self.db:
+            if opportunities and self.db is not None:
                 await self.db.hft_opportunities.insert_many(opportunities)
                 self.stats['mongodb_writes'] += len(opportunities)
             
