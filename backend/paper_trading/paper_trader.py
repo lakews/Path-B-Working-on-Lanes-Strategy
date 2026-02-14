@@ -8123,6 +8123,13 @@ class PaperTrader:
                 "alpha_targets_count": len(self.strategy_context.get_all_targets()) if hasattr(self, 'strategy_context') else 0,
                 "bridge_stats": self.strategy_context.get_stats() if hasattr(self, 'strategy_context') else {},
             },
+            # =============================================================
+            # HFT ENGINE V2: 5 Sub-Strategy Metrics
+            # =============================================================
+            "hft_engine_v2": self.hft_engine_v2.get_hft_metrics() if self.hft_engine_v2 else {
+                "initialized": False,
+                "message": "HFT Engine V2 not initialized"
+            },
             # QUALITY CONTROL: Market filtering metrics (Task 18)
             # =============================================================
             "quality_control": {
