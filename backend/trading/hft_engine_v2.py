@@ -294,7 +294,7 @@ class HighFrequencyTradingEngineV2:
             adjusted_fair = quote_result['fair_value']
             adjusted_spread = quote_result['spread']
             cliff_zone = quote_result['cliff_zone']
-            signal_action = quote_result['signal_action']
+            # signal_action available in quote_result for future use (jump detection)
             
             # STEP 8: Prune stale orders with hysteresis
             prune_stats = self._prune_stale_orders(market_id, adjusted_fair)
