@@ -4,89 +4,75 @@
 Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with a centralized "Single Source of Truth" (SSOT) Risk Management layer for prediction market trading.
 
 ## Current Session Focus
+- **NEWS Lane Phase 2 Implementation (COMPLETED Feb 2026)** - MongoDB-integrated NEWS Sniper
 - **HFT Engine V2 ENHANCED Implementation (COMPLETED Feb 2026)** - Merged all legacy features
 - **Markets-First Architecture Phase 1 (COMPLETED Feb 2026)**
-- Sports Arbitrage exit logic fix (COMPLETED)
-- News Lane (Lane 5) expansion with multi-source ingestion (COMPLETED)
-- 5-Lane Performance Dashboard UI Enhancement (COMPLETED)
 
 ---
 
 ## Architecture Overview
 
-### 5 Trading Lanes
-1. **HFT Lane** - High-frequency trading with 5 sub-strategies (HFT Engine V2 ENHANCED)
+### 5 Trading Lanes - All Now Integrated with Markets-First
+1. **HFT Lane** - HFT Engine V2 ENHANCED (reads PATH A + PATH B from MongoDB)
 2. **ALPHA Lane** - Alpha signal generation with Bayesian inference
 3. **GAMMA Lane** - Volatility-based trading strategies
 4. **SPORTS Lane** - Sports arbitrage using real odds APIs
-5. **NEWS Lane** - News-driven trading with multi-source ingestion
+5. **NEWS Lane** - NEWS Sniper MongoDB (reads PATH A, 5-factor conviction)
 
-### HFT Engine V2 ENHANCED Architecture (Feb 2026)
+### Complete Markets-First Data Flow
 ```
+NEWS EVENT ARRIVES
+       ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ HFT ENGINE V2 ENHANCED - UNIFIED HFT IMPLEMENTATION             │
-│ (Legacy HFT loop DEPRECATED and DISABLED)                       │
-├─────────────────────────────────────────────────────────────────┤
-│ MERGED LEGACY FEATURES:                                         │
-│ ├─ Alpha Target Integration (strategy_context bridge)           │
-│ ├─ HFT Math Engine (cubic skew, jump detection, cliff)          │
-│ ├─ Active Order Tracking (Polymarket compliance)                │
-│ ├─ Hysteresis Logic (anti-churn, 1 cent threshold)              │
-│ └─ Tick Grid Compliance ($0.01, kill zones $0.05-$0.95)         │
-│                                                                 │
-│ NEW V2 FEATURES:                                                │
-│ ├─ 5 Sub-Strategies with capital allocation                     │
-│ ├─ News Strength Classification (PAUSE/EXTREME/CAUTION/NORMAL)  │
-│ ├─ MongoDB Signal Integration (PATH A + PATH B)                 │
-│ └─ Spread & Position Multipliers based on news                  │
+│ DualPathNewsInjector (Phase 1)                                  │
+│       ↓                              ↓                          │
+│ PATH A → MongoDB.signals        PATH B → MongoDB.hft_opportunities│
+│ (LLM analysis, BF, confidence)  (Broadcast to all markets)      │
 └─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│ 5 SUB-STRATEGIES                                                │
-├─────────────────────────────────────────────────────────────────┤
-│ 1. Delta-Neutral Market Making (35%)                            │
-│    - Quote YES/NO bid/ask, capture spreads                      │
-│    - Zone: Standard prices (0.10-0.90)                          │
-│                                                                 │
-│ 2. Volatility Exploitation (10%)                                │
-│    - Mean reversion at extreme prices                           │
-│    - Zone: 0.00-0.10 or 0.90-1.00                               │
-│                                                                 │
-│ 3. Extreme Spread Capture (15%)                                 │
-│    - Wide spreads (5-15x normal) at extremes                    │
-│    - Compensate volatility with wider spreads                   │
-│                                                                 │
-│ 4. Sharp Trader Following (20%)                                 │
-│    - Detect institutional flow via z-score                      │
-│    - Follow 50% of sharp size                                   │
-│                                                                 │
-│ 5. Liquidity Provision (20%)                                    │
-│    - Standing quotes on high-volume markets                     │
-│    - Minimum $50K daily volume                                  │
-└─────────────────────────────────────────────────────────────────┘
+       ↓                                    ↓
+┌──────────────────────────────────┐    ┌─────────────────────────┐
+│ NEWS SNIPER MONGODB (Phase 2)    │    │ HFT ENGINE V2 ENHANCED  │
+│ ✅ Reads PATH A signals          │    │ ✅ Reads PATH B (speed) │
+│ ✅ 5-Factor ConvictionEnhancer   │    │ ✅ Reads PATH A (intel) │
+│ ✅ Kelly Tiering (5%-50%)        │    │ ✅ News strength mults  │
+│ ✅ Whale Alignment               │    │ ✅ 5 sub-strategies     │
+│ ✅ Source Credibility            │    │ ✅ Alpha integration    │
+└──────────────────────────────────┘    └─────────────────────────┘
 ```
 
-### News Strength Classification
+### NEWS Sniper MongoDB - 5-Factor ConvictionEnhancer
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ BAYES FACTOR → NEWS STRENGTH → MULTIPLIERS                      │
+│ CONVICTION = BF × Source × Liquidity × Whale × Regime           │
 ├─────────────────────────────────────────────────────────────────┤
-│ BF >= 10.0 → PAUSE    → Skip entire cycle                       │
-│ BF 5.0-10  → EXTREME  → Spread 2.5x, Position 0.5x              │
-│ BF 3.0-5.0 → CAUTION  → Spread 1.3x, Position 0.75x             │
-│ BF < 3.0   → NORMAL   → No adjustment                           │
+│ Factor 1: Bayes Factor (from PATH A signal)                     │
+│                                                                 │
+│ Factor 2: Source Credibility                                    │
+│   Reuters/Bloomberg = 1.25x                                     │
+│   Whale Alert = 1.35x                                           │
+│   Twitter = 0.90x                                               │
+│                                                                 │
+│ Factor 3: Liquidity Multiplier                                  │
+│   $100K+ = 1.20x, $50K+ = 1.10x, <$5K = 0.75x                  │
+│                                                                 │
+│ Factor 4: Whale Alignment                                       │
+│   Aligned = up to 1.35x boost                                   │
+│   Disagreement = down to 0.75x                                  │
+│                                                                 │
+│ Factor 5: Market Regime                                         │
+│   Crisis = 0.7x, Volatile = 0.9x, Normal = 1.0x, Quiet = 1.1x  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Polymarket Compliance Constants
-| Constant | Value | Purpose |
-|----------|-------|---------|
-| TICK_SIZE | $0.01 | Price grid alignment |
-| MIN_PRICE | $0.05 | Kill zone lower bound |
-| MAX_PRICE | $0.95 | Kill zone upper bound |
-| MIN_SPREAD_TICKS | 2 | Minimum spread ($0.02) |
-| HYSTERESIS_THRESHOLD | $0.01 | Anti-churn drift tolerance |
-| ORDER_STALE_SECONDS | 120 | Order refresh time |
+### Kelly Tiering Based on Conviction
+| Conviction | Kelly Fraction | Description |
+|------------|----------------|-------------|
+| >= 10.0 | 50% | Extreme conviction - maximum position |
+| 8.0 - 10.0 | 40% | High conviction |
+| 6.0 - 8.0 | 30% | Strong conviction |
+| 3.0 - 6.0 | 15% | Moderate conviction |
+| 1.0 - 3.0 | 5% | Low conviction |
+| < 1.0 | 0% | Skip trade |
 
 ---
 
@@ -95,23 +81,21 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 ### Session: February 2026
 
 #### COMPLETED ✅
-1. **HFT Engine V2 ENHANCED** (`/app/backend/trading/hft_engine_v2.py`)
-   - Merged ALL legacy HFT features:
-     - Alpha Target Integration via strategy_context
-     - HFT Math Engine (cubic skew, jump detection, cliff protection)
-     - Active Order Tracking for Polymarket compliance
-     - Hysteresis Logic (anti-churn)
-     - Tick Grid Compliance ($0.01)
-   - Plus NEW V2 features:
-     - 5 sub-strategies with proper capital allocation
-     - News strength classification
-     - MongoDB signal integration
-   - **Legacy _run_hft_loop() is now DEPRECATED and DISABLED**
+1. **NEWS Sniper MongoDB (Phase 2)**
+   - File: `/app/backend/lanes/news_lane/news_sniper_mongodb.py`
+   - 5-factor ConvictionEnhancer
+   - Kelly tiering (5%-50% based on conviction)
+   - MongoDB PATH A signal reading
+   - Whale alignment checking
+   - Source credibility scoring
+   - Integrated into paper_trader.py asyncio.gather
 
-2. **HFT Configuration** (`/app/backend/trading/hft_config.py`)
-   - NewsStrength enum
-   - HFTConfig class with all thresholds and allocations
-   - Helper functions
+2. **HFT Engine V2 ENHANCED**
+   - File: `/app/backend/trading/hft_engine_v2.py`
+   - Merged all legacy features (Alpha targets, Math Engine, Hysteresis, Tick Grid)
+   - 5 sub-strategies with capital allocation
+   - MongoDB PATH A + PATH B integration
+   - Legacy HFT loop DEPRECATED
 
 3. **Markets-First Architecture Phase 1**
    - PolymarketScanner (500+ markets cached)
@@ -124,21 +108,25 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 
 | File | Purpose |
 |------|---------|
+| `/app/backend/lanes/news_lane/news_sniper_mongodb.py` | **NEWS Sniper MongoDB** - Phase 2 trade execution |
 | `/app/backend/trading/hft_engine_v2.py` | **HFT Engine V2 ENHANCED** - Sole HFT implementation |
-| `/app/backend/trading/hft_config.py` | HFT configuration and enums |
-| `/app/backend/strategies/hft_math.py` | HFT Math Engine (cubic skew, cliff protection) |
-| `/app/backend/services/polymarket_scanner.py` | Continuous market scanner |
-| `/app/backend/services/news_injector_dual_path.py` | Dual-path news processing |
-| `/app/backend/paper_trading/paper_trader.py` | Paper trading (HFT V2 integrated) |
+| `/app/backend/services/polymarket_scanner.py` | **PolymarketScanner** - Market caching |
+| `/app/backend/services/news_injector_dual_path.py` | **DualPathNewsInjector** - PATH A/B signal creation |
+| `/app/backend/paper_trading/paper_trader.py` | Paper trading with all integrations |
 
 ---
 
 ## API Endpoints
 
+### NEWS Sniper Endpoints
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/news-sniper/status` | GET | NEWS Sniper MongoDB metrics and configuration |
+
 ### HFT V2 Endpoints
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/hft-v2/status` | GET | HFT Engine V2 ENHANCED metrics and configuration |
+| `/api/hft-v2/status` | GET | HFT Engine V2 ENHANCED metrics |
 
 ### Markets-First Endpoints
 | Endpoint | Method | Purpose |
@@ -153,15 +141,15 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 
 ## Prioritized Backlog
 
-### P0 - Critical (COMPLETED)
-- [x] HFT Engine V2 ENHANCED Implementation (merged legacy + new)
+### P0 - Critical (ALL COMPLETED ✅)
 - [x] Markets-First Architecture Phase 1
+- [x] HFT Engine V2 ENHANCED (merged legacy)
+- [x] NEWS Lane Phase 2 (MongoDB integration)
 - [x] Legacy HFT loop deprecation
-- [x] Capital Accounting Bug Fixes
 
 ### P1 - High Priority (NEXT)
-- [ ] **NEWS Lane Integration (Phase 2)** - Update NEWS lane to read from MongoDB signals with ConvictionEnhancer
 - [ ] SSOT Refactoring: Move `EXIT_STRATEGY_CONFIG` to `risk_config.json`
+- [ ] Live trading validation
 
 ### P2 - Future
 - [ ] Reactivate CryptoPanic with premium API key
@@ -173,12 +161,13 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 - `/app/test_reports/iteration_40.json` - Markets-First Phase 1 (20 tests passed)
 - `/app/test_reports/iteration_41.json` - HFT Engine V2 (37 tests passed)
 - `/app/test_reports/iteration_42.json` - HFT Engine V2 ENHANCED (64 tests passed)
+- `/app/test_reports/iteration_43.json` - NEWS Sniper MongoDB Phase 2 (74 tests passed)
 
 ---
 
 ## User Notes
 - Use platform's "Save to Github" feature to persist codebase
 - All API keys stored in `/app/backend/.env`
-- HFT Engine V2 ENHANCED is now the **sole HFT implementation**
-- Legacy `_run_hft_loop()` is **DEPRECATED and DISABLED**
-- Markets-First system runs in PARALLEL to existing system (zero breaking changes)
+- HFT Engine V2 ENHANCED is the **sole HFT implementation** (legacy disabled)
+- NEWS Sniper MongoDB handles **trade execution** (legacy loop handles ingestion)
+- Markets-First system provides unified signal pipeline for HFT and NEWS lanes
