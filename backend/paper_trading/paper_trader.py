@@ -663,6 +663,16 @@ class PaperTrader:
         self._hft_v2_task: Optional[asyncio.Task] = None
         
         # =============================================================
+        # NEWS SNIPER MONGODB (Lane 5 - Phase 2)
+        # =============================================================
+        # Replaces legacy NEWS lane with MongoDB-integrated version
+        # - Reads PATH A signals from MongoDB signals collection
+        # - 5-factor ConvictionEnhancer (Source, Liquidity, Whale, Regime, BF)
+        # - Kelly tiering based on conviction score
+        self.news_sniper: Optional[NewsSniper] = None
+        self._news_sniper_task: Optional[asyncio.Task] = None
+        
+        # =============================================================
         # HFT ACTIVE ORDER TRACKING (Polymarket Compliance - Jan 2026)
         # =============================================================
         # Track active orders for lifecycle management and hysteresis
