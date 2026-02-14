@@ -5396,6 +5396,279 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         ws_manager.disconnect(websocket)
 
+
+# =============================================
+# MARKETS-FIRST ARCHITECTURE ENDPOINTS
+# =============================================
+
+@api_router.get("/health/scanner")
+async def health_scanner():
+    """
+    Check PolymarketScanner status.
+    
+    Returns cache health and statistics for the Markets-First architecture.
+    """
+    global polymarket_scanner
+    
+    try:
+        if not polymarket_scanner:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "not_initialized",
+                    "message": "PolymarketScanner not initialized"
+                }
+            )
+        
+        status = polymarket_scanner.get_cache_status()
+        
+        return {
+            "status": "healthy" if status.get('is_fresh') else "stale",
+            "scanner": status,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting scanner health: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@api_router.post("/webhooks/news")
+async def receive_news(news: Dict[str, Any]):
+    """
+    Receive news events for the DualPathNewsInjector.
+    
+    Expected payload:
+    {
+        "headline": "Breaking news headline",
+        "source": "reuters",
+        "urgency": "normal" | "high" | "breaking",
+        "content": "Optional full content..."
+    }
+    
+    Returns:
+    {
+        "path_a_signals": number of signals created,
+        "path_b_opportunities": number of opportunities broadcasted
+    }
+    """
+    global dual_path_news_injector
+    
+    try:
+        if not dual_path_news_injector:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "not_initialized",
+                    "message": "DualPathNewsInjector not initialized"
+                }
+            )
+        
+        signals, count = await dual_path_news_injector.process_news_event(news)
+        
+        return {
+            "status": "processed",
+            "path_a_signals": len(signals),
+            "path_b_opportunities": count,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing news webhook: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@api_router.get("/markets-first/status")
+async def get_markets_first_status():
+    """
+    Get comprehensive status of the Markets-First architecture.
+    
+    Returns status of all components:
+    - PolymarketScanner
+    - DualPathNewsInjector  
+    - MongoDB collections
+    """
+    global polymarket_scanner, dual_path_news_injector
+    
+    try:
+        db = get_db()
+        
+        # Scanner status
+        scanner_status = None
+        if polymarket_scanner:
+            scanner_status = polymarket_scanner.get_cache_status()
+        
+        # News injector status
+        injector_status = None
+        if dual_path_news_injector:
+            injector_status = dual_path_news_injector.get_stats()
+        
+        # MongoDB collection stats
+        mongo_stats = {}
+        try:
+            mongo_stats['polymarket_cache'] = await db.polymarket_cache.count_documents({})
+            mongo_stats['signals'] = await db.signals.count_documents({})
+            mongo_stats['hft_opportunities'] = await db.hft_opportunities.count_documents({})
+        except Exception as e:
+            logger.warning(f"Could not get MongoDB stats: {e}")
+        
+        return {
+            "status": "operational" if scanner_status and scanner_status.get('running') else "degraded",
+            "components": {
+                "polymarket_scanner": {
+                    "initialized": polymarket_scanner is not None,
+                    "running": scanner_status.get('running') if scanner_status else False,
+                    "markets_cached": scanner_status.get('markets_cached') if scanner_status else 0,
+                    "embeddings_cached": scanner_status.get('embeddings_cached') if scanner_status else 0,
+                    "last_updated": scanner_status.get('last_updated') if scanner_status else None,
+                    "stats": scanner_status.get('stats') if scanner_status else {}
+                },
+                "dual_path_news_injector": {
+                    "initialized": dual_path_news_injector is not None,
+                    "stats": injector_status if injector_status else {}
+                },
+                "mongodb": {
+                    "polymarket_cache_count": mongo_stats.get('polymarket_cache', 0),
+                    "signals_count": mongo_stats.get('signals', 0),
+                    "hft_opportunities_count": mongo_stats.get('hft_opportunities', 0)
+                }
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting Markets-First status: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@api_router.get("/markets-first/signals")
+async def get_active_signals(limit: int = 50):
+    """
+    Get active signals from MongoDB.
+    
+    Returns fresh PATH A signals that haven't expired yet.
+    """
+    try:
+        db = get_db()
+        
+        cursor = db.signals.find(
+            {
+                "expires_at": {"$gt": datetime.now(timezone.utc)},
+                "type": "path_a"
+            },
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(limit)
+        
+        signals = await cursor.to_list(length=limit)
+        
+        # Convert datetime objects to ISO strings
+        for signal in signals:
+            for key in ['timestamp', 'expires_at', 'created_at']:
+                if key in signal and isinstance(signal[key], datetime):
+                    signal[key] = signal[key].isoformat()
+        
+        return {
+            "signals": signals,
+            "count": len(signals),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting active signals: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@api_router.get("/markets-first/opportunities")
+async def get_hft_opportunities(limit: int = 100):
+    """
+    Get recent HFT opportunities from PATH B broadcast.
+    
+    Returns opportunities that haven't expired yet.
+    """
+    try:
+        db = get_db()
+        
+        cursor = db.hft_opportunities.find(
+            {
+                "expires_at": {"$gt": datetime.now(timezone.utc)},
+                "type": "path_b"
+            },
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(limit)
+        
+        opportunities = await cursor.to_list(length=limit)
+        
+        # Convert datetime objects to ISO strings
+        for opp in opportunities:
+            for key in ['timestamp', 'expires_at', 'created_at']:
+                if key in opp and isinstance(opp[key], datetime):
+                    opp[key] = opp[key].isoformat()
+        
+        return {
+            "opportunities": opportunities,
+            "count": len(opportunities),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting HFT opportunities: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@api_router.get("/markets-first/cached-markets")
+async def get_cached_markets(limit: int = 100):
+    """
+    Get markets from the PolymarketScanner cache.
+    
+    Returns in-memory cached markets for fast access.
+    """
+    global polymarket_scanner
+    
+    try:
+        if not polymarket_scanner:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "not_initialized",
+                    "message": "PolymarketScanner not initialized"
+                }
+            )
+        
+        cached = polymarket_scanner.get_cached_markets()
+        
+        # Convert to list and limit
+        markets = list(cached.values())[:limit]
+        
+        return {
+            "markets": markets,
+            "count": len(markets),
+            "total_cached": len(cached),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting cached markets: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
