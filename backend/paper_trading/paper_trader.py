@@ -1075,7 +1075,7 @@ class PaperTrader:
             
             self.hft_engine_v2 = await init_hft_engine_v2({
                 'db': self.db,
-                'market_data_svc': self.market_data_svc,
+                'market_data_svc': self.market_data_service,  # Fixed: was self.market_data_svc
                 'paper_trader': self,
                 'strategy_context': self.strategy_context,  # Alpha/HFT bridge
                 'sharp_detector': self.sharp_detector,
