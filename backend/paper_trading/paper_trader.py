@@ -1048,47 +1048,51 @@ class PaperTrader:
         await self._init_session()
         
         # =================================================================
-        # HFT ENGINE V2 INITIALIZATION (5 Sub-Strategy Architecture)
+        # HFT ENGINE V2 ENHANCED INITIALIZATION
         # =================================================================
+        # Merges ALL legacy features + new 5 sub-strategy architecture
         try:
             logger.info("=" * 60)
-            logger.info("INITIALIZING HFT ENGINE V2")
+            logger.info("INITIALIZING HFT ENGINE V2 (ENHANCED)")
             logger.info("=" * 60)
             
-            self.hft_engine_v2 = await init_hft_engine({
+            self.hft_engine_v2 = await init_hft_engine_v2({
                 'db': self.db,
                 'market_data_svc': self.market_data_svc,
                 'paper_trader': self,
-                'position_manager': None,  # Uses paper_trader's capital
-                'kelly_optimizer': None,   # Uses built-in Kelly
-                'spread_calibrator': None, # Uses HFTConfig spreads
-                'volatility_predictor': self.volatility_predictor,
+                'strategy_context': self.strategy_context,  # Alpha/HFT bridge
                 'sharp_detector': self.sharp_detector,
+                'gamma_trader': self.gamma_trader,
+                'volatility_predictor': self.volatility_predictor,
                 'performance_analytics': None
             })
             
-            logger.info("✅ HFT Engine V2 initialized")
-            logger.info("   Sub-strategies: Delta-Neutral(35%), Volatility(10%), Extreme(15%), Sharp(20%), Liquidity(20%)")
-            logger.info("   Signal Sources: PATH A (intelligence) + PATH B (speed)")
-            logger.info("   Constraints: Kelly 0.25, 3% cap, MongoDB-only")
+            logger.info("✅ HFT Engine V2 ENHANCED initialized")
+            logger.info("   ├─ Sub-strategies: Delta-Neutral(35%), Volatility(10%), Extreme(15%), Sharp(20%), Liquidity(20%)")
+            logger.info("   ├─ Alpha Integration: strategy_context bridge (fair value, regime)")
+            logger.info("   ├─ HFT Math Engine: Cubic Skew, Jump Detection, Cliff Protection")
+            logger.info("   ├─ Polymarket Compliance: Tick Grid ($0.01), Hysteresis, Kill Zones")
+            logger.info("   └─ Signal Sources: MongoDB PATH A + PATH B")
+            logger.info("   ")
+            logger.info("   ⚠️  Legacy HFT loop DISABLED - HFT V2 is now the sole HFT engine")
             
         except Exception as e:
             logger.warning(f"⚠️ Could not initialize HFT Engine V2: {e}")
-            logger.warning("   Falling back to legacy HFT loop")
+            logger.warning("   HFT functionality will be limited")
             self.hft_engine_v2 = None
         
         logger.info("=" * 60)
         
         # =================================================================
-        # FIVE-LANE ARCHITECTURE: Run HFT and Alpha loops CONCURRENTLY
+        # FIVE-LANE ARCHITECTURE: Run Alpha and HFT V2 loops CONCURRENTLY
         # =================================================================
-        # - HFT Loop: Fast reactions, market microstructure, no LLM
-        # - HFT V2 Loop: 5 sub-strategies with PATH A/B integration
+        # DEPRECATED: Legacy _run_hft_loop() - replaced by HFT V2
+        # - HFT V2 Loop: 5 sub-strategies with Alpha integration + MongoDB signals
         # - Alpha Loop: Slow analysis, Bayesian fusion, LLM sentiment
         # - Plus: monitoring, learning, emergency tasks
         await asyncio.gather(
-            self._run_hft_loop(),              # Fast Path (0.5s cycle) - Legacy
-            self._run_hft_v2_loop(),           # HFT V2 (5 sub-strategies)
+            # DEPRECATED: self._run_hft_loop(),       # Legacy HFT - DISABLED
+            self._run_hft_v2_loop(),           # HFT V2 ENHANCED (replaces legacy)
             self._run_alpha_loop(),            # Slow Path (30s cycle)
             self._position_monitoring_loop(),  # Exit monitoring
             self._learning_loop(),             # RL training
