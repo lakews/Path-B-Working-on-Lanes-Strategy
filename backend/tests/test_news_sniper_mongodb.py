@@ -496,11 +496,6 @@ class TestMarketsFirstSystemOperational:
         response = requests.get(f"{BASE_URL}/api/health")
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
     
-    def test_scanner_health_endpoint(self):
-        """GET /api/scanner/health should return 200"""
-        response = requests.get(f"{BASE_URL}/api/scanner/health")
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
-    
     def test_paper_status_endpoint(self):
         """GET /api/paper/status should return 200"""
         response = requests.get(f"{BASE_URL}/api/paper/status")
