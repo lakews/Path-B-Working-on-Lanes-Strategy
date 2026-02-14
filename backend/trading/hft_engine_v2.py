@@ -594,7 +594,6 @@ class HighFrequencyTradingEngine:
                     
             elif yes_price >= 0.90:
                 # High price → bet on NO (mean reversion down)
-                direction = 'NO'
                 side = 'NO'
                 expected_value = (1 - yes_price) + (0.10 * yes_price)
                 
