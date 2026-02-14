@@ -5723,6 +5723,65 @@ async def get_hft_v2_status():
         )
 
 
+@api_router.get("/news-sniper/status")
+async def get_news_sniper_status():
+    """
+    Get NEWS Sniper MongoDB status and metrics.
+    
+    Returns performance metrics for the NEWS lane Phase 2:
+    - MongoDB signal reading stats
+    - Conviction enhancement breakdown
+    - Kelly tiering stats
+    - Trade execution stats
+    """
+    global paper_trader
+    
+    try:
+        if not paper_trader or not hasattr(paper_trader, 'news_sniper') or not paper_trader.news_sniper:
+            return {
+                "status": "not_initialized",
+                "message": "NEWS Sniper MongoDB not initialized. Start paper trading to enable.",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        
+        news_sniper = paper_trader.news_sniper
+        
+        return {
+            "status": "operational" if news_sniper._running else "stopped",
+            "stats": news_sniper.get_stats(),
+            "config": {
+                "capital_allocation_pct": 0.03,
+                "kelly_tiers": {
+                    "conviction_10+": "50% Kelly",
+                    "conviction_8-10": "40% Kelly",
+                    "conviction_6-8": "30% Kelly",
+                    "conviction_3-6": "15% Kelly",
+                    "conviction_1-3": "5% Kelly",
+                    "conviction_<1": "0% (skip)"
+                },
+                "source_multipliers": {
+                    "reuters": 1.25,
+                    "whale_alert": 1.35,
+                    "twitter": 0.90
+                },
+                "regime_multipliers": {
+                    "crisis": 0.7,
+                    "volatile": 0.9,
+                    "normal": 1.0,
+                    "quiet": 1.1
+                }
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting NEWS Sniper status: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
