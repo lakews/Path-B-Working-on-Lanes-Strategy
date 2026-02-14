@@ -1,79 +1,84 @@
 <analysis>**original_problem_statement:**
-The user's initial request was to build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with a centralized Single Source of Truth (SSOT) Risk Management layer.
+The user's initial request was to build a sophisticated 5-lane trading bot. The last session's primary goal was to enhance the UI to display all 5 trading lanes. After completing this, a persistent and complex capital accounting bug was discovered. The majority of the session was dedicated to debugging and fixing this bug through multiple iterations, which involved implementing asyncio locks and fixing race conditions.
 
-This session focused on auditing and hardening the existing Cortex (Brain) and Hand (Execution) layers, fixing multiple critical bugs, implementing a key performance optimization, and starting UI enhancements.
+The user's final and most critical request was to perform a major architectural overhaul to a Markets-First system. This new system replaces Redis with MongoDB, introduces a continuous  service, and a  for more robust signal generation. This new architecture is the immediate priority.
 
 **PRODUCT REQUIREMENTS:**
-1.  **Audit Cortex:** Investigate the existing LLM and sentiment fusion logic. **(COMPLETED)**
-2.  **Verify News Pipeline:** Run an integration test to confirm the Apify → LLM → Bayes pipeline is working end-to-end. **(COMPLETED)**
-3.  **Fix News Pipeline Bug:** Find and fix the root cause of why live news data was not being processed. **(COMPLETED)**
-4.  **Fix Exa.ai Integration:** Update the placeholder API key with a real one and verify functionality. **(COMPLETED)**
-5.  **Audit Hand:** Conduct a comprehensive audit of the entire execution layer, including all strategies, risk management, and order placement. **(COMPLETED)**
-6.  **Optimize Whale Strategy:** Implement Whale Alert Direct Injection to bypass the LLM for whale trades, reducing latency. **(COMPLETED)**
-7.  **Verify WebSocket Integration:** Confirm that the WebSocket service is the primary data source for market data, with REST as a fallback. **(COMPLETED)**
-8.  **Fix Sports Arbitrage Exit Logic:** Investigate and fix why sports trades were not closing automatically. **(COMPLETED)**
-9.  **Fix Capital Display Bug:** Investigate and fix why the Capital box showed increasing value despite negative P&L. **(COMPLETED)**
-10. **Enhance Performance UI:** Update the UI to correctly display all five trading lanes and all sub-strategies. **(IN PROGRESS)**
+1.  **Enhance Performance UI:** Update the UI to correctly display all five trading lanes and all sub-strategies. **(COMPLETED)**
+2.  **Fix Capital Accounting Bug:** Find and resolve the root cause of capital discrepancies. **(COMPLETED, but needs monitoring)**
+3.  **Implement Markets-First Architecture:** A comprehensive, multi-phase refactor of the data ingestion and signal generation pipeline. **(NOT STARTED)**
+    -   **Phase 1:** Build the foundation with , , and MongoDB collections.
+    -   **Phase 2:** Integrate the new signal pipeline with the existing NEWS lane.
+    -   **Phase 3 (Future):** Integrate with a future HFT Engine V2.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A sophisticated 5-lane (HFT, ALPHA, GAMMA, SPORTS, NEWS) full-stack trading bot. The application's core Brain (LLM analysis) and Hand (execution layer) have been thoroughly audited and documented.
+A full-stack 5-lane (HFT, ALPHA, GAMMA, SPORTS, NEWS) trading bot. The UI has been successfully updated to display performance metrics for all five lanes.
 
-Several critical bugs have been fixed in this session:
-- A bug preventing the news pipeline from processing live data was resolved by correctly wiring up the .
-- The sports arbitrage exit logic was fixed by adding a universal exit check to the main position monitoring loop.
-- A capital accounting bug was fixed in both the backend ( calculation) and frontend (displaying  instead of just cash).
+A series of critical and complex capital accounting bugs have been fixed. This involved implementing  around all capital operations, fixing race conditions in position entry, and correcting how capital is handled during database restoration and live config reloads. The capital accounting is now believed to be stable.
 
-A major performance optimization was implemented for the Whale Alert strategy, which now bypasses the LLM and injects signals directly into the cache, saving ~1.4 seconds of latency per alert. The WebSocket integration has been verified as the primary, sub-millisecond data source for market data.
+The application is poised for a significant architectural change as requested by the user, moving to a Markets-First data processing model.
 
 **Last working item**:
-The agent was working on a UI enhancement to display performance metrics for all five trading lanes and all their respective sub-strategies.
+The agent had just finished a deep and lengthy investigation into a recurring capital accounting bug. The final set of fixes involved adding  to all capital operations and ensuring position state was handled atomically during entry and exit.
 
--   **Last item agent was working**: Investigating the backend () to see how  and  are structured and the frontend (, ) to see how this data is rendered. The agent found that the backend  object was missing 'gamma', 'sports', and 'news', and the frontend component was hardcoded for three lanes.
--   **Status**: IN PROGRESS
--   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Frontend testing agent to verify the UI changes on the  page after the backend and frontend code is updated.
+Immediately after the agent reported the fixes, the user provided a detailed specification for a major architectural overhaul called Markets-First. The agent's last action was to acknowledge this new, high-priority request.
+
+-   **Last item agent was working**: Acknowledging the user's request to implement the new Markets-First architecture. The previous task was fixing the capital accounting bug.
+-   **Status**: NOT STARTED
+-   **Agent Testing Done**: N/A (The new architecture has not been started).
+-   **Which testing method agent to use?**: This is a major backend overhaul. It should be implemented and tested in phases as defined by the user.
+    -   **Phase 1 (Foundation):** Use backend testing agent to create new test files for  and . Use  to test new API endpoints (, ).
+    -   **Phase 2 (Integration):** Use the backend testing agent to run integration tests confirming the NEWS lane correctly consumes signals from the new MongoDB collection.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-There are no pending bugs. The only in-progress item is the UI enhancement task.
+-   **Issue 1: Recurring Capital Discrepancy (Priority: P1 - Monitoring)**
+    -   **Description**: Throughout the session, intermittent capital discrepancies (often matching position sizes of 5 or 0) were observed. While multiple layers of fixes have been implemented, including robust locking, this issue has been persistent. The new agent must ensure the new architecture adheres to strict, atomic capital management principles.
+    -   **Attempted fixes**:
+        -   Added  to all capital entry, exit, and update operations.
+        -   Moved duplicate position checks inside the lock to prevent race conditions.
+        -   Fixed capital adjustment logic during position restoration from the database.
+        -   Prevented capital resets during live config reloads.
+        -   Moved position deletion () to occur atomically with the capital update inside the lock.
+    -   **Next debug checklist**:
+        1.  While implementing the new Markets-First architecture, pay close attention to any part that could indirectly affect the trading loop or shared state.
+        2.  After the new architecture is in place, run the  script for an extended period to confirm stability.
+    -   **Why fix this issue?**: Core application integrity depends on flawless accounting.
+    -   **Status**: USER VERIFICATION PENDING
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Backend
 
 **In progress Task List**:
--   **Task 1: Enhance Performance Dashboards (Priority: P0)**
-    -   **Where to resume**: The agent has identified the files needing changes. The next steps are:
-        1.  **Backend ():** Modify the  method to include 'gamma', 'sports', and 'news' data in the  dictionary.
-        2.  **Backend ():** Modify  to include all sub-strategies and potentially group them by lane.
-        3.  **Frontend ():** Refactor the component to dynamically render cards for all five lanes instead of the hardcoded three.
-        4.  **Frontend ():** Update the strategy performance table to display all strategies and sub-strategies correctly, possibly in a nested or grouped format.
-    -   **What will be achieved with this?**: The UI will accurately reflect the performance of all five trading lanes and their respective strategies, providing a complete operational overview.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Both.
-    -   **Blocked on something**: None.
+There are no tasks currently in progress. The next action is to start the new architecture implementation.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **SSOT Refactoring (P1):** Move the  from the Python file  into the JSON file  to maintain a true Single Source of Truth.
+    -   **Implement Markets-First Architecture (P0):** This is the user's top priority.
+        -   **Phase 1: Foundation:**
+            -   Create MongoDB collections: , , .
+            -   Create file: .
+            -   Create file: .
+            -   Update  (or ) to initialize these new services.
+        -   **Phase 2: Integration:**
+            -   Update the NEWS lane logic (e.g., in ) to read from the MongoDB  collection instead of the old pipeline.
 -   **Future Tasks:**
-    -   **Reactivate CryptoPanic (P2):** When a premium key is available, set  in  to re-enable the real-time API.
+    -   **HFT V2 Integration (P1):** Phase 3 of the new architecture plan.
+    -   **SSOT Refactoring (P2):** Move  from  to .
+    -   **Reactivate CryptoPanic (P2):** Set  in  when a premium key is available.
     -   **Save Documentation to GitHub (P2):** Remind the user about the platform's Save to Github feature.
 
 **Completed work in this session**
--   **Cortex (Brain) Audit:** Completed a full audit of the LLM and signal analysis architecture (Paths A & B).
--   **Hand (Execution) Audit:** Completed a comprehensive audit of all strategy execution, risk management, and order placement logic.
--   **News Pipeline Bug Fix:** Fixed the critical bug where  was not passed to the , preventing live news processing.
--   **Exa.ai API Key Fix:** Updated the  file with the correct Exa.ai key, resolving 401 errors.
--   **Whale Strategy Optimization:** Implemented Whale Direct Injection, bypassing the LLM to reduce latency from ~1.4s to ~0.03ms.
--   **WebSocket Verification:** Confirmed WebSocket is the primary data source (~0.05ms) and hardened the fallback logic to the REST API (~91ms).
--   **Sports Exit Bug Fix:** Fixed the bug where sports trades were not being evaluated for exit by adding a universal exit check to the main monitoring loop.
--   **Capital Display Bug Fix:** Fixed the frontend to display  instead of just cash and corrected the backend  tracking.
--   **Created Latency Benchmark:** Built  to get real-world performance numbers for all core components.
--   **Comprehensive Strategy Documentation:** Generated detailed documentation on all 5 lanes and their sub-strategies, including logic, configuration, and exit rules.
+-   **UI Enhancement for 5-Lane Dashboard:** The UI in  and  was updated to dynamically display performance data for all five trading lanes, fulfilling the original P0 task.
+-   **Comprehensive Capital Accounting Fixes:** A series of deep-seated bugs in capital accounting within  were identified and resolved, including race conditions, incorrect calculations on exits, and improper state handling on session restoration.
+-   **Backend 5-Lane Architecture Hardening:** The backend  and related logic in  were updated to correctly track all five lanes, removing outdated Two-Speed logic.
+-   **SPORTS Lane Configuration:** The  file was updated to ensure the SPORTS lane's exit parameters (+30% TP, -25% SL, 48h) match the user's specification.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Save documentation to GitHub**
-    -   **Debug checklist**: This is a user-facing task. The agent needs to inform the user that they can use the platform's built-in Save to Github feature.
-    -   **Why to solve this issue and what will be achieved with this?**: Fulfills a direct user request and ensures the project's codebase and documentation are saved.
+    -   **Debug checklist**: This is a user-facing task. The agent needs to inform the user that they can use the platform's built-in Save to Github feature in the next  call.
+    -   **Why to solve this issue and what will be achieved with this?**: Fulfills a direct user request pending for two sessions.
     -   **Should Test frontend/backend/both after fix**: N/A
     -   **Is recurring issue?**: Y
 
@@ -84,68 +89,67 @@ There are no pending bugs. The only in-progress item is the UI enhancement task.
 
 
 **Key Technical Concepts**
--   **Two-Path Brain Architecture:** Path A (Event-Driven) for slow, deep analysis of news, and Path B (Continuous) for fast, cyclical evaluation of market state.
--   **The Bridge Pattern:** The  acts as a one-way bridge, allowing the fast Path B to consume signals from the slow Path A without blocking.
--   **Whale Direct Injection:** An optimization that bypasses the LLM for high-certainty signals (like large trades), saving significant latency.
--   **Universal Exit Engine:** A centralized  in the  ensures all open positions (HFT, Alpha, Sports, etc.) are evaluated against their specific exit criteria, preventing orphaned trades.
--   **Data Source Hierarchy:** A robust pattern where the system prioritizes the fastest data source (WebSocket, <1ms) and gracefully degrades to a slower fallback (REST API, ~91ms) if the primary source fails.
--   **Equity vs. Capital Accounting:** Differentiating between  (the true value of the portfolio) and  (cash on hand) for accurate performance tracking.
+-   **Markets-First Architecture (NEW):** A shift from reactive processing to proactively scanning the entire market (400-900 markets) continuously.
+-   **Dual-Path News Processing (NEW):** A hybrid approach where news triggers both an immediate, broad opportunity broadcast (Path B) and a slower, targeted deep analysis via semantic search and LLMs (Path A).
+-   **MongoDB as a Cache (NEW):** Using MongoDB with TTL (Time-To-Live) indexes to replace Redis for storing signals, simplifying the tech stack.
+-   **Adaptive TTL (NEW):** A caching strategy where the lifetime of a signal dynamically changes based on the detected market regime (e.g., signals expire faster in volatile markets).
+-   **Asynchronous Locking:** Use of  is now critical for protecting shared state like  from race conditions in the multi-looped .
 
 **key DB schema**
--   No schema changes were made. MongoDB collections include , , and .
+-   **NEW Collections to be created:**
+    -   : Caches data and embeddings for all scanned markets. .
+    -   : Stores actionable signals from Path A (LLM analysis), replacing Redis. .
+    -   : Stores broadcast data from Path B for all markets. .
 
 **changes in tech stack**
--   None.
+-   **Redis is being deprecated.** Signal caching will now be handled exclusively by MongoDB using TTL indexes.
 
 **All files of reference**
--   : **Heavily modified**. The main trading loop. Fixes for sports exit logic and capital calculation were applied here.
--   : **Key file for sports exit fix**. Contains the centralized exit logic.
--   : **Modified** to implement the Whale Direct Injection optimization.
--   : **Modified** to wire up the  for the whale optimization and add debug endpoints.
--   : **Modified** to fix the capital display bug. Needs further changes for the 5-lane display.
--   : **Needs modification** to support 5 lanes.
--   : Contains the  which is a target for future refactoring.
+-   : **Most critical file.** It was heavily modified to fix numerous capital accounting bugs and now contains the core . The new architecture will interact with its loops.
+-   : Contains strategy and lane configurations.
+-   : Contains the main UI dashboard.
+-   : Will be updated to initialize the new services at startup.
+-   **NEW:** : To be created.
+-   **NEW:** : To be created.
 
 **Areas that need refactoring**:
--   The  dictionary in  should be moved into  to consolidate all risk and strategy parameters into the SSOT.
+-   The user's new request is a major refactoring of the entire data ingestion and signal generation pipeline.
+-   The  dictionary in  is still a candidate for being moved to a JSON file.
 
 **key api endpoints**
--   : The central webhook receiver for all PUSH news sources.
--   : Returns the full status object for the frontend, including lane performance and strategy stats.
--   : A debug endpoint to test the whale alert pathway.
--   : A new debug endpoint to check the contents and stats of the signal cache.
+-   : Returns the main status object for the frontend.
+-   **NEW as per user spec:**
+    -   : To receive news events for the .
+    -   : To check the status of the new .
 
 **Critical Info for New Agent**
--   Your immediate task is to **complete the UI enhancement for the performance dashboards**. This involves backend changes to provide the data for all 5 lanes and frontend changes to render it dynamically.
--   The core logic of the bot is now considered stable and well-documented after multiple audits and bug fixes. Avoid making changes to the core trading paths unless required.
--   The  in  is now the **universal exit checker**. Any future exit logic should be integrated there via the .
--   The project has a robust testing foundation with multiple new test scripts in . Use these to verify changes.
+-   Your **P0 task** is to implement the new Markets-First architecture detailed in the user's last message (chat message #868). **Do not work on anything else.**
+-   Follow the user's plan meticulously. It is broken down into phases. Start with **Phase 1: Foundation**, which involves creating the new services (, ) and the new MongoDB collections.
+-   This new system is designed to run in **parallel** with the existing trading lanes. The goal is zero breaking changes to the current bot logic.
+-   The capital accounting bug was extremely difficult to solve. The solution involved adding an  to all capital modifications in . Ensure any new code that might affect shared state is also thread-safe.
+-   The user has provided the full contents for the new files. Use  to implement them.
 
 **documents and test reports created in this job**
 -   
--   
--   
--   
--   
--   
--   
+-    (created and used for debugging)
+-   The PRD at  was updated.
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. **User**: Asked to fix the sports trade exit bug. **Status**: COMPLETED.
-9.  **User**: Asked to implement the optimal fix for the sports exit bug (in the position monitoring loop). **Status**: COMPLETED.
-8.  **User**: Pointed out that capital was showing as increasing despite negative P&L. **Status**: COMPLETED.
-7.  **User**: Confirmed the agent should fix both the frontend and backend capital bugs and asked for clarification on P&L accounting. **Status**: COMPLETED.
-6.  **User**: Requested to enhance the UI to show performance for all five lanes and all sub-strategies. **Status**: IN PROGRESS.
-5.  **User**: (self-correction from agent) Provided detailed strategy documentation.
-4.  **User**: Asked to ensure WebSocket is the primary data source. **Status**: COMPLETED.
-3.  **User**: Asked to test latency figures with real data. **Status**: COMPLETED.
-2.  **User**: Asked to explore and fix the WebSocket integration. **Status**: COMPLETED.
-1.  **User**: Asked for a detailed breakdown of trade logic for all strategies and sub-strategies. **Status**: COMPLETED.
+10. **User**: Asked for the difference between  and . (Answered)
+9.  **User**: Pointed out the capital accounting bug again. (Investigation started)
+8.  **User**: Asked the agent to fix the identified bug. (Fix implemented)
+7.  **User**: Requested further investigation as the bug persisted. (Investigation continued)
+6.  **User**: Again requested further investigation. (Investigation continued)
+5.  **User**: **Provided a detailed, comprehensive prompt for a new Markets-First architecture.** (This is the new P0 task)
+4.  **Agent**: Acknowledged the user's prompt. (Waiting to implement)
+3.  **User**: The screenshot shows a capital accounting issue after agent finished the task. (Investigation started)
+2.  **User**: Asks to fix the Sports trade exit issue as it was not closing. (Investigation started)
+1.  **User**: Asked to implement a comprehensive Production-Ready prompt for the app. (Acknowledged)
 
 **Project Health Check:**
--   **Working**: Core trading engine, All 5 lanes (HFT, Alpha, Gamma, Sports, News), SSOT Risk Layer, all news integrations, WebSocket data feed, correct exit logic for all strategies, correct capital accounting.
--   **Broken**: None.
--   **Mocked/Paused**: The CryptoPanic service is intentionally PAUSED via a feature flag in the  file.
+-   **Working**: The core 5-lane trading bot logic, all integrations, and the 5-lane UI display. Capital accounting is believed to be stable after extensive fixes.
+-   **Broken**: None. The system is functional but is about to undergo a major architectural refactor.
+-   **Mocked/Paused**: The CryptoPanic service remains disabled via the  feature flag.
 
 **3rd Party Integrations**
 -   **OpenAI GPT-4o-mini, GPT-5.2, Gemini 3 Flash**: Used for sentiment analysis (). Uses Emergent LLM Key.
@@ -155,20 +159,15 @@ There are no pending bugs. The only in-progress item is the UI enhancement task.
 -   **CryptoPanic**: Integrated but PAUSED. Requires User API Key.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES, for both the sports exit fix and the capital bug fix.
+-   **Testing agent used after significant changes**: YES, for the UI enhancement task.
 -   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**:
-    -   
-    -   
-    -   
-    -   
-    -   
-    -   
-    -   
+-   **Test files created**: A new script, , was effectively created and used for debugging the capital bug.
 -   **Known regressions**: None.
 
 **Credentials to test flow:**
--   All necessary API keys (, , ) are already present in .
+-   API keys are in .
+-   Admin credentials for starting paper trading (/) are set in the environment.
 
 **What agent forgot to execute**
--   The user's early request to save in github has still not been addressed. The agent should remind the user about the platform's Save to Github feature in the next  call.</analysis>
+-   The user's long-pending request to save in github has still not been addressed. The agent should remind the user about the platform's Save to Github feature.
+-   The refactoring task to move  to a JSON file is still pending but is superseded by the new architecture task.</analysis>
