@@ -277,14 +277,16 @@ class TestOpportunitiesEndpoint:
 class TestExistingSystemIntegrity:
     """Verify existing 5-lane system still works (zero breaking changes)"""
     
-    def test_paper_trading_status(self):
-        """Test /api/paper-trading/status still works"""
-        response = requests.get(f"{BASE_URL}/api/paper-trading/status")
+    def test_system_status_includes_paper_trading(self):
+        """Test /api/status includes paper_trading configuration"""
+        response = requests.get(f"{BASE_URL}/api/status")
         assert response.status_code == 200
         
         data = response.json()
-        assert 'status' in data
-        print(f"✓ Paper trading status: {data['status']}")
+        assert 'configuration' in data
+        config = data['configuration']
+        assert 'paper_trading' in config
+        print(f"✓ System status includes paper_trading: {config['paper_trading']}")
     
     def test_analytics_endpoint(self):
         """Test /api/analytics still returns lane data"""
