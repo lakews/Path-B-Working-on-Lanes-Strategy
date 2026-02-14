@@ -645,15 +645,15 @@ class PaperTrader:
         self.hft_math_engine = HFTMathEngine(self.hft_math_config)
         
         # =============================================================
-        # HFT ENGINE V2 (5 Sub-Strategy Architecture)
+        # HFT ENGINE V2 ENHANCED (5 Sub-Strategy Architecture)
         # =============================================================
-        # - Delta-Neutral Market Making (35%)
-        # - Volatility Exploitation (10%)
-        # - Extreme Spread Capture (15%)
-        # - Sharp Trader Following (20%)
-        # - Liquidity Provision (20%)
-        # Reads PATH A (signals) for intelligence, PATH B (hft_opportunities) for speed
-        self.hft_engine_v2: Optional[HighFrequencyTradingEngine] = None
+        # MERGES LEGACY + NEW FEATURES:
+        # - 5 Sub-Strategies: Delta-Neutral(35%), Volatility(10%), Extreme(15%), Sharp(20%), Liquidity(20%)
+        # - Alpha Target Integration: strategy_context bridge
+        # - HFT Math Engine: Cubic Skew, Jump Detection, Cliff Protection
+        # - Polymarket Compliance: Tick Grid, Hysteresis, Kill Zones
+        # - MongoDB Signals: PATH A (intelligence) + PATH B (speed)
+        self.hft_engine_v2: Optional[HighFrequencyTradingEngineV2] = None
         self._hft_v2_task: Optional[asyncio.Task] = None
         
         # =============================================================
