@@ -5669,6 +5669,60 @@ async def get_cached_markets(limit: int = 100):
         )
 
 
+@api_router.get("/hft-v2/status")
+async def get_hft_v2_status():
+    """
+    Get HFT Engine V2 status and metrics.
+    
+    Returns performance metrics for all 5 HFT sub-strategies:
+    - Delta-Neutral Market Making (35%)
+    - Volatility Exploitation (10%)
+    - Extreme Spread Capture (15%)
+    - Sharp Trader Following (20%)
+    - Liquidity Provision (20%)
+    """
+    global paper_trader
+    
+    try:
+        if not paper_trader or not hasattr(paper_trader, 'hft_engine_v2') or not paper_trader.hft_engine_v2:
+            return {
+                "status": "not_initialized",
+                "message": "HFT Engine V2 not initialized. Start paper trading to enable.",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        
+        hft_v2 = paper_trader.hft_engine_v2
+        
+        return {
+            "status": "operational" if hft_v2._running else "stopped",
+            "metrics": hft_v2.get_hft_metrics(),
+            "stats": hft_v2.get_stats(),
+            "config": {
+                "pause_bf": 10.0,
+                "extreme_bf": 5.0,
+                "caution_bf": 3.0,
+                "kelly_fraction": 0.25,
+                "max_position_pct": 0.03,
+                "hft_lane_allocation": 0.35,
+                "sub_strategy_allocations": {
+                    "delta_neutral": 0.35,
+                    "volatility_exploit": 0.10,
+                    "extreme_spread": 0.15,
+                    "sharp_following": 0.20,
+                    "liquidity_provision": 0.20
+                }
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting HFT V2 status: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
