@@ -245,7 +245,6 @@ class HighFrequencyTradingEngineV2:
             # STEP 2: Check Alpha target (strategy_context bridge)
             alpha_target = None
             fair_value = yes_price  # Default to market price
-            regime = 'NORMAL'
             alpha_confidence = 0.5
             
             if self.strategy_context:
