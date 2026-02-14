@@ -4,77 +4,80 @@
 Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with a centralized "Single Source of Truth" (SSOT) Risk Management layer for prediction market trading.
 
 ## Current Session Focus
-- **Markets-First Architecture Implementation (Phase 1 - COMPLETED Feb 2026)**
+- **HFT Engine V2 Implementation (COMPLETED Feb 2026)**
+- **Markets-First Architecture Phase 1 (COMPLETED Feb 2026)**
 - Sports Arbitrage exit logic fix (COMPLETED)
 - News Lane (Lane 5) expansion with multi-source ingestion (COMPLETED)
-- Cortex Audit to understand existing LLM/sentiment fusion (COMPLETED)
-- 5-Lane Performance Dashboard UI Enhancement (COMPLETED - Feb 2026)
+- 5-Lane Performance Dashboard UI Enhancement (COMPLETED)
 
 ---
 
 ## Architecture Overview
 
 ### 5 Trading Lanes
-1. **HFT Lane** - High-frequency trading with real-time orderbook analysis
+1. **HFT Lane** - High-frequency trading with 5 sub-strategies (HFT Engine V2)
 2. **ALPHA Lane** - Alpha signal generation with Bayesian inference
 3. **GAMMA Lane** - Volatility-based trading strategies
 4. **SPORTS Lane** - Sports arbitrage using real odds APIs
 5. **NEWS Lane** - News-driven trading with multi-source ingestion
 
-### Markets-First Architecture (NEW - Feb 2026)
+### HFT Engine V2 Architecture (NEW - Feb 2026)
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ HFT ENGINE V2 - 5 SUB-STRATEGIES                                │
+├─────────────────────────────────────────────────────────────────┤
+│ 1. Delta-Neutral Market Making (35%)                            │
+│    - Quote YES/NO bid/ask, capture spreads                      │
+│    - Zone: Standard prices (0.10-0.90)                          │
+│                                                                 │
+│ 2. Volatility Exploitation (10%)                                │
+│    - Mean reversion at extreme prices                           │
+│    - Zone: 0.00-0.10 or 0.90-1.00                               │
+│                                                                 │
+│ 3. Extreme Spread Capture (15%)                                 │
+│    - Wide spreads (5-15x normal) at extremes                    │
+│    - Compensate volatility with wider spreads                   │
+│                                                                 │
+│ 4. Sharp Trader Following (20%)                                 │
+│    - Detect institutional flow via z-score                      │
+│    - Follow 50% of sharp size                                   │
+│                                                                 │
+│ 5. Liquidity Provision (20%)                                    │
+│    - Standing quotes on high-volume markets                     │
+│    - Minimum $50K daily volume                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### News Strength Classification
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ BAYES FACTOR → NEWS STRENGTH → MULTIPLIERS                      │
+├─────────────────────────────────────────────────────────────────┤
+│ BF >= 10.0 → PAUSE    → Skip entire cycle                       │
+│ BF 5.0-10  → EXTREME  → Spread 2.5x, Position 0.5x              │
+│ BF 3.0-5.0 → CAUTION  → Spread 1.3x, Position 0.75x             │
+│ BF < 3.0   → NORMAL   → No adjustment                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Markets-First Architecture (Phase 1)
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│ LAYER 1: MARKET DATA FOUNDATION (WebSocket-Primary)           │
-├────────────────────────────────────────────────────────────────┤
-│ PolymarketScanner (NEW)                                        │
-│ ├─ PRIMARY: WebSocket (realtime_market_service)               │
-│ ├─ FALLBACK: Gamma REST API                                   │
-│ ├─ Quality Scoring: Detect stale WS data                      │
-│ ├─ Generate embeddings (semantic search)                      │
-│ ├─ Cache in MongoDB (persistent): polymarket_cache            │
-│ └─ Track 400-900 markets continuously                         │
+│ LAYER 1: MARKET DATA FOUNDATION                                │
+│ PolymarketScanner → 500+ markets cached continuously           │
 └────────────────────────────────────────────────────────────────┘
                             ↓
 ┌────────────────────────────────────────────────────────────────┐
-│ LAYER 2: NEWS PROCESSING (Dual-Path, MongoDB Signals)         │
-├────────────────────────────────────────────────────────────────┤
-│ DualPathNewsInjector (NEW)                                     │
-│ ├─ PATH A: Semantic search (5-10 markets) → LLM analysis      │
-│ │  └─ Creates signals in MongoDB: db.signals collection       │
-│ ├─ PATH B: Broadcast ALL 400-900 markets → opportunities      │
-│ │  └─ Creates records in MongoDB: db.hft_opportunities        │
-│ └─ Both paths parallel execution (non-blocking)               │
+│ LAYER 2: NEWS PROCESSING (Dual-Path)                           │
+│ PATH A: Semantic search → LLM → signals collection             │
+│ PATH B: Broadcast ALL → hft_opportunities collection           │
 └────────────────────────────────────────────────────────────────┘
-```
-
-### Cortex (Brain) Architecture
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      DATA INGESTION (NEWS)                       │
-│  Apify Twitter ──┐                                               │
-│  Exa.ai        ──┼── WebhookNews ── NewsInjector.process_news() │
-│  Whale Alerts  ──┘                                               │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                PATH A: NEWS → LLM → BAYES → CACHE               │
-│  services/llm_service.py (EmergentLLMService)                   │
-│       ↓ analyze_news_for_market() → LLMAnalysisResult            │
-│  bayesian_math/event_bayes.py (EventBayesianUpdater)            │
-│       ↓ update() → EventPosterior                                │
-│  Signal Cache (AsyncSignalCache)                                 │
-│       ↓ HFT reads from cache                                     │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│              PATH B: MARKET → FUSION → TRADE DECISION           │
-│  ml/signal_fusion.py (SignalFusionEngine)                       │
-│       Uses: ml/sentiment_analyzer.py (GPT-5.2 + Gemini fusion)  │
-│       Uses: ml/enhanced_sentiment.py (EnhancedSentimentAnalyzer)│
-│       Uses: ml/sentiment_llm.py (SmartLLMSentimentAnalyzer)     │
-│       Output: generate_trading_signal() → WAIT/BUY/SELL         │
-└─────────────────────────────────────────────────────────────────┘
+                            ↓
+┌────────────────────────────────────────────────────────────────┐
+│ LAYER 3: SIGNAL CONSUMPTION                                    │
+│ HFT V2: Reads PATH B (speed) + PATH A (intelligence)           │
+│ NEWS Lane: Reads PATH A (conviction calculation) [PENDING]     │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -84,32 +87,28 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 ### Session: February 2026
 
 #### COMPLETED ✅
-1. **Markets-First Architecture Phase 1**
-   - Created `/app/backend/services/polymarket_scanner.py` - Continuous market scanning
-   - Created `/app/backend/services/news_injector_dual_path.py` - Dual-path news processing
-   - MongoDB collections: `polymarket_cache`, `signals`, `hft_opportunities`
-   - TTL indexes for automatic signal expiration
-   - WebSocket quality scoring for stale data detection
-   - Semantic search with TF-IDF embeddings for market matching
-   - Adaptive TTL based on market regime (Quiet/Normal/Volatile/Crisis)
+1. **HFT Engine V2** (`/app/backend/trading/hft_engine_v2.py`)
+   - 5 sub-strategies with proper capital allocation
+   - News strength classification (PAUSE/EXTREME/CAUTION/NORMAL)
+   - MongoDB signal integration (PATH A + PATH B)
+   - Kelly criterion (0.25) and 3% position cap constraints
+   - Integration with paper_trader.py start/stop lifecycle
 
-2. **New API Endpoints**
-   - `GET /api/health/scanner` - Scanner health status
-   - `POST /api/webhooks/news` - News event webhook
+2. **HFT Configuration** (`/app/backend/trading/hft_config.py`)
+   - NewsStrength enum
+   - HFTConfig class with all thresholds and allocations
+   - Helper functions: get_news_strength(), get_multipliers(), get_price_zone()
+
+3. **Markets-First Architecture Phase 1**
+   - PolymarketScanner with WebSocket + REST fallback
+   - DualPathNewsInjector with PATH A (LLM) + PATH B (broadcast)
+   - MongoDB collections with TTL indexes
+
+4. **API Endpoints**
+   - `GET /api/hft-v2/status` - HFT Engine V2 metrics
+   - `GET /api/health/scanner` - Scanner health
+   - `POST /api/webhooks/news` - News processing
    - `GET /api/markets-first/status` - Full system status
-   - `GET /api/markets-first/signals` - Active PATH A signals
-   - `GET /api/markets-first/opportunities` - PATH B HFT opportunities
-   - `GET /api/markets-first/cached-markets` - In-memory cached markets
-
-### Session: December 2025
-
-#### COMPLETED ✅
-1. **Sports Arbitrage Exit Logic Fix**
-2. **Exa.ai Integration**
-3. **Webhook Sources Integration**
-4. **Live Fire Test**
-5. **Cortex Audit**
-6. **5-Lane Performance Dashboard Enhancement**
 
 ---
 
@@ -117,82 +116,50 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 
 | File | Purpose |
 |------|---------|
-| `/app/backend/services/polymarket_scanner.py` | **NEW** Markets-First scanner with WebSocket + REST fallback |
-| `/app/backend/services/news_injector_dual_path.py` | **NEW** Dual-path news processing (PATH A + PATH B) |
-| `/app/backend/services/llm_service.py` | Event Resolution Adjudicator (GPT-4o-mini) |
-| `/app/backend/services/news_injector.py` | News processing orchestrator (original) |
-| `/app/backend/services/webhook_sources.py` | Multi-source webhook manager |
-| `/app/backend/bayesian_math/event_bayes.py` | Bayesian updater for news signals |
-| `/app/backend/ml/signal_fusion.py` | Signal fusion engine |
-| `/app/backend/paper_trading/paper_trader.py` | Paper trading with 5-lane support |
+| `/app/backend/trading/hft_engine_v2.py` | **NEW** HFT Engine V2 with 5 sub-strategies |
+| `/app/backend/trading/hft_config.py` | **NEW** HFT configuration and enums |
+| `/app/backend/services/polymarket_scanner.py` | **NEW** Continuous market scanner |
+| `/app/backend/services/news_injector_dual_path.py` | **NEW** Dual-path news processing |
+| `/app/backend/paper_trading/paper_trader.py` | Paper trading with HFT V2 integration |
 | `/app/backend/risk_config.py` | Risk configuration |
 
 ---
 
 ## API Endpoints
 
-### Markets-First Endpoints (NEW)
+### HFT V2 Endpoints
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/health/scanner` | GET | Check PolymarketScanner health |
-| `/api/webhooks/news` | POST | Receive news events for dual-path processing |
-| `/api/markets-first/status` | GET | Full system status (scanner + injector + MongoDB) |
-| `/api/markets-first/signals` | GET | Get active PATH A signals |
-| `/api/markets-first/opportunities` | GET | Get PATH B HFT opportunities |
-| `/api/markets-first/cached-markets` | GET | Get in-memory cached markets |
+| `/api/hft-v2/status` | GET | HFT Engine V2 metrics and configuration |
 
-### Existing Endpoints
+### Markets-First Endpoints
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/hooks/news-alert` | POST | Central webhook receiver |
-| `/api/hooks/webhook-sources/start` | POST | Start all polling loops |
-| `/api/hooks/webhook-sources/stop` | POST | Stop all polling loops |
-| `/api/hooks/webhook-sources/status` | GET | Get status of all sources |
-
----
-
-## MongoDB Collections (Markets-First)
-
-### polymarket_cache
-- `market_id` (unique index)
-- `question`, `category`, `price`, `liquidity`, `volume_24h`
-- `embedding` (vector for semantic search)
-- `_data_quality` (freshness scoring)
-- `cached_at`
-
-### signals
-- `market_id`, `type: "path_a"`
-- `bayes_factor`, `direction`, `confidence`, `sentiment`, `impact_level`
-- `news_headline`, `news_source`
-- `expires_at` (TTL index - auto-delete)
-- `market_regime`, `adaptive_ttl`
-
-### hft_opportunities
-- `market_id`, `type: "path_b"`
-- `market_*` (full market context)
-- `news_headline`, `news_source`, `news_urgency`
-- `expires_at` (10s TTL for fast trades)
-- `requires_fast_execution`
+| `/api/health/scanner` | GET | Scanner health status |
+| `/api/webhooks/news` | POST | News event webhook |
+| `/api/markets-first/status` | GET | Full system status |
+| `/api/markets-first/signals` | GET | Active PATH A signals |
+| `/api/markets-first/opportunities` | GET | PATH B HFT opportunities |
+| `/api/markets-first/cached-markets` | GET | In-memory cached markets |
 
 ---
 
 ## Prioritized Backlog
 
 ### P0 - Critical (COMPLETED)
+- [x] HFT Engine V2 Implementation
 - [x] Markets-First Architecture Phase 1
 - [x] 5-Lane Performance Dashboard Enhancement
-- [x] Sports Arbitrage Exit Logic Fix
 - [x] Capital Accounting Bug Fixes
 
-### P1 - High Priority
-- [ ] **Phase 2: NEWS Lane Integration** - Update NEWS lane to read from MongoDB signals
-- [ ] **Phase 3: HFT V2 Integration** - Connect HFT engine to PATH A signals
+### P1 - High Priority (NEXT)
+- [ ] **NEWS Lane Integration (Phase 2)** - Update NEWS lane to read from MongoDB signals with ConvictionEnhancer
 - [ ] SSOT Refactoring: Move `EXIT_STRATEGY_CONFIG` to `risk_config.json`
 
 ### P2 - Future
+- [ ] HFT V3 with direct order placement
 - [ ] Reactivate CryptoPanic with premium API key
 - [ ] Production deployment optimization
-- [ ] Advanced embedding models (sentence-transformers)
 
 ---
 
@@ -210,14 +177,14 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 
 ---
 
-## Known Issues / Paused Features
-
-1. **CryptoPanic API** - Intentionally PAUSED via `CRYPTOPANIC_ENABLED=false` in `.env` due to 24h delay on free tier.
-2. **WebSocket Returns 0 Markets** - Expected during initial startup; falls back to REST API automatically.
+## Test Reports
+- `/app/test_reports/iteration_40.json` - Markets-First Phase 1 (20 tests passed)
+- `/app/test_reports/iteration_41.json` - HFT Engine V2 (37 tests passed)
 
 ---
 
 ## User Notes
 - Use platform's "Save to Github" feature to persist codebase
 - All API keys stored in `/app/backend/.env`
-- Markets-First system runs in PARALLEL to existing 5-lane system (zero breaking changes)
+- HFT Engine V2 initializes ONLY when paper trading starts
+- Markets-First system runs in PARALLEL to existing system (zero breaking changes)
