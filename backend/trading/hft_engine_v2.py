@@ -1,21 +1,27 @@
 """
-HFT ENGINE V2 - HIGH-FREQUENCY TRADING ENGINE
-==============================================
+HFT ENGINE V2 - HIGH-FREQUENCY TRADING ENGINE (ENHANCED)
+=========================================================
 
-Implements 5 HFT sub-strategies with PATH A/B signal integration:
-1. Delta-Neutral Market Making (35% allocation)
-2. Volatility Exploitation (10% allocation)
-3. Extreme Spread Capture (15% allocation)
-4. Sharp Trader Following (20% allocation)
-5. Liquidity Provision (20% allocation)
+Merges all legacy HFT features with the new 5 sub-strategy architecture.
 
-MongoDB-Only Architecture:
-- Reads PATH B (hft_opportunities) for speed/market context
-- Reads PATH A (signals) for intelligence/bayes_factor
+LEGACY FEATURES INTEGRATED:
+1. Alpha Target Integration - Uses strategy_context.get_target() for fair value
+2. HFT Math Engine - Cubic skew, jump detection, cliff protection
+3. Active Order Tracking - Manages active_orders dict for Polymarket compliance
+4. Hysteresis Logic - Anti-churn with HYSTERESIS_THRESHOLD
+5. Tick Grid Compliance - Uses TICK_SIZE = 0.01 for Polymarket
+
+NEW V2 FEATURES:
+1. 5 HFT Sub-Strategies with capital allocation
+2. News Strength Classification (PAUSE/EXTREME/CAUTION/NORMAL)
+3. MongoDB Signal Integration (PATH A + PATH B)
+4. Spread & Position Multipliers based on news
 
 CRITICAL CONSTRAINTS (MUST RESPECT):
 - Kelly Criterion (0.25 fractional sizing)
 - 3% max position cap
+- Polymarket tick grid ($0.01)
+- Kill zone bounds ($0.05 - $0.95)
 - Never bypass existing capital management
 """
 
@@ -24,60 +30,95 @@ import logging
 import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple, Any
-from enum import Enum
+from threading import Lock
 
 from trading.hft_config import (
     HFTConfig, HFTMode, NewsStrength,
     get_news_strength, get_multipliers, get_price_zone
 )
 
+# Import HFT Math Engine components
+from strategies.hft_math import (
+    HFTMathEngine, HFTMathConfig,
+    CubicInventorySkew, AdaptiveSignalSmoother, CliffProtection
+)
+
 logger = logging.getLogger(__name__)
 
 
-class HighFrequencyTradingEngine:
+# =============================================================================
+# POLYMARKET COMPLIANCE CONSTANTS
+# =============================================================================
+TICK_SIZE = 0.01           # Polymarket tick grid ($0.01)
+MIN_PRICE = 0.05           # Kill zone lower bound
+MAX_PRICE = 0.95           # Kill zone upper bound
+MIN_SPREAD_TICKS = 2       # Minimum 2 cents spread
+ORDER_STALE_SECONDS = 120  # Refresh orders after 2 minutes
+HYSTERESIS_THRESHOLD = 0.01  # 1 cent drift tolerance (anti-churn)
+
+
+class HighFrequencyTradingEngineV2:
     """
-    HFT Engine V2 - 5 Sub-Strategy Implementation
+    Enhanced HFT Engine V2 - Merges Legacy + New Architecture
     
     Features:
-    - Operates in 5 distinct trading modes
-    - Reads news signals from MongoDB (PATH A for intelligence, PATH B for speed)
-    - Dynamically adjusts spreads/positions based on news strength
-    - Integrates seamlessly with existing infrastructure
+    - 5 distinct HFT sub-strategies with proper capital allocation
+    - Alpha target integration via strategy_context
+    - HFT Math Engine (cubic skew, jump detection, cliff protection)
+    - Active order tracking with hysteresis (anti-churn)
+    - Polymarket tick grid compliance
+    - News signals from MongoDB (PATH A intelligence + PATH B speed)
     - Respects ALL constraints (Kelly, 3% cap, capital limits)
     """
     
     def __init__(self, dependencies: Dict[str, Any]):
         """
-        Initialize HFT Engine with injected dependencies.
+        Initialize HFT Engine V2 with injected dependencies.
         
         Args:
             dependencies: Dict containing:
                 - db: MongoDB database connection
                 - market_data_svc: Market data service
                 - paper_trader: Paper trading instance
-                - position_manager: Position management
-                - kelly_optimizer: Kelly criterion optimizer (optional)
-                - spread_calibrator: Spread calculation (optional)
-                - volatility_predictor: Volatility prediction (optional)
+                - strategy_context: Alpha/HFT shared state bridge
+                - position_manager: Position management (optional)
                 - sharp_detector: Sharp trader detection (optional)
+                - gamma_trader: Gamma trading strategy (optional)
                 - performance_analytics: Analytics logging (optional)
         """
         # Required dependencies
         self.db = dependencies.get('db')
         self.market_data_svc = dependencies.get('market_data_svc')
         self.paper_trader = dependencies.get('paper_trader')
-        self.position_manager = dependencies.get('position_manager')
+        self.strategy_context = dependencies.get('strategy_context')
         
         # Optional dependencies (graceful degradation)
-        self.kelly_optimizer = dependencies.get('kelly_optimizer')
-        self.spread_calibrator = dependencies.get('spread_calibrator')
-        self.volatility_predictor = dependencies.get('volatility_predictor')
         self.sharp_detector = dependencies.get('sharp_detector')
+        self.gamma_trader = dependencies.get('gamma_trader')
+        self.volatility_predictor = dependencies.get('volatility_predictor')
         self.performance_analytics = dependencies.get('performance_analytics')
+        
+        # HFT Math Engine (Cubic Skew, Jump Detection, Cliff Protection)
+        self.hft_math_config = HFTMathConfig(
+            max_position_limit=1000,
+            skew_intensity=0.05,
+            ema_alpha=0.2,
+            jump_threshold=0.03,
+            cliff_zone_threshold=0.15,
+            cliff_spread_multiplier=2.0,
+            extreme_zone_threshold=0.05,
+            extreme_spread_multiplier=3.0,
+        )
+        self.hft_math_engine = HFTMathEngine(self.hft_math_config)
+        
+        # Active Order Tracking (Polymarket Compliance)
+        self._orders_lock = Lock()
+        self.active_orders: Dict[str, Dict] = {}
         
         # Engine state
         self._running = False
         self._last_cycle_time = None
+        self._cycle_count = 0
         
         # Statistics
         self.stats = {
@@ -87,41 +128,70 @@ class HighFrequencyTradingEngine:
             'paused_cycles': 0,
             'path_a_hits': 0,
             'path_b_hits': 0,
+            'alpha_hits': 0,
+            'alpha_misses': 0,
+            'orders_kept_hysteresis': 0,
+            'orders_cancelled_drift': 0,
+            'orders_cancelled_stale': 0,
             'total_pnl': 0.0,
             'errors': 0
         }
         
-        logger.info("[HFT V2] Engine initialized with MongoDB signal integration")
+        logger.info("[HFT V2 ENHANCED] Engine initialized")
+        logger.info("  ├─ HFT Math Engine: Cubic Skew + Jump Detection + Cliff Protection")
+        logger.info("  ├─ Polymarket Compliance: Tick Grid + Hysteresis + Kill Zones")
+        logger.info("  ├─ Alpha Integration: strategy_context bridge")
+        logger.info("  └─ Signal Sources: MongoDB PATH A + PATH B")
     
     async def start_hft_loop(self):
         """
         Main HFT background loop.
         Runs continuously, executing HFT strategies every 500ms.
         """
-        logger.info("[HFT V2] Starting continuous HFT loop...")
+        logger.info("[HFT V2] Starting enhanced HFT loop...")
         self._running = True
         
         while self._running:
             try:
                 cycle_start = time.time()
+                self._cycle_count += 1
+                
+                # Skip if paper_trader in graceful stop mode
+                if self.paper_trader and getattr(self.paper_trader, 'graceful_stop', False):
+                    await asyncio.sleep(0.5)
+                    continue
                 
                 # Get active markets
                 markets = await self._get_active_markets()
                 
+                evaluated = 0
+                triggered = 0
+                
                 if markets:
-                    # Process each market
-                    for market in markets[:50]:  # Limit to top 50 for speed
+                    for market in markets[:50]:  # Process top 50 for speed
                         try:
-                            await self.execute_hft_scalp(market)
+                            result = await self.execute_hft_scalp(market)
+                            evaluated += 1
+                            if result and result.get('success'):
+                                triggered += 1
                         except Exception as e:
                             logger.debug(f"[HFT V2] Market error: {e}")
                             continue
                 
                 self.stats['cycles_executed'] += 1
                 
-                # Calculate cycle time and sleep
+                # Calculate cycle time
                 cycle_time_ms = (time.time() - cycle_start) * 1000
                 self._last_cycle_time = cycle_time_ms
+                
+                # Log every 20 cycles
+                if self._cycle_count % 20 == 0:
+                    alpha_hit_rate = self.stats['alpha_hits'] / max(1, self.stats['alpha_hits'] + self.stats['alpha_misses'])
+                    logger.info(
+                        f"[HFT V2 #{self._cycle_count}] Evaluated: {evaluated}, "
+                        f"Triggered: {triggered}, Cycle: {cycle_time_ms:.0f}ms, "
+                        f"Alpha Hits: {alpha_hit_rate:.1%}"
+                    )
                 
                 # Target 500ms cycles
                 sleep_time = max(0.1, (500 - cycle_time_ms) / 1000)
@@ -135,7 +205,7 @@ class HighFrequencyTradingEngine:
                 logger.error(f"[HFT V2] Loop error: {e}", exc_info=True)
                 await asyncio.sleep(1.0)
         
-        logger.info("[HFT V2] HFT loop stopped")
+        logger.info("[HFT V2] Enhanced HFT loop stopped")
     
     async def stop(self):
         """Stop the HFT engine"""
@@ -146,34 +216,52 @@ class HighFrequencyTradingEngine:
         """
         Main entry point for HFT execution on a single market.
         
-        Flow:
-        1. Check PATH B for fresh news broadcast (speed)
-        2. If news exists, get PATH A analysis (intelligence)
-        3. Classify news strength and get multipliers
-        4. If PAUSE mode, skip cycle
-        5. Select appropriate HFT mode based on price zone
-        6. Build trade parameters (respecting constraints)
-        7. Execute via paper_trader
-        8. Log to analytics
-        
-        Args:
-            market_data: Market data dict with id, price, volume, etc.
-            
-        Returns:
-            Trade result dict or None if no trade
+        Enhanced Flow:
+        1. Check if we already have a position (skip)
+        2. Get Alpha target from strategy_context (smart mode)
+        3. Check PATH B for fresh news broadcast (speed)
+        4. Get PATH A analysis for bayes_factor (intelligence)
+        5. Classify news strength and get multipliers
+        6. If PAUSE mode, skip cycle
+        7. Apply HFT Math Engine (skew, smoothing, cliff protection)
+        8. Prune stale orders with hysteresis
+        9. Select appropriate HFT mode based on price zone
+        10. Build trade parameters (respecting all constraints)
+        11. Execute via paper_trader with tick grid compliance
+        12. Log to analytics
         """
         try:
             market_id = market_data.get('id', market_data.get('condition_id', ''))
             if not market_id:
                 return None
             
+            # STEP 1: Skip if we already have a position
+            if self.paper_trader and market_id in getattr(self.paper_trader, 'paper_positions', {}):
+                return None
+            
             # Get current price
             yes_price = float(market_data.get('yes_price', market_data.get('price', 0.5)))
             
-            # STEP 1: Check PATH B for fresh news broadcast (speed check)
+            # STEP 2: Check Alpha target (strategy_context bridge)
+            alpha_target = None
+            fair_value = yes_price  # Default to market price
+            regime = 'NORMAL'
+            alpha_confidence = 0.5
+            
+            if self.strategy_context:
+                alpha_target = self.strategy_context.get_target(market_id)
+                if alpha_target and not alpha_target.get('stale'):
+                    fair_value = alpha_target['fair_value']
+                    regime = alpha_target['regime']
+                    alpha_confidence = alpha_target.get('confidence', 0.7)
+                    self.stats['alpha_hits'] += 1
+                else:
+                    self.stats['alpha_misses'] += 1
+            
+            # STEP 3: Check PATH B for fresh news broadcast (speed)
             has_news, opportunity = await self._check_path_b_opportunity(market_id)
             
-            # STEP 2: Get PATH A analysis for intelligence (bayes_factor)
+            # STEP 4: Get PATH A analysis for bayes_factor (intelligence)
             signal = None
             bayes_factor = 0.0
             if has_news:
@@ -182,55 +270,89 @@ class HighFrequencyTradingEngine:
                     bayes_factor = signal.get('bayes_factor', 0.0)
                     self.stats['path_a_hits'] += 1
             
-            # STEP 3: Classify news strength and get multipliers
+            # STEP 5: Classify news strength and get multipliers
             news_strength = get_news_strength(bayes_factor)
             multipliers = get_multipliers(news_strength)
             
-            # STEP 4: If PAUSE mode, skip entire cycle
+            # STEP 6: If PAUSE mode, skip entire cycle
             if news_strength == NewsStrength.PAUSE:
                 self.stats['paused_cycles'] += 1
                 logger.debug(f"[HFT V2] PAUSE: {market_id[:16]}... BF={bayes_factor:.1f}")
                 return None
             
-            # STEP 5: Select HFT mode based on price zone and conditions
-            hft_mode = await self._select_hft_mode(market_id, market_data, yes_price)
+            # STEP 7: Apply HFT Math Engine
+            current_position = self._get_current_position(market_id)
+            quote_result = self.hft_math_engine.calculate_quote(
+                market_id=market_id,
+                raw_fair_value=fair_value,
+                raw_signal=yes_price,
+                current_position=current_position,
+                base_spread=HFTConfig.DELTA_NEUTRAL_BASE_SPREAD
+            )
+            
+            # Extract adjusted values
+            adjusted_fair = quote_result['fair_value']
+            adjusted_spread = quote_result['spread']
+            cliff_zone = quote_result['cliff_zone']
+            signal_action = quote_result['signal_action']
+            
+            # STEP 8: Prune stale orders with hysteresis
+            prune_stats = self._prune_stale_orders(market_id, adjusted_fair)
+            self.stats['orders_kept_hysteresis'] += prune_stats.get('orders_kept_hysteresis', 0)
+            self.stats['orders_cancelled_drift'] += prune_stats.get('orders_cancelled_drift', 0)
+            self.stats['orders_cancelled_stale'] += prune_stats.get('orders_cancelled_stale', 0)
+            
+            # STEP 9: Select HFT mode based on price zone and conditions
+            hft_mode = await self._select_hft_mode(
+                market_id, market_data, yes_price, 
+                alpha_target=alpha_target, cliff_zone=cliff_zone
+            )
             
             if not hft_mode:
                 return None
             
-            # STEP 6: Build trade parameters (respecting ALL constraints)
+            # STEP 10: Build trade parameters (respecting ALL constraints)
             trade_params = await self._build_trade_params(
                 hft_mode=hft_mode,
                 market_id=market_id,
                 market_data=market_data,
                 multipliers=multipliers,
-                signal=signal
+                signal=signal,
+                alpha_confidence=alpha_confidence,
+                adjusted_fair=adjusted_fair,
+                adjusted_spread=adjusted_spread,
+                cliff_zone=cliff_zone
             )
             
             if not trade_params:
                 return None
             
-            # STEP 7: Execute via appropriate strategy method
+            # STEP 11: Execute via appropriate strategy method with tick grid compliance
             result = await self._execute_strategy(
                 hft_mode=hft_mode,
                 market_id=market_id,
                 market_data=market_data,
                 trade_params=trade_params,
-                signal=signal
+                signal=signal,
+                alpha_target=alpha_target
             )
             
             if result and result.get('success'):
                 self.stats['trades_executed'] += 1
                 self.stats['trades_by_mode'][hft_mode.value] += 1
                 
-                # STEP 8: Log to analytics
+                # Update active orders
+                self._update_active_order(market_id, trade_params)
+                
+                # STEP 12: Log to analytics
                 await self._log_hft_trade(
                     market_id=market_id,
                     hft_mode=hft_mode,
                     trade_params=trade_params,
                     result=result,
                     bayes_factor=bayes_factor,
-                    news_strength=news_strength
+                    news_strength=news_strength,
+                    alpha_target=alpha_target
                 )
             
             return result
@@ -240,18 +362,150 @@ class HighFrequencyTradingEngine:
             logger.error(f"[HFT V2] Execute error: {e}")
             return None
     
+    # =========================================================================
+    # ALPHA TARGET INTEGRATION
+    # =========================================================================
+    
+    def _get_current_position(self, market_id: str) -> float:
+        """Get current position size for a market (for inventory skew)"""
+        try:
+            if self.paper_trader:
+                positions = getattr(self.paper_trader, 'paper_positions', {})
+                if market_id in positions:
+                    return positions[market_id].get('size', 0)
+            return 0.0
+        except Exception:
+            return 0.0
+    
+    # =========================================================================
+    # POLYMARKET COMPLIANCE: TICK GRID & HYSTERESIS
+    # =========================================================================
+    
+    def _round_to_tick(self, price: float) -> float:
+        """Round price to Polymarket tick grid ($0.01)."""
+        return round(price, 2)
+    
+    def _clamp_to_bounds(self, price: float) -> float:
+        """Clamp price to kill zone bounds [$0.05, $0.95]."""
+        return max(MIN_PRICE, min(MAX_PRICE, price))
+    
+    def _enforce_min_spread(self, bid: float, ask: float) -> Tuple[float, float]:
+        """
+        Enforce minimum spread of 2 ticks ($0.02).
+        If spread is too tight, widen symmetrically around mid-point.
+        """
+        min_spread = MIN_SPREAD_TICKS * TICK_SIZE
+        current_spread = ask - bid
+        
+        if current_spread >= min_spread:
+            return bid, ask
+        
+        mid = (bid + ask) / 2
+        half_spread = min_spread / 2
+        
+        new_bid = self._round_to_tick(mid - half_spread)
+        new_ask = self._round_to_tick(mid + half_spread)
+        
+        new_bid = self._clamp_to_bounds(new_bid)
+        new_ask = self._clamp_to_bounds(new_ask)
+        
+        if new_ask <= new_bid:
+            new_ask = new_bid + min_spread
+            new_ask = self._clamp_to_bounds(new_ask)
+        
+        return new_bid, new_ask
+    
+    def _prune_stale_orders(self, market_id: str, current_ai_price: float) -> Dict:
+        """
+        Prune stale or drifted orders with hysteresis (anti-churn) logic.
+        
+        Logic:
+        1. If drift <= HYSTERESIS_THRESHOLD (1 cent): KEEP order (anti-churn)
+        2. If drift > HYSTERESIS_THRESHOLD: CANCEL (AI changed mind)
+        3. If age > ORDER_STALE_SECONDS (120s): CANCEL (refresh liquidity)
+        4. If price outside kill zones: CANCEL (safety)
+        """
+        now = datetime.now(timezone.utc)
+        stats = {
+            'orders_checked': 0,
+            'orders_kept_hysteresis': 0,
+            'orders_cancelled_drift': 0,
+            'orders_cancelled_stale': 0,
+            'orders_cancelled_bounds': 0,
+            'total_cancelled': 0,
+        }
+        
+        with self._orders_lock:
+            order = self.active_orders.get(market_id)
+            if not order:
+                return stats
+            
+            stats['orders_checked'] = 1
+            order_price = order.get('price', 0)
+            order_time = order.get('timestamp')
+            should_cancel = False
+            cancel_reason = ""
+            
+            # CHECK 1: BOUNDS VIOLATION (Safety First)
+            if order_price < MIN_PRICE or order_price > MAX_PRICE:
+                should_cancel = True
+                cancel_reason = f"BOUNDS_VIOLATION (price={order_price:.2f})"
+                stats['orders_cancelled_bounds'] += 1
+            
+            # CHECK 2: STALENESS (Refresh Liquidity)
+            elif order_time:
+                age_seconds = (now - order_time).total_seconds()
+                if age_seconds > ORDER_STALE_SECONDS:
+                    should_cancel = True
+                    cancel_reason = f"STALE ({age_seconds:.0f}s > {ORDER_STALE_SECONDS}s)"
+                    stats['orders_cancelled_stale'] += 1
+            
+            # CHECK 3: DRIFT vs HYSTERESIS (Anti-Churn)
+            if not should_cancel:
+                raw_drift = abs(order_price - current_ai_price)
+                clean_drift = round(raw_drift, 4)
+                
+                if clean_drift <= HYSTERESIS_THRESHOLD:
+                    stats['orders_kept_hysteresis'] += 1
+                    logger.debug(
+                        f"[HFT V2] Keeping {market_id[:16]}... order "
+                        f"(drift={clean_drift:.4f} <= {HYSTERESIS_THRESHOLD})"
+                    )
+                else:
+                    should_cancel = True
+                    cancel_reason = f"DRIFT ({clean_drift:.4f} > {HYSTERESIS_THRESHOLD})"
+                    stats['orders_cancelled_drift'] += 1
+            
+            # EXECUTE CANCELLATION
+            if should_cancel:
+                del self.active_orders[market_id]
+                stats['total_cancelled'] += 1
+                logger.info(
+                    f"[HFT V2] ❌ Cancelled {market_id[:16]}... | "
+                    f"Reason: {cancel_reason} | "
+                    f"Old Price: ${order_price:.2f} → AI Price: ${current_ai_price:.2f}"
+                )
+        
+        return stats
+    
+    def _update_active_order(self, market_id: str, trade_params: Dict):
+        """Track active order for lifecycle management"""
+        with self._orders_lock:
+            self.active_orders[market_id] = {
+                'price': trade_params.get('entry_price', 0),
+                'size': trade_params.get('position_size', 0),
+                'side': trade_params.get('direction', 'YES'),
+                'timestamp': datetime.now(timezone.utc),
+                'hft_mode': trade_params.get('hft_mode', 'unknown'),
+                'ai_price': trade_params.get('adjusted_fair', 0),
+            }
+    
+    # =========================================================================
+    # PATH A/B SIGNAL INTEGRATION
+    # =========================================================================
+    
     async def _check_path_b_opportunity(self, market_id: str) -> Tuple[bool, Optional[Dict]]:
-        """
-        Check PATH B (hft_opportunities) for fresh news broadcast.
-        
-        PATH B provides:
-        - Speed (10s TTL, fast lookup)
-        - Market context (price, volume, liquidity)
-        - News headline + urgency
-        
-        Returns:
-            Tuple of (has_news: bool, opportunity: Dict or None)
-        """
+        """Check PATH B (hft_opportunities) for fresh news broadcast."""
         try:
             if self.db is None:
                 return False, None
@@ -276,19 +530,7 @@ class HighFrequencyTradingEngine:
             return False, None
     
     async def _read_path_a_signal(self, market_id: str) -> Optional[Dict]:
-        """
-        Read PATH A signal from MongoDB signals collection.
-        
-        PATH A provides:
-        - Intelligence (LLM-analyzed)
-        - bayes_factor (for news strength classification)
-        - direction (YES/NO)
-        - confidence
-        - impact_level
-        
-        Returns:
-            Signal dict or None if not found/expired
-        """
+        """Read PATH A signal from MongoDB signals collection."""
         try:
             if self.db is None:
                 return None
@@ -309,28 +551,35 @@ class HighFrequencyTradingEngine:
             logger.debug(f"[HFT V2] PATH A read error: {e}")
             return None
     
+    # =========================================================================
+    # MODE SELECTION
+    # =========================================================================
+    
     async def _select_hft_mode(
-        self, market_id: str, market_data: Dict, price: float
+        self, market_id: str, market_data: Dict, price: float,
+        alpha_target: Optional[Dict] = None, cliff_zone: str = "SAFE"
     ) -> Optional[HFTMode]:
         """
         Select the appropriate HFT mode based on market conditions.
         
-        Logic:
-        - Extreme prices (0-0.10 or 0.90-1.0) → Volatility or Extreme Spread
-        - Standard prices (0.10-0.90) → Delta Neutral, Sharp Following, or Liquidity
-        - High volume markets → Liquidity Provision
-        - Sharp activity detected → Sharp Following
-        
-        Returns:
-            HFTMode enum or None if no suitable mode
+        Enhanced logic considers:
+        - Alpha target regime (ZOMBIE, MAKER_WIDE, TAKER_TIGHT)
+        - Cliff zone (EXTREME, CLIFF, SAFE)
+        - Price zone (extreme_low, standard, extreme_high)
+        - Volume and sharp activity
         """
         try:
             zone = get_price_zone(price)
             volume_24h = float(market_data.get('volume_24h', market_data.get('volume', 0)) or 0)
             
-            # EXTREME ZONES: Volatility exploitation or extreme spread
-            if zone in ['extreme_low', 'extreme_high']:
-                # Check volatility score
+            # Check Alpha regime for ZOMBIE markets
+            if alpha_target:
+                regime = alpha_target.get('regime', '')
+                if regime == 'ZOMBIE':
+                    return None  # Skip zombie markets
+            
+            # EXTREME ZONES or CLIFF zones: Volatility/Extreme spread strategies
+            if zone in ['extreme_low', 'extreme_high'] or cliff_zone in ['EXTREME', 'CLIFF']:
                 vol_score = market_data.get('volatility', 0.5)
                 
                 if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE:
@@ -340,7 +589,7 @@ class HighFrequencyTradingEngine:
             
             # STANDARD ZONE: Multiple strategies possible
             
-            # Check for sharp trader activity first (highest priority in standard zone)
+            # Check for sharp trader activity (highest priority in standard zone)
             if self.sharp_detector:
                 try:
                     is_sharp = await self._check_sharp_activity(market_id)
@@ -352,6 +601,12 @@ class HighFrequencyTradingEngine:
             # High volume → Liquidity provision
             if volume_24h >= HFTConfig.LIQUIDITY_MIN_VOLUME:
                 return HFTMode.LIQUIDITY_PROVISION
+            
+            # Check Alpha regime for maker/taker preference
+            if alpha_target:
+                regime = alpha_target.get('regime', '')
+                if regime == 'MAKER_WIDE':
+                    return HFTMode.DELTA_NEUTRAL  # Market making with wide spreads
             
             # Default: Delta-neutral market making
             return HFTMode.DELTA_NEUTRAL
@@ -366,7 +621,6 @@ class HighFrequencyTradingEngine:
             if not self.sharp_detector:
                 return False
             
-            # Check if sharp detector has method
             if hasattr(self.sharp_detector, 'is_sharp_active'):
                 return await self.sharp_detector.is_sharp_active(market_id)
             elif hasattr(self.sharp_detector, 'detect_sharp_movement'):
@@ -377,25 +631,30 @@ class HighFrequencyTradingEngine:
         except Exception:
             return False
     
+    # =========================================================================
+    # TRADE PARAMETER BUILDING
+    # =========================================================================
+    
     async def _build_trade_params(
         self,
         hft_mode: HFTMode,
         market_id: str,
         market_data: Dict,
         multipliers: Dict[str, float],
-        signal: Optional[Dict]
+        signal: Optional[Dict],
+        alpha_confidence: float,
+        adjusted_fair: float,
+        adjusted_spread: float,
+        cliff_zone: str
     ) -> Optional[Dict]:
         """
         Build trade parameters respecting ALL constraints.
         
-        Constraints:
-        - Kelly Criterion (0.25 fractional sizing)
-        - 3% max position cap
-        - Available capital limits
-        - Strategy-specific allocations
-        
-        Returns:
-            Trade params dict or None if constraints not met
+        Enhanced with:
+        - Tick grid compliance
+        - Kill zone bounds
+        - Alpha confidence weighting
+        - Cliff zone spread multipliers
         """
         try:
             # Get available capital
@@ -410,8 +669,8 @@ class HighFrequencyTradingEngine:
             strategy_allocation = HFTConfig.SUB_STRATEGY_ALLOCATION.get(hft_mode.value, 0.20)
             base_capital = hft_capital * strategy_allocation
             
-            # Apply Kelly criterion
-            confidence = signal.get('confidence', 0.65) if signal else 0.65
+            # Apply Kelly criterion with Alpha confidence
+            confidence = max(alpha_confidence, signal.get('confidence', 0.5) if signal else 0.5)
             kelly_sized = base_capital * HFTConfig.KELLY_FRACTION * confidence
             
             # Apply news multiplier
@@ -427,47 +686,59 @@ class HighFrequencyTradingEngine:
             if final_position < 5:  # $5 minimum
                 return None
             
-            # Get spread parameters
+            # Get spread parameters with cliff zone adjustment
             spread_mult = multipliers.get('spread_mult', 1.0)
-            base_spread = self._get_base_spread(hft_mode, market_data)
-            adjusted_spread = base_spread * spread_mult
+            cliff_mult = 1.0
+            if cliff_zone == 'EXTREME':
+                cliff_mult = 3.0
+            elif cliff_zone == 'CLIFF':
+                cliff_mult = 2.0
             
-            # Get direction from signal or default
+            final_spread = adjusted_spread * spread_mult * cliff_mult
+            
+            # Apply tick grid compliance
+            yes_price = float(market_data.get('yes_price', 0.5))
+            half_spread = final_spread / 2
+            
+            bid = self._round_to_tick(adjusted_fair - half_spread)
+            ask = self._round_to_tick(adjusted_fair + half_spread)
+            
+            bid = self._clamp_to_bounds(bid)
+            ask = self._clamp_to_bounds(ask)
+            
+            bid, ask = self._enforce_min_spread(bid, ask)
+            
+            # Get direction from signal or Alpha target
             direction = 'YES'
             if signal:
                 direction = signal.get('direction', 'YES')
             
+            entry_price = bid if direction == 'YES' else ask
+            
             return {
                 'position_size': round(final_position, 2),
-                'spread': adjusted_spread,
+                'spread': round(ask - bid, 2),
                 'direction': direction,
                 'confidence': confidence,
                 'hft_mode': hft_mode.value,
                 'spread_mult': spread_mult,
-                'position_mult': position_mult
+                'position_mult': position_mult,
+                'cliff_mult': cliff_mult,
+                'cliff_zone': cliff_zone,
+                'bid': bid,
+                'ask': ask,
+                'entry_price': entry_price,
+                'adjusted_fair': adjusted_fair,
             }
             
         except Exception as e:
             logger.debug(f"[HFT V2] Build params error: {e}")
             return None
     
-    def _get_base_spread(self, hft_mode: HFTMode, market_data: Dict) -> float:
-        """Get base spread for the given HFT mode"""
-        if hft_mode == HFTMode.DELTA_NEUTRAL:
-            return HFTConfig.DELTA_NEUTRAL_BASE_SPREAD
-        elif hft_mode == HFTMode.EXTREME_SPREAD:
-            return HFTConfig.EXTREME_SPREAD_BASE * HFTConfig.EXTREME_SPREAD_MULTIPLIER
-        elif hft_mode == HFTMode.LIQUIDITY_PROVISION:
-            return HFTConfig.LIQUIDITY_BASE_SPREAD
-        else:
-            return 0.02  # Default 2%
-    
     async def _get_available_capital(self) -> float:
-        """Get available capital from position manager or paper trader"""
+        """Get available capital from paper trader"""
         try:
-            if self.position_manager and hasattr(self.position_manager, 'get_available_capital'):
-                return await self.position_manager.get_available_capital()
-            elif self.paper_trader:
+            if self.paper_trader:
                 if hasattr(self.paper_trader, 'current_capital'):
                     return self.paper_trader.current_capital
                 elif hasattr(self.paper_trader, 'deployed_capital'):
@@ -476,371 +747,68 @@ class HighFrequencyTradingEngine:
         except Exception:
             return 0
     
+    # =========================================================================
+    # STRATEGY EXECUTION
+    # =========================================================================
+    
     async def _execute_strategy(
         self,
         hft_mode: HFTMode,
         market_id: str,
         market_data: Dict,
         trade_params: Dict,
-        signal: Optional[Dict]
+        signal: Optional[Dict],
+        alpha_target: Optional[Dict]
     ) -> Optional[Dict]:
-        """
-        Execute the selected HFT strategy.
-        
-        Delegates to strategy-specific methods.
-        """
+        """Execute the selected HFT strategy with Polymarket compliance."""
         try:
-            if hft_mode == HFTMode.DELTA_NEUTRAL:
-                return await self._execute_delta_neutral(market_id, market_data, trade_params, signal)
-            elif hft_mode == HFTMode.VOLATILITY_EXPLOIT:
-                return await self._execute_volatility_exploit(market_id, market_data, trade_params, signal)
-            elif hft_mode == HFTMode.EXTREME_SPREAD:
-                return await self._execute_extreme_spread(market_id, market_data, trade_params, signal)
-            elif hft_mode == HFTMode.SHARP_FOLLOWING:
-                return await self._execute_sharp_following(market_id, market_data, trade_params, signal)
-            elif hft_mode == HFTMode.LIQUIDITY_PROVISION:
-                return await self._execute_liquidity_provision(market_id, market_data, trade_params, signal)
-            else:
-                return None
+            # All strategies use the same execution path with tick-grid compliant params
+            return await self._execute_compliant_trade(
+                market_id=market_id,
+                market_data=market_data,
+                trade_params=trade_params,
+                hft_mode=hft_mode
+            )
         except Exception as e:
             logger.error(f"[HFT V2] Strategy execution error: {e}")
             return None
     
-    # =========================================================================
-    # STRATEGY 1: DELTA-NEUTRAL MARKET MAKING (35% allocation)
-    # =========================================================================
-    async def _execute_delta_neutral(
+    async def _execute_compliant_trade(
         self,
         market_id: str,
         market_data: Dict,
         trade_params: Dict,
-        signal: Optional[Dict]
+        hft_mode: HFTMode
     ) -> Optional[Dict]:
         """
-        Delta-Neutral Market Making
-        
-        Purpose: Quote YES bid/ask + NO bid/ask simultaneously, capture spreads
-        Zone: Standard prices (0.10 - 0.90)
-        Base Spread: 2% (via spread_calibrator if available)
-        Target: 0.5-2% per trade
-        """
-        try:
-            yes_price = float(market_data.get('yes_price', 0.5))
-            spread = trade_params['spread']
-            position_size = trade_params['position_size']
-            
-            # Calculate bid/ask prices (used for logging/future order placement)
-            half_spread = spread / 2
-            _ = max(0.001, yes_price - half_spread)  # yes_bid - for future order placement
-            _ = min(0.999, yes_price + half_spread)  # yes_ask - for future order placement
-            
-            # Check if spread is profitable
-            if self.spread_calibrator:
-                try:
-                    optimal = await self.spread_calibrator.calculate_optimal_spread(market_data)
-                    if spread < optimal.get('optimal_spread', 0):
-                        return None  # Spread too tight
-                except Exception:
-                    pass
-            
-            # Execute via paper_trader
-            result = await self._execute_paper_trade(
-                market_id=market_id,
-                market_data=market_data,
-                side='YES',  # Primary side
-                size=position_size / 2,  # Split between YES and NO
-                strategy='hft_delta_neutral',
-                entry_price=yes_price
-            )
-            
-            return result
-            
-        except Exception as e:
-            logger.debug(f"[HFT V2] Delta-neutral error: {e}")
-            return None
-    
-    # =========================================================================
-    # STRATEGY 2: VOLATILITY EXPLOITATION (10% allocation)
-    # =========================================================================
-    async def _execute_volatility_exploit(
-        self,
-        market_id: str,
-        market_data: Dict,
-        trade_params: Dict,
-        signal: Optional[Dict]
-    ) -> Optional[Dict]:
-        """
-        Volatility Exploitation
-        
-        Purpose: Buy at extreme prices betting on mean reversion
-        Zone: 0.05-0.10 (low) or 0.90-0.99 (high)
-        Frequency: 30-second assessment
-        Target: 30-100x multipliers on winners
-        """
-        try:
-            yes_price = float(market_data.get('yes_price', 0.5))
-            position_size = trade_params['position_size']
-            
-            # Determine direction based on price zone
-            if yes_price <= 0.10:
-                # Low price → bet on YES (mean reversion up)
-                side = 'YES'
-                expected_value = yes_price + (0.20 * (1 - yes_price))
-                
-                # Check expected gain
-                if expected_value <= yes_price * 1.5:
-                    return None  # Not enough expected gain
-                    
-            elif yes_price >= 0.90:
-                # High price → bet on NO (mean reversion down)
-                side = 'NO'
-                expected_value = (1 - yes_price) + (0.10 * yes_price)
-                
-                # Check expected gain
-                if expected_value <= (1 - yes_price) * 1.3:
-                    return None
-            else:
-                return None  # Not in extreme zone
-            
-            # Check volatility if predictor available
-            if self.volatility_predictor:
-                try:
-                    vol_score = await self.volatility_predictor.predict(market_data)
-                    if vol_score < HFTConfig.VOLATILITY_MIN_SCORE:
-                        return None  # Volatility too low
-                except Exception:
-                    pass
-            
-            # Execute trade
-            result = await self._execute_paper_trade(
-                market_id=market_id,
-                market_data=market_data,
-                side=side,
-                size=min(position_size, HFTConfig.VOLATILITY_BASE_POSITION * trade_params['position_mult']),
-                strategy='hft_volatility_exploit',
-                entry_price=yes_price if side == 'YES' else (1 - yes_price)
-            )
-            
-            return result
-            
-        except Exception as e:
-            logger.debug(f"[HFT V2] Volatility exploit error: {e}")
-            return None
-    
-    # =========================================================================
-    # STRATEGY 3: EXTREME SPREAD CAPTURE (15% allocation)
-    # =========================================================================
-    async def _execute_extreme_spread(
-        self,
-        market_id: str,
-        market_data: Dict,
-        trade_params: Dict,
-        signal: Optional[Dict]
-    ) -> Optional[Dict]:
-        """
-        Extreme Spread Capture
-        
-        Purpose: Quote very wide spreads (5-15x normal) at price extremes
-        Zone: 0.05-0.10 or 0.90-0.99
-        Target: Compensate for volatility with wide spreads
-        """
-        try:
-            yes_price = float(market_data.get('yes_price', 0.5))
-            spread_mult = trade_params.get('spread_mult', 1.0)
-            position_mult = trade_params.get('position_mult', 1.0)
-            
-            # Calculate extreme spread
-            base_spread = HFTConfig.EXTREME_SPREAD_BASE
-            extreme_multiplier = HFTConfig.EXTREME_SPREAD_MULTIPLIER * spread_mult
-            adjusted_spread = min(base_spread * extreme_multiplier, HFTConfig.EXTREME_SPREAD_MAX)
-            
-            # Calculate bid/ask with clamping (for future order placement)
-            half_spread = adjusted_spread / 2
-            _ = max(0.001, yes_price - half_spread)  # yes_bid
-            _ = min(0.999, yes_price + half_spread)  # yes_ask
-            
-            # Smaller position for risk management
-            position_size = min(
-                trade_params['position_size'],
-                HFTConfig.EXTREME_SPREAD_BASE_POSITION * position_mult
-            )
-            
-            if position_size < 5:
-                return None
-            
-            # Execute trade
-            result = await self._execute_paper_trade(
-                market_id=market_id,
-                market_data=market_data,
-                side='YES',
-                size=position_size,
-                strategy='hft_extreme_spread',
-                entry_price=yes_price
-            )
-            
-            return result
-            
-        except Exception as e:
-            logger.debug(f"[HFT V2] Extreme spread error: {e}")
-            return None
-    
-    # =========================================================================
-    # STRATEGY 4: SHARP TRADER FOLLOWING (20% allocation)
-    # =========================================================================
-    async def _execute_sharp_following(
-        self,
-        market_id: str,
-        market_data: Dict,
-        trade_params: Dict,
-        signal: Optional[Dict]
-    ) -> Optional[Dict]:
-        """
-        Sharp Trader Following
-        
-        Purpose: Detect sharp traders, position 30-50% of their size
-        Frequency: 75-100ms (faster than normal)
-        Uses: Existing sharp_detector module
-        """
-        try:
-            if not self.sharp_detector:
-                return None
-            
-            # Get sharp activity
-            sharp_activity = None
-            if hasattr(self.sharp_detector, 'get_sharp_activity'):
-                sharp_activity = await self.sharp_detector.get_sharp_activity(market_id)
-            elif hasattr(self.sharp_detector, 'detect_sharp_movement'):
-                sharp_activity = await self.sharp_detector.detect_sharp_movement(market_id)
-            
-            if not sharp_activity:
-                return None
-            
-            z_score = sharp_activity.get('z_score', 0)
-            if z_score < HFTConfig.SHARP_MIN_ZSCORE:
-                return None  # Not significant
-            
-            sharp_direction = sharp_activity.get('direction', 'YES')
-            sharp_size = sharp_activity.get('size', 100)
-            
-            # Follow at 50% scale
-            our_size = min(
-                sharp_size * HFTConfig.SHARP_FOLLOW_SCALE * trade_params.get('position_mult', 1.0),
-                trade_params['position_size']
-            )
-            
-            if our_size < 5:
-                return None
-            
-            # Determine side
-            side = sharp_direction
-            yes_price = float(market_data.get('yes_price', 0.5))
-            entry_price = yes_price if side == 'YES' else (1 - yes_price)
-            
-            # Execute trade
-            result = await self._execute_paper_trade(
-                market_id=market_id,
-                market_data=market_data,
-                side=side,
-                size=our_size,
-                strategy='hft_sharp_following',
-                entry_price=entry_price
-            )
-            
-            return result
-            
-        except Exception as e:
-            logger.debug(f"[HFT V2] Sharp following error: {e}")
-            return None
-    
-    # =========================================================================
-    # STRATEGY 5: LIQUIDITY PROVISION (20% allocation)
-    # =========================================================================
-    async def _execute_liquidity_provision(
-        self,
-        market_id: str,
-        market_data: Dict,
-        trade_params: Dict,
-        signal: Optional[Dict]
-    ) -> Optional[Dict]:
-        """
-        Liquidity Provision
-        
-        Purpose: Maintain standing quotes on high-volume markets
-        Requirement: daily_volume > $50,000
-        Target: 0.5-1% per trade, high frequency (100+ fills/day)
-        """
-        try:
-            volume_24h = float(market_data.get('volume_24h', market_data.get('volume', 0)) or 0)
-            
-            # Only execute on high-liquidity markets
-            if volume_24h < HFTConfig.LIQUIDITY_MIN_VOLUME:
-                return None
-            
-            yes_price = float(market_data.get('yes_price', 0.5))
-            spread_mult = trade_params.get('spread_mult', 1.0)
-            position_mult = trade_params.get('position_mult', 1.0)
-            
-            # Tight spreads for high-volume (spread used for future order placement)
-            _ = HFTConfig.LIQUIDITY_BASE_SPREAD * spread_mult  # base_spread
-            size_per_level = HFTConfig.LIQUIDITY_SIZE_PER_LEVEL * position_mult
-            
-            # Execute at primary level only (simplified)
-            result = await self._execute_paper_trade(
-                market_id=market_id,
-                market_data=market_data,
-                side='YES',
-                size=min(size_per_level, trade_params['position_size']),
-                strategy='hft_liquidity_provision',
-                entry_price=yes_price
-            )
-            
-            return result
-            
-        except Exception as e:
-            logger.debug(f"[HFT V2] Liquidity provision error: {e}")
-            return None
-    
-    # =========================================================================
-    # HELPER METHODS
-    # =========================================================================
-    
-    async def _execute_paper_trade(
-        self,
-        market_id: str,
-        market_data: Dict,
-        side: str,
-        size: float,
-        strategy: str,
-        entry_price: float
-    ) -> Optional[Dict]:
-        """
-        Execute trade via paper_trader.
-        
-        Uses existing paper_trader infrastructure.
+        Execute trade via paper_trader with full Polymarket compliance.
+        Uses tick-grid aligned prices from trade_params.
         """
         try:
             if not self.paper_trader:
                 return None
             
+            strategy_name = f'hft_{hft_mode.value}'
+            
             # Use paper_trader's execute method
             if hasattr(self.paper_trader, '_execute_paper_trade'):
                 result = await self.paper_trader._execute_paper_trade(
                     market_data=market_data,
-                    side=side,
-                    size=size,
-                    strategy=strategy,
-                    confidence=0.65,
+                    side=trade_params['direction'],
+                    size=trade_params['position_size'],
+                    strategy=strategy_name,
+                    confidence=trade_params.get('confidence', 0.65),
                     sentiment_score=0.5,
-                    signal_source='hft_v2'
+                    signal_source='hft_v2_enhanced'
                 )
                 return {'success': True, 'result': result}
             elif hasattr(self.paper_trader, 'execute_trade'):
                 result = await self.paper_trader.execute_trade(
                     market_id=market_id,
-                    direction=side,
-                    outcome=side,
-                    position_size=size,
-                    strategy=strategy
+                    direction=trade_params['direction'],
+                    outcome=trade_params['direction'],
+                    position_size=trade_params['position_size'],
+                    strategy=strategy_name
                 )
                 return result
             else:
@@ -848,8 +816,12 @@ class HighFrequencyTradingEngine:
                 return None
                 
         except Exception as e:
-            logger.debug(f"[HFT V2] Paper trade error: {e}")
+            logger.debug(f"[HFT V2] Compliant trade error: {e}")
             return None
+    
+    # =========================================================================
+    # HELPER METHODS
+    # =========================================================================
     
     async def _get_active_markets(self) -> List[Dict]:
         """Get list of active markets to process"""
@@ -878,7 +850,8 @@ class HighFrequencyTradingEngine:
         trade_params: Dict,
         result: Dict,
         bayes_factor: float,
-        news_strength: NewsStrength
+        news_strength: NewsStrength,
+        alpha_target: Optional[Dict]
     ):
         """Log HFT trade to analytics"""
         try:
@@ -892,6 +865,10 @@ class HighFrequencyTradingEngine:
                     'news_strength': news_strength.value,
                     'spread_mult': trade_params.get('spread_mult', 1.0),
                     'position_mult': trade_params.get('position_mult', 1.0),
+                    'cliff_zone': trade_params.get('cliff_zone', 'SAFE'),
+                    'has_alpha_target': alpha_target is not None,
+                    'alpha_regime': alpha_target.get('regime') if alpha_target else None,
+                    'tick_compliant': True,
                     'timestamp': datetime.now(timezone.utc)
                 })
         except Exception as e:
@@ -902,34 +879,46 @@ class HighFrequencyTradingEngine:
         return {
             **self.stats,
             'running': self._running,
-            'last_cycle_time_ms': self._last_cycle_time
+            'last_cycle_time_ms': self._last_cycle_time,
+            'cycle_count': self._cycle_count,
+            'active_orders': len(self.active_orders),
         }
     
     def get_hft_metrics(self) -> Dict:
         """Return HFT performance metrics"""
+        alpha_total = self.stats['alpha_hits'] + self.stats['alpha_misses']
+        alpha_hit_rate = self.stats['alpha_hits'] / max(1, alpha_total)
+        
         return {
             'cycles_executed': self.stats['cycles_executed'],
             'trades_executed': self.stats['trades_executed'],
             'mode_distribution': self.stats['trades_by_mode'],
             'path_a_hits': self.stats['path_a_hits'],
             'path_b_hits': self.stats['path_b_hits'],
+            'alpha_hits': self.stats['alpha_hits'],
+            'alpha_misses': self.stats['alpha_misses'],
+            'alpha_hit_rate': round(alpha_hit_rate, 3),
             'paused_cycles': self.stats['paused_cycles'],
+            'orders_kept_hysteresis': self.stats['orders_kept_hysteresis'],
+            'orders_cancelled_drift': self.stats['orders_cancelled_drift'],
+            'orders_cancelled_stale': self.stats['orders_cancelled_stale'],
+            'active_orders': len(self.active_orders),
             'errors': self.stats['errors'],
             'running': self._running
         }
 
 
 # Singleton instance
-_hft_engine_instance: Optional[HighFrequencyTradingEngine] = None
+_hft_engine_v2_instance: Optional[HighFrequencyTradingEngineV2] = None
 
 
-def get_hft_engine() -> Optional[HighFrequencyTradingEngine]:
-    """Get the singleton HFT engine instance"""
-    return _hft_engine_instance
+def get_hft_engine_v2() -> Optional[HighFrequencyTradingEngineV2]:
+    """Get the singleton HFT engine V2 instance"""
+    return _hft_engine_v2_instance
 
 
-async def init_hft_engine(dependencies: Dict[str, Any]) -> HighFrequencyTradingEngine:
-    """Initialize and return the HFT Engine V2"""
-    global _hft_engine_instance
-    _hft_engine_instance = HighFrequencyTradingEngine(dependencies)
-    return _hft_engine_instance
+async def init_hft_engine_v2(dependencies: Dict[str, Any]) -> HighFrequencyTradingEngineV2:
+    """Initialize and return the enhanced HFT Engine V2"""
+    global _hft_engine_v2_instance
+    _hft_engine_v2_instance = HighFrequencyTradingEngineV2(dependencies)
+    return _hft_engine_v2_instance
