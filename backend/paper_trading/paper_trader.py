@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from database import get_db
 from ml.rl_engine import RLAdaptiveEngine
 from services.market_data_service import MarketDataService
+from ml.whale_tracker import whale_tracker as global_whale_tracker
 from services.realtime_market_service import get_realtime_market_service, RealTimeMarketService
 from ml.sharp_detector import SharpDetector
 from ml.volatility_predictor import VolatilityPredictor
