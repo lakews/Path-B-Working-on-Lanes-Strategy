@@ -399,8 +399,10 @@ class PolymarketScanner:
         """Store in MongoDB for persistence"""
         try:
             if self.db is None:
+                logger.warning("[SCANNER] MongoDB db is None, skipping store")
                 return
             
+            logger.debug(f"[SCANNER] Storing {len(markets)} markets to MongoDB")
             bulk_ops = []
             for market in markets:
                 market_id = market.get('market_id') or market.get('id')
