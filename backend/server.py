@@ -5410,7 +5410,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Initialize database connection on startup"""
-    global user_config, ws_manager
+    global user_config, ws_manager, polymarket_scanner, dual_path_news_injector, _scanner_task
     await connect_db()
     
     # Initialize default admin user if no users exist
@@ -5431,6 +5431,70 @@ async def startup_event():
             logger.info(f"Loaded user config: {len(user_config['enabled_strategies'])} strategies, {len(user_config['enabled_asset_classes'])} asset classes")
     except Exception as e:
         logger.warning(f"Could not load saved config: {e}")
+    
+    # =============================================
+    # MARKETS-FIRST ARCHITECTURE INITIALIZATION
+    # =============================================
+    try:
+        db = get_db()
+        
+        # Create MongoDB indexes for new collections
+        logger.info("[MARKETS-FIRST] Creating MongoDB indexes...")
+        
+        # polymarket_cache indexes
+        await db.polymarket_cache.create_index("market_id", unique=True)
+        await db.polymarket_cache.create_index("cached_at")
+        await db.polymarket_cache.create_index("category")
+        
+        # signals collection indexes (with TTL)
+        await db.signals.create_index([("market_id", 1), ("type", 1)])
+        await db.signals.create_index("expires_at", expireAfterSeconds=0)  # TTL index
+        await db.signals.create_index("timestamp")
+        
+        # hft_opportunities collection indexes (with TTL)
+        await db.hft_opportunities.create_index("expires_at", expireAfterSeconds=0)  # TTL index
+        await db.hft_opportunities.create_index("market_id")
+        await db.hft_opportunities.create_index("timestamp")
+        
+        logger.info("[MARKETS-FIRST] ✓ MongoDB indexes created")
+        
+        # Get realtime market service for WebSocket data
+        from services.realtime_market_service import get_realtime_market_service
+        rtm_service = get_realtime_market_service()
+        
+        # Initialize PolymarketScanner
+        logger.info("[MARKETS-FIRST] Initializing PolymarketScanner...")
+        polymarket_scanner = await init_polymarket_scanner(
+            db=db,
+            websocket_market_service=rtm_service,
+            gamma_api_client=None,  # Will use internal PolymarketAPI
+            embedding_model=None    # Will use SimpleEmbeddingModel
+        )
+        
+        # Start scanner background task
+        _scanner_task = asyncio.create_task(polymarket_scanner.start_continuous_scan())
+        logger.info("[MARKETS-FIRST] ✓ PolymarketScanner started")
+        
+        # Initialize DualPathNewsInjector
+        logger.info("[MARKETS-FIRST] Initializing DualPathNewsInjector...")
+        from services.llm_service import get_llm_service
+        llm_service = get_llm_service(model='gpt-5.2')
+        
+        dual_path_news_injector = await init_dual_path_news_injector(
+            polymarket_scanner=polymarket_scanner,
+            llm_service=llm_service,
+            db_mongo=db,
+            embedding_model=polymarket_scanner.embedding_model if polymarket_scanner else None
+        )
+        logger.info("[MARKETS-FIRST] ✓ DualPathNewsInjector initialized")
+        
+        logger.info("=" * 50)
+        logger.info("MARKETS-FIRST SYSTEM READY (MongoDB-Only)")
+        logger.info("=" * 50)
+        
+    except Exception as e:
+        logger.error(f"[MARKETS-FIRST] Initialization error: {e}", exc_info=True)
+        logger.warning("[MARKETS-FIRST] System will continue without Markets-First features")
     
     # Start continuous price history collection in background
     try:
