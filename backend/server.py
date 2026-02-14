@@ -35,6 +35,12 @@ from services.market_alerts import get_market_alerts_service, MarketAlertsServic
 from services.news_injector import get_news_injector, NewsInjector
 from services.signal_cache import get_signal_cache, EmergentSignalCache
 from services.webhook_sources import get_webhook_sources_manager, WebhookSourcesManager
+from services.polymarket_scanner import (
+    init_polymarket_scanner, get_polymarket_scanner, PolymarketScanner
+)
+from services.news_injector_dual_path import (
+    init_dual_path_news_injector, get_dual_path_news_injector, DualPathNewsInjector
+)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
