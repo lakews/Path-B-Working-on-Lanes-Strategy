@@ -252,7 +252,7 @@ class HighFrequencyTradingEngineV2:
                 alpha_target = self.strategy_context.get_target(market_id)
                 if alpha_target and not alpha_target.get('stale'):
                     fair_value = alpha_target['fair_value']
-                    regime = alpha_target['regime']
+                    # regime stored in alpha_target, used in _select_hft_mode
                     alpha_confidence = alpha_target.get('confidence', 0.7)
                     self.stats['alpha_hits'] += 1
                 else:
