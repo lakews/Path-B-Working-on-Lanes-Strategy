@@ -42,6 +42,12 @@ from trading.hft_engine_v2 import (
 )
 from trading.hft_config import HFTConfig, HFTMode, NewsStrength
 
+# NEWS Lane imports (MongoDB-integrated NEWS Sniper)
+from lanes.news_lane.news_sniper_mongodb import (
+    NewsSniper, init_news_sniper, get_news_sniper,
+    ConvictionEnhancer, NewsImpactLevel, MarketRegime
+)
+
 # =============================================================================
 # SSOT RISK MANAGEMENT (5-Lane Architecture)
 # =============================================================================
