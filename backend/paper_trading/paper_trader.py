@@ -1110,8 +1110,8 @@ class PaperTrader:
             self.news_sniper = await init_news_sniper(
                 db=self.db,
                 paper_trader=self,
-                whale_tracker=self.whale_tracker,
-                market_service=self.market_data_svc
+                whale_tracker=global_whale_tracker,  # Fixed: Use global whale_tracker singleton
+                market_service=self.market_data_service  # Fixed: was self.market_data_svc
             )
             
             logger.info("✅ NEWS Sniper MongoDB initialized")
