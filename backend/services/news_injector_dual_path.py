@@ -315,7 +315,7 @@ Be conservative. Only return high bayes_factor for direct, clear evidence.
                         response = response.split('```')[1].split('```')[0]
                     response = json.loads(response.strip())
                 except json.JSONDecodeError:
-                    logger.warning(f"[NEWS INJECTOR] Could not parse LLM response as JSON")
+                    logger.warning("[NEWS INJECTOR] Could not parse LLM response as JSON")
                     return None
             
             market_id = market.get('market_id') or market.get('id')
