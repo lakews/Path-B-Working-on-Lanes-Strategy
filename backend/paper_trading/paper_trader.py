@@ -3577,6 +3577,14 @@ class PaperTrader:
             except Exception as e:
                 logger.warning(f"Error stopping HFT Engine V2: {e}")
         
+        # Stop NEWS Sniper MongoDB
+        if self.news_sniper:
+            try:
+                await self.news_sniper.stop()
+                logger.info("NEWS Sniper MongoDB stopped")
+            except Exception as e:
+                logger.warning(f"Error stopping NEWS Sniper: {e}")
+        
         # Stop WebSocket service
         if self.realtime_market_service:
             try:
