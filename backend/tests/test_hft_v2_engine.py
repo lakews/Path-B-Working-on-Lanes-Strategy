@@ -337,12 +337,12 @@ class TestExistingSystemIntegrity:
         print(f"✅ GET /api/health/scanner returns status: {data.get('status')}")
     
     def test_paper_trading_status_endpoint(self):
-        """Verify /api/paper-trading/status still works"""
-        response = requests.get(f"{BASE_URL}/api/paper-trading/status", timeout=10)
+        """Verify /api/paper/status still works"""
+        response = requests.get(f"{BASE_URL}/api/paper/status", timeout=10)
         assert response.status_code == 200
         data = response.json()
         assert 'running' in data
-        print(f"✅ GET /api/paper-trading/status returns running: {data.get('running')}")
+        print(f"✅ GET /api/paper/status returns running: {data.get('running')}")
     
     def test_news_webhook_endpoint(self):
         """Verify POST /api/webhooks/news still works with PATH A/B"""
