@@ -655,10 +655,10 @@ class HighFrequencyTradingEngine:
             extreme_multiplier = HFTConfig.EXTREME_SPREAD_MULTIPLIER * spread_mult
             adjusted_spread = min(base_spread * extreme_multiplier, HFTConfig.EXTREME_SPREAD_MAX)
             
-            # Calculate bid/ask with clamping
+            # Calculate bid/ask with clamping (for future order placement)
             half_spread = adjusted_spread / 2
-            yes_bid = max(0.001, yes_price - half_spread)
-            yes_ask = min(0.999, yes_price + half_spread)
+            _ = max(0.001, yes_price - half_spread)  # yes_bid
+            _ = min(0.999, yes_price + half_spread)  # yes_ask
             
             # Smaller position for risk management
             position_size = min(
