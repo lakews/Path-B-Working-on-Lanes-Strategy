@@ -8237,6 +8237,13 @@ class PaperTrader:
                 "initialized": False,
                 "message": "HFT Engine V2 not initialized"
             },
+            # =============================================================
+            # NEWS SNIPER MONGODB: Lane 5 Phase 2 Metrics
+            # =============================================================
+            "news_sniper_mongodb": self.news_sniper.get_stats() if self.news_sniper else {
+                "initialized": False,
+                "message": "NEWS Sniper MongoDB not initialized"
+            },
             # QUALITY CONTROL: Market filtering metrics (Task 18)
             # =============================================================
             "quality_control": {
