@@ -781,8 +781,8 @@ class HighFrequencyTradingEngine:
             spread_mult = trade_params.get('spread_mult', 1.0)
             position_mult = trade_params.get('position_mult', 1.0)
             
-            # Tight spreads for high-volume
-            base_spread = HFTConfig.LIQUIDITY_BASE_SPREAD * spread_mult
+            # Tight spreads for high-volume (spread used for future order placement)
+            _ = HFTConfig.LIQUIDITY_BASE_SPREAD * spread_mult  # base_spread
             size_per_level = HFTConfig.LIQUIDITY_SIZE_PER_LEVEL * position_mult
             
             # Execute at primary level only (simplified)
