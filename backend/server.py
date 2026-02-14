@@ -5523,7 +5523,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown - save all running sessions"""
-    global trading_bot, historical_collector, ws_manager, paper_trader
+    global trading_bot, historical_collector, ws_manager, paper_trader, polymarket_scanner, _scanner_task
     
     # CRITICAL: Save paper trading session on shutdown
     if paper_trader and paper_trader.running:
@@ -5533,6 +5533,19 @@ async def shutdown_event():
             logger.info("Shutdown: Paper trading session saved successfully")
         except Exception as e:
             logger.error(f"Shutdown: Error saving paper trading session: {e}")
+    
+    # Stop Markets-First services
+    if _scanner_task:
+        logger.info("Shutdown: Stopping PolymarketScanner...")
+        _scanner_task.cancel()
+        try:
+            await _scanner_task
+        except asyncio.CancelledError:
+            pass
+    
+    if polymarket_scanner:
+        await polymarket_scanner.stop()
+        logger.info("Shutdown: PolymarketScanner stopped")
     
     if trading_bot and trading_bot.running:
         await trading_bot.stop()
