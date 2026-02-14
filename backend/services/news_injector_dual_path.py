@@ -410,7 +410,7 @@ Be conservative. Only return high bayes_factor for direct, clear evidence.
     ):
         """Cache signal to MongoDB with adaptive TTL"""
         try:
-            if not self.db:
+            if self.db is None:
                 return
             
             ttl = self._calculate_adaptive_ttl(signal, market_data)
