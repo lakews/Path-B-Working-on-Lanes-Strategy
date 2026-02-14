@@ -3470,6 +3470,14 @@ class PaperTrader:
         
         self.running = False
         
+        # Stop HFT Engine V2
+        if self.hft_engine_v2:
+            try:
+                await self.hft_engine_v2.stop()
+                logger.info("HFT Engine V2 stopped")
+            except Exception as e:
+                logger.warning(f"Error stopping HFT Engine V2: {e}")
+        
         # Stop WebSocket service
         if self.realtime_market_service:
             try:
