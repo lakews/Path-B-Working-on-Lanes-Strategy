@@ -116,6 +116,13 @@ news_injector: Optional[NewsInjector] = None  # Lane 5: News/Emergent
 trading_mode: str = "stopped"  # "stopped", "live", "backtest", "paper"
 paper_trading_enabled: bool = False  # Paper trading flag
 
+# =============================================
+# MARKETS-FIRST ARCHITECTURE (Phase 1)
+# =============================================
+polymarket_scanner: Optional[PolymarketScanner] = None
+dual_path_news_injector: Optional[DualPathNewsInjector] = None
+_scanner_task: Optional[asyncio.Task] = None
+
 
 # =============================================
 # MARKET FETCHER FOR NEWS INJECTOR (Lane 5)
