@@ -36,6 +36,13 @@ from threading import Lock
 from risk_config import get_sports_config, is_sports_market, SportsConfig
 from strategies.sports_strategy import get_sports_strategy, SportsArbitrageStrategy, SportsSignal, SportsTradeSignal
 
+# HFT Engine V2 imports (5 Sub-Strategy Architecture)
+from trading.hft_engine_v2 import (
+    HighFrequencyTradingEngine, init_hft_engine, get_hft_engine,
+    HFTMode, NewsStrength
+)
+from trading.hft_config import HFTConfig
+
 # =============================================================================
 # SSOT RISK MANAGEMENT (5-Lane Architecture)
 # =============================================================================
