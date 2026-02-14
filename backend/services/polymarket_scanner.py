@@ -443,8 +443,10 @@ class PolymarketScanner:
                     UpdateOne(op['filter'], op['update'], upsert=op['upsert'])
                     for op in bulk_ops
                 ]
+                logger.debug(f"[SCANNER] Executing bulk_write with {len(operations)} operations")
                 result = await self.db.polymarket_cache.bulk_write(operations)
                 self.stats['mongodb_writes'] += result.modified_count + result.upserted_count
+                logger.info(f"[SCANNER] MongoDB stored: modified={result.modified_count}, upserted={result.upserted_count}")
                 
         except Exception as e:
             logger.error(f"[SCANNER] MongoDB store error: {e}")
