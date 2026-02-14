@@ -398,7 +398,7 @@ class PolymarketScanner:
     async def _store_in_mongodb(self, markets: List[Dict], embeddings: Dict):
         """Store in MongoDB for persistence"""
         try:
-            if not self.db:
+            if self.db is None:
                 return
             
             bulk_ops = []
