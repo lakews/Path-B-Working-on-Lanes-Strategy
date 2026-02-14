@@ -1100,21 +1100,57 @@ class PaperTrader:
         logger.info("=" * 60)
         
         # =================================================================
-        # FIVE-LANE ARCHITECTURE: Run Alpha and HFT V2 loops CONCURRENTLY
+        # NEWS SNIPER MONGODB INITIALIZATION (Lane 5 - Phase 2)
+        # =================================================================
+        try:
+            logger.info("INITIALIZING NEWS SNIPER (MongoDB)")
+            logger.info("=" * 60)
+            
+            self.news_sniper = await init_news_sniper(
+                db=self.db,
+                paper_trader=self,
+                whale_tracker=self.whale_tracker,
+                market_service=self.market_data_svc
+            )
+            
+            logger.info("✅ NEWS Sniper MongoDB initialized")
+            logger.info("   ├─ Signal Source: MongoDB signals collection (PATH A)")
+            logger.info("   ├─ Conviction: 5-factor enhancement")
+            logger.info("   │  ├─ Source Credibility (Reuters=1.25, Twitter=0.9)")
+            logger.info("   │  ├─ Liquidity Multiplier")
+            logger.info("   │  ├─ Whale Alignment")
+            logger.info("   │  ├─ Market Regime")
+            logger.info("   │  └─ Bayes Factor")
+            logger.info("   └─ Kelly: Tiered (5%-50% based on conviction)")
+            logger.info("   ")
+            logger.info("   ⚠️  Legacy NEWS loop continues for news ingestion")
+            logger.info("   ⚠️  NEWS Sniper MongoDB handles trade execution")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Could not initialize NEWS Sniper: {e}")
+            logger.warning("   Falling back to legacy NEWS loop")
+            self.news_sniper = None
+        
+        logger.info("=" * 60)
+        
+        # =================================================================
+        # FIVE-LANE ARCHITECTURE: Run all loops CONCURRENTLY
         # =================================================================
         # DEPRECATED: Legacy _run_hft_loop() - replaced by HFT V2
         # - HFT V2 Loop: 5 sub-strategies with Alpha integration + MongoDB signals
         # - Alpha Loop: Slow analysis, Bayesian fusion, LLM sentiment
+        # - NEWS Sniper Loop: MongoDB-integrated news trading (Phase 2)
         # - Plus: monitoring, learning, emergency tasks
         await asyncio.gather(
             # DEPRECATED: self._run_hft_loop(),       # Legacy HFT - DISABLED
             self._run_hft_v2_loop(),           # HFT V2 ENHANCED (replaces legacy)
             self._run_alpha_loop(),            # Slow Path (30s cycle)
+            self._run_news_sniper_loop(),      # NEWS Sniper MongoDB (2s cycle) - NEW
             self._position_monitoring_loop(),  # Exit monitoring
             self._learning_loop(),             # RL training
             self._continuous_mode_handler(),   # Session management
             self._emergency_stoploss_task(),   # Safety net
-            self._run_news_loop(),             # Lane 5: NEWS (10s cycle)
+            self._run_news_loop(),             # Lane 5: NEWS ingestion (10s cycle)
             self._news_atomic_poller()         # Lane 5: Atomic cache updater (75ms)
         )
     
