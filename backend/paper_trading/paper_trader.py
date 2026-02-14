@@ -1572,6 +1572,45 @@ class PaperTrader:
                 await self.hft_engine_v2.stop()
             logger.info("[HFT V2] ENHANCED Loop stopped")
     
+    # =================================================================
+    # NEWS SNIPER MONGODB LOOP (Lane 5 - Phase 2)
+    # =================================================================
+    async def _run_news_sniper_loop(self):
+        """
+        NEWS Sniper MongoDB Loop - Lane 5 Trade Execution
+        
+        This loop:
+        1. Reads fresh PATH A signals from MongoDB signals collection
+        2. Calculates 5-factor conviction (Source, Liquidity, Whale, Regime, BF)
+        3. Determines Kelly fraction based on conviction tier
+        4. Executes trades via paper_trader
+        
+        Runs every 2 seconds (faster than news ingestion).
+        
+        NOTE: Legacy _run_news_loop() continues to handle news INGESTION
+              This loop handles TRADE EXECUTION based on MongoDB signals
+        """
+        if not self.news_sniper:
+            logger.warning("[NEWS SNIPER] Not initialized - NEWS trading via legacy loop only")
+            return
+        
+        logger.info("📰 NEWS Sniper MongoDB Loop Started")
+        logger.info("   ├─ Signal Source: MongoDB PATH A signals")
+        logger.info("   ├─ Conviction: 5-factor enhancement")
+        logger.info("   ├─ Kelly: Tiered (5%-50%)")
+        logger.info("   └─ Cycle: 2 seconds")
+        
+        try:
+            await self.news_sniper.start_news_loop()
+        except asyncio.CancelledError:
+            logger.info("[NEWS SNIPER] Loop cancelled")
+        except Exception as e:
+            logger.error(f"[NEWS SNIPER] Loop error: {e}", exc_info=True)
+        finally:
+            if self.news_sniper:
+                await self.news_sniper.stop()
+            logger.info("[NEWS SNIPER] MongoDB Loop stopped")
+    
     async def _run_hft_loop(self):
         """
         HFT Reflex Loop - Fast, reactive trading based on market microstructure.
