@@ -584,7 +584,6 @@ class HighFrequencyTradingEngine:
             # Determine direction based on price zone
             if yes_price <= 0.10:
                 # Low price → bet on YES (mean reversion up)
-                direction = 'YES'
                 side = 'YES'
                 expected_value = yes_price + (0.20 * (1 - yes_price))
                 
