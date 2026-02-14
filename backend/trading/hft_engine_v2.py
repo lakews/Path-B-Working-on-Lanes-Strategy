@@ -697,7 +697,6 @@ class HighFrequencyTradingEngineV2:
             final_spread = adjusted_spread * spread_mult * cliff_mult
             
             # Apply tick grid compliance
-            yes_price = float(market_data.get('yes_price', 0.5))
             half_spread = final_spread / 2
             
             bid = self._round_to_tick(adjusted_fair - half_spread)
