@@ -646,6 +646,18 @@ class PaperTrader:
         self.hft_math_engine = HFTMathEngine(self.hft_math_config)
         
         # =============================================================
+        # HFT ENGINE V2 (5 Sub-Strategy Architecture)
+        # =============================================================
+        # - Delta-Neutral Market Making (35%)
+        # - Volatility Exploitation (10%)
+        # - Extreme Spread Capture (15%)
+        # - Sharp Trader Following (20%)
+        # - Liquidity Provision (20%)
+        # Reads PATH A (signals) for intelligence, PATH B (hft_opportunities) for speed
+        self.hft_engine_v2: Optional[HighFrequencyTradingEngine] = None
+        self._hft_v2_task: Optional[asyncio.Task] = None
+        
+        # =============================================================
         # HFT ACTIVE ORDER TRACKING (Polymarket Compliance - Jan 2026)
         # =============================================================
         # Track active orders for lifecycle management and hysteresis
