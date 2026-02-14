@@ -1473,6 +1473,45 @@ class PaperTrader:
     # - NO LLM calls, NO heavy Bayesian computation
     # =================================================================
     
+    # =================================================================
+    # HFT ENGINE V2 LOOP (5 Sub-Strategy Architecture)
+    # =================================================================
+    async def _run_hft_v2_loop(self):
+        """
+        HFT Engine V2 Loop - 5 Sub-Strategy Architecture with MongoDB signals.
+        
+        Sub-Strategies:
+        1. Delta-Neutral Market Making (35%) - Quote YES/NO bid/ask
+        2. Volatility Exploitation (10%) - Mean reversion at extremes
+        3. Extreme Spread Capture (15%) - Wide spreads at extremes
+        4. Sharp Trader Following (20%) - Follow institutional flow
+        5. Liquidity Provision (20%) - Standing quotes on high-volume
+        
+        Signal Integration:
+        - Reads PATH B (hft_opportunities) for speed/market context
+        - Reads PATH A (signals) for intelligence/bayes_factor
+        - Applies news strength multipliers (PAUSE/EXTREME/CAUTION/NORMAL)
+        
+        Runs continuously with 500ms cycles.
+        """
+        if not self.hft_engine_v2:
+            logger.info("[HFT V2] Engine not initialized - skipping V2 loop")
+            return
+        
+        logger.info("🚀 HFT Engine V2 Loop Started (5 Sub-Strategies)")
+        
+        try:
+            # Start the HFT V2 continuous loop
+            await self.hft_engine_v2.start_hft_loop()
+        except asyncio.CancelledError:
+            logger.info("[HFT V2] Loop cancelled")
+        except Exception as e:
+            logger.error(f"[HFT V2] Loop error: {e}", exc_info=True)
+        finally:
+            if self.hft_engine_v2:
+                await self.hft_engine_v2.stop()
+            logger.info("[HFT V2] Loop stopped")
+    
     async def _run_hft_loop(self):
         """
         HFT Reflex Loop - Fast, reactive trading based on market microstructure.
