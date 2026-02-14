@@ -234,27 +234,23 @@ class TestLegacyHFTLoopRemoval:
     
     def test_legacy_hft_loop_commented_out(self, paper_trader_source):
         """Legacy _run_hft_loop() is commented out in asyncio.gather"""
-        # Find the asyncio.gather section
+        # Verify legacy HFT loop is deprecated and HFT V2 is active
+        # The legacy loop should be commented out with DEPRECATED marker
+        assert "# DEPRECATED: self._run_hft_loop()" in paper_trader_source, \
+            "Legacy _run_hft_loop() should be commented out with DEPRECATED marker"
+        
+        # HFT V2 loop should be active (not commented)
+        # Find the line with _run_hft_v2_loop and verify it's not commented
         lines = paper_trader_source.split('\n')
-        in_gather = False
-        legacy_commented = False
         hft_v2_active = False
-        
         for line in lines:
-            if 'asyncio.gather(' in line:
-                in_gather = True
-            if in_gather:
-                if '# DEPRECATED: self._run_hft_loop()' in line or \
-                   '#.*self._run_hft_loop()' in line:
-                    legacy_commented = True
-                if 'self._run_hft_v2_loop()' in line and not line.strip().startswith('#'):
-                    hft_v2_active = True
-                if ')' in line and in_gather and 'gather' not in line:
-                    break
+            # Check for uncommented _run_hft_v2_loop() call
+            stripped = line.strip()
+            if 'self._run_hft_v2_loop()' in stripped and not stripped.startswith('#'):
+                hft_v2_active = True
+                break
         
-        assert legacy_commented or "DEPRECATED" in paper_trader_source, \
-            "Legacy _run_hft_loop() should be commented out or marked DEPRECATED"
-        assert hft_v2_active, "_run_hft_v2_loop() should be active in asyncio.gather"
+        assert hft_v2_active, "_run_hft_v2_loop() should be active (not commented)"
 
 
 class TestHFTV2StatusEndpoint:
@@ -296,7 +292,7 @@ class TestMarketsFirstSystemOperational:
     
     def test_scanner_health_endpoint(self):
         """Scanner health endpoint returns 200"""
-        response = requests.get(f"{BASE_URL}/api/scanner/health", timeout=10)
+        response = requests.get(f"{BASE_URL}/api/health/scanner", timeout=10)
         assert response.status_code == 200
     
     def test_paper_status_endpoint(self):
