@@ -4,7 +4,7 @@
 Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with a centralized "Single Source of Truth" (SSOT) Risk Management layer for prediction market trading.
 
 ## Current Session Focus
-- **HFT Engine V2 Implementation (COMPLETED Feb 2026)**
+- **HFT Engine V2 ENHANCED Implementation (COMPLETED Feb 2026)** - Merged all legacy features
 - **Markets-First Architecture Phase 1 (COMPLETED Feb 2026)**
 - Sports Arbitrage exit logic fix (COMPLETED)
 - News Lane (Lane 5) expansion with multi-source ingestion (COMPLETED)
@@ -15,16 +15,34 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 ## Architecture Overview
 
 ### 5 Trading Lanes
-1. **HFT Lane** - High-frequency trading with 5 sub-strategies (HFT Engine V2)
+1. **HFT Lane** - High-frequency trading with 5 sub-strategies (HFT Engine V2 ENHANCED)
 2. **ALPHA Lane** - Alpha signal generation with Bayesian inference
 3. **GAMMA Lane** - Volatility-based trading strategies
 4. **SPORTS Lane** - Sports arbitrage using real odds APIs
 5. **NEWS Lane** - News-driven trading with multi-source ingestion
 
-### HFT Engine V2 Architecture (NEW - Feb 2026)
+### HFT Engine V2 ENHANCED Architecture (Feb 2026)
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ HFT ENGINE V2 - 5 SUB-STRATEGIES                                │
+│ HFT ENGINE V2 ENHANCED - UNIFIED HFT IMPLEMENTATION             │
+│ (Legacy HFT loop DEPRECATED and DISABLED)                       │
+├─────────────────────────────────────────────────────────────────┤
+│ MERGED LEGACY FEATURES:                                         │
+│ ├─ Alpha Target Integration (strategy_context bridge)           │
+│ ├─ HFT Math Engine (cubic skew, jump detection, cliff)          │
+│ ├─ Active Order Tracking (Polymarket compliance)                │
+│ ├─ Hysteresis Logic (anti-churn, 1 cent threshold)              │
+│ └─ Tick Grid Compliance ($0.01, kill zones $0.05-$0.95)         │
+│                                                                 │
+│ NEW V2 FEATURES:                                                │
+│ ├─ 5 Sub-Strategies with capital allocation                     │
+│ ├─ News Strength Classification (PAUSE/EXTREME/CAUTION/NORMAL)  │
+│ ├─ MongoDB Signal Integration (PATH A + PATH B)                 │
+│ └─ Spread & Position Multipliers based on news                  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 5 SUB-STRATEGIES                                                │
 ├─────────────────────────────────────────────────────────────────┤
 │ 1. Delta-Neutral Market Making (35%)                            │
 │    - Quote YES/NO bid/ask, capture spreads                      │
@@ -60,25 +78,15 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Markets-First Architecture (Phase 1)
-```
-┌────────────────────────────────────────────────────────────────┐
-│ LAYER 1: MARKET DATA FOUNDATION                                │
-│ PolymarketScanner → 500+ markets cached continuously           │
-└────────────────────────────────────────────────────────────────┘
-                            ↓
-┌────────────────────────────────────────────────────────────────┐
-│ LAYER 2: NEWS PROCESSING (Dual-Path)                           │
-│ PATH A: Semantic search → LLM → signals collection             │
-│ PATH B: Broadcast ALL → hft_opportunities collection           │
-└────────────────────────────────────────────────────────────────┘
-                            ↓
-┌────────────────────────────────────────────────────────────────┐
-│ LAYER 3: SIGNAL CONSUMPTION                                    │
-│ HFT V2: Reads PATH B (speed) + PATH A (intelligence)           │
-│ NEWS Lane: Reads PATH A (conviction calculation) [PENDING]     │
-└────────────────────────────────────────────────────────────────┘
-```
+### Polymarket Compliance Constants
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| TICK_SIZE | $0.01 | Price grid alignment |
+| MIN_PRICE | $0.05 | Kill zone lower bound |
+| MAX_PRICE | $0.95 | Kill zone upper bound |
+| MIN_SPREAD_TICKS | 2 | Minimum spread ($0.02) |
+| HYSTERESIS_THRESHOLD | $0.01 | Anti-churn drift tolerance |
+| ORDER_STALE_SECONDS | 120 | Order refresh time |
 
 ---
 
@@ -87,28 +95,28 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 ### Session: February 2026
 
 #### COMPLETED ✅
-1. **HFT Engine V2** (`/app/backend/trading/hft_engine_v2.py`)
-   - 5 sub-strategies with proper capital allocation
-   - News strength classification (PAUSE/EXTREME/CAUTION/NORMAL)
-   - MongoDB signal integration (PATH A + PATH B)
-   - Kelly criterion (0.25) and 3% position cap constraints
-   - Integration with paper_trader.py start/stop lifecycle
+1. **HFT Engine V2 ENHANCED** (`/app/backend/trading/hft_engine_v2.py`)
+   - Merged ALL legacy HFT features:
+     - Alpha Target Integration via strategy_context
+     - HFT Math Engine (cubic skew, jump detection, cliff protection)
+     - Active Order Tracking for Polymarket compliance
+     - Hysteresis Logic (anti-churn)
+     - Tick Grid Compliance ($0.01)
+   - Plus NEW V2 features:
+     - 5 sub-strategies with proper capital allocation
+     - News strength classification
+     - MongoDB signal integration
+   - **Legacy _run_hft_loop() is now DEPRECATED and DISABLED**
 
 2. **HFT Configuration** (`/app/backend/trading/hft_config.py`)
    - NewsStrength enum
    - HFTConfig class with all thresholds and allocations
-   - Helper functions: get_news_strength(), get_multipliers(), get_price_zone()
+   - Helper functions
 
 3. **Markets-First Architecture Phase 1**
-   - PolymarketScanner with WebSocket + REST fallback
-   - DualPathNewsInjector with PATH A (LLM) + PATH B (broadcast)
+   - PolymarketScanner (500+ markets cached)
+   - DualPathNewsInjector (PATH A + PATH B)
    - MongoDB collections with TTL indexes
-
-4. **API Endpoints**
-   - `GET /api/hft-v2/status` - HFT Engine V2 metrics
-   - `GET /api/health/scanner` - Scanner health
-   - `POST /api/webhooks/news` - News processing
-   - `GET /api/markets-first/status` - Full system status
 
 ---
 
@@ -116,12 +124,12 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 
 | File | Purpose |
 |------|---------|
-| `/app/backend/trading/hft_engine_v2.py` | **NEW** HFT Engine V2 with 5 sub-strategies |
-| `/app/backend/trading/hft_config.py` | **NEW** HFT configuration and enums |
-| `/app/backend/services/polymarket_scanner.py` | **NEW** Continuous market scanner |
-| `/app/backend/services/news_injector_dual_path.py` | **NEW** Dual-path news processing |
-| `/app/backend/paper_trading/paper_trader.py` | Paper trading with HFT V2 integration |
-| `/app/backend/risk_config.py` | Risk configuration |
+| `/app/backend/trading/hft_engine_v2.py` | **HFT Engine V2 ENHANCED** - Sole HFT implementation |
+| `/app/backend/trading/hft_config.py` | HFT configuration and enums |
+| `/app/backend/strategies/hft_math.py` | HFT Math Engine (cubic skew, cliff protection) |
+| `/app/backend/services/polymarket_scanner.py` | Continuous market scanner |
+| `/app/backend/services/news_injector_dual_path.py` | Dual-path news processing |
+| `/app/backend/paper_trading/paper_trader.py` | Paper trading (HFT V2 integrated) |
 
 ---
 
@@ -130,7 +138,7 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 ### HFT V2 Endpoints
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/hft-v2/status` | GET | HFT Engine V2 metrics and configuration |
+| `/api/hft-v2/status` | GET | HFT Engine V2 ENHANCED metrics and configuration |
 
 ### Markets-First Endpoints
 | Endpoint | Method | Purpose |
@@ -140,16 +148,15 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 | `/api/markets-first/status` | GET | Full system status |
 | `/api/markets-first/signals` | GET | Active PATH A signals |
 | `/api/markets-first/opportunities` | GET | PATH B HFT opportunities |
-| `/api/markets-first/cached-markets` | GET | In-memory cached markets |
 
 ---
 
 ## Prioritized Backlog
 
 ### P0 - Critical (COMPLETED)
-- [x] HFT Engine V2 Implementation
+- [x] HFT Engine V2 ENHANCED Implementation (merged legacy + new)
 - [x] Markets-First Architecture Phase 1
-- [x] 5-Lane Performance Dashboard Enhancement
+- [x] Legacy HFT loop deprecation
 - [x] Capital Accounting Bug Fixes
 
 ### P1 - High Priority (NEXT)
@@ -157,34 +164,21 @@ Build a sophisticated 5-lane trading bot (HFT, ALPHA, GAMMA, SPORTS, NEWS) with 
 - [ ] SSOT Refactoring: Move `EXIT_STRATEGY_CONFIG` to `risk_config.json`
 
 ### P2 - Future
-- [ ] HFT V3 with direct order placement
 - [ ] Reactivate CryptoPanic with premium API key
 - [ ] Production deployment optimization
-
----
-
-## 3rd Party Integrations
-
-| Service | Status | Key Location |
-|---------|--------|--------------|
-| OpenAI GPT-4o-mini | ✅ Active | Emergent LLM Key |
-| OpenAI GPT-5.2 | ✅ Active | Emergent LLM Key |
-| Gemini 3 Flash | ✅ Active | Emergent LLM Key |
-| The Odds API | ✅ Active | User API Key |
-| Exa.ai | ✅ Active | User API Key |
-| Apify | ✅ Active | User API Key |
-| CryptoPanic | ⏸️ PAUSED | User API Key |
 
 ---
 
 ## Test Reports
 - `/app/test_reports/iteration_40.json` - Markets-First Phase 1 (20 tests passed)
 - `/app/test_reports/iteration_41.json` - HFT Engine V2 (37 tests passed)
+- `/app/test_reports/iteration_42.json` - HFT Engine V2 ENHANCED (64 tests passed)
 
 ---
 
 ## User Notes
 - Use platform's "Save to Github" feature to persist codebase
 - All API keys stored in `/app/backend/.env`
-- HFT Engine V2 initializes ONLY when paper trading starts
+- HFT Engine V2 ENHANCED is now the **sole HFT implementation**
+- Legacy `_run_hft_loop()` is **DEPRECATED and DISABLED**
 - Markets-First system runs in PARALLEL to existing system (zero breaking changes)
