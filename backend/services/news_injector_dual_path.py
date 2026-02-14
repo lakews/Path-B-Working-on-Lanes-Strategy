@@ -270,69 +270,58 @@ class DualPathNewsInjector:
     ) -> Optional[Dict]:
         """LLM analyzes market impact from news"""
         try:
-            if not self.llm:
+            if self.llm is None:
                 # Fallback: simple keyword matching
                 return self._simple_analysis(headline, market, source)
             
-            prompt = f"""
-NEWS HEADLINE: {headline}
-NEWS SOURCE: {source}
-NEWS CONTENT: {content[:500] if content else 'N/A'}
-
-MARKET QUESTION: {market.get('question', 'Unknown')}
-CURRENT PRICE: {market.get('price', market.get('yes_price', 0.5)):.2f}
-VOLUME 24H: ${market.get('volume_24h', 0):,.0f}
-CATEGORY: {market.get('category', 'Unknown')}
-
-Analyze the news impact on this prediction market.
-Return a JSON object with these fields:
-{{
-    "bayes_factor": <number 0-20, how much this news shifts probability>,
-    "direction": <"YES" or "NO", which side does news favor>,
-    "confidence": <number 0-1, how confident in the analysis>,
-    "sentiment": <number 0-1, news sentiment score>,
-    "impact_level": <"low", "medium", "high", or "extreme">
-}}
-
-Be conservative. Only return high bayes_factor for direct, clear evidence.
-"""
+            market_question = market.get('question', 'Unknown')
+            market_description = market.get('description', '')
             
-            response = await self.llm.call_model(
-                prompt=prompt,
-                model="gpt-5.2",
-                temperature=0.3,
-                max_tokens=200
-            )
-            
-            # Parse response
-            if isinstance(response, str):
-                # Try to extract JSON from response
-                try:
-                    # Handle markdown code blocks
-                    if '```json' in response:
-                        response = response.split('```json')[1].split('```')[0]
-                    elif '```' in response:
-                        response = response.split('```')[1].split('```')[0]
-                    response = json.loads(response.strip())
-                except json.JSONDecodeError:
-                    logger.warning("[NEWS INJECTOR] Could not parse LLM response as JSON")
+            # Use the existing EmergentLLMService's analyze_news_for_market method
+            try:
+                result = await self.llm.analyze_news_for_market(
+                    news_headline=headline,
+                    news_content=content[:500] if content else '',
+                    market_question=market_question,
+                    market_description=market_description
+                )
+                
+                # Convert LLMAnalysisResult to our signal format
+                if result.error or not result.is_relevant:
                     return None
-            
-            market_id = market.get('market_id') or market.get('id')
-            
-            return {
-                'market_id': market_id,
-                'market_question': market.get('question', ''),
-                'news_headline': headline,
-                'news_source': source,
-                'timestamp': datetime.now(timezone.utc),
-                'bayes_factor': float(response.get('bayes_factor', 0)),
-                'direction': response.get('direction', 'YES'),
-                'confidence': float(response.get('confidence', 0.5)),
-                'sentiment': float(response.get('sentiment', 0.5)),
-                'impact_level': response.get('impact_level', 'low'),
-                'type': 'path_a'
-            }
+                
+                # Convert confidence to bayes_factor (simple mapping)
+                # confidence 0.5 = BF 1, confidence 0.75 = BF 3, confidence 0.95 = BF 10
+                bayes_factor = 1.0
+                if result.confidence >= 0.95:
+                    bayes_factor = 10.0
+                elif result.confidence >= 0.75:
+                    bayes_factor = 3.0 + (result.confidence - 0.75) * 28  # 3 to 10
+                elif result.confidence >= 0.60:
+                    bayes_factor = 1.5 + (result.confidence - 0.60) * 10  # 1.5 to 3
+                else:
+                    bayes_factor = 1.0 + (result.confidence - 0.50) * 5  # 1 to 1.5
+                
+                market_id = market.get('market_id') or market.get('id')
+                
+                return {
+                    'market_id': market_id,
+                    'market_question': market_question,
+                    'news_headline': headline,
+                    'news_source': source,
+                    'timestamp': datetime.now(timezone.utc),
+                    'bayes_factor': bayes_factor,
+                    'direction': result.direction,
+                    'confidence': result.confidence,
+                    'sentiment': result.confidence if result.is_bullish_for_yes else (1 - result.confidence),
+                    'impact_level': result.impact,
+                    'type': 'path_a',
+                    'rationale': result.rationale
+                }
+                
+            except AttributeError:
+                # LLM service doesn't have the expected method, fall back
+                return self._simple_analysis(headline, market, source)
         
         except Exception as e:
             logger.error(f"[NEWS INJECTOR] LLM analysis error: {e}")
