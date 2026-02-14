@@ -1049,13 +1049,47 @@ class PaperTrader:
         await self._init_session()
         
         # =================================================================
+        # HFT ENGINE V2 INITIALIZATION (5 Sub-Strategy Architecture)
+        # =================================================================
+        try:
+            logger.info("=" * 60)
+            logger.info("INITIALIZING HFT ENGINE V2")
+            logger.info("=" * 60)
+            
+            self.hft_engine_v2 = await init_hft_engine({
+                'db': self.db,
+                'market_data_svc': self.market_data_svc,
+                'paper_trader': self,
+                'position_manager': None,  # Uses paper_trader's capital
+                'kelly_optimizer': None,   # Uses built-in Kelly
+                'spread_calibrator': None, # Uses HFTConfig spreads
+                'volatility_predictor': self.volatility_predictor,
+                'sharp_detector': self.sharp_detector,
+                'performance_analytics': None
+            })
+            
+            logger.info("✅ HFT Engine V2 initialized")
+            logger.info("   Sub-strategies: Delta-Neutral(35%), Volatility(10%), Extreme(15%), Sharp(20%), Liquidity(20%)")
+            logger.info("   Signal Sources: PATH A (intelligence) + PATH B (speed)")
+            logger.info("   Constraints: Kelly 0.25, 3% cap, MongoDB-only")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Could not initialize HFT Engine V2: {e}")
+            logger.warning("   Falling back to legacy HFT loop")
+            self.hft_engine_v2 = None
+        
+        logger.info("=" * 60)
+        
+        # =================================================================
         # FIVE-LANE ARCHITECTURE: Run HFT and Alpha loops CONCURRENTLY
         # =================================================================
         # - HFT Loop: Fast reactions, market microstructure, no LLM
+        # - HFT V2 Loop: 5 sub-strategies with PATH A/B integration
         # - Alpha Loop: Slow analysis, Bayesian fusion, LLM sentiment
         # - Plus: monitoring, learning, emergency tasks
         await asyncio.gather(
-            self._run_hft_loop(),              # Fast Path (0.5s cycle)
+            self._run_hft_loop(),              # Fast Path (0.5s cycle) - Legacy
+            self._run_hft_v2_loop(),           # HFT V2 (5 sub-strategies)
             self._run_alpha_loop(),            # Slow Path (30s cycle)
             self._position_monitoring_loop(),  # Exit monitoring
             self._learning_loop(),             # RL training
