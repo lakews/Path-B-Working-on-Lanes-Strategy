@@ -10,7 +10,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://tradebrain-five.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://hft-engine-v2.preview.emergentagent.com').rstrip('/')
 AUTH = ('admin', 'apex2026!')
 
 
