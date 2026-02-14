@@ -529,10 +529,10 @@ class HighFrequencyTradingEngine:
             spread = trade_params['spread']
             position_size = trade_params['position_size']
             
-            # Calculate bid/ask prices
+            # Calculate bid/ask prices (used for logging/future order placement)
             half_spread = spread / 2
-            yes_bid = max(0.001, yes_price - half_spread)
-            yes_ask = min(0.999, yes_price + half_spread)
+            _ = max(0.001, yes_price - half_spread)  # yes_bid - for future order placement
+            _ = min(0.999, yes_price + half_spread)  # yes_ask - for future order placement
             
             # Check if spread is profitable
             if self.spread_calibrator:
