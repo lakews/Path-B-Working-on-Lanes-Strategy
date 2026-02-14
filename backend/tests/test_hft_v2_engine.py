@@ -25,7 +25,18 @@ import sys
 # Add backend to path for imports
 sys.path.insert(0, '/app/backend')
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+# Read BASE_URL from frontend .env file
+def get_base_url():
+    """Read REACT_APP_BACKEND_URL from frontend .env file"""
+    env_path = '/app/frontend/.env'
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                if line.startswith('REACT_APP_BACKEND_URL='):
+                    return line.split('=', 1)[1].strip().rstrip('/')
+    return os.environ.get('REACT_APP_BACKEND_URL', 'https://tradebrain-five.preview.emergentagent.com').rstrip('/')
+
+BASE_URL = get_base_url()
 
 
 class TestHFTConfig:
