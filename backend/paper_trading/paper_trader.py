@@ -1477,31 +1477,36 @@ class PaperTrader:
     # =================================================================
     
     # =================================================================
-    # HFT ENGINE V2 LOOP (5 Sub-Strategy Architecture)
+    # HFT ENGINE V2 ENHANCED LOOP (Replaces Legacy HFT)
     # =================================================================
     async def _run_hft_v2_loop(self):
         """
-        HFT Engine V2 Loop - 5 Sub-Strategy Architecture with MongoDB signals.
+        HFT Engine V2 Enhanced Loop - Sole HFT Implementation
         
-        Sub-Strategies:
-        1. Delta-Neutral Market Making (35%) - Quote YES/NO bid/ask
-        2. Volatility Exploitation (10%) - Mean reversion at extremes
-        3. Extreme Spread Capture (15%) - Wide spreads at extremes
-        4. Sharp Trader Following (20%) - Follow institutional flow
-        5. Liquidity Provision (20%) - Standing quotes on high-volume
+        MERGES ALL LEGACY FEATURES:
+        - Alpha Target Integration: strategy_context.get_target() for fair value
+        - HFT Math Engine: Cubic skew, jump detection, cliff protection
+        - Active Order Tracking: Manages orders for Polymarket compliance
+        - Hysteresis Logic: Anti-churn with HYSTERESIS_THRESHOLD
+        - Tick Grid Compliance: Uses TICK_SIZE = 0.01 for Polymarket
         
-        Signal Integration:
-        - Reads PATH B (hft_opportunities) for speed/market context
-        - Reads PATH A (signals) for intelligence/bayes_factor
-        - Applies news strength multipliers (PAUSE/EXTREME/CAUTION/NORMAL)
+        PLUS NEW V2 FEATURES:
+        - 5 Sub-Strategies with proper capital allocation
+        - News Strength Classification (PAUSE/EXTREME/CAUTION/NORMAL)
+        - MongoDB Signal Integration (PATH A + PATH B)
+        - Spread & Position Multipliers based on news
         
-        Runs continuously with 500ms cycles.
+        LEGACY _run_hft_loop() IS NOW DEPRECATED AND DISABLED.
         """
         if not self.hft_engine_v2:
-            logger.info("[HFT V2] Engine not initialized - skipping V2 loop")
+            logger.warning("[HFT V2] Engine not initialized - HFT functionality disabled")
             return
         
-        logger.info("🚀 HFT Engine V2 Loop Started (5 Sub-Strategies)")
+        logger.info("🚀 HFT Engine V2 ENHANCED Loop Started")
+        logger.info("   ├─ Legacy HFT loop: DEPRECATED/DISABLED")
+        logger.info("   ├─ Alpha bridge: strategy_context")
+        logger.info("   ├─ Math engine: Cubic Skew + Cliff Protection")
+        logger.info("   └─ Compliance: Tick Grid + Hysteresis")
         
         try:
             # Start the HFT V2 continuous loop
@@ -1513,7 +1518,7 @@ class PaperTrader:
         finally:
             if self.hft_engine_v2:
                 await self.hft_engine_v2.stop()
-            logger.info("[HFT V2] Loop stopped")
+            logger.info("[HFT V2] ENHANCED Loop stopped")
     
     async def _run_hft_loop(self):
         """
