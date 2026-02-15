@@ -146,8 +146,11 @@ NEWS EVENT ARRIVES
 - [x] HFT Engine V2 ENHANCED (merged legacy)
 - [x] NEWS Lane Phase 2 (MongoDB integration)
 - [x] Legacy HFT loop deprecation
+- [x] **HFT V2 Strategy-Specific Direction Refactor (Feb 15, 2026)** - Each of 5 strategies now determines its own direction
 
 ### P1 - High Priority (NEXT)
+- [ ] Deprecate old news pipeline (news_injector.py, signal_cache.py)
+- [ ] Integrate Alpha/Gamma Lanes with Markets-First signals
 - [ ] SSOT Refactoring: Move `EXIT_STRATEGY_CONFIG` to `risk_config.json`
 - [ ] Live trading validation
 
