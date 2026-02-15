@@ -127,6 +127,42 @@ class HFTConfig:
     # HFT LANE ALLOCATION (From total capital)
     # =========================================================================
     HFT_LANE_ALLOCATION = 0.35         # 35% of total capital to HFT lane
+    
+    # =========================================================================
+    # EXECUTION MODE (Paper vs Live)
+    # =========================================================================
+    LIVE_MODE = False  # Switch to True for live two-sided market making
+    
+    # =========================================================================
+    # DIRECTION DETERMINATION
+    # =========================================================================
+    EDGE_THRESHOLD = 0.02              # 2% minimum edge to take position
+    PATH_A_OVERRIDE_BF = 5.0           # BF >= 5 allows PATH A to override HFT Math direction
+    
+    # =========================================================================
+    # DRIFT DETECTION (PATH B staleness)
+    # =========================================================================
+    MAX_DRIFT_PCT = 0.05               # 5% max drift before PATH B price considered stale
+    
+    # =========================================================================
+    # STRATEGY CLASSIFICATION
+    # =========================================================================
+    # Market making strategies: profit from spread (two-sided in live mode)
+    MARKET_MAKING_STRATEGIES = ['delta_neutral', 'extreme_spread', 'liquidity_provision']
+    
+    # Directional strategies: profit from price movement (single-sided)
+    DIRECTIONAL_STRATEGIES = ['volatility_exploit', 'sharp_following']
+    
+    # =========================================================================
+    # MEAN REVERSION THRESHOLDS (for VOLATILITY_EXPLOIT)
+    # =========================================================================
+    MEAN_REVERSION_LOW = 0.15          # Below this, expect reversion up
+    MEAN_REVERSION_HIGH = 0.85         # Above this, expect reversion down
+    
+    # =========================================================================
+    # ORDER FLOW IMBALANCE (for LIQUIDITY_PROVISION)
+    # =========================================================================
+    ORDER_FLOW_IMBALANCE_RATIO = 1.2   # 20% imbalance triggers direction
 
 
 def get_news_strength(bayes_factor: float) -> NewsStrength:
