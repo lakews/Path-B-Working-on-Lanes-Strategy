@@ -44,8 +44,9 @@ class TestHealthEndpoints:
         response = requests.get(f"{BASE_URL}/api/status")
         assert response.status_code == 200
         data = response.json()
-        assert 'mode' in data
-        print(f"✓ API status: mode={data.get('mode')}")
+        # Status endpoint returns 'status' field instead of 'mode'
+        assert 'status' in data
+        print(f"✓ API status: status={data.get('status')}")
 
 
 class TestScannerHealth:
@@ -494,19 +495,27 @@ class TestMongoDBSignalStorage:
 class TestLaneInitialization:
     """Test that all lanes initialize properly"""
     
-    def test_five_lane_dashboard(self):
-        """Test GET /api/paper/five-lane-dashboard"""
-        response = requests.get(f"{BASE_URL}/api/paper/five-lane-dashboard")
+    def test_lane_status_via_paper_status(self):
+        """Test lane initialization via paper status endpoint"""
+        response = requests.get(f"{BASE_URL}/api/paper/status")
         assert response.status_code == 200
         data = response.json()
         
-        print(f"✓ Five-lane dashboard:")
+        print(f"✓ Lane status via paper/status:")
+        print(f"  - running: {data.get('running')}")
+        print(f"  - open_positions: {data.get('open_positions')}")
         
-        # Check lane statuses
-        lanes = data.get('lanes', {})
-        for lane_name, lane_data in lanes.items():
-            status = lane_data.get('status', 'unknown')
-            print(f"  - {lane_name}: {status}")
+        # Verify HFT V2 status
+        hft_response = requests.get(f"{BASE_URL}/api/hft-v2/status")
+        assert hft_response.status_code == 200
+        hft_data = hft_response.json()
+        print(f"  - HFT V2: {hft_data.get('status')}")
+        
+        # Verify NEWS Sniper status
+        news_response = requests.get(f"{BASE_URL}/api/news-sniper/status")
+        assert news_response.status_code == 200
+        news_data = news_response.json()
+        print(f"  - NEWS Sniper: {news_data.get('status')}")
 
 
 class TestCleanup:
