@@ -5898,6 +5898,18 @@ class PaperTrader:
             strategy = position['strategy']
             asset_class = position.get('asset_class', 'unknown')
             
+            # ================================================================
+            # PRICE SOURCE CONSISTENCY CHECK
+            # ================================================================
+            entry_price_source = position.get('price_source', 'unknown')
+            exit_price_source = 'mid_price_paper_mode' if not HFTConfig.LIVE_MODE else 'orderbook_maker'
+            
+            if entry_price_source != exit_price_source:
+                logger.warning(f"[EXIT-MISMATCH] Price source inconsistency!")
+                logger.warning(f"   Entry source: {entry_price_source} @ ${yes_entry_price:.4f}")
+                logger.warning(f"   Exit source: {exit_price_source} @ ${exit_yes_price:.4f}")
+                logger.warning(f"   This may cause inaccurate PnL calculation")
+            
             # ==========================================================================
             # CORRECT P&L Calculation based on shares (using spread-aware exit price)
             # ==========================================================================
