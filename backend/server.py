@@ -6226,6 +6226,8 @@ async def startup_event():
                         key_terms = extract_key_terms(question)
                         query = f"{key_terms} news"
                         
+                        logger.info(f"[NEWS/EXA] Market: '{question[:40]}...' (vol=${volume:,.0f}) → Query: '{key_terms}'")
+                        
                         try:
                             events = await poller.poll_news(query=query, num_results=3, hours_back=2)
                             
