@@ -139,6 +139,46 @@ class NewsPoller:
             'last_error': None,
         }
     
+    def _ensure_client_initialized(self) -> bool:
+        """
+        Lazily initialize the Exa client.
+        This allows the API key to be loaded from MongoDB after startup.
+        Re-checks environment on each call to pick up newly loaded keys.
+        """
+        # Re-check environment for API key (may have been loaded from MongoDB)
+        current_key = os.environ.get('EXA_API_KEY')
+        
+        # If key changed or client not initialized, (re)initialize
+        if current_key and current_key != self.api_key:
+            self.api_key = current_key
+            self._client_initialized = False
+            logger.info(f"[NEWS POLLER] API key updated, will reinitialize client")
+        
+        if self._client_initialized and self._exa_client:
+            return True
+            
+        if not self.api_key:
+            # Don't spam logs - only log once
+            if not hasattr(self, '_warned_no_key'):
+                logger.warning("[NEWS POLLER] EXA_API_KEY not configured - news polling disabled")
+                logger.warning("[NEWS POLLER] Keys are loaded from MongoDB on startup")
+                self._warned_no_key = True
+            return False
+            
+        if not EXA_SDK_AVAILABLE:
+            logger.error("[NEWS POLLER] exa-py SDK not installed. Run: pip install exa-py")
+            return False
+            
+        try:
+            self._exa_client = Exa(api_key=self.api_key)
+            self._client_initialized = True
+            logger.info(f"[NEWS POLLER] ✅ Exa.ai SDK initialized (key: {self.api_key[:8]}...)")
+            return True
+        except Exception as e:
+            logger.error(f"[NEWS POLLER] Failed to initialize Exa client: {e}")
+            self._stats['last_error'] = str(e)
+            return False
+    
     async def poll_news(
         self, 
         query: str, 
