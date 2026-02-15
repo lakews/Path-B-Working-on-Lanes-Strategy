@@ -176,6 +176,29 @@ NEWS EVENT ARRIVES
 
 ---
 
+## Paper Mode vs Live Mode (Feb 15, 2026)
+
+### Current Implementation (Option 2)
+| Mode | LIVE_MODE Flag | Entry Pricing | Exit Pricing | HFT Strategies |
+|------|----------------|---------------|--------------|----------------|
+| **Paper** | `False` | `current_price` (mid) | `current_price` (mid) | ✅ All 5 work |
+| **Live** | `True` | Orderbook (maker) | Orderbook (spread-aware) | ✅ Real execution |
+
+### How to Switch Modes
+```python
+# In hft_config.py
+LIVE_MODE = False  # Paper mode (default) - mid-price for testing
+LIVE_MODE = True   # Live mode - orderbook-based execution
+```
+
+### Files Modified
+- `paper_trading/paper_trader.py`:
+  - `_execute_paper_entry()` - Line ~5480
+  - `_evaluate_exit()` - Line ~5040
+  - `_execute_paper_exit()` - Line ~5780
+
+---
+
 ## Pending Code Changes Log (For Future Reverting)
 
 ### Change #1: VOLATILITY_EXPLOIT Mode Selection (ACTIVE - May Revert Later)
@@ -203,6 +226,36 @@ else:
 **Status**: REVERTED
 **Issue**: Caused PnL calculation mismatch (entry used current_price, exit used orderbook prices)
 **Result**: Inflated returns (+321% in 10 mins with 29.9% win rate - impossible)
+
+### Change #3: Paper Mode Mid-Price Consistency (ACTIVE - Feb 15, 2026)
+**File**: `/app/backend/paper_trading/paper_trader.py`
+**Status**: ACTIVE
+**Purpose**: Enables all HFT strategies to execute in paper mode with consistent mid-price entry/exit
+**Locations**:
+- `_execute_paper_entry()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
+- `_evaluate_exit()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
+- `_execute_paper_exit()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
+
+---
+
+## Future Roadmap
+
+### P0 - Immediate
+- [x] Paper mode mid-price consistency (Option 2)
+- [ ] Deprecate old news pipeline (news_injector.py, signal_cache.py)
+- [ ] Integrate Alpha/Gamma Lanes with Markets-First signals
+
+### P1 - High Priority
+- [ ] SSOT Refactoring: Move `EXIT_STRATEGY_CONFIG` to `risk_config.json`
+- [ ] Live trading validation with real orderbook execution
+
+### P2 - Future (Complex)
+- [ ] **True Market Making Architecture** - Two-sided quoting with:
+  - Simultaneous bid/ask order posting
+  - Inventory/delta tracking and management
+  - Quote adjustment engine (continuous re-quoting)
+  - Risk controls for inventory skew
+  - This requires significant new architecture beyond current directional approach
 
 ---
 
