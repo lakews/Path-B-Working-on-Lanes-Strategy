@@ -30,6 +30,7 @@ const RiskSettings = () => {
   const [expandedLanes, setExpandedLanes] = useState({});
   const [expandedSections, setExpandedSections] = useState({
     global: true,
+    extreme_price: false,
     lanes: true,
     kelly: false,
     sectors: false
