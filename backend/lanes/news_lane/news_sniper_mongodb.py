@@ -455,6 +455,7 @@ class NewsSniper:
             # Get market data
             market_data = await self._get_market_data(market_id)
             if not market_data:
+                logger.debug(f"[NEWS SNIPER] No market data for {market_id[:16]}...")
                 return
             
             # Calculate enhanced conviction
@@ -466,6 +467,11 @@ class NewsSniper:
             
             # Get Kelly fraction based on conviction tier
             kelly_fraction = self._conviction_to_kelly(conviction)
+            
+            logger.info(
+                f"[NEWS SNIPER] Processing {market_id[:16]}... | "
+                f"BF={signal.get('bayes_factor', 0):.1f}, Conv={conviction:.2f}, Kelly={kelly_fraction:.0%}"
+            )
             
             if kelly_fraction == 0:
                 self.stats['trades_skipped_low_conviction'] += 1
