@@ -409,7 +409,9 @@ class PaperTrader:
         # Strategy selection thresholds (configurable via UI)
         self.volatility_threshold = 0.06           # Threshold for volatility strategy (raised to 6% to capture more Delta Neutral)
         self.sentiment_strength_threshold = 0.25   # Threshold for alpha directional
-        self.sharp_alignment_threshold = 0.8       # Threshold for arbitrage
+        # Arbitrage requires BOTH good market quality AND sharp trader alignment
+        self.market_quality_threshold = 0.7        # Liquidity + spread quality for execution
+        self.sharp_alignment_threshold = 0.6       # Real sharp trader alignment for confidence
         self.delta_neutral_price_min = 0.40        # Min price for delta neutral
         self.delta_neutral_price_max = 0.70        # Max price for delta neutral
         
