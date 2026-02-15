@@ -484,8 +484,14 @@ class DualPathNewsInjector:
             
             # Batch insert to MongoDB
             if opportunities and self.db is not None:
-                await self.db.hft_opportunities.insert_many(opportunities)
-                self.stats['mongodb_writes'] += len(opportunities)
+                try:
+                    await self.db.hft_opportunities.insert_many(opportunities)
+                    self.stats['mongodb_writes'] += len(opportunities)
+                    logger.info(f"[NEWS INJECTOR] PATH B: {len(opportunities)} opportunities WRITTEN to MongoDB")
+                except Exception as db_err:
+                    logger.error(f"[NEWS INJECTOR] PATH B MongoDB write error: {db_err}")
+            elif self.db is None:
+                logger.warning(f"[NEWS INJECTOR] PATH B: db is None! {len(opportunities)} opportunities NOT stored")
             
             logger.info(f"[NEWS INJECTOR] PATH B: {len(opportunities)} opportunities broadcasted")
             return len(opportunities)
