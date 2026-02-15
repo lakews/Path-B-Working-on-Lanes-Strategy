@@ -166,7 +166,9 @@ NEWS EVENT ARRIVES
 
 ### P2 - Future
 - [ ] Reactivate CryptoPanic with premium API key
+- [ ] Implement True Market Making Architecture (two-sided quoting for LIVE_MODE)
 - [ ] Production deployment optimization
+- [ ] Fix Apify test script error (`'WebhookNews' object has no attribute 'account'`)
 
 ---
 
