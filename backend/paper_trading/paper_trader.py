@@ -7407,9 +7407,12 @@ class PaperTrader:
                             
                             # Check if we should close
                             if decision.action == ExitAction.CLOSE_ALL:
+                                # IMPORTANT: Store YES price for exit (not side-adjusted price)
+                                # _execute_paper_exit expects yes_price for P&L calculation
                                 positions_to_close.append({
                                     'market_id': market_id,
-                                    'current_price': current_price,
+                                    'current_yes_price': current_yes_price,  # YES price for exit
+                                    'current_price': current_price,  # Side-adjusted for logging
                                     'reason': decision.reason.value,
                                     'strategy': strategy,
                                     'pnl_pct': (current_price - entry_price) / entry_price if entry_price > 0 else 0
