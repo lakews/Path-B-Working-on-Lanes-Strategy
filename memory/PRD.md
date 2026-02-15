@@ -260,6 +260,40 @@ else:
 
 ---
 
+## Sharp Detector Implementation (Feb 15, 2026)
+
+### Phase 1: Proxy Methods (Immediate Detection)
+Uses existing data when real sharp trader data is unavailable:
+- **Volume spike detection**: >$50k suggests institutional activity
+- **Price momentum**: >5% recent move indicates sharp activity
+- **Order flow imbalance**: >30% directional flow
+- **News catalyst**: PATH B opportunity exists
+
+### Phase 2: Data Collection Pipeline
+Background tasks for real sharp trader identification:
+- **Trade fetcher**: Fetches trades from Polymarket CLOB API every 5 minutes
+- **Data storage**: Stores in `market_trades` MongoDB collection
+- **Outcome tracking**: Updates trade outcomes with current prices for P&L calculation
+
+### Phase 3: Sharp Trader Identification
+Scheduled job every 6 hours:
+- **Win rate analysis**: Identifies traders with >70% win rate
+- **Volume threshold**: Requires >$10k total volume
+- **Trade minimum**: At least 10 trades required
+- **Category focus**: Specialists (<=3 categories) preferred
+
+### MongoDB Collections
+| Collection | Purpose |
+|------------|---------|
+| `market_trades` | Historical trades with trader addresses |
+| `sharp_traders` | Identified sharp traders and their stats |
+| `sharp_positions` | Current positions of sharp traders |
+
+### API Endpoint
+`GET /api/sharp-detector/status` - Returns stats and configuration
+
+---
+
 ## User Notes
 - Use platform's "Save to Github" feature to persist codebase
 - All API keys stored in `/app/backend/.env`
