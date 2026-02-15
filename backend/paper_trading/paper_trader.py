@@ -6721,8 +6721,13 @@ class PaperTrader:
         Uses configurable thresholds from self (loaded from DB):
         - volatility_threshold: for volatility exploitation trigger
         - sentiment_strength_threshold: for alpha directional trigger
-        - sharp_alignment_threshold: for arbitrage trigger
+        - market_quality_threshold: market liquidity/spread quality for arbitrage
+        - sharp_alignment_threshold: real sharp trader alignment for arbitrage
         - delta_neutral_price_min/max: price range for delta neutral
+        
+        Arbitrage requires BOTH:
+        - market_quality_score > market_quality_threshold (good execution)
+        - sharp_alignment > sharp_alignment_threshold (smart money agrees)
         """
         volatility = signals.get('volatility', 0.05)
         sentiment = signals.get('sentiment', 0.5)
