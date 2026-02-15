@@ -382,6 +382,239 @@ const RiskSettings = () => {
         )}
       </div>
 
+      {/* Extreme Price Validation (Tiered Kill Switch) */}
+      <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden">
+        <button
+          onClick={() => toggleSection('extreme_price')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-700/30 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <Zap className="w-5 h-5 text-yellow-400" />
+            <span className="font-semibold text-white">Extreme Price Validation</span>
+            <span className="text-sm text-gray-400">(Tiered Kill Switch)</span>
+          </div>
+          {expandedSections.extreme_price ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+        </button>
+
+        {expandedSections.extreme_price && config.extreme_price_validation && (
+          <div className="p-4 pt-0 space-y-4">
+            {/* Enable/Disable Toggle */}
+            <div className="flex items-center justify-between bg-gray-900/50 rounded-lg p-4">
+              <div>
+                <span className="text-white font-medium">Enable Tiered Validation</span>
+                <p className="text-xs text-gray-400">Allow extreme prices with additional checks</p>
+              </div>
+              <button
+                onClick={() => updateConfig('extreme_price_validation.enabled', !config.extreme_price_validation.enabled)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  config.extreme_price_validation.enabled ? 'bg-yellow-500' : 'bg-gray-600'
+                }`}
+              >
+                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  config.extreme_price_validation.enabled ? 'left-7' : 'left-1'
+                }`} />
+              </button>
+            </div>
+
+            {/* Global Thresholds */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-900/50 rounded-lg p-4">
+                <label className="block text-sm text-gray-400 mb-2">Extreme Low Threshold</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={(config.extreme_price_validation.extreme_low_threshold * 100).toFixed(1)}
+                    onChange={(e) => updateConfig('extreme_price_validation.extreme_low_threshold', parseFloat(e.target.value) / 100)}
+                    className="w-20 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
+                    min="0.5"
+                    max="10"
+                    step="0.5"
+                  />
+                  <Percent className="w-4 h-4 text-gray-400" />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Prices below need extra validation</p>
+              </div>
+
+              <div className="bg-gray-900/50 rounded-lg p-4">
+                <label className="block text-sm text-gray-400 mb-2">Extreme High Threshold</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={(config.extreme_price_validation.extreme_high_threshold * 100).toFixed(1)}
+                    onChange={(e) => updateConfig('extreme_price_validation.extreme_high_threshold', parseFloat(e.target.value) / 100)}
+                    className="w-20 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
+                    min="90"
+                    max="99.5"
+                    step="0.5"
+                  />
+                  <Percent className="w-4 h-4 text-gray-400" />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Prices above need extra validation</p>
+              </div>
+            </div>
+
+            {/* Validation Requirements */}
+            <div className="bg-gray-900/50 rounded-lg p-4">
+              <h4 className="text-white font-medium mb-3">Validation Requirements for Extreme Prices</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Min Orderbook Depth ($)</label>
+                  <input
+                    type="number"
+                    value={config.extreme_price_validation.requirements?.min_orderbook_depth_usd || 100}
+                    onChange={(e) => updateConfig('extreme_price_validation.requirements.min_orderbook_depth_usd', parseFloat(e.target.value))}
+                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                    min="50"
+                    max="1000"
+                    step="50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Max Spread (%)</label>
+                  <input
+                    type="number"
+                    value={((config.extreme_price_validation.requirements?.min_spread_quality || 0.05) * 100).toFixed(0)}
+                    onChange={(e) => updateConfig('extreme_price_validation.requirements.min_spread_quality', parseFloat(e.target.value) / 100)}
+                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                    min="1"
+                    max="10"
+                    step="1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Min Volume/Hour ($)</label>
+                  <input
+                    type="number"
+                    value={config.extreme_price_validation.requirements?.min_recent_volume_1h || 50}
+                    onChange={(e) => updateConfig('extreme_price_validation.requirements.min_recent_volume_1h', parseFloat(e.target.value))}
+                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                    min="10"
+                    max="500"
+                    step="10"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Min Hours to Expiry</label>
+                  <input
+                    type="number"
+                    value={config.extreme_price_validation.requirements?.min_time_to_expiry_hours || 24}
+                    onChange={(e) => updateConfig('extreme_price_validation.requirements.min_time_to_expiry_hours', parseFloat(e.target.value))}
+                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                    min="1"
+                    max="168"
+                    step="1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Strategy Overrides */}
+            <div className="bg-gray-900/50 rounded-lg p-4">
+              <h4 className="text-white font-medium mb-3">Strategy-Specific Kill Switch Overrides</h4>
+              <p className="text-xs text-gray-400 mb-4">Allow specific strategies to trade at more extreme prices (higher convexity)</p>
+              
+              {/* Volatility Exploit Override */}
+              <div className="border border-purple-500/30 rounded-lg p-3 mb-3">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-purple-400" />
+                    <span className="text-white font-medium">Volatility Exploit</span>
+                  </div>
+                  <button
+                    onClick={() => updateConfig('extreme_price_validation.strategy_overrides.hft_volatility_exploit.enabled', 
+                      !(config.extreme_price_validation.strategy_overrides?.hft_volatility_exploit?.enabled || false))}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${
+                      config.extreme_price_validation.strategy_overrides?.hft_volatility_exploit?.enabled ? 'bg-purple-500' : 'bg-gray-600'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                      config.extreme_price_validation.strategy_overrides?.hft_volatility_exploit?.enabled ? 'left-5' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
+                {config.extreme_price_validation.strategy_overrides?.hft_volatility_exploit?.enabled && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Min Price (%)</label>
+                      <input
+                        type="number"
+                        value={((config.extreme_price_validation.strategy_overrides?.hft_volatility_exploit?.kill_switch_low || 0.005) * 100).toFixed(1)}
+                        onChange={(e) => updateConfig('extreme_price_validation.strategy_overrides.hft_volatility_exploit.kill_switch_low', parseFloat(e.target.value) / 100)}
+                        className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                        min="0.1"
+                        max="5"
+                        step="0.1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Max Price (%)</label>
+                      <input
+                        type="number"
+                        value={((config.extreme_price_validation.strategy_overrides?.hft_volatility_exploit?.kill_switch_high || 0.995) * 100).toFixed(1)}
+                        onChange={(e) => updateConfig('extreme_price_validation.strategy_overrides.hft_volatility_exploit.kill_switch_high', parseFloat(e.target.value) / 100)}
+                        className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                        min="95"
+                        max="99.9"
+                        step="0.1"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Gamma Scalp Override */}
+              <div className="border border-green-500/30 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-green-400" />
+                    <span className="text-white font-medium">Gamma Scalp</span>
+                  </div>
+                  <button
+                    onClick={() => updateConfig('extreme_price_validation.strategy_overrides.hft_gamma_scalp.enabled', 
+                      !(config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.enabled || false))}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${
+                      config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.enabled ? 'bg-green-500' : 'bg-gray-600'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                      config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.enabled ? 'left-5' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
+                {config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.enabled && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Min Price (%)</label>
+                      <input
+                        type="number"
+                        value={((config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.kill_switch_low || 0.01) * 100).toFixed(1)}
+                        onChange={(e) => updateConfig('extreme_price_validation.strategy_overrides.hft_gamma_scalp.kill_switch_low', parseFloat(e.target.value) / 100)}
+                        className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                        min="0.5"
+                        max="5"
+                        step="0.1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Max Price (%)</label>
+                      <input
+                        type="number"
+                        value={((config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.kill_switch_high || 0.99) * 100).toFixed(1)}
+                        onChange={(e) => updateConfig('extreme_price_validation.strategy_overrides.hft_gamma_scalp.kill_switch_high', parseFloat(e.target.value) / 100)}
+                        className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                        min="95"
+                        max="99.5"
+                        step="0.1"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Lane Configuration */}
       <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden">
         <button
