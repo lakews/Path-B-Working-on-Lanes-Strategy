@@ -928,6 +928,32 @@ class PaperTrader:
                         self.position_sizer.update_config({'variance_sizing': self.variance_sizing_config})
                     logger.info(f"  Variance Sizing: Kill switch {self.variance_sizing_config.get('kill_switch_low', 0.03):.0%}-{self.variance_sizing_config.get('kill_switch_high', 0.97):.0%}")
                 
+                # ==============================================================
+                # EXTREME PRICE VALIDATION CONFIG (Tiered Kill Switch)
+                # ==============================================================
+                if "extreme_price_validation" in user_config:
+                    self.extreme_price_config = user_config["extreme_price_validation"]
+                    logger.info(f"  Extreme Price Validation: {'ENABLED' if self.extreme_price_config.get('enabled', True) else 'DISABLED'}")
+                    logger.info(f"    Thresholds: {self.extreme_price_config.get('extreme_low_threshold', 0.03):.1%}-{self.extreme_price_config.get('extreme_high_threshold', 0.97):.1%}")
+                    if self.extreme_price_config.get('strategy_overrides'):
+                        for strat, override in self.extreme_price_config['strategy_overrides'].items():
+                            if override.get('enabled', False):
+                                logger.info(f"    {strat}: {override.get('kill_switch_low', 0.03):.1%}-{override.get('kill_switch_high', 0.97):.1%}")
+                else:
+                    # Default config
+                    self.extreme_price_config = {
+                        'enabled': True,
+                        'extreme_low_threshold': 0.03,
+                        'extreme_high_threshold': 0.97,
+                        'requirements': {
+                            'min_orderbook_depth_usd': 100,
+                            'min_spread_quality': 0.05,
+                            'min_recent_volume_1h': 50,
+                            'min_time_to_expiry_hours': 24
+                        },
+                        'strategy_overrides': {}
+                    }
+                
                 # Recalculate derived values based on loaded config
                 self.deployed_capital = self.initial_capital * (self.capital_deployment_pct / 100)
                 self.max_position_size = self.deployed_capital * (self.max_position_size_pct / 100)
