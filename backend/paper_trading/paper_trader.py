@@ -6718,7 +6718,10 @@ class PaperTrader:
         volatility = signals.get('volatility', 0.05)
         sentiment = signals.get('sentiment', 0.5)
         sentiment_strength = abs(sentiment - 0.5)
-        sharp_alignment = signals.get('sharp_alignment', 0.5)
+        
+        # New: Separate metrics for different purposes
+        sharp_alignment = signals.get('sharp_alignment', 0.5)      # Real sharp trader alignment (confidence)
+        market_quality_score = signals.get('market_quality_score', 0.5)  # Market tradability (execution)
         price_uncertainty = signals.get('price_uncertainty', 0.5)
         
         # Get price from market data - REQUIRE REAL DATA for strategy selection
@@ -6742,8 +6745,10 @@ class PaperTrader:
         if (yes_price < 0.25 or yes_price > 0.75) and 'alpha_directional' in self.enabled_strategies:
             return 'alpha_directional'
         
-        # 2. ARBITRAGE: High liquidity markets with good sharp alignment
-        if sharp_alignment > self.sharp_alignment_threshold and 'arbitrage' in self.enabled_strategies:
+        # 2. ARBITRAGE: High market quality (good execution) + sharp alignment (confidence)
+        # Requires both: good execution conditions AND smart money agreement
+        if (market_quality_score > 0.7 and sharp_alignment > 0.6 
+            and 'arbitrage' in self.enabled_strategies):
             return 'arbitrage'
         
         # 3. DELTA NEUTRAL: Mid-range price with moderate volatility - market making
