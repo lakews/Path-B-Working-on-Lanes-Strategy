@@ -7195,10 +7195,12 @@ class PaperTrader:
                     
                     # Build price map - ONLY include markets with valid prices
                     market_prices = {}
+                    market_questions = {}  # Track questions for debugging
                     for m in markets:
                         price = m.get('yes_price')
                         if price is not None and price != 0:
                             market_prices[m['id']] = float(price)
+                            market_questions[m['id']] = m.get('question', 'N/A')[:30]
                     
                     total_unrealized = 0.0
                     for market_id, position in self.paper_positions.items():
