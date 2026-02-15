@@ -7022,11 +7022,31 @@ class PaperTrader:
             sentiment_strength = abs(sentiment - 0.5) * 2
             
             # ================================================================
-            # SHARP ALIGNMENT & OTHER SIGNALS
+            # MARKET QUALITY SCORE (for execution decisions)
             # ================================================================
+            # This measures market tradability: liquidity + spread tightness
             liquidity_score = min(1.0, liquidity / 100000) if liquidity > 0 else 0
             spread_score = max(0, 1 - spread * 10)
-            sharp_alignment = (liquidity_score * 0.6 + spread_score * 0.4)
+            market_quality_score = (liquidity_score * 0.6 + spread_score * 0.4)
+            
+            # ================================================================
+            # REAL SHARP ALIGNMENT (from SharpDetector)
+            # ================================================================
+            # This measures alignment with professional/sharp traders
+            sharp_alignment = 0.5  # Default neutral
+            sharp_data = {}
+            try:
+                sharp_result = await self.sharp_detector.get_alignment_signal(market_id)
+                if sharp_result:
+                    sharp_alignment = sharp_result.get('alignment_score', 0.5)
+                    sharp_data = {
+                        'direction': sharp_result.get('direction'),
+                        'confidence': sharp_result.get('confidence', 0),
+                        'sharp_count': sharp_result.get('sharp_count', 0),
+                        'data_source': sharp_result.get('data_source', 'none')
+                    }
+            except Exception as e:
+                logger.debug(f"[SIGNALS] Sharp alignment fetch failed: {e}")
             
             whale_activity = min(1.0, (volume_24h / liquidity) if liquidity > 0 else 0)
             
@@ -7069,7 +7089,10 @@ class PaperTrader:
                 },
                 'enhanced_data': enhanced_data,
                 'news_data': news_data,
-                'sharp_alignment': round(sharp_alignment, 4),
+                # New: Both metrics exposed separately
+                'market_quality_score': round(market_quality_score, 4),  # For execution decisions
+                'sharp_alignment': round(sharp_alignment, 4),            # For direction confidence
+                'sharp_data': sharp_data,                                # Detailed sharp info
                 'whale_activity': round(whale_activity, 4),
                 'price_uncertainty': round(price_uncertainty, 4),
                 'volume_factor': round(volume_factor, 4)
