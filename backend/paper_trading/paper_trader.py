@@ -7192,11 +7192,24 @@ class PaperTrader:
                     # Build price map - ONLY include markets with valid prices
                     market_prices = {}
                     market_questions = {}  # Track questions for debugging
+                    markets_with_half = []  # Debug: track 0.5 prices
                     for m in markets:
                         price = m.get('yes_price')
                         if price is not None and price != 0:
                             market_prices[m['id']] = float(price)
                             market_questions[m['id']] = m.get('question', 'N/A')[:30]
+                            # Debug: track markets with 0.5 price
+                            if abs(float(price) - 0.5) < 0.01:
+                                markets_with_half.append({
+                                    'id': m['id'][:16],
+                                    'q': m.get('question', 'N/A')[:30],
+                                    'price': price,
+                                    'source': m.get('price_source', 'unknown')
+                                })
+                    
+                    # Log if we find 0.5 prices
+                    if markets_with_half and len(markets_with_half) < 10:
+                        logger.warning(f"[DEBUG-0.5] Markets with ~0.5 price: {markets_with_half}")
                     
                     total_unrealized = 0.0
                     for market_id, position in self.paper_positions.items():
