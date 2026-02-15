@@ -236,23 +236,34 @@ else:
 - `_evaluate_exit()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
 - `_execute_paper_exit()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
 
-### Change #4: Position Market Bypass for Exit Pricing (ACTIVE - Feb 15, 2026)
+### Change #4: Tiered Kill Switch / Extreme Price Validation (ACTIVE - Feb 15, 2026)
 **Files Modified**:
+- `/app/backend/config/risk_config.json` - New `extreme_price_validation` config section
 - `/app/backend/data/polymarket_api.py` - Expiration check at API source
-- `/app/backend/services/realtime_market_service.py` - Expiration check on cache and WebSocket updates
-- `/app/backend/paper_trading/paper_trader.py` - Position market bypass in `_get_active_markets()`
+- `/app/backend/services/realtime_market_service.py` - Expiration check on cache and WebSocket
+- `/app/backend/paper_trading/paper_trader.py`:
+  - `get_kill_switch_for_strategy()` - Returns strategy-specific bounds
+  - `validate_extreme_price_entry()` - Tiered validation with orderbook/volume/spread/expiry checks
+  - `_get_active_markets()` - Uses tiered validation instead of blanket kill switch
+- `/app/backend/server.py` - API endpoint for extreme_price_validation config
+- `/app/frontend/src/components/RiskSettings.js` - UI for configuring tiered kill switch
 
-**Root Cause**: Markets with open positions were being filtered out by kill switch and volume/liquidity checks in `_get_active_markets()`. This caused the exit check to fall back to stale/wrong prices (0.5).
+**Architecture**:
+- **Global thresholds** define where prices become "extreme" (default: <3% or >97%)
+- **Tiered validation** for extreme prices requires:
+  - Orderbook depth > $100
+  - Spread < 5%
+  - Volume > $50/hour
+  - Time to expiry > 24 hours
+- **Strategy overrides** allow specific strategies to bypass global thresholds:
+  - `hft_volatility_exploit`: 0.5% - 99.5% (maximum convexity access)
+  - `hft_gamma_scalp`: 1% - 99% (OTM gamma capture)
 
-**Fix**: Added `position_market_ids` parameter to `_get_active_markets()`:
-- Markets with open positions bypass kill switch filtering (price range)
-- Markets with open positions bypass volume/liquidity filtering
-- This ensures accurate exit pricing while maintaining entry quality filters
-
-**Additional Fixes**:
-- Expiration filtering at API source (`PolymarketAPI._normalize_gamma_market()`)
-- Expiration filtering in WebSocket cache updates
-- Cache eviction for expired markets
+**UI Configuration** (Settings > Extreme Price Validation):
+- Enable/disable tiered validation toggle
+- Global extreme thresholds
+- Validation requirements (depth, spread, volume, expiry)
+- Per-strategy kill switch overrides with individual toggles and bounds
 
 ### Change #5: Duplicate Position Deletion Bug Fix (ACTIVE - Feb 15, 2026)
 **File**: `/app/backend/paper_trading/paper_trader.py` (~Line 6130)
