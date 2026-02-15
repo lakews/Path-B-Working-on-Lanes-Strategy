@@ -7352,6 +7352,7 @@ class PaperTrader:
                                 for m in markets:
                                     if m.get('id') == market_id:
                                         current_yes_price = m.get('yes_price')
+                                        logger.warning(f"[PRICE-FALLBACK] {market_id[:16]} - found in markets: {current_yes_price}")
                                         break
                             
                             if current_yes_price is None or current_yes_price == 0:
