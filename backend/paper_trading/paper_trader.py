@@ -7379,26 +7379,11 @@ class PaperTrader:
                             
                             current_yes_price = float(current_yes_price)
                             
-                            # CRITICAL: Warn if price looks like a default (0.5)
+                            # Log significant price moves for monitoring (no blocking)
                             if abs(current_yes_price - 0.5) < 0.001:
-                                # Check if this is a real market move or data issue
-                                pos_question = position.get('question', 'N/A')[:30]
-                                api_question = market_questions.get(market_id, 'NOT_FOUND')
                                 price_move_pct = abs(current_yes_price - yes_entry_price) / yes_entry_price * 100 if yes_entry_price > 0 else 0
-                                
-                                logger.warning(f"[SUSPICIOUS-PRICE] {market_id[:16]} - price={current_yes_price:.4f} (source: {price_source})")
-                                logger.warning(f"   Entry YES: ${yes_entry_price:.4f} | Current YES: ${current_yes_price:.4f} | Move: {price_move_pct:.1f}%")
-                                logger.warning(f"   Position Q: {pos_question}...")
-                                logger.warning(f"   API Q: {api_question}...")
-                                
-                                # SAFETY: Skip exit decisions based on 0.5 price if:
-                                # 1. Entry was at extreme (<0.10 or >0.90) AND
-                                # 2. Price change is unrealistically large (>500%)
-                                # This prevents false moonbag exits due to price data issues
-                                # but allows legitimate exits for 50/50 markets
-                                if (yes_entry_price < 0.10 or yes_entry_price > 0.90) and price_move_pct > 500:
-                                    logger.warning(f"[EXIT-SKIP] Skipping exit for {market_id[:16]} - suspicious 0.5 price with {price_move_pct:.0f}% move from extreme entry")
-                                    continue
+                                if price_move_pct > 100:
+                                    logger.info(f"[PRICE-MOVE] {market_id[:16]} | Entry: ${yes_entry_price:.4f} → Current: ${current_yes_price:.4f} | Move: {price_move_pct:.1f}%")
                             
                             # Calculate current price for the side we're holding
                             if side == 'YES':
