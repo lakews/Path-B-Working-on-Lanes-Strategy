@@ -7189,10 +7189,6 @@ class PaperTrader:
                     # Fetch latest market prices from Gamma API
                     markets = await self._get_active_markets()
                     
-                    # DEBUG: Log sample of market prices being used
-                    market_sample = [(m['id'][:16], m.get('yes_price')) for m in markets[:5]]
-                    logger.warning(f"[DEBUG-MARKETS] Sample prices from _get_active_markets: {market_sample}")
-                    
                     # Build price map - ONLY include markets with valid prices
                     market_prices = {}
                     market_questions = {}  # Track questions for debugging
