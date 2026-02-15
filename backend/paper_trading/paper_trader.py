@@ -5213,12 +5213,16 @@ class PaperTrader:
             asks = []
             current_spread_pct = 0.02  # Default if no orderbook
             
+            # Fetch correct orderbook based on position side
+            # YES position -> fetch YES token orderbook (token_ids[0])
+            # NO position -> fetch NO token orderbook (token_ids[1])
             try:
                 token_ids = market_data.get('token_ids', [])
-                if token_ids:
+                token_index = 0 if side == 'YES' else 1
+                if token_ids and len(token_ids) > token_index:
                     from data.polymarket_api import PolymarketAPI
                     async with PolymarketAPI() as api:
-                        fresh_orderbook = await api.get_order_book(token_ids[0])
+                        fresh_orderbook = await api.get_order_book(token_ids[token_index])
                         bids = fresh_orderbook.get('bids', [])
                         asks = fresh_orderbook.get('asks', [])
                         if bids and asks:
@@ -5226,7 +5230,7 @@ class PaperTrader:
                             best_ask = float(asks[0]['price'])
                             mid_price = (best_bid + best_ask) / 2
                             current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.02
-                            logger.debug(f"[EXIT-OB] Fresh orderbook: bid={best_bid:.4f}, ask={best_ask:.4f}, spread={current_spread_pct:.2%}")
+                            logger.debug(f"[EXIT-OB] Fresh {side} orderbook: bid={best_bid:.4f}, ask={best_ask:.4f}, spread={current_spread_pct:.2%}")
             except Exception as e:
                 logger.debug(f"[EXIT-OB] Could not fetch fresh orderbook: {e}")
             
@@ -5236,9 +5240,9 @@ class PaperTrader:
                 bids = order_book.get('bids', [])
                 asks = order_book.get('asks', [])
             
-            if bids and asks:
+            if bids:
                 best_bid = float(bids[0]['price'])
-                best_ask = float(asks[0]['price'])
+                best_ask = float(asks[0]['price']) if asks else best_bid + 0.02
                 spread = best_ask - best_bid
                 mid_price = (best_bid + best_ask) / 2
                 current_spread_pct = spread / mid_price if mid_price > 0 else 0.02
@@ -5247,11 +5251,20 @@ class PaperTrader:
                 if spread < 0 or spread > 0.20:
                     logger.warning(f"[EXIT-EVAL] Suspicious orderbook spread={spread:.2%}, using midpoint instead")
                     exit_yes_price = current_price
-                elif side == 'YES':
-                    exit_yes_price = best_bid  # Selling YES = hitting bid
                 else:
-                    exit_yes_price = best_ask  # Selling NO = buying YES = hitting ask
-                logger.debug(f"[EXIT-EVAL] Using orderbook: side={side}, exit_price={exit_yes_price:.4f}")
+                    # Exiting is always SELLING tokens - hit the bid
+                    # For YES position: sell YES tokens, hit YES bid
+                    # For NO position: sell NO tokens, hit NO bid
+                    exit_price = best_bid  # Always hit bid when selling
+                    
+                    # Convert to YES-equivalent price for P&L calculation
+                    if side == 'YES':
+                        exit_yes_price = exit_price
+                    else:
+                        # NO token price -> YES equivalent: YES_price = 1 - NO_price
+                        exit_yes_price = 1 - exit_price
+                    
+                logger.debug(f"[EXIT-EVAL] Using {side} orderbook: bid={best_bid:.4f}, exit_yes_price={exit_yes_price:.4f}")
             else:
                 # No orderbook available - use mid-price with spread estimate
                 spread_estimate = 0.02
