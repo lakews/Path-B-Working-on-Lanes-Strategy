@@ -7373,9 +7373,12 @@ class PaperTrader:
                             # CRITICAL: Warn if price looks like a default (0.5)
                             if abs(current_yes_price - 0.5) < 0.001:
                                 # Check if this is a real market move or data issue
+                                pos_question = position.get('question', 'N/A')[:30]
+                                api_question = market_questions.get(market_id, 'NOT_FOUND')
                                 logger.warning(f"[SUSPICIOUS-PRICE] {market_id[:16]} - price={current_yes_price:.4f} (source: {price_source})")
-                                # Log entry price for comparison
                                 logger.warning(f"   Entry YES: ${yes_entry_price:.4f} | Current YES: ${current_yes_price:.4f} | Move: {((current_yes_price - yes_entry_price) / yes_entry_price * 100) if yes_entry_price > 0 else 0:.1f}%")
+                                logger.warning(f"   Position Q: {pos_question}...")
+                                logger.warning(f"   API Q: {api_question}...")
                             
                             # Calculate current price for the side we're holding
                             if side == 'YES':
