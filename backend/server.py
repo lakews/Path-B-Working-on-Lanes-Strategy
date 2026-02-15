@@ -41,6 +41,9 @@ from services.polymarket_scanner import (
 from services.news_injector_dual_path import (
     init_dual_path_news_injector, get_dual_path_news_injector, DualPathNewsInjector
 )
+from services.api_key_store import (
+    init_api_key_store, save_api_key, get_api_key_status, load_api_keys_from_db, SUPPORTED_KEYS
+)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
