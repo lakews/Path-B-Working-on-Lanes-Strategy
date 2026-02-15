@@ -613,17 +613,35 @@ class NewsSniper:
                 f"Source: {signal.get('news_source', 'unknown')}"
             )
             
-            # Use paper_trader's execute method
-            if hasattr(self.paper_trader, '_execute_paper_trade'):
-                await self.paper_trader._execute_paper_trade(
+            # Use paper_trader's _execute_paper_entry method (the correct one)
+            if hasattr(self.paper_trader, '_execute_paper_entry'):
+                await self.paper_trader._execute_paper_entry(
+                    market_id=market_id,
                     market_data=market_data,
                     side=direction,
                     size=position_size,
                     strategy='news_sniper',
-                    confidence=signal.get('confidence', 0.5),
-                    sentiment_score=signal.get('sentiment', 0.5),
-                    signal_source='news_sniper_mongodb'
+                    signals={
+                        'news_sniper': True,
+                        'conviction': conviction,
+                        'bayes_factor': signal.get('bayes_factor', 0),
+                        'confidence': signal.get('confidence', 0.5),
+                        'source': signal.get('news_source', 'unknown'),
+                        'headline': signal.get('headline', '')[:100]
+                    },
+                    rl_action='NEWS_ENTRY',
+                    rl_confidence=signal.get('confidence', 0.5),
+                    sizing_breakdown={
+                        'news_sniper_trade': True,
+                        'conviction': conviction,
+                        'bayes_factor': signal.get('bayes_factor', 0),
+                        **breakdown
+                    }
                 )
+                self.stats['trades_executed'] += 1
+            else:
+                logger.error("[NEWS SNIPER] paper_trader missing _execute_paper_entry method!")
+                return
             
             logger.info(
                 f"[NEWS SNIPER] ✅ TRADE COMPLETE | {market_id[:16]}... | "
