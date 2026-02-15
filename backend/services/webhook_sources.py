@@ -173,11 +173,16 @@ class ApifyTwitterSource:
         
         return 'normal'
     
-    async def fetch_recent_tweets(self, hours_back: int = 1) -> List[WebhookNews]:
+    async def fetch_recent_tweets(self, hours_back: int = 1, max_concurrent: int = 5) -> List[WebhookNews]:
         """
         Fetch recent tweets from target accounts using Apify.
         
         Uses Apify's Twitter Scraper actor to get tweets.
+        Now runs multiple accounts in parallel for speed.
+        
+        Args:
+            hours_back: How many hours of tweets to fetch
+            max_concurrent: Max parallel Apify actor runs (default 5)
         """
         if not self._enabled:
             return []
@@ -186,18 +191,38 @@ class ApifyTwitterSource:
         
         try:
             async with aiohttp.ClientSession() as session:
-                for account in self.TARGET_ACCOUNTS:
-                    try:
-                        # Run the Apify actor for this account
-                        news_items = await self._fetch_account_tweets(session, account, hours_back)
-                        all_news.extend(news_items)
-                        
-                        # Rate limit between accounts
-                        await asyncio.sleep(0.5)
-                        
-                    except Exception as e:
-                        logger.error(f"[APIFY] Error fetching @{account}: {e}")
-                        continue
+                # Use semaphore to limit concurrent requests
+                semaphore = asyncio.Semaphore(max_concurrent)
+                
+                async def fetch_with_semaphore(account: str) -> List[WebhookNews]:
+                    async with semaphore:
+                        try:
+                            return await self._fetch_account_tweets(session, account, hours_back)
+                        except asyncio.TimeoutError:
+                            logger.warning(f"[APIFY] Timeout fetching @{account}")
+                            return []
+                        except Exception as e:
+                            logger.error(f"[APIFY] Error fetching @{account}: {e}")
+                            return []
+                
+                # Fetch all accounts in parallel (limited by semaphore)
+                tasks = [fetch_with_semaphore(account) for account in self.TARGET_ACCOUNTS]
+                
+                # Wait for all with overall timeout of 60 seconds
+                try:
+                    results = await asyncio.wait_for(
+                        asyncio.gather(*tasks, return_exceptions=True),
+                        timeout=60.0
+                    )
+                    
+                    for result in results:
+                        if isinstance(result, list):
+                            all_news.extend(result)
+                        elif isinstance(result, Exception):
+                            logger.debug(f"[APIFY] Task exception: {result}")
+                            
+                except asyncio.TimeoutError:
+                    logger.warning("[APIFY] Overall fetch timeout (60s) - returning partial results")
             
             logger.info(f"[APIFY] Fetched {len(all_news)} tweets from {len(self.TARGET_ACCOUNTS)} accounts")
             return all_news
