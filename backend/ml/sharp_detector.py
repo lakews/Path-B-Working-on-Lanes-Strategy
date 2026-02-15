@@ -698,6 +698,74 @@ class SharpDetector:
     # EXISTING METHODS (Preserved)
     # =========================================================================
     
+    async def get_alignment_signal(self, market_id: str) -> Dict:
+        """
+        Get sharp alignment signal for a market (without requiring proposed_side).
+        
+        This method is called by paper_trader to get real sharp trader alignment
+        data for signal calculation.
+        
+        Returns:
+            {
+                'alignment_score': float (0-1),  # How confident sharps are in YES
+                'direction': str,                # 'YES' or 'NO' or None
+                'confidence': float,             # 0-1 confidence in the signal
+                'sharp_count': int,              # Number of sharp traders in market
+                'data_source': str               # 'real' or 'proxy'
+            }
+        """
+        try:
+            result = {
+                'alignment_score': 0.5,
+                'direction': None,
+                'confidence': 0.0,
+                'sharp_count': 0,
+                'data_source': 'none'
+            }
+            
+            # First, try to get real sharp trader positions
+            sharp_positions = await self._get_sharp_positions(market_id)
+            
+            if sharp_positions:
+                # Calculate alignment from real sharp data
+                yes_volume = sum(p.get('volume', 0) for p in sharp_positions if p.get('side') == 'YES')
+                no_volume = sum(p.get('volume', 0) for p in sharp_positions if p.get('side') == 'NO')
+                total_volume = yes_volume + no_volume
+                
+                if total_volume > 0:
+                    yes_ratio = yes_volume / total_volume
+                    result['alignment_score'] = yes_ratio
+                    result['direction'] = 'YES' if yes_ratio > 0.5 else 'NO'
+                    result['confidence'] = abs(yes_ratio - 0.5) * 2  # 0 at 50/50, 1 at 100/0
+                    result['sharp_count'] = len(sharp_positions)
+                    result['data_source'] = 'real'
+                    return result
+            
+            # Fallback to proxy detection
+            movement = await self.detect_sharp_movement(market_id)
+            if movement.get('z_score', 0) > 0.5:  # Some activity detected
+                direction = movement.get('direction')
+                if direction:
+                    result['alignment_score'] = 0.7 if direction == 'YES' else 0.3
+                    result['direction'] = direction
+                    result['confidence'] = min(0.8, movement.get('confidence', 0))
+                    result['data_source'] = 'proxy'
+                    return result
+            
+            # No sharp data available - return neutral
+            result['data_source'] = 'none'
+            return result
+            
+        except Exception as e:
+            logger.debug(f"[SHARP] get_alignment_signal error: {e}")
+            return {
+                'alignment_score': 0.5,
+                'direction': None,
+                'confidence': 0.0,
+                'sharp_count': 0,
+                'data_source': 'error'
+            }
+    
     async def get_sharp_alignment(self, market_id: str, proposed_side: str) -> float:
         """Get alignment score with sharp traders for a market
         Returns: score from 0 (against sharps) to 1 (with sharps)
