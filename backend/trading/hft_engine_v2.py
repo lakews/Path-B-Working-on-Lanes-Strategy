@@ -339,7 +339,7 @@ class HighFrequencyTradingEngineV2:
             if not trade_params:
                 return None
             
-            # STEP 11: Execute via appropriate strategy method with tick grid compliance
+            # STEP 12: Execute via appropriate strategy method with tick grid compliance
             result = await self._execute_strategy(
                 hft_mode=hft_mode,
                 market_id=market_id,
@@ -356,7 +356,7 @@ class HighFrequencyTradingEngineV2:
                 # Update active orders
                 self._update_active_order(market_id, trade_params)
                 
-                # STEP 12: Log to analytics
+                # STEP 13: Log to analytics
                 await self._log_hft_trade(
                     market_id=market_id,
                     hft_mode=hft_mode,
