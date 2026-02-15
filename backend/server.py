@@ -6101,38 +6101,85 @@ async def startup_event():
         # ================================================================
         # AUTOMATIC NEWS AGGREGATION (Independent of Paper Trading)
         # ================================================================
-        # This runs regardless of whether paper trading is active
-        # All news sources feed into DualPathNewsInjector
+        # MARKETS-FIRST Architecture:
+        # 1. Get high-volume markets from PolymarketScanner
+        # 2. Extract KEY TERMS from market questions
+        # 3. Poll Exa.ai with market-specific queries
+        # 4. News flows DIRECTLY to DualPathNewsInjector
         # ================================================================
-        logger.info("[NEWS] Starting automatic news aggregation...")
+        logger.info("[NEWS] Starting MARKETS-FIRST news aggregation...")
         
-        async def unified_news_callback(news_payload: Dict):
-            """Route all news to DualPathNewsInjector"""
-            try:
-                injector = get_dual_path_news_injector()
-                if injector:
-                    signals, broadcasts = await injector.process_news_event(news_payload)
-                    logger.info(f"[NEWS] Processed: {news_payload.get('headline', 'N/A')[:40]}... → {len(signals)} signals, {broadcasts} broadcasts")
-            except Exception as e:
-                logger.error(f"[NEWS] Failed to process news: {e}")
+        # Get reference to the injector (initialized above)
+        news_injector = get_dual_path_news_injector()
         
-        # Initialize WebhookSourcesManager with news callback
+        # Initialize WebhookSourcesManager - news goes directly to injector
         from services.webhook_sources import get_webhook_sources_manager
         from services.signal_cache import get_signal_cache
         
+        async def direct_news_to_injector(news_payload: Dict):
+            """Direct news to DualPathNewsInjector without wrapper overhead"""
+            if news_injector:
+                signals, broadcasts = await news_injector.process_news_event(news_payload)
+                if signals:
+                    logger.info(f"[NEWS] ✓ {len(signals)} signals from: {news_payload.get('headline', 'N/A')[:40]}...")
+        
         signal_cache = get_signal_cache()
         webhook_manager = get_webhook_sources_manager(
-            news_callback=unified_news_callback,
+            news_callback=direct_news_to_injector,
             signal_cache=signal_cache
         )
         
         # Start automatic polling for Apify Twitter + CryptoPanic
         asyncio.create_task(webhook_manager.start())
-        logger.info("[NEWS] ✓ WebhookSourcesManager started (Apify + Whale + CryptoPanic)")
+        logger.info("[NEWS] ✓ WebhookSourcesManager started (Apify + Whale)")
         
-        # Start Exa.ai polling loop (separate from webhook sources)
-        async def exa_polling_loop():
-            """Poll Exa.ai for news every 60 seconds"""
+        # ================================================================
+        # MARKETS-FIRST Exa.ai Polling Loop
+        # ================================================================
+        def extract_key_terms(question: str) -> str:
+            """
+            Extract key terms from market question for targeted news search.
+            
+            Examples:
+            - "Will Bitcoin hit $100k by March 2026?" -> "Bitcoin 100k price"
+            - "Will Trump win the 2024 election?" -> "Trump election 2024"
+            - "Will the Fed cut rates in January?" -> "Federal Reserve rate cut January"
+            """
+            import re
+            
+            # Remove common question words
+            stop_words = {
+                'will', 'would', 'could', 'should', 'can', 'does', 'do', 'is', 'are',
+                'the', 'a', 'an', 'be', 'been', 'being', 'have', 'has', 'had',
+                'by', 'on', 'in', 'at', 'to', 'for', 'of', 'with', 'before', 'after',
+                'this', 'that', 'these', 'those', 'it', 'its', 'or', 'and', 'but',
+                'win', 'reach', 'hit', 'get', 'make', 'take', 'go', 'come',
+                'yes', 'no', 'more', 'less', 'than', 'over', 'under'
+            }
+            
+            # Clean the question
+            text = question.lower()
+            text = re.sub(r'[^\w\s$%]', ' ', text)  # Keep $ and % for prices
+            
+            # Extract meaningful words
+            words = text.split()
+            key_terms = []
+            
+            for word in words:
+                # Keep numbers/prices
+                if re.match(r'^\$?\d+[km]?$', word) or re.match(r'^\d+%$', word):
+                    key_terms.append(word)
+                # Keep proper nouns and significant words
+                elif word not in stop_words and len(word) > 2:
+                    key_terms.append(word)
+            
+            # Limit to 5 most important terms
+            key_terms = key_terms[:5]
+            
+            return ' '.join(key_terms) if key_terms else question[:50]
+        
+        async def exa_markets_first_loop():
+            """MARKETS-FIRST: Poll Exa.ai with queries derived from active markets"""
             from services.news_service import get_news_poller
             poller = get_news_poller()
             
@@ -6140,93 +6187,85 @@ async def startup_event():
                 logger.warning("[NEWS/EXA] Exa.ai disabled - no API key")
                 return
             
-            logger.info("[NEWS/EXA] Starting MARKETS-FIRST Exa.ai polling loop (60s interval)")
+            logger.info("[NEWS/EXA] Starting MARKETS-FIRST polling (60s interval)")
             
             while True:
                 try:
-                    # =========================================================
-                    # MARKETS-FIRST: Generate queries from ACTIVE MARKETS
-                    # =========================================================
-                    # 1. Get cached markets from PolymarketScanner
-                    # 2. Select high-volume/trending markets
-                    # 3. Generate news queries from market questions
-                    # 4. Poll Exa.ai with market-driven queries
-                    # =========================================================
+                    if not polymarket_scanner:
+                        logger.warning("[NEWS/EXA] No scanner available, skipping cycle")
+                        await asyncio.sleep(60)
+                        continue
                     
-                    queries_to_poll = []
+                    cached_markets = polymarket_scanner.get_cached_markets()
                     
-                    if polymarket_scanner:
-                        cached_markets = polymarket_scanner.get_cached_markets()
-                        logger.debug(f"[NEWS/EXA] Scanner has {len(cached_markets) if cached_markets else 0} cached markets")
+                    if not cached_markets:
+                        logger.warning("[NEWS/EXA] No cached markets, skipping cycle")
+                        await asyncio.sleep(60)
+                        continue
+                    
+                    # =========================================================
+                    # MARKETS-FIRST: Top 5 markets by volume get individual queries
+                    # =========================================================
+                    sorted_markets = sorted(
+                        cached_markets.values(),
+                        key=lambda m: m.get('volume_24h', 0),
+                        reverse=True
+                    )[:5]
+                    
+                    logger.info(f"[NEWS/EXA] Polling for top {len(sorted_markets)} markets by volume")
+                    
+                    for market in sorted_markets:
+                        question = market.get('question', '')
+                        market_id = market.get('market_id') or market.get('id')
                         
-                        if cached_markets:
-                            # Sort by volume/activity - get top 10 most active
-                            sorted_markets = sorted(
-                                cached_markets.values(),
-                                key=lambda m: m.get('volume_24h', 0),
-                                reverse=True
-                            )[:10]
-                            
-                            # Generate queries from market questions
-                            for market in sorted_markets:
-                                question = market.get('question', '')
-                                if question:
-                                    # Extract key terms from question
-                                    # e.g., "Will Bitcoin hit $100k?" -> "Bitcoin price 100k news"
-                                    query = f"{question[:80]} breaking news"
-                                    queries_to_poll.append(query)
-                            
-                            logger.debug(f"[NEWS/EXA] Generated {len(queries_to_poll)} market-driven queries")
-                    
-                    # Fallback: If no markets, use category-based queries
-                    if not queries_to_poll:
-                        queries_to_poll = [
-                            "polymarket prediction market breaking news",
-                            "cryptocurrency bitcoin regulation news today",
-                            "US election politics breaking news",
-                        ]
-                    
-                    # Poll with 2-3 queries per cycle (rotate through)
-                    queries_this_cycle = queries_to_poll[:3]
-                    
-                    for query in queries_this_cycle:
+                        if not question:
+                            continue
+                        
+                        # Extract key terms for targeted query
+                        key_terms = extract_key_terms(question)
+                        query = f"{key_terms} news"
+                        
                         try:
-                            events = await poller.poll_news(query=query, num_results=3, hours_back=1)
+                            events = await poller.poll_news(query=query, num_results=3, hours_back=2)
                             
                             for event in events:
-                                await unified_news_callback({
-                                    'headline': event.title,
-                                    'content': event.text or '',
-                                    'source': event.source or 'exa.ai',
-                                    'url': event.url,
-                                    'urgency': 'normal',
-                                    'source_type': 'exa_ai',
-                                    'market_query': query[:50]  # Track which market triggered this
-                                })
+                                # Send directly to injector with market context
+                                if news_injector:
+                                    signals, broadcasts = await news_injector.process_news_event({
+                                        'headline': event.title,
+                                        'content': event.text or '',
+                                        'source': event.source or 'exa.ai',
+                                        'url': event.url,
+                                        'urgency': 'normal',
+                                        'source_type': 'exa_ai',
+                                        'target_market_id': market_id,  # Direct market association
+                                        'market_query': key_terms
+                                    })
+                                    if signals:
+                                        logger.info(f"[NEWS/EXA] ✓ {len(signals)} signals for '{question[:30]}...'")
                             
                             if events:
-                                logger.info(f"[NEWS/EXA] '{query[:40]}...' → {len(events)} events")
+                                logger.debug(f"[NEWS/EXA] '{key_terms}' → {len(events)} events")
                         
                         except Exception as query_err:
-                            logger.debug(f"[NEWS/EXA] Query error: {query_err}")
+                            logger.debug(f"[NEWS/EXA] Query error for '{key_terms}': {query_err}")
                         
-                        await asyncio.sleep(2)  # Small delay between queries
+                        await asyncio.sleep(1)  # Rate limit between queries
                     
                 except Exception as e:
                     logger.error(f"[NEWS/EXA] Poll cycle error: {e}")
                 
                 await asyncio.sleep(60)  # 60 second interval between cycles
         
-        asyncio.create_task(exa_polling_loop())
-        logger.info("[NEWS] ✓ Exa.ai polling loop started (60s interval)")
+        asyncio.create_task(exa_markets_first_loop())
+        logger.info("[NEWS] ✓ MARKETS-FIRST Exa.ai loop started")
         
         logger.info("=" * 50)
         logger.info("MARKETS-FIRST SYSTEM READY (MongoDB-Only)")
-        logger.info("NEWS AGGREGATION ACTIVE:")
-        logger.info("  • Exa.ai: ✓ (semantic search, 60s)")
+        logger.info("NEWS AGGREGATION:")
+        logger.info("  • Exa.ai: ✓ (market-driven queries, 60s)")
         logger.info("  • Apify Twitter: ✓ (16 accounts, 5min)")
         logger.info("  • Whale Alerts: ✓ (direct injection)")
-        logger.info("  • CryptoPanic: ⏸️ (24h delay, research only)")
         logger.info("=" * 50)
         
     except Exception as e:
