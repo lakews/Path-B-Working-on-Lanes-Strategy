@@ -239,12 +239,16 @@ else:
 ### Change #4: Suspicious 0.5 Price Exit Safety (ACTIVE - Feb 15, 2026)
 **File**: `/app/backend/paper_trading/paper_trader.py` (~Line 7374)
 **Status**: ACTIVE
-**Root Cause**: Polymarket Gamma API sometimes returns `yes_price = 0.5` when real-time price data is unavailable
-**Issue**: Positions entered at extreme prices (e.g., 0.0015) would falsely exit with massive gains (33,000%+) when API returned 0.5
+**Root Cause**: Polymarket WebSocket sends `yes_price = 0.5` for:
+- Expired markets (past end_date)
+- Markets in "limbo" state
+- Some legitimate 50/50 markets
+**Issue**: Positions entered at extreme prices would falsely exit with massive gains when API returned 0.5
 **Fix**: Added safety check in `_universal_exit_check()` to skip exit decisions when:
-1. Current price is exactly 0.5 (± 0.001)
-2. Entry price was at an extreme (<0.10 or >0.90)
-**Logging**: `[SUSPICIOUS-PRICE]` and `[EXIT-SKIP]` warnings added for monitoring
+1. Entry price was at an extreme (<0.10 or >0.90) AND
+2. Price change is unrealistically large (>500%)
+**Additional Fix**: Added expiration date filtering in `_get_active_markets()` to reject markets past their end_date
+**Logging**: `[SUSPICIOUS-PRICE]` and `[EXIT-SKIP]` warnings with percentage move details
 
 ### Change #5: Duplicate Position Deletion Bug Fix (ACTIVE - Feb 15, 2026)
 **File**: `/app/backend/paper_trading/paper_trader.py` (~Line 6130)
