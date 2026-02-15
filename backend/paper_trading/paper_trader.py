@@ -8376,7 +8376,9 @@ class PaperTrader:
         # Lane 4: SPORTS - sports_arbitrage (real odds arbitrage)
         # Lane 5: NEWS - news_sniper (event-driven)
         LANE_STRATEGIES = {
-            'HFT': {'delta_neutral', 'volatility_exploitation', 'hft_scalp', 'market_making'},
+            'HFT': {'delta_neutral', 'volatility_exploitation', 'hft_scalp', 'market_making', 
+                    'hft_liquidity_provision', 'hft_volatility_exploit', 'hft_extreme_spread',
+                    'hft_sharp_following', 'hft_delta_neutral'},
             'ALPHA': {'alpha_directional', 'arbitrage', 'multi_market_arbitrage'},
             'GAMMA': {'gamma_scalp', 'whale', 'moonshot', 'convexity'},
             'SPORTS': {'sports_arbitrage', 'sports_arb'},
