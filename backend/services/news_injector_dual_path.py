@@ -239,13 +239,27 @@ class DualPathNewsInjector:
     
     def _semantic_search(
         self, news_embedding: Optional[np.ndarray], market_embeddings: Dict,
-        markets: Dict, top_k: int = 10
+        markets: Dict, top_k: int = 3, min_similarity: float = 0.3
     ) -> List[Dict]:
-        """Find top K relevant markets using cosine similarity"""
+        """
+        Find top K relevant markets using cosine similarity.
+        
+        Args:
+            news_embedding: Embedding vector for the news item
+            market_embeddings: Dict of market_id -> embedding vector
+            markets: Dict of market_id -> market data
+            top_k: Maximum number of markets to return (default 3 to reduce LLM costs)
+            min_similarity: Minimum similarity threshold (default 0.3 to skip irrelevant)
+        """
         try:
             if news_embedding is None or len(market_embeddings) == 0:
-                # Fall back to returning all markets if no embeddings available
-                return list(markets.values())[:top_k]
+                # Fall back to returning top markets by volume if no embeddings available
+                sorted_markets = sorted(
+                    markets.values(), 
+                    key=lambda m: m.get('volume_24h', 0), 
+                    reverse=True
+                )
+                return sorted_markets[:top_k]
             
             similarities = {}
             
@@ -254,23 +268,28 @@ class DualPathNewsInjector:
                     if market_emb is None:
                         continue
                     sim = cosine_similarity([news_embedding], [market_emb])[0][0]
-                    similarities[market_id] = sim
+                    # Only include if above minimum threshold
+                    if sim >= min_similarity:
+                        similarities[market_id] = sim
                 except Exception:
                     continue
             
             if not similarities:
-                return list(markets.values())[:top_k]
+                logger.debug(f"[NEWS INJECTOR] No markets above {min_similarity:.0%} similarity threshold")
+                return []
             
             # Sort by similarity and get top K
             top_ids = sorted(
                 similarities.items(), key=lambda x: x[1], reverse=True
             )[:top_k]
             
+            logger.debug(f"[NEWS INJECTOR] Semantic search: {len(similarities)} above threshold, returning top {len(top_ids)}")
+            
             return [markets[mid] for mid, _ in top_ids if mid in markets]
         
         except Exception as e:
             logger.error(f"[NEWS INJECTOR] Semantic search error: {e}")
-            return list(markets.values())[:top_k] if markets else []
+            return []
     
     async def _llm_analyze_market(
         self, headline: str, market: Dict, source: str, content: str = ''
