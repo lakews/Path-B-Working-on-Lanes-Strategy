@@ -6011,19 +6011,22 @@ class PaperTrader:
             # - Sell NO = hit the ask (equivalent to buying YES)
             # ==========================================================================
             
-            # Fetch fresh orderbook for exit execution
+            # Fetch correct orderbook based on position side
+            # YES position -> fetch YES token orderbook (token_ids[0])
+            # NO position -> fetch NO token orderbook (token_ids[1])
             bids = []
             asks = []
             try:
                 token_ids = market_data.get('token_ids', [])
-                if token_ids:
+                token_index = 0 if side == 'YES' else 1
+                if token_ids and len(token_ids) > token_index:
                     from data.polymarket_api import PolymarketAPI
                     async with PolymarketAPI() as api:
-                        fresh_orderbook = await api.get_order_book(token_ids[0])
+                        fresh_orderbook = await api.get_order_book(token_ids[token_index])
                         bids = fresh_orderbook.get('bids', [])
                         asks = fresh_orderbook.get('asks', [])
                         if bids and asks:
-                            logger.debug(f"[EXIT-EXEC-OB] Fresh orderbook: bid={bids[0]['price']}, ask={asks[0]['price']}")
+                            logger.debug(f"[EXIT-EXEC-OB] Fresh {side} orderbook: bid={bids[0]['price']}, ask={asks[0]['price']}")
             except Exception as e:
                 logger.debug(f"[EXIT-EXEC-OB] Could not fetch fresh orderbook: {e}")
             
@@ -6033,10 +6036,10 @@ class PaperTrader:
                 bids = order_book.get('bids', [])
                 asks = order_book.get('asks', [])
             
-            if bids and asks:
+            if bids:
                 # Use orderbook prices - more accurate than midpoint
                 best_bid = float(bids[0]['price'])
-                best_ask = float(asks[0]['price'])
+                best_ask = float(asks[0]['price']) if asks else best_bid + 0.02
                 
                 # SANITY CHECK: Verify orderbook makes sense
                 spread = best_ask - best_bid
@@ -6044,12 +6047,16 @@ class PaperTrader:
                     logger.warning(f"[EXIT-WARN] Suspicious orderbook: bid={best_bid}, ask={best_ask}, spread={spread}")
                     # Fall back to midpoint
                     exit_yes_price = current_yes_price
-                elif side == 'YES':
-                    # Selling YES = hitting bid
-                    exit_yes_price = best_bid
                 else:
-                    # Selling NO = buying YES = hitting ask
-                    exit_yes_price = best_ask
+                    # Exiting is always SELLING tokens - hit the bid
+                    exit_price = best_bid
+                    
+                    # Convert to YES-equivalent price for P&L calculation
+                    if side == 'YES':
+                        exit_yes_price = exit_price
+                    else:
+                        # NO token price -> YES equivalent: YES_price = 1 - NO_price
+                        exit_yes_price = 1 - exit_price
                 
                 # Additional sanity check: exit price should be close to current price
                 price_diff = abs(exit_yes_price - current_yes_price)
@@ -6063,7 +6070,7 @@ class PaperTrader:
                     exit_yes_price = max(0.001, min(0.999, exit_yes_price))
                     logger.info(f"[EXIT] Using conservative exit price: {exit_yes_price:.4f}")
                 
-                logger.debug(f"[EXIT] Orderbook exit: bid={best_bid:.4f}, ask={best_ask:.4f}, exit_yes={exit_yes_price:.4f}")
+                logger.debug(f"[EXIT] {side} orderbook exit: bid={best_bid:.4f}, exit_yes={exit_yes_price:.4f}")
             else:
                 # No orderbook - use midpoint with conservative spread estimate
                 spread_estimate = 0.02
