@@ -5923,6 +5923,17 @@ class PaperTrader:
             self.trade_returns.append(return_pct)
             logger.info(f"📊 Trade return recorded: {return_pct:.2f}% | Total returns tracked: {len(self.trade_returns)}")
             
+            # ================================================================
+            # LARGE PNL LOGGING - Debug unusual profits/losses
+            # ================================================================
+            if abs(pnl) > 1000:
+                logger.warning(f"💰 [LARGE-PNL] {market_id[:20]}...")
+                logger.warning(f"   Strategy: {strategy} | Side: {side}")
+                logger.warning(f"   Entry: ${yes_entry_price:.4f} | Exit: ${exit_yes_price:.4f}")
+                logger.warning(f"   Size: ${size:.2f} | Shares: {shares:.2f}")
+                logger.warning(f"   PnL: ${pnl:,.2f} ({pnl_pct*100:+.1f}%)")
+                logger.warning(f"   Reason: {exit_reason}")
+            
             # Update metrics atomically - MUST remove position and update capital together
             async with self._capital_lock:
                 # FIRST: Remove position from tracking (before updating capital)
