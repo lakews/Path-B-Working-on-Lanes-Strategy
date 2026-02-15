@@ -211,6 +211,8 @@ def _is_placeholder(value: str) -> bool:
         'demo',
         'quanthub',  # The old EXA placeholder
         'strategybot',  # Polymarket placeholder
+        'markets-first',  # Another old EXA placeholder
+        'apify_api_xxx',  # Apify placeholder
     ]
     
     value_lower = value.lower()
@@ -220,6 +222,11 @@ def _is_placeholder(value: str) -> bool:
     
     # Also check if it's too short to be a real key
     if len(value) < 10:
+        return True
+    
+    # Check if it looks like a UUID or typical API key pattern
+    # Real keys are usually longer and alphanumeric
+    if len(value) < 20 and '-' in value and not any(c.isdigit() for c in value.replace('-', '')):
         return True
     
     return False
