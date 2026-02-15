@@ -156,8 +156,10 @@ NEWS EVENT ARRIVES
 - [x] **Tiered Kill Switch Implementation (Feb 15, 2026)** - Configurable extreme price validation with per-strategy overrides
 - [x] **P&L Anomaly Resolution (Feb 15, 2026)** - Fixed expired markets sending 0.5 prices, tiered validation system
 - [x] **System Audit (Dec 2025)** - Verified tiered kill switch working, hft_volatility_exploit trading at extreme prices
+- [x] **Markets-First News Query Optimization (Feb 15, 2026)** - Optimized query generation using market description, category, and time-awareness; Fixed API key encryption issue
 
 ### P1 - High Priority (NEXT)
+- [ ] Verify BF-based Kelly sizing in NewsSniper
 - [ ] Deprecate old news pipeline (news_injector.py, signal_cache.py)
 - [ ] Integrate Alpha/Gamma Lanes with Markets-First signals
 - [ ] SSOT Refactoring: Move `EXIT_STRATEGY_CONFIG` to `risk_config.json`
