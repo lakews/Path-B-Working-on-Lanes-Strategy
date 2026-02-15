@@ -294,7 +294,10 @@ class DualPathNewsInjector:
                 
                 # Convert LLMAnalysisResult to our signal format
                 if result.error or not result.is_relevant:
+                    logger.debug(f"[NEWS INJECTOR] LLM returned not relevant: error={result.error}, is_relevant={result.is_relevant}")
                     return None
+                
+                logger.info(f"[NEWS INJECTOR] LLM found relevant! confidence={result.confidence}, is_bullish={result.is_bullish_for_yes}, direction={result.direction}")
                 
                 # Convert confidence to bayes_factor (simple mapping)
                 # confidence 0.5 = BF 1, confidence 0.75 = BF 3, confidence 0.95 = BF 10
