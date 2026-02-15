@@ -7379,6 +7379,12 @@ class PaperTrader:
                                 logger.warning(f"   Entry YES: ${yes_entry_price:.4f} | Current YES: ${current_yes_price:.4f} | Move: {((current_yes_price - yes_entry_price) / yes_entry_price * 100) if yes_entry_price > 0 else 0:.1f}%")
                                 logger.warning(f"   Position Q: {pos_question}...")
                                 logger.warning(f"   API Q: {api_question}...")
+                                
+                                # SAFETY: Skip exit decisions based on 0.5 price if entry was at extreme
+                                # This prevents false moonbag exits due to price data issues
+                                if yes_entry_price < 0.10 or yes_entry_price > 0.90:
+                                    logger.warning(f"[EXIT-SKIP] Skipping exit for {market_id[:16]} - suspicious 0.5 price for extreme entry")
+                                    continue
                             
                             # Calculate current price for the side we're holding
                             if side == 'YES':
