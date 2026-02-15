@@ -246,6 +246,7 @@ Respond with ONLY the JSON object as specified. No other text."""
             parsed = self._parse_json_response(response)
             
             if parsed:
+                logger.info(f"[LLM SERVICE] Analysis result: is_relevant={parsed.get('is_relevant')}, confidence={parsed.get('confidence')}, direction={parsed.get('is_bullish_for_yes')}")
                 return LLMAnalysisResult(
                     is_relevant=parsed.get('is_relevant', False),
                     is_bullish_for_yes=parsed.get('is_bullish_for_yes', False),
