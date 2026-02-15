@@ -6761,7 +6761,9 @@ class PaperTrader:
         
         # 2. ARBITRAGE: High market quality (good execution) + sharp alignment (confidence)
         # Requires both: good execution conditions AND smart money agreement
-        if (market_quality_score > 0.7 and sharp_alignment > 0.6 
+        # Uses configurable thresholds: market_quality_threshold and sharp_alignment_threshold
+        if (market_quality_score > self.market_quality_threshold 
+            and sharp_alignment > self.sharp_alignment_threshold 
             and 'arbitrage' in self.enabled_strategies):
             return 'arbitrage'
         
