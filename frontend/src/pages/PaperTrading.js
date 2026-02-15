@@ -2308,8 +2308,9 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
         closed_pnl: d.pnl ?? d.total_pnl ?? 0,
         unrealized_pnl: d.unrealized_pnl ?? 0,
         total_pnl: d.total_pnl ?? ((d.pnl ?? 0) + (d.unrealized_pnl ?? 0)),
-        closed_trades: d.trades ?? d.total_trades ?? 0,
-        open_positions: d.open_positions ?? 0,
+        // FIXED: Use closed_trades field, not trades (which includes open positions)
+        closed_trades: d.closed_trades ?? 0,
+        open_positions: d.open_positions ?? d.trades ?? 0,  // trades = entries = open + closed
         total_wins: d.total_wins ?? d.wins ?? 0,
         win_rate: d.win_rate ?? 0,
         profit_factor: d.profit_factor ?? 0,
