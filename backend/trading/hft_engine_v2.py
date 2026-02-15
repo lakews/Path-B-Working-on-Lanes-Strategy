@@ -310,12 +310,25 @@ class HighFrequencyTradingEngineV2:
             if not hft_mode:
                 return None
             
-            # STEP 10: Build trade parameters (respecting ALL constraints)
+            # STEP 10: Determine trade direction using strategy-specific logic
+            direction = await self._determine_direction(
+                hft_mode=hft_mode,
+                market_data=market_data,
+                adjusted_fair=adjusted_fair,
+                signal=signal
+            )
+            
+            if not direction:
+                # No edge found by strategy - skip this market
+                return None
+            
+            # STEP 11: Build trade parameters (respecting ALL constraints)
             trade_params = await self._build_trade_params(
                 hft_mode=hft_mode,
                 market_id=market_id,
                 market_data=market_data,
                 multipliers=multipliers,
+                direction=direction,  # Pass determined direction
                 signal=signal,
                 alpha_confidence=alpha_confidence,
                 adjusted_fair=adjusted_fair,
