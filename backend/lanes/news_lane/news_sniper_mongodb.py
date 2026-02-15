@@ -642,24 +642,33 @@ class NewsSniper:
                 svc = getattr(self.paper_trader, 'market_data_service', None) or \
                       getattr(self.paper_trader, 'market_data_svc', None)
                 if svc and hasattr(svc, 'get_market'):
-                    return await svc.get_market(market_id)
+                    result = await svc.get_market(market_id)
+                    if result:
+                        logger.debug(f"[NEWS SNIPER] Got market from service: {market_id[:16]}...")
+                        return result
             
             # Fallback: check if we have it in polymarket_cache
             if self.db:
+                logger.debug(f"[NEWS SNIPER] Looking up {market_id[:16]}... in polymarket_cache")
                 cached = await self.db.polymarket_cache.find_one(
                     {'market_id': market_id},
                     {'_id': 0}
                 )
                 if cached:
+                    logger.debug(f"[NEWS SNIPER] Found in cache: {cached.get('question', '')[:30]}...")
                     # Normalize field names for compatibility
                     if 'price' in cached and 'yes_price' not in cached:
                         cached['yes_price'] = cached['price']
                     return cached
+                else:
+                    logger.debug(f"[NEWS SNIPER] Not found in polymarket_cache")
+            else:
+                logger.warning(f"[NEWS SNIPER] self.db is None!")
             
             return None
             
         except Exception as e:
-            logger.debug(f"[NEWS SNIPER] Get market data error: {e}")
+            logger.error(f"[NEWS SNIPER] Get market data error: {e}")
             return None
     
     def get_stats(self) -> Dict:
