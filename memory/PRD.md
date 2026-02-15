@@ -259,6 +259,7 @@ else:
 ### P0 - Immediate
 - [x] Paper mode mid-price consistency (Option 2)
 - [x] **Sharp Detector Full Implementation (Feb 15, 2026)** - All 3 phases
+- [x] **P&L Anomaly Investigation & Fix (Feb 15, 2026)** - Suspicious 0.5 price safety check
 - [ ] Deprecate old news pipeline (news_injector.py, signal_cache.py)
 - [ ] Integrate Alpha/Gamma Lanes with Markets-First signals
 
