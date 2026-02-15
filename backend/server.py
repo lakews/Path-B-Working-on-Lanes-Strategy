@@ -6157,6 +6157,7 @@ async def startup_event():
                     
                     if polymarket_scanner:
                         cached_markets = polymarket_scanner.get_cached_markets()
+                        logger.debug(f"[NEWS/EXA] Scanner has {len(cached_markets) if cached_markets else 0} cached markets")
                         
                         if cached_markets:
                             # Sort by volume/activity - get top 10 most active
