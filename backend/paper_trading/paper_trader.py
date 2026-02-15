@@ -7893,12 +7893,20 @@ class PaperTrader:
                     min_liquidity = zone_params['min_liquidity']
                 
                 if volume_24h < min_volume:
-                    quality_stats['rejected_low_volume'] += 1
-                    continue
+                    # EXCEPTION: Allow markets with open positions (needed for exits)
+                    if position_market_ids and m.get('id') in position_market_ids:
+                        pass  # Allow - has open position
+                    else:
+                        quality_stats['rejected_low_volume'] += 1
+                        continue
                 
                 if liquidity < min_liquidity:
-                    quality_stats['rejected_low_liquidity'] += 1
-                    continue
+                    # EXCEPTION: Allow markets with open positions (needed for exits)
+                    if position_market_ids and m.get('id') in position_market_ids:
+                        pass  # Allow - has open position
+                    else:
+                        quality_stats['rejected_low_liquidity'] += 1
+                        continue
                 
                 # Track zone distribution
                 if yes_price < RISK.WHALE_PRICE_CEILING:
