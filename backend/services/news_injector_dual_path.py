@@ -507,7 +507,7 @@ class DualPathNewsInjector:
                     'requires_fast_execution': urgency in ['high', 'breaking'],
                     
                     'created_at': now,
-                    'expires_at': now + timedelta(seconds=10)  # 10s TTL for fast trades
+                    'expires_at': now + timedelta(seconds=30)  # 30s TTL (increased from 10s)
                 }
                 
                 opportunities.append(opportunity)
