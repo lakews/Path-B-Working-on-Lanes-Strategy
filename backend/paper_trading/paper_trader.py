@@ -5669,6 +5669,8 @@ class PaperTrader:
                 "rl_confidence": rl_confidence,
                 "signals": signals,
                 "sizing_breakdown": sizing_breakdown or {},  # Store for learning
+                # Price source tracking for entry/exit consistency verification
+                "price_source": 'mid_price_paper_mode' if not HFTConfig.LIVE_MODE else 'orderbook_maker',
                 # Maker execution info
                 "execution_info": {
                     "order_type": execution_result.order_type.value if execution_result else "market",
