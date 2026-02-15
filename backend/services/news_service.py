@@ -199,8 +199,9 @@ class NewsPoller:
         self._stats['total_polls'] += 1
         self._stats['last_poll'] = datetime.now(timezone.utc).isoformat()
         
-        if not self._exa_client:
-            logger.warning("[NEWS POLLER] Skipping poll - Exa client not initialized")
+        # Lazily initialize client (picks up keys loaded from MongoDB)
+        if not self._ensure_client_initialized():
+            logger.debug("[NEWS POLLER] Skipping poll - Exa client not initialized")
             return []
         
         num_results = num_results or self.default_num_results
