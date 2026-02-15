@@ -6071,9 +6071,9 @@ class PaperTrader:
             # PRICE SOURCE CONSISTENCY CHECK
             # ================================================================
             entry_price_source = position.get('price_source', 'unknown')
-            exit_price_source = 'mid_price_paper_mode' if not HFTConfig.LIVE_MODE else 'orderbook_maker'
+            exit_price_source = 'orderbook_exit' if (bids and asks) else 'mid_price_fallback'
             
-            if entry_price_source != exit_price_source:
+            if entry_price_source != exit_price_source and entry_price_source != 'orderbook_entry':
                 logger.warning(f"[EXIT-MISMATCH] Price source inconsistency!")
                 logger.warning(f"   Entry source: {entry_price_source} @ ${yes_entry_price:.4f}")
                 logger.warning(f"   Exit source: {exit_price_source} @ ${exit_yes_price:.4f}")
