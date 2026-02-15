@@ -5785,6 +5785,110 @@ async def get_news_sniper_status():
         )
 
 
+# =============================================
+# API KEY MANAGEMENT ENDPOINTS
+# =============================================
+
+@api_router.get("/api-keys/status")
+async def get_api_keys_status(username: str = Depends(verify_credentials_dual)):
+    """
+    Get status of all supported API keys.
+    
+    Shows which keys are set, which are placeholders, and which are persisted.
+    """
+    try:
+        db = get_db()
+        status = await get_api_key_status(db)
+        return {
+            "status": "ok",
+            "supported_keys": SUPPORTED_KEYS,
+            "keys": status,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting API key status: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+class APIKeyUpdate(BaseModel):
+    key_name: str = Field(..., description="Name of the API key (e.g., 'EXA_API_KEY')")
+    key_value: str = Field(..., description="The API key value")
+
+
+@api_router.post("/api-keys/update")
+async def update_api_key(
+    key_data: APIKeyUpdate,
+    username: str = Depends(verify_credentials_dual)
+):
+    """
+    Update an API key and persist it to MongoDB.
+    
+    The key will be encrypted before storage and automatically loaded on restart.
+    """
+    try:
+        if key_data.key_name not in SUPPORTED_KEYS:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": f"Unsupported key: {key_data.key_name}",
+                    "supported_keys": SUPPORTED_KEYS
+                }
+            )
+        
+        db = get_db()
+        success = await save_api_key(db, key_data.key_name, key_data.key_value)
+        
+        if success:
+            return {
+                "status": "ok",
+                "message": f"API key {key_data.key_name} saved and will persist across restarts",
+                "key_name": key_data.key_name,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Failed to save {key_data.key_name}"}
+            )
+            
+    except Exception as e:
+        logger.error(f"Error updating API key: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@api_router.post("/api-keys/reload")
+async def reload_api_keys(username: str = Depends(verify_credentials_dual)):
+    """
+    Reload all API keys from MongoDB.
+    
+    Useful after manually updating keys in the database.
+    """
+    try:
+        db = get_db()
+        results = await load_api_keys_from_db(db)
+        
+        loaded = sum(1 for v in results.values() if v)
+        
+        return {
+            "status": "ok",
+            "message": f"Reloaded {loaded}/{len(results)} API keys from MongoDB",
+            "results": results,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error reloading API keys: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
