@@ -8449,9 +8449,11 @@ class PaperTrader:
                 'total_pnl': round(stats['pnl'] + unrealized, 2),
                 'return_pct': round((stats['pnl'] / allocated * 100) if allocated > 0 else 0, 2),
                 'total_return_pct': round(((stats['pnl'] + unrealized) / allocated * 100) if allocated > 0 else 0, 2),
-                'trades': stats['trades'],
+                'trades': stats['trades'],  # Entry count (open + closed)
+                'closed_trades': stats['closed_trades'],  # Only closed trades
                 'wins': stats['wins'],
-                'win_rate': round(stats['wins'] / stats['trades'] * 100 if stats['trades'] > 0 else 0, 1),
+                # Win rate based on CLOSED trades only (not open positions)
+                'win_rate': round(stats['wins'] / stats['closed_trades'] * 100 if stats['closed_trades'] > 0 else 0, 1),
                 'volume': round(deployed, 2),
                 'profit_factor': round(stats['gross_profit'] / stats['gross_loss'] if stats['gross_loss'] > 0 else (2.0 if stats['gross_profit'] > 0 else 0), 2)
             }
