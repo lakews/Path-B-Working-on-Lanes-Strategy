@@ -595,7 +595,12 @@ class HighFrequencyTradingEngineV2:
             if zone in ['extreme_low', 'extreme_high'] or cliff_zone in ['EXTREME', 'CLIFF']:
                 vol_score = market_data.get('volatility', 0.5)
                 
-                if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE:
+                # VOLATILITY_EXPLOIT (directional) - triggers on:
+                # 1. High volatility score, OR
+                # 2. Price at mean-reversion extremes (<=0.15 or >=0.85) for paper trading
+                price_at_extreme = price <= HFTConfig.MEAN_REVERSION_LOW or price >= HFTConfig.MEAN_REVERSION_HIGH
+                
+                if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE or price_at_extreme:
                     return HFTMode.VOLATILITY_EXPLOIT
                 else:
                     return HFTMode.EXTREME_SPREAD
