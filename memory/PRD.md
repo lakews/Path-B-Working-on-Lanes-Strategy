@@ -210,32 +210,21 @@ LIVE_MODE = True   # Live mode - orderbook-based execution
 ### Change #1: VOLATILITY_EXPLOIT Mode Selection (UPDATED - Dec 2025)
 **File**: `/app/backend/trading/hft_engine_v2.py` (~Line 595)
 **Status**: FIXED
-**Previous Issue**: Allowed VOLATILITY_EXPLOIT to trigger on price extremes alone, bypassing volatility check
-**Fix Applied**: Now requires BOTH extreme price AND wide spread (≥7%) from real orderbook data
+**Previous Issue**: Allowed VOLATILITY_EXPLOIT to trigger on price extremes alone, bypassing volatility check. Also, markets with extreme prices but tight spreads fell back to EXTREME_SPREAD instead of being skipped.
+**Fix Applied**: 
+1. Now requires BOTH extreme price AND wide spread (≥7%) from real orderbook data for VOLATILITY_EXPLOIT
+2. **Extreme-price markets with tight spreads are now SKIPPED entirely** (return None) instead of falling back to EXTREME_SPREAD
+3. This prevents trading dead/resolved markets that sit at extreme prices with tight spreads
+
 ```python
 # FIXED (Dec 2025):
-price_at_extreme = price <= HFTConfig.MEAN_REVERSION_LOW or price >= HFTConfig.MEAN_REVERSION_HIGH
-
-# Get real spread from orderbook
-order_book = market_data.get('order_book', {})
-bids = order_book.get('bids', [])
-asks = order_book.get('asks', [])
-
-real_spread_pct = 0.0
-if bids and asks:
-    best_bid = float(bids[0]['price'])
-    best_ask = float(asks[0]['price'])
-    mid_price = (best_bid + best_ask) / 2
-    if mid_price > 0:
-        real_spread_pct = (best_ask - best_bid) / mid_price
-
-has_volatility_signal = real_spread_pct >= 0.07  # 7%+ spread = uncertainty
-
-# Require EITHER high vol score OR (extreme price AND wide spread)
-if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE or (price_at_extreme and has_volatility_signal):
-    return HFTMode.VOLATILITY_EXPLOIT
+if price_at_extreme:
+    if vol_score >= VOLATILITY_MIN_SCORE or has_volatility_signal:
+        return HFTMode.VOLATILITY_EXPLOIT  # Active volatile market
+    else:
+        return None  # SKIP - likely dead market
 else:
-    return HFTMode.EXTREME_SPREAD
+    return HFTMode.EXTREME_SPREAD  # Non-extreme price
 ```
 
 ### Change #2: Directional Strategy Orderbook Bypass (REVERTED Feb 15, 2026)
