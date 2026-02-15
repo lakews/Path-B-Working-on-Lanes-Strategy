@@ -7200,13 +7200,6 @@ class PaperTrader:
                             market_prices[m['id']] = float(price)
                             market_questions[m['id']] = m.get('question', 'N/A')[:30]
                     
-                    # DEBUG: Check for specific problematic market
-                    debug_target = '0xdeb615a52cd114e5aa27d8344ae506a72bea81f6ed13f5915f050b615a193c20'
-                    if debug_target in self.paper_positions:
-                        logger.warning(f"[DEBUG] Target {debug_target[:20]} in positions")
-                        logger.warning(f"[DEBUG]   market_prices.get: {market_prices.get(debug_target)}")
-                        logger.warning(f"[DEBUG]   in market_prices: {debug_target in market_prices}")
-                    
                     total_unrealized = 0.0
                     for market_id, position in self.paper_positions.items():
                         # Use yes_entry_price for internal calculations (stores the YES price at entry)
