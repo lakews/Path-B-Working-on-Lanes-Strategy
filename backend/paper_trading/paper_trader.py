@@ -1101,6 +1101,27 @@ class PaperTrader:
         logger.info("=" * 60)
         
         # =================================================================
+        # SHARP DETECTOR BACKGROUND TASKS
+        # =================================================================
+        try:
+            logger.info("INITIALIZING SHARP DETECTOR (Phase 1-3)")
+            logger.info("=" * 60)
+            
+            await self.sharp_detector.start_background_tasks()
+            
+            logger.info("✅ Sharp Detector background tasks started")
+            logger.info("   ├─ Phase 1: Proxy detection (order flow, momentum)")
+            logger.info("   ├─ Phase 2: Trade collection (every 5 min)")
+            logger.info("   ├─ Phase 3: Sharp identification (every 6 hours)")
+            logger.info("   └─ Position tracking (every 1 min)")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Could not start Sharp Detector tasks: {e}")
+            logger.warning("   Sharp following strategy will use proxy detection only")
+        
+        logger.info("=" * 60)
+        
+        # =================================================================
         # NEWS SNIPER MONGODB INITIALIZATION (Lane 5 - Phase 2)
         # =================================================================
         try:
