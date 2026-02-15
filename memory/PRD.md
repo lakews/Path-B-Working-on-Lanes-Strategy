@@ -282,6 +282,14 @@ Scheduled job every 6 hours:
 - **Trade minimum**: At least 10 trades required
 - **Category focus**: Specialists (<=3 categories) preferred
 
+### Sharp Alignment Integration (Feb 15, 2026)
+Fixed naming collision and integrated real sharp data:
+- **`market_quality_score`**: Renamed from old `sharp_alignment` - measures liquidity + spread
+- **`sharp_alignment`**: Now uses real SharpDetector data - measures smart money alignment
+- **`get_alignment_signal()`**: New method added to SharpDetector
+- **Strategy selection**: Uses both metrics appropriately
+  - `market_quality_score > 0.7` + `sharp_alignment > 0.6` → triggers arbitrage
+
 ### MongoDB Collections
 | Collection | Purpose |
 |------------|---------|
