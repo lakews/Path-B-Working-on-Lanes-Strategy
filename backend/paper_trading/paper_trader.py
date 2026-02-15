@@ -5473,10 +5473,20 @@ class PaperTrader:
             # ============================================
             # MAKER-FIRST EXECUTION STRATEGY
             # ============================================
+            # PAPER MODE (LIVE_MODE=False): Use mid-price for consistent entry/exit
+            # LIVE MODE (LIVE_MODE=True): Use orderbook-based maker execution
+            # ============================================
             execution_result = None
             actual_entry_price = current_price
             
-            if self.use_maker_execution:
+            # PAPER MODE: Skip orderbook requirement, use mid-price for all strategies
+            # This allows testing direction logic for all 5 HFT sub-strategies
+            if not HFTConfig.LIVE_MODE:
+                # Use current_price (mid-price) directly
+                actual_entry_price = current_price
+                logger.debug(f"[PAPER-MODE] Entry using mid-price ${current_price:.4f} for {strategy}")
+                # Skip maker execution block - go straight to position creation
+            elif self.use_maker_execution:
                 # ==========================================================================
                 # FETCH CORRECT ORDERBOOK FOR TRADING SIDE
                 # ==========================================================================
