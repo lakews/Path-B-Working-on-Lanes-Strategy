@@ -7383,6 +7383,9 @@ class PaperTrader:
                             trade_status = position.get('trade_status', 'ACTIVE')
                             peak_price = position.get('peak_price', entry_price)
                             
+                            # DEBUG: Log prices before exit check
+                            logger.debug(f"[EXIT-CHECK] {market_id[:16]} | entry={entry_price:.4f}, current={current_price:.4f}, current_yes={current_yes_price:.4f}")
+                            
                             # Call ExitEngine
                             decision = self.exit_engine.check_exit(
                                 strategy=strategy,
@@ -7397,6 +7400,10 @@ class PaperTrader:
                                 peak_price=peak_price,
                                 side=side
                             )
+                            
+                            # DEBUG: Log if exit triggered with CLOSE_ALL
+                            if decision.action == ExitAction.CLOSE_ALL:
+                                logger.warning(f"[EXIT-DECISION] {market_id[:16]} | CLOSE_ALL | reason={decision.reason.value} | entry={entry_price:.4f} → current={current_price:.4f}")
                             
                             # Update position with exit engine decision
                             position['exit_engine_decision'] = {
