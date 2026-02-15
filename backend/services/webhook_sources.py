@@ -235,14 +235,15 @@ class ApifyTwitterSource:
         self, 
         session: aiohttp.ClientSession, 
         account: str,
-        hours_back: int
+        hours_back: int,
+        timeout_seconds: int = 15
     ) -> List[WebhookNews]:
         """Fetch tweets from a single account using apidojo/tweet-scraper"""
         
         # apidojo/tweet-scraper V2 input format (startUrls is most reliable)
         actor_input = {
             "startUrls": [f"https://twitter.com/{account}"],
-            "maxTweets": 10,
+            "maxTweets": 5,  # Reduced from 10 for faster completion
             "sort": "Latest",
             "proxyConfig": {"useApifyProxy": True},
         }
@@ -251,33 +252,41 @@ class ApifyTwitterSource:
         run_url = f"{self.base_url}/acts/{self.actor_id}/runs"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         
-        async with session.post(run_url, json=actor_input, headers=headers) as resp:
-            if resp.status != 201:
-                logger.warning(f"[APIFY] Failed to start actor for @{account}: {resp.status}")
-                return []
-            
-            run_data = await resp.json()
-            run_id = run_data.get('data', {}).get('id')
+        try:
+            async with session.post(run_url, json=actor_input, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status != 201:
+                    logger.warning(f"[APIFY] Failed to start actor for @{account}: {resp.status}")
+                    return []
+                
+                run_data = await resp.json()
+                run_id = run_data.get('data', {}).get('id')
+        except asyncio.TimeoutError:
+            logger.warning(f"[APIFY] Timeout starting actor for @{account}")
+            return []
         
         if not run_id:
             return []
         
-        # Wait for completion (with timeout)
+        # Wait for completion (with reduced timeout)
         status_url = f"{self.base_url}/actor-runs/{run_id}"
-        for _ in range(30):  # 30 second timeout
+        status_data = None
+        for _ in range(timeout_seconds):  # Reduced timeout per account
             await asyncio.sleep(1)
             
-            async with session.get(status_url, headers=headers) as resp:
-                if resp.status != 200:
-                    continue
-                status_data = await resp.json()
-                status = status_data.get('data', {}).get('status')
-                
-                if status == 'SUCCEEDED':
-                    break
-                elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
-                    logger.warning(f"[APIFY] Actor run failed for @{account}: {status}")
-                    return []
+            try:
+                async with session.get(status_url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                    if resp.status != 200:
+                        continue
+                    status_data = await resp.json()
+                    status = status_data.get('data', {}).get('status')
+                    
+                    if status == 'SUCCEEDED':
+                        break
+                    elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
+                        logger.warning(f"[APIFY] Actor run failed for @{account}: {status}")
+                        return []
+            except asyncio.TimeoutError:
+                continue
         
         # Get results from dataset
         dataset_id = status_data.get('data', {}).get('defaultDatasetId')
