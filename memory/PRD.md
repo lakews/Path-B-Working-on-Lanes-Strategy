@@ -165,6 +165,7 @@ NEWS EVENT ARRIVES
 - `/app/test_reports/iteration_41.json` - HFT Engine V2 (37 tests passed)
 - `/app/test_reports/iteration_42.json` - HFT Engine V2 ENHANCED (64 tests passed)
 - `/app/test_reports/iteration_43.json` - NEWS Sniper MongoDB Phase 2 (74 tests passed)
+- `/app/test_reports/iteration_46.json` - **HFT V2 Direction Refactor (61 tests passed)**
 
 ---
 
