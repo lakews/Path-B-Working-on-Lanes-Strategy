@@ -7187,7 +7187,9 @@ class PaperTrader:
             try:
                 if self.paper_positions:
                     # Fetch latest market prices from Gamma API
-                    markets = await self._get_active_markets()
+                    # Pass position market IDs to bypass kill switch filtering for exits
+                    position_market_ids = set(self.paper_positions.keys())
+                    markets = await self._get_active_markets(position_market_ids=position_market_ids)
                     
                     # Build price map - ONLY include markets with valid prices
                     market_prices = {}
