@@ -249,13 +249,16 @@ else:
 **Status**: FIXED (was using mid-price, now uses orderbook)
 **Previous Issue**: Paper mode used mid-price for entry/exit, ignoring real spread costs
 **Fix Applied**: All directional trades now use orderbook prices:
-- Entry: Buy YES = pay ask, Buy NO = pay bid
-- Exit: Sell YES = hit bid, Sell NO = hit ask
+- Entry: Buy YES = pay YES ask, Buy NO = pay NO bid
+- Exit: Sell YES = hit YES bid, Sell NO = hit NO bid (then convert to YES-equivalent)
 - `LIVE_MODE` flag now only controls two-sided market making logic, not orderbook usage
+- **CRITICAL FIX (Dec 2025)**: Exit now fetches correct token orderbook based on position side
+  - YES position exit → fetches `token_ids[0]` (YES orderbook)
+  - NO position exit → fetches `token_ids[1]` (NO orderbook)
 **Locations Modified**:
 - `_execute_paper_entry()` (~Line 5650) - Fetches orderbook, uses ask/bid for entry
-- `_evaluate_exit()` (~Line 5200) - Fetches orderbook, uses bid/ask for exit eval
-- `_execute_paper_exit()` (~Line 5950) - Fetches orderbook, uses bid/ask for exit exec
+- `_evaluate_exit()` (~Line 5215) - Fetches CORRECT token orderbook, hits bid, converts to YES-equivalent
+- `_execute_paper_exit()` (~Line 6000) - Fetches CORRECT token orderbook, hits bid, converts to YES-equivalent
 
 ### Change #4: Tiered Kill Switch / Extreme Price Validation (ACTIVE - Feb 15, 2026)
 **Files Modified**:
