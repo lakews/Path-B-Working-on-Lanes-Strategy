@@ -6098,8 +6098,95 @@ async def startup_event():
         )
         logger.info("[MARKETS-FIRST] ✓ DualPathNewsInjector initialized")
         
+        # ================================================================
+        # AUTOMATIC NEWS AGGREGATION (Independent of Paper Trading)
+        # ================================================================
+        # This runs regardless of whether paper trading is active
+        # All news sources feed into DualPathNewsInjector
+        # ================================================================
+        logger.info("[NEWS] Starting automatic news aggregation...")
+        
+        async def unified_news_callback(news_payload: Dict):
+            """Route all news to DualPathNewsInjector"""
+            try:
+                injector = get_dual_path_news_injector()
+                if injector:
+                    signals, broadcasts = await injector.process_news_event(news_payload)
+                    logger.info(f"[NEWS] Processed: {news_payload.get('headline', 'N/A')[:40]}... → {len(signals)} signals, {broadcasts} broadcasts")
+            except Exception as e:
+                logger.error(f"[NEWS] Failed to process news: {e}")
+        
+        # Initialize WebhookSourcesManager with news callback
+        from services.webhook_sources import get_webhook_sources_manager
+        from services.signal_cache import get_signal_cache
+        
+        signal_cache = get_signal_cache()
+        webhook_manager = get_webhook_sources_manager(
+            news_callback=unified_news_callback,
+            signal_cache=signal_cache
+        )
+        
+        # Start automatic polling for Apify Twitter + CryptoPanic
+        asyncio.create_task(webhook_manager.start())
+        logger.info("[NEWS] ✓ WebhookSourcesManager started (Apify + Whale + CryptoPanic)")
+        
+        # Start Exa.ai polling loop (separate from webhook sources)
+        async def exa_polling_loop():
+            """Poll Exa.ai for news every 60 seconds"""
+            from services.news_service import get_news_poller
+            poller = get_news_poller()
+            
+            if not poller.is_enabled():
+                logger.warning("[NEWS/EXA] Exa.ai disabled - no API key")
+                return
+            
+            logger.info("[NEWS/EXA] Starting Exa.ai polling loop (60s interval)")
+            
+            # Default queries for broad market coverage
+            DEFAULT_QUERIES = [
+                "prediction market breaking news polymarket",
+                "bitcoin cryptocurrency regulation news",
+                "US politics election breaking news",
+                "NBA trade news basketball",
+                "federal reserve interest rate decision",
+            ]
+            query_index = 0
+            
+            while True:
+                try:
+                    query = DEFAULT_QUERIES[query_index % len(DEFAULT_QUERIES)]
+                    query_index += 1
+                    
+                    events = await poller.poll_news(query=query, num_results=5, hours_back=1)
+                    
+                    for event in events:
+                        await unified_news_callback({
+                            'headline': event.title,
+                            'content': event.text or '',
+                            'source': event.source or 'exa.ai',
+                            'url': event.url,
+                            'urgency': 'normal',
+                            'source_type': 'exa_ai'
+                        })
+                    
+                    if events:
+                        logger.info(f"[NEWS/EXA] Polled '{query[:30]}...' → {len(events)} events")
+                    
+                except Exception as e:
+                    logger.error(f"[NEWS/EXA] Poll error: {e}")
+                
+                await asyncio.sleep(60)  # 60 second interval
+        
+        asyncio.create_task(exa_polling_loop())
+        logger.info("[NEWS] ✓ Exa.ai polling loop started (60s interval)")
+        
         logger.info("=" * 50)
         logger.info("MARKETS-FIRST SYSTEM READY (MongoDB-Only)")
+        logger.info("NEWS AGGREGATION ACTIVE:")
+        logger.info("  • Exa.ai: ✓ (semantic search, 60s)")
+        logger.info("  • Apify Twitter: ✓ (16 accounts, 5min)")
+        logger.info("  • Whale Alerts: ✓ (direct injection)")
+        logger.info("  • CryptoPanic: ⏸️ (24h delay, research only)")
         logger.info("=" * 50)
         
     except Exception as e:
