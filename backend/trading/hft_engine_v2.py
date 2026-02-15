@@ -821,6 +821,7 @@ class HighFrequencyTradingEngineV2:
         market_id: str,
         market_data: Dict,
         multipliers: Dict[str, float],
+        direction: str,  # Now passed explicitly from _determine_direction
         signal: Optional[Dict],
         alpha_confidence: float,
         adjusted_fair: float,
@@ -835,6 +836,7 @@ class HighFrequencyTradingEngineV2:
         - Kill zone bounds
         - Alpha confidence weighting
         - Cliff zone spread multipliers
+        - Direction is now passed in (from strategy-specific logic)
         """
         try:
             # Get available capital
@@ -887,10 +889,8 @@ class HighFrequencyTradingEngineV2:
             
             bid, ask = self._enforce_min_spread(bid, ask)
             
-            # Get direction from signal or Alpha target
-            direction = 'YES'
-            if signal:
-                direction = signal.get('direction', 'YES')
+            # Direction is now passed in from _determine_direction()
+            # No more default to YES - strategy-specific logic determines direction
             
             entry_price = bid if direction == 'YES' else ask
             
