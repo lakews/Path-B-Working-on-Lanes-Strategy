@@ -5476,19 +5476,7 @@ class PaperTrader:
             execution_result = None
             actual_entry_price = current_price
             
-            # Check if this is a directional strategy that doesn't need orderbook
-            is_directional_strategy = strategy in [
-                'hft_volatility_exploit', 'hft_sharp_following',
-                'volatility_exploit', 'sharp_following',
-                'news_sniper', 'alpha_directional'
-            ]
-            
-            # Directional strategies use simple taker execution (no orderbook required)
-            if is_directional_strategy:
-                logger.info(f"[TAKER] Directional strategy {strategy} - using market price ${current_price:.4f}")
-                actual_entry_price = current_price
-                # Skip maker execution block entirely
-            elif self.use_maker_execution:
+            if self.use_maker_execution:
                 # ==========================================================================
                 # FETCH CORRECT ORDERBOOK FOR TRADING SIDE
                 # ==========================================================================
