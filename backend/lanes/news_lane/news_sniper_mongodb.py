@@ -477,7 +477,8 @@ class NewsSniper:
             
             # Check edge
             direction = signal.get('direction', 'YES')
-            yes_price = float(market_data.get('yes_price', 0.5))
+            # Support both 'yes_price' and 'price' field names
+            yes_price = float(market_data.get('yes_price') or market_data.get('price', 0.5) or 0.5)
             confidence = signal.get('confidence', 0.5)
             
             if direction == 'YES':
