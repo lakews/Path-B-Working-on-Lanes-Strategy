@@ -485,12 +485,20 @@ class NewsSniper:
             direction = signal.get('direction', 'YES')
             # Support both 'yes_price' and 'price' field names
             yes_price = float(market_data.get('yes_price') or market_data.get('price', 0.5) or 0.5)
+            no_price = 1 - yes_price
             confidence = signal.get('confidence', 0.5)
             
+            # Edge = our confidence in direction - market price for that direction
+            # confidence is the confidence IN THE SIGNAL'S DIRECTION
             if direction == 'YES':
                 edge = confidence - yes_price
             else:
-                edge = (1 - confidence) - (1 - yes_price)
+                edge = confidence - no_price  # confidence in NO - NO price
+            
+            logger.info(
+                f"[NEWS SNIPER] Edge check {market_id[:16]}... | "
+                f"Dir={direction}, Conf={confidence:.0%}, Price={yes_price if direction == 'YES' else no_price:.1%}, Edge={edge:.2%}"
+            )
             
             if edge < 0.02:  # 2% minimum edge
                 self.stats['trades_skipped_no_edge'] += 1
