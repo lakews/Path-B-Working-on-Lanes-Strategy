@@ -1587,6 +1587,10 @@ async def update_config(config_update: TradingConfig):
         if config_update.variance_sizing is not None:
             db_update["variance_sizing"] = config_update.variance_sizing
         
+        # Extreme Price Validation (Tiered Kill Switch)
+        if config_update.extreme_price_validation is not None:
+            db_update["extreme_price_validation"] = config_update.extreme_price_validation
+        
         # Store ALL config in database for persistence (not just strategies/asset classes)
         db = get_db()
         await db.user_config.update_one(
