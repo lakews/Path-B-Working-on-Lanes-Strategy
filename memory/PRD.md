@@ -236,19 +236,23 @@ else:
 - `_evaluate_exit()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
 - `_execute_paper_exit()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
 
-### Change #4: Suspicious 0.5 Price Exit Safety (ACTIVE - Feb 15, 2026)
-**File**: `/app/backend/paper_trading/paper_trader.py` (~Line 7374)
-**Status**: ACTIVE
-**Root Cause**: Polymarket WebSocket sends `yes_price = 0.5` for:
-- Expired markets (past end_date)
-- Markets in "limbo" state
-- Some legitimate 50/50 markets
-**Issue**: Positions entered at extreme prices would falsely exit with massive gains when API returned 0.5
-**Fix**: Added safety check in `_universal_exit_check()` to skip exit decisions when:
-1. Entry price was at an extreme (<0.10 or >0.90) AND
-2. Price change is unrealistically large (>500%)
-**Additional Fix**: Added expiration date filtering in `_get_active_markets()` to reject markets past their end_date
-**Logging**: `[SUSPICIOUS-PRICE]` and `[EXIT-SKIP]` warnings with percentage move details
+### Change #4: Position Market Bypass for Exit Pricing (ACTIVE - Feb 15, 2026)
+**Files Modified**:
+- `/app/backend/data/polymarket_api.py` - Expiration check at API source
+- `/app/backend/services/realtime_market_service.py` - Expiration check on cache and WebSocket updates
+- `/app/backend/paper_trading/paper_trader.py` - Position market bypass in `_get_active_markets()`
+
+**Root Cause**: Markets with open positions were being filtered out by kill switch and volume/liquidity checks in `_get_active_markets()`. This caused the exit check to fall back to stale/wrong prices (0.5).
+
+**Fix**: Added `position_market_ids` parameter to `_get_active_markets()`:
+- Markets with open positions bypass kill switch filtering (price range)
+- Markets with open positions bypass volume/liquidity filtering
+- This ensures accurate exit pricing while maintaining entry quality filters
+
+**Additional Fixes**:
+- Expiration filtering at API source (`PolymarketAPI._normalize_gamma_market()`)
+- Expiration filtering in WebSocket cache updates
+- Cache eviction for expired markets
 
 ### Change #5: Duplicate Position Deletion Bug Fix (ACTIVE - Feb 15, 2026)
 **File**: `/app/backend/paper_trading/paper_trader.py` (~Line 6130)
