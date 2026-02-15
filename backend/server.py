@@ -6140,42 +6140,81 @@ async def startup_event():
                 logger.warning("[NEWS/EXA] Exa.ai disabled - no API key")
                 return
             
-            logger.info("[NEWS/EXA] Starting Exa.ai polling loop (60s interval)")
-            
-            # Default queries for broad market coverage
-            DEFAULT_QUERIES = [
-                "prediction market breaking news polymarket",
-                "bitcoin cryptocurrency regulation news",
-                "US politics election breaking news",
-                "NBA trade news basketball",
-                "federal reserve interest rate decision",
-            ]
-            query_index = 0
+            logger.info("[NEWS/EXA] Starting MARKETS-FIRST Exa.ai polling loop (60s interval)")
             
             while True:
                 try:
-                    query = DEFAULT_QUERIES[query_index % len(DEFAULT_QUERIES)]
-                    query_index += 1
+                    # =========================================================
+                    # MARKETS-FIRST: Generate queries from ACTIVE MARKETS
+                    # =========================================================
+                    # 1. Get cached markets from PolymarketScanner
+                    # 2. Select high-volume/trending markets
+                    # 3. Generate news queries from market questions
+                    # 4. Poll Exa.ai with market-driven queries
+                    # =========================================================
                     
-                    events = await poller.poll_news(query=query, num_results=5, hours_back=1)
+                    queries_to_poll = []
                     
-                    for event in events:
-                        await unified_news_callback({
-                            'headline': event.title,
-                            'content': event.text or '',
-                            'source': event.source or 'exa.ai',
-                            'url': event.url,
-                            'urgency': 'normal',
-                            'source_type': 'exa_ai'
-                        })
+                    if polymarket_scanner:
+                        cached_markets = polymarket_scanner.get_cached_markets()
+                        
+                        if cached_markets:
+                            # Sort by volume/activity - get top 10 most active
+                            sorted_markets = sorted(
+                                cached_markets.values(),
+                                key=lambda m: m.get('volume_24h', 0),
+                                reverse=True
+                            )[:10]
+                            
+                            # Generate queries from market questions
+                            for market in sorted_markets:
+                                question = market.get('question', '')
+                                if question:
+                                    # Extract key terms from question
+                                    # e.g., "Will Bitcoin hit $100k?" -> "Bitcoin price 100k news"
+                                    query = f"{question[:80]} breaking news"
+                                    queries_to_poll.append(query)
+                            
+                            logger.debug(f"[NEWS/EXA] Generated {len(queries_to_poll)} market-driven queries")
                     
-                    if events:
-                        logger.info(f"[NEWS/EXA] Polled '{query[:30]}...' → {len(events)} events")
+                    # Fallback: If no markets, use category-based queries
+                    if not queries_to_poll:
+                        queries_to_poll = [
+                            "polymarket prediction market breaking news",
+                            "cryptocurrency bitcoin regulation news today",
+                            "US election politics breaking news",
+                        ]
+                    
+                    # Poll with 2-3 queries per cycle (rotate through)
+                    queries_this_cycle = queries_to_poll[:3]
+                    
+                    for query in queries_this_cycle:
+                        try:
+                            events = await poller.poll_news(query=query, num_results=3, hours_back=1)
+                            
+                            for event in events:
+                                await unified_news_callback({
+                                    'headline': event.title,
+                                    'content': event.text or '',
+                                    'source': event.source or 'exa.ai',
+                                    'url': event.url,
+                                    'urgency': 'normal',
+                                    'source_type': 'exa_ai',
+                                    'market_query': query[:50]  # Track which market triggered this
+                                })
+                            
+                            if events:
+                                logger.info(f"[NEWS/EXA] '{query[:40]}...' → {len(events)} events")
+                        
+                        except Exception as query_err:
+                            logger.debug(f"[NEWS/EXA] Query error: {query_err}")
+                        
+                        await asyncio.sleep(2)  # Small delay between queries
                     
                 except Exception as e:
-                    logger.error(f"[NEWS/EXA] Poll error: {e}")
+                    logger.error(f"[NEWS/EXA] Poll cycle error: {e}")
                 
-                await asyncio.sleep(60)  # 60 second interval
+                await asyncio.sleep(60)  # 60 second interval between cycles
         
         asyncio.create_task(exa_polling_loop())
         logger.info("[NEWS] ✓ Exa.ai polling loop started (60s interval)")
