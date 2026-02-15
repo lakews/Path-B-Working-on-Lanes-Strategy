@@ -2,8 +2,7 @@ import aiohttp
 import logging
 import json
 from typing import List, Dict, Any, Optional
-from datetime import datetime
-from config import config
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
