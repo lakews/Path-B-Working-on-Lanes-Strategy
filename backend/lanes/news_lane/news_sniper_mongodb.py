@@ -648,8 +648,7 @@ class NewsSniper:
                         return result
             
             # Fallback: check if we have it in polymarket_cache
-            if self.db:
-                logger.debug(f"[NEWS SNIPER] Looking up {market_id[:16]}... in polymarket_cache")
+            if self.db is not None:
                 cached = await self.db.polymarket_cache.find_one(
                     {'market_id': market_id},
                     {'_id': 0}
@@ -661,7 +660,7 @@ class NewsSniper:
                         cached['yes_price'] = cached['price']
                     return cached
                 else:
-                    logger.debug(f"[NEWS SNIPER] Not found in polymarket_cache")
+                    logger.debug(f"[NEWS SNIPER] Not found in polymarket_cache: {market_id[:16]}...")
             else:
                 logger.warning(f"[NEWS SNIPER] self.db is None!")
             
