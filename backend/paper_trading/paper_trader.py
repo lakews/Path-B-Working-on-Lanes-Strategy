@@ -7366,15 +7366,6 @@ class PaperTrader:
                             
                             current_yes_price = float(current_yes_price)
                             
-                            # Log significant price moves for monitoring (no blocking)
-                            if abs(current_yes_price - 0.5) < 0.01:
-                                price_move_pct = abs(current_yes_price - yes_entry_price) / yes_entry_price * 100 if yes_entry_price > 0 else 0
-                                if price_move_pct > 100:
-                                    logger.warning(f"[0.5-PRICE-DEBUG] {market_id}")
-                                    logger.warning(f"   Source: {price_source}")
-                                    logger.warning(f"   Entry: ${yes_entry_price:.4f} → Current: ${current_yes_price:.4f}")
-                                    logger.warning(f"   Question: {position.get('question', 'N/A')[:40]}")
-                            
                             # Calculate current price for the side we're holding
                             if side == 'YES':
                                 entry_price = yes_entry_price
