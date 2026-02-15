@@ -7366,6 +7366,14 @@ class PaperTrader:
                             
                             current_yes_price = float(current_yes_price)
                             
+                            # SAFETY CHECK: Log if price looks suspicious (0.5 for extreme entries)
+                            if abs(current_yes_price - 0.5) < 0.01 and (yes_entry_price < 0.1 or yes_entry_price > 0.9):
+                                logger.error(f"[SUSPICIOUS-EXIT-PRICE] {market_id}")
+                                logger.error(f"   Entry: ${yes_entry_price:.4f} | Current: ${current_yes_price:.4f} | Source: {price_source}")
+                                logger.error(f"   market_prices has: {market_prices.get(market_id)}")
+                                # Skip this - likely stale data
+                                continue
+                            
                             # Calculate current price for the side we're holding
                             if side == 'YES':
                                 entry_price = yes_entry_price
