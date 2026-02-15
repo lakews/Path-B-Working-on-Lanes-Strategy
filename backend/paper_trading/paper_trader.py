@@ -5993,76 +5993,73 @@ class PaperTrader:
             # ==========================================================================
             # EXIT PRICE DETERMINATION
             # ==========================================================================
-            # PAPER MODE (LIVE_MODE=False): Use mid-price for consistent entry/exit
-            # LIVE MODE (LIVE_MODE=True): Use orderbook-based spread-aware pricing
+            # BOTH MODES: Use orderbook for realistic exit pricing
+            # - Sell YES = hit the bid
+            # - Sell NO = hit the ask (equivalent to buying YES)
             # ==========================================================================
             
-            if not HFTConfig.LIVE_MODE:
-                # PAPER MODE: Use current mid-price directly (matches entry pricing)
-                exit_yes_price = current_yes_price
-                logger.debug(f"[PAPER-MODE] Exit execution using mid-price ${current_yes_price:.4f}")
-            else:
-                # LIVE MODE: Fetch fresh orderbook for spread-aware exit
-                bids = []
-                asks = []
-                try:
-                    token_ids = market_data.get('token_ids', [])
-                    if token_ids:
-                        from data.polymarket_api import PolymarketAPI
-                        async with PolymarketAPI() as api:
-                            fresh_orderbook = await api.get_order_book(token_ids[0])
-                            bids = fresh_orderbook.get('bids', [])
-                            asks = fresh_orderbook.get('asks', [])
-                            if bids and asks:
-                                logger.debug(f"[EXIT-EXEC-OB] Fresh orderbook for execution: bid={bids[0]['price']}, ask={asks[0]['price']}")
-                except Exception as e:
-                    logger.debug(f"[EXIT-EXEC-OB] Could not fetch fresh orderbook: {e}")
+            # Fetch fresh orderbook for exit execution
+            bids = []
+            asks = []
+            try:
+                token_ids = market_data.get('token_ids', [])
+                if token_ids:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        fresh_orderbook = await api.get_order_book(token_ids[0])
+                        bids = fresh_orderbook.get('bids', [])
+                        asks = fresh_orderbook.get('asks', [])
+                        if bids and asks:
+                            logger.debug(f"[EXIT-EXEC-OB] Fresh orderbook: bid={bids[0]['price']}, ask={asks[0]['price']}")
+            except Exception as e:
+                logger.debug(f"[EXIT-EXEC-OB] Could not fetch fresh orderbook: {e}")
+            
+            # Fallback to cached orderbook if fresh fetch failed
+            if not bids or not asks:
+                order_book = market_data.get('order_book', {})
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
+            
+            if bids and asks:
+                # Use orderbook prices - more accurate than midpoint
+                best_bid = float(bids[0]['price'])
+                best_ask = float(asks[0]['price'])
                 
-                # Fallback to cached orderbook if fresh fetch failed
-                if not bids or not asks:
-                    order_book = market_data.get('order_book', {})
-                    bids = order_book.get('bids', [])
-                    asks = order_book.get('asks', [])
-                
-                if bids and asks:
-                    # Use orderbook prices - more accurate than midpoint
-                    best_bid = float(bids[0]['price'])
-                    best_ask = float(asks[0]['price'])
-                    
-                    # SANITY CHECK: Verify orderbook makes sense
-                    spread = best_ask - best_bid
-                    if spread < 0 or spread > 0.15:
-                        logger.warning(f"[EXIT-WARN] Suspicious orderbook: bid={best_bid}, ask={best_ask}, spread={spread}")
-                        # Fall back to midpoint
-                        exit_yes_price = current_yes_price
-                    elif side == 'YES':
-                        # Selling YES = hitting bid
-                        exit_yes_price = best_bid
-                    else:
-                        # Selling NO = buying YES = hitting ask
-                        exit_yes_price = best_ask
-                    
-                    # Additional sanity check: exit price should be close to current price
-                    price_diff = abs(exit_yes_price - current_yes_price)
-                    if price_diff > 0.10:  # More than 10% difference is suspicious
-                        logger.warning(f"[EXIT-WARN] Exit price {exit_yes_price:.4f} differs significantly from current {current_yes_price:.4f}")
-                        # Use current price as fallback for safety
-                        if side == 'YES':
-                            exit_yes_price = current_yes_price - 0.01  # Conservative sell
-                        else:
-                            exit_yes_price = current_yes_price + 0.01  # Conservative buy YES
-                        exit_yes_price = max(0.001, min(0.999, exit_yes_price))
-                        logger.info(f"[EXIT] Using conservative exit price: {exit_yes_price:.4f}")
-                    
-                    logger.debug(f"[EXIT] Orderbook: bid={best_bid}, ask={best_ask}, exit_yes={exit_yes_price}")
+                # SANITY CHECK: Verify orderbook makes sense
+                spread = best_ask - best_bid
+                if spread < 0 or spread > 0.20:
+                    logger.warning(f"[EXIT-WARN] Suspicious orderbook: bid={best_bid}, ask={best_ask}, spread={spread}")
+                    # Fall back to midpoint
+                    exit_yes_price = current_yes_price
+                elif side == 'YES':
+                    # Selling YES = hitting bid
+                    exit_yes_price = best_bid
                 else:
-                    # No orderbook - use midpoint with conservative spread estimate
-                    spread_estimate = 0.02
+                    # Selling NO = buying YES = hitting ask
+                    exit_yes_price = best_ask
+                
+                # Additional sanity check: exit price should be close to current price
+                price_diff = abs(exit_yes_price - current_yes_price)
+                if price_diff > 0.10:  # More than 10% difference is suspicious
+                    logger.warning(f"[EXIT-WARN] Exit price {exit_yes_price:.4f} differs significantly from current {current_yes_price:.4f}")
+                    # Use current price as fallback for safety
                     if side == 'YES':
-                        exit_yes_price = current_yes_price - (spread_estimate / 2)
+                        exit_yes_price = current_yes_price - 0.01  # Conservative sell
                     else:
-                        exit_yes_price = current_yes_price + (spread_estimate / 2)
+                        exit_yes_price = current_yes_price + 0.01  # Conservative buy YES
                     exit_yes_price = max(0.001, min(0.999, exit_yes_price))
+                    logger.info(f"[EXIT] Using conservative exit price: {exit_yes_price:.4f}")
+                
+                logger.debug(f"[EXIT] Orderbook exit: bid={best_bid:.4f}, ask={best_ask:.4f}, exit_yes={exit_yes_price:.4f}")
+            else:
+                # No orderbook - use midpoint with conservative spread estimate
+                spread_estimate = 0.02
+                if side == 'YES':
+                    exit_yes_price = current_yes_price - (spread_estimate / 2)
+                else:
+                    exit_yes_price = current_yes_price + (spread_estimate / 2)
+                exit_yes_price = max(0.001, min(0.999, exit_yes_price))
+                logger.debug(f"[EXIT] No orderbook, using estimate: {exit_yes_price:.4f}")
             
             # Use yes_entry_price for internal calculations (stores the YES price at entry)
             yes_entry_price = position.get('yes_entry_price', position['entry_price'])
