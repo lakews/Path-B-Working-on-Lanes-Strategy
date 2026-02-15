@@ -8388,7 +8388,7 @@ class PaperTrader:
         # Initialize stats for all 5 lanes
         lane_stats = {}
         for lane in ['HFT', 'ALPHA', 'GAMMA', 'SPORTS', 'NEWS']:
-            lane_stats[lane] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0}
+            lane_stats[lane] = {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'closed_trades': 0}
         
         # Aggregate by lane using RISK.get_strategy_path for accurate mapping
         for strategy, stats in self.strategy_stats.items():
@@ -8399,6 +8399,7 @@ class PaperTrader:
                 lane_stats[lane]['pnl'] += stats.get('pnl', 0)
                 lane_stats[lane]['gross_profit'] += stats.get('gross_profit', 0)
                 lane_stats[lane]['gross_loss'] += stats.get('gross_loss', 0)
+                lane_stats[lane]['closed_trades'] += stats.get('closed_trades', 0)
         
         # Calculate capital allocation by lane
         # Default allocations: HFT=35%, ALPHA=40%, GAMMA=10%, SPORTS=15% (overlay), NEWS=5% (overlay)
