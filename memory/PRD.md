@@ -153,6 +153,9 @@ NEWS EVENT ARRIVES
 - [x] NEWS Lane Phase 2 (MongoDB integration)
 - [x] Legacy HFT loop deprecation
 - [x] **HFT V2 Strategy-Specific Direction Refactor (Feb 15, 2026)** - Each of 5 strategies now determines its own direction
+- [x] **Tiered Kill Switch Implementation (Feb 15, 2026)** - Configurable extreme price validation with per-strategy overrides
+- [x] **P&L Anomaly Resolution (Feb 15, 2026)** - Fixed expired markets sending 0.5 prices, tiered validation system
+- [x] **System Audit (Dec 2025)** - Verified tiered kill switch working, hft_volatility_exploit trading at extreme prices
 
 ### P1 - High Priority (NEXT)
 - [ ] Deprecate old news pipeline (news_injector.py, signal_cache.py)
