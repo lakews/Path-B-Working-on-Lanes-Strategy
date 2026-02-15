@@ -824,8 +824,14 @@ class PaperTrader:
                     self.volatility_threshold = float(user_config["volatility_threshold"])
                 if "sentiment_strength_threshold" in user_config:
                     self.sentiment_strength_threshold = float(user_config["sentiment_strength_threshold"])
+                # New: Separate thresholds for market quality and sharp alignment
+                if "market_quality_threshold" in user_config:
+                    self.market_quality_threshold = float(user_config["market_quality_threshold"])
                 if "sharp_alignment_threshold" in user_config:
                     self.sharp_alignment_threshold = float(user_config["sharp_alignment_threshold"])
+                # Legacy support: old sharp_alignment_threshold maps to market_quality_threshold
+                elif "sharp_alignment_threshold" in user_config and "market_quality_threshold" not in user_config:
+                    self.market_quality_threshold = float(user_config["sharp_alignment_threshold"])
                 if "delta_neutral_price_min" in user_config:
                     self.delta_neutral_price_min = float(user_config["delta_neutral_price_min"])
                 if "delta_neutral_price_max" in user_config:
