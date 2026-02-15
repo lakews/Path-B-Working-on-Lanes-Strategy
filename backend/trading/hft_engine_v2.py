@@ -789,15 +789,26 @@ class HighFrequencyTradingEngineV2:
             strategy_name = f'hft_{hft_mode.value}'
             
             # Use paper_trader's execute method
-            if hasattr(self.paper_trader, '_execute_paper_trade'):
-                result = await self.paper_trader._execute_paper_trade(
+            if hasattr(self.paper_trader, '_execute_paper_entry'):
+                # Prepare signals dict for the entry method
+                signals = {
+                    'hft_mode': hft_mode.value,
+                    'path_a_signal': trade_params.get('path_a_signal'),
+                    'path_b_opportunity': trade_params.get('path_b_opportunity'),
+                    'edge': trade_params.get('edge', 0),
+                    'confidence': trade_params.get('confidence', 0.65),
+                }
+                
+                result = await self.paper_trader._execute_paper_entry(
+                    market_id=market_id,
                     market_data=market_data,
                     side=trade_params['direction'],
                     size=trade_params['position_size'],
                     strategy=strategy_name,
-                    confidence=trade_params.get('confidence', 0.65),
-                    sentiment_score=0.5,
-                    signal_source='hft_v2_enhanced'
+                    signals=signals,
+                    rl_action='BUY' if trade_params['direction'] == 'YES' else 'SELL',
+                    rl_confidence=trade_params.get('confidence', 0.65),
+                    sizing_breakdown={'source': 'hft_v2', 'kelly': 0.15}
                 )
                 return {'success': True, 'result': result}
             elif hasattr(self.paper_trader, 'execute_trade'):
