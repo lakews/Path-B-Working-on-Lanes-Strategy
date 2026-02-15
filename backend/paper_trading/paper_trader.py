@@ -7979,31 +7979,32 @@ class PaperTrader:
                 yes_price = float(yes_price)
                 
                 # ==========================================================
-                # DYNAMIC PRICE CAPS (Sports Override)
+                # DYNAMIC PRICE CAPS (Sports Override + Tiered Validation)
                 # ==========================================================
                 # Sports: Allow heavy favorites (0.98-0.99) and longshots (0.01)
-                # Non-Sports: Standard kill switch (0.03-0.97)
+                # Non-Sports: Use tiered validation for extreme prices
                 if is_sports and sports_config.enabled:
                     safe_min = sports_config.min_price_cap
                     safe_max = sports_config.max_price_cap
+                    # Sports use hard boundaries
+                    if yes_price < safe_min or yes_price > safe_max:
+                        if position_market_ids and m.get('id') in position_market_ids:
+                            pass  # Allow - has open position
+                        else:
+                            quality_stats['rejected_extreme_price'] += 1
+                            continue
                 else:
-                    safe_min = RISK.KILL_SWITCH_LOW
-                    safe_max = RISK.KILL_SWITCH_HIGH
-                
-                if yes_price < safe_min:
-                    # EXCEPTION: Allow markets with open positions (needed for exits)
+                    # Non-sports: Use tiered validation for extreme prices
+                    # Markets with positions always pass (needed for exits)
                     if position_market_ids and m.get('id') in position_market_ids:
-                        pass  # Allow - has open position
+                        pass  # Allow - has open position, bypass price check
                     else:
-                        quality_stats['rejected_extreme_price'] += 1
-                        continue
-                if yes_price > safe_max:
-                    # EXCEPTION: Allow markets with open positions (needed for exits)
-                    if position_market_ids and m.get('id') in position_market_ids:
-                        pass  # Allow - has open position
-                    else:
-                        quality_stats['rejected_extreme_price'] += 1
-                        continue
+                        # Use tiered validation - checks orderbook, volume, spread, expiry
+                        # Default strategy for market filtering (actual strategy checked at entry)
+                        allowed, reason = self.validate_extreme_price_entry(m, 'hft_volatility_exploit')
+                        if not allowed:
+                            quality_stats['rejected_extreme_price'] += 1
+                            continue
                 
                 # ============================================================
                 # DYNAMIC VOLUME/LIQUIDITY CHECK (Sports Override)
