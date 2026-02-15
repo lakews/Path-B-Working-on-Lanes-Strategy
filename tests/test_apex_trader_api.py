@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://hft-evolution.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://dual-path-signals.preview.emergentagent.com')
 
 class TestHealthAndStatus:
     """Health check and status endpoint tests"""
