@@ -3599,6 +3599,14 @@ class PaperTrader:
             except Exception as e:
                 logger.warning(f"Error stopping HFT Engine V2: {e}")
         
+        # Stop Sharp Detector background tasks
+        if self.sharp_detector:
+            try:
+                await self.sharp_detector.stop_background_tasks()
+                logger.info("Sharp Detector background tasks stopped")
+            except Exception as e:
+                logger.warning(f"Error stopping Sharp Detector: {e}")
+        
         # Stop NEWS Sniper MongoDB
         if self.news_sniper:
             try:
