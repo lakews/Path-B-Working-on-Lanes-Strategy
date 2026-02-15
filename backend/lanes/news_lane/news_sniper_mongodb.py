@@ -13,17 +13,73 @@ Features:
 3. MongoDB Integration - Reads from signals collection
 4. Whale Alignment - Checks if whales agree with signal direction
 5. Source Credibility - Reuters/AP > Whale Alerts > Twitter
+6. Time Decay - Fresher signals get more weight (NEW)
 
 This module REPLACES the legacy news_sniper in paper_trader.py
 """
 
 import asyncio
 import logging
+import math
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+
+def calculate_time_decay(signal: Dict) -> float:
+    """
+    Calculate time decay factor for a signal based on its age.
+    
+    Fresher signals get weight closer to 1.0, older signals decay towards 0.5.
+    Uses exponential decay: weight = 0.5 + 0.5 * exp(-age/half_life)
+    
+    Returns:
+        float: Decay factor between 0.5 and 1.0
+        - 1.0 = brand new signal (full weight)
+        - 0.75 = signal at ~70% of TTL
+        - 0.5 = signal at expiration (minimum weight)
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        created_at = signal.get('created_at')
+        expires_at = signal.get('expires_at')
+        
+        if not created_at or not expires_at:
+            return 1.0  # No timing info, assume fresh
+        
+        # Handle string dates
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+        
+        # Ensure timezone aware
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        total_ttl = (expires_at - created_at).total_seconds()
+        age = (now - created_at).total_seconds()
+        
+        if total_ttl <= 0:
+            return 1.0
+        
+        # Calculate decay using exponential function
+        # Half-life is 50% of TTL (signal loses half its extra weight at midpoint)
+        half_life = total_ttl * 0.5
+        
+        # Decay from 1.0 to 0.5 (never goes below 0.5 - signal still has some value)
+        decay = 0.5 + 0.5 * math.exp(-age / half_life)
+        
+        # Clamp between 0.5 and 1.0
+        return max(0.5, min(1.0, decay))
+        
+    except Exception as e:
+        logger.debug(f"[TIME DECAY] Error calculating decay: {e}")
+        return 1.0  # Default to full weight on error
 
 
 class NewsImpactLevel(Enum):
