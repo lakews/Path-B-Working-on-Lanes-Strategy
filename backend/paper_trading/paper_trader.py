@@ -7858,26 +7858,13 @@ class PaperTrader:
                 is_sports = is_sports_market(question)
                 
                 # PRICE VALIDATION (First - cheapest check)
+                # Note: Expiration filtering is now done at the source (PolymarketAPI & RealtimeService)
                 yes_price = m.get('yes_price')
                 if yes_price is None or yes_price == 0:
                     quality_stats['rejected_no_price'] += 1
                     continue
                 
                 yes_price = float(yes_price)
-                
-                # EXPIRATION CHECK - Skip markets that have passed their end date
-                end_date_str = m.get('end_date') or m.get('endDate')
-                if end_date_str:
-                    try:
-                        from dateutil.parser import parse
-                        end_date = parse(end_date_str)
-                        if end_date.tzinfo is None:
-                            end_date = end_date.replace(tzinfo=timezone.utc)
-                        if end_date < datetime.now(timezone.utc):
-                            quality_stats['rejected_extreme_price'] += 1  # Reuse counter
-                            continue
-                    except:
-                        pass  # If parsing fails, allow the market
                 
                 # ==========================================================
                 # DYNAMIC PRICE CAPS (Sports Override)
