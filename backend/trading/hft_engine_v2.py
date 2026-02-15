@@ -216,7 +216,7 @@ class HighFrequencyTradingEngineV2:
         """
         Main entry point for HFT execution on a single market.
         
-        Enhanced Flow:
+        Enhanced Flow (Strategy-Specific Direction Logic):
         1. Check if we already have a position (skip)
         2. Get Alpha target from strategy_context (smart mode)
         3. Check PATH B for fresh news broadcast (speed)
@@ -226,9 +226,10 @@ class HighFrequencyTradingEngineV2:
         7. Apply HFT Math Engine (skew, smoothing, cliff protection)
         8. Prune stale orders with hysteresis
         9. Select appropriate HFT mode based on price zone
-        10. Build trade parameters (respecting all constraints)
-        11. Execute via paper_trader with tick grid compliance
-        12. Log to analytics
+        10. Determine direction using STRATEGY-SPECIFIC LOGIC
+        11. Build trade parameters (respecting all constraints)
+        12. Execute via paper_trader with tick grid compliance
+        13. Log to analytics
         """
         try:
             market_id = market_data.get('id', market_data.get('condition_id', ''))
