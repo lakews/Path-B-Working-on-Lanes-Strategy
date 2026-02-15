@@ -7444,8 +7444,10 @@ class PaperTrader:
                             # Close the position using proper exit method
                             position = self.paper_positions.get(market_id)
                             if position:
+                                # CRITICAL: Use yes_price for exit (not side-adjusted current_price)
+                                # _execute_paper_exit expects YES price for P&L calculation
                                 market_data = {
-                                    'yes_price': close_info['current_price'],
+                                    'yes_price': close_info['current_yes_price'],  # YES price!
                                     'token_ids': position.get('token_ids', []),
                                     'order_book': {'bids': [], 'asks': []}  # Will fetch fresh
                                 }
