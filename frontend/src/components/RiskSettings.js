@@ -571,25 +571,25 @@ const RiskSettings = () => {
                     <span className="text-white font-medium">Gamma Scalp</span>
                   </div>
                   <button
-                    onClick={() => updateConfig('extreme_price_validation.strategy_overrides.hft_gamma_scalp.enabled', 
-                      !(config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.enabled || false))}
+                    onClick={() => updateConfig('extreme_price_validation.strategy_overrides.gamma_scalp.enabled', 
+                      !(config.extreme_price_validation.strategy_overrides?.gamma_scalp?.enabled || false))}
                     className={`relative w-10 h-5 rounded-full transition-colors ${
-                      config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.enabled ? 'bg-green-500' : 'bg-gray-600'
+                      config.extreme_price_validation.strategy_overrides?.gamma_scalp?.enabled ? 'bg-green-500' : 'bg-gray-600'
                     }`}
                   >
                     <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
-                      config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.enabled ? 'left-5' : 'left-0.5'
+                      config.extreme_price_validation.strategy_overrides?.gamma_scalp?.enabled ? 'left-5' : 'left-0.5'
                     }`} />
                   </button>
                 </div>
-                {config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.enabled && (
+                {config.extreme_price_validation.strategy_overrides?.gamma_scalp?.enabled && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Min Price (%)</label>
                       <input
                         type="number"
-                        value={((config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.kill_switch_low || 0.01) * 100).toFixed(1)}
-                        onChange={(e) => updateConfig('extreme_price_validation.strategy_overrides.hft_gamma_scalp.kill_switch_low', parseFloat(e.target.value) / 100)}
+                        value={((config.extreme_price_validation.strategy_overrides?.gamma_scalp?.kill_switch_low || 0.01) * 100).toFixed(1)}
+                        onChange={(e) => updateConfig('extreme_price_validation.strategy_overrides.gamma_scalp.kill_switch_low', parseFloat(e.target.value) / 100)}
                         className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
                         min="0.5"
                         max="5"
@@ -600,8 +600,8 @@ const RiskSettings = () => {
                       <label className="block text-xs text-gray-400 mb-1">Max Price (%)</label>
                       <input
                         type="number"
-                        value={((config.extreme_price_validation.strategy_overrides?.hft_gamma_scalp?.kill_switch_high || 0.99) * 100).toFixed(1)}
-                        onChange={(e) => updateConfig('extreme_price_validation.strategy_overrides.hft_gamma_scalp.kill_switch_high', parseFloat(e.target.value) / 100)}
+                        value={((config.extreme_price_validation.strategy_overrides?.gamma_scalp?.kill_switch_high || 0.99) * 100).toFixed(1)}
+                        onChange={(e) => updateConfig('extreme_price_validation.strategy_overrides.gamma_scalp.kill_switch_high', parseFloat(e.target.value) / 100)}
                         className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
                         min="95"
                         max="99.5"
