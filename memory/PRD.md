@@ -161,6 +161,7 @@ NEWS EVENT ARRIVES
 - [ ] Deprecate old news pipeline (news_injector.py, signal_cache.py)
 - [ ] Integrate Alpha/Gamma Lanes with Markets-First signals
 - [ ] SSOT Refactoring: Move `EXIT_STRATEGY_CONFIG` to `risk_config.json`
+- [ ] Clean up orphaned config variable (`sharp_alignment_threshold` in paper_trader.py)
 - [ ] Live trading validation
 
 ### P2 - Future
