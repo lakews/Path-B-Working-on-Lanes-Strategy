@@ -7,6 +7,7 @@ The user provided detailed specifications for this new architecture, including:
 3.  **Phase 2: NEWS Lane Integration:** Implement a new, advanced  class (as per a provided document) that uses a  and tiered Kelly sizing, and reads signals from the new MongoDB pipeline.
 4.  **HFT V2 Refactor:** After auditing the HFT engine, the user requested a significant refactor to make the sub-strategies smarter and more independent in their trading decisions, with a clear path to switch to true market-making in a live environment.
 5.  **SHARP_FOLLOWING Strategy:** Implement a full data pipeline and logic to make the  HFT sub-strategy functional.
+6.  **P&L Anomaly Investigation:** Investigate and fix a large, unrealistic P&L anomaly, which led to the implementation of a configurable, tiered kill switch system.
 
 **PRODUCT REQUIREMENTS:**
 1.  **Enhance Performance UI:** **(COMPLETED)**
@@ -19,47 +20,42 @@ The user provided detailed specifications for this new architecture, including:
     *   **Refactor HFT V2 for Strategy-Specific Logic:** **(COMPLETED)**
     *   **Implement Full SHARP_FOLLOWING Pipeline:** **(COMPLETED)**
     *   **Refactor 'sharp_alignment' Logic:** **(COMPLETED)**
+    *   **Fix P&L Anomaly with Tiered Kill Switch:** **(COMPLETED)**
     *   **Phase 3 (Future):** Integrate the new signal pipeline with other lanes (Alpha, etc.) and remove the old signal processing infrastructure.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack 5-lane trading bot with a Markets-First architecture on MongoDB. The HFT V2 engine has been refactored for strategy-specific direction logic. A  flag has been implemented to ensure consistent mid-price entry/exit in paper trading mode, resolving a major P&L calculation bug. A comprehensive, three-phase  has been built and integrated to make the  strategy functional, including data collection and sharp trader identification background tasks. A critical bug involving a sharp_alignment naming collision has been fixed by separating the metric into  (for execution) and  (for confidence). The system is operational, but a recent test run showed an unusually large profit from a single trade that requires investigation.
+A full-stack 5-lane trading bot with a Markets-First architecture on MongoDB. A major P&L anomaly caused by expired markets sending default prices (0.5) has been investigated and resolved. The fix involved implementing a sophisticated, configurable Tiered Kill Switch system that allows strategies like  to trade at extreme prices while protecting against bad data. This new system includes layered validation (order book depth, recent volume, spread) for extreme-price entries and is fully configurable from a new section in the UI. Expired markets are now filtered at the data source level to prevent them from entering the trading logic.
 
 **Last working item**:
-The agent completed a comprehensive refactor to resolve a naming collision and broken integration related to . This involved separating a market quality metric from the true smart money alignment metric provided by the new .
+The agent was asked to conduct a read-only audit of the new tiered kill switch, all trading strategies, and P&L per sub-strategy.
 
--   **Last item agent was working**: Renaming a legacy liquidity/spread proxy to , integrating the real  score from the , and updating all downstream logic (strategy selection, logging, configuration) to use both metrics correctly. Extensive logging was also added to debug large P&L trades and verify price source consistency.
--   **Status**: IN PROGRESS (Implementation complete, but verification is pending due to a suspicious P&L result in the last test run).
--   **Agent Testing Done**: N
--   **Which testing method agent to use?**: backend testing agent. This is a critical logic change affecting P&L, strategy selection, and data flow. A deep audit is necessary to confirm the fix and investigate the large P&L anomaly.
+-   **Last item agent was working**: The agent performed the requested audit, confirming that the new tiered kill switch was configured correctly and that the  strategy was successfully entering positions at extreme prices (<3% and >97%) as intended. The agent analyzed open/closed positions and presented the findings.
+-   **Status**: IN PROGRESS (The analysis was performed, but the next agent should be prepared for follow-up questions from the user before moving to the next task).
+-   **Agent Testing Done**: Y
+-   **Which testing method agent to use?**: N/A (Last task was a read-only audit). For the next development task, use the appropriate method based on its complexity.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Investigate Unrealistic P&L Anomaly (Priority: P0)**
-    -   **Description**: The last test run showed a very high profit (+3k) from a single trade, despite fixes to ensure P&L consistency. While potentially a valid market resolution, this anomaly must be definitively investigated to rule out a bug.
-    -   **Attempted fixes**: Logging was added to track entry/exit prices and price sources for large P&L trades.
-    -   **Next debug checklist**:
-        1.  Start paper trading and let it run for several minutes.
-        2.  Monitor the backend logs for the  and  warnings added in the last session.
-        3.  If a large PnL trade occurs, analyze the entry price, exit price, hold time, and price source from the logs to determine if it was a valid market move or a calculation bug.
-        4.  Check the  logic in  (lines ~5900) to ensure PnL is calculated correctly.
-    -   **Status**: NOT STARTED
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Backend
--   **Issue 2: Recurring Capital Discrepancy (Priority: P1 - Monitoring)**
-    -   **Description**: A persistent capital discrepancy bug was fixed with . However, with ongoing major refactors, this remains a critical area to monitor for new race conditions.
+-   **Issue 1: Recurring Capital Discrepancy (Priority: P1 - Monitoring)**
+    -   **Description**: A persistent capital discrepancy bug was fixed in a previous fork with an . However, with ongoing major refactors, this remains a critical area to monitor for new race conditions.
     -   **Status**: USER VERIFICATION PENDING
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Backend
 
 **In progress Task List**:
--   None.
+-   **Task 1: Audit of new tiered kill switch and P&L analysis (Priority: P0)**
+    -   **Where to resume**: The initial audit results have been generated. The next agent should present these findings to the user and await feedback or approval to proceed with the next development task from the backlog.
+    -   **What will be achieved with this?**: Confirm for the user that the new, complex kill switch logic is working as designed and all strategies are operating correctly.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: N/A
+    -   **Blocked on something**: User feedback.
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
--   **Clean up orphaned config variables (P2):** The refactor left  defined in  (line ~415) but it is no longer used. It should be removed or repurposed to avoid confusion.
--   **Deprecate Old News Pipeline (P1):** Once the HFT refactor is stable, remove the old news pipeline (, ).
+-   **Clean up orphaned config variables (P2):** The refactor left  defined in  (line ~415) but it is no longer used. It should be removed.
+-   **Deprecate Old News Pipeline (P1):** Once the HFT engine is stable, remove the old news pipeline (, ).
 -   **Integrate Alpha/Gamma Lanes with Markets-First (P1):** Update the Alpha and Gamma loops to consume signals from the new MongoDB  collection.
 
 **Future Tasks:**
@@ -69,17 +65,20 @@ The agent completed a comprehensive refactor to resolve a naming collision and b
 -   **Save Documentation to GitHub (P2):** Remind the user about the platform's Save to Github feature.
 
 **Completed work in this session**
--   **HFT V2 Refactor Completion:** Integrated strategy-specific direction logic into the main execution loop.
--   **HFT V2 Deep Audits:** Performed multiple extensive audits (84+ tests) verifying all core HFT logic.
--   **Paper Trading Execution Fix:** Implemented a  check to allow directional strategies to execute in paper mode, using consistent mid-price for entry and exit to ensure realistic P&L.
--   **Sharp Detector Full Implementation:** Built and integrated a comprehensive, three-phase  with proxy fallbacks, a trade collection data pipeline, and a sharp trader identification background job.
--   **Sharp Alignment Logic Refactor:** Fixed a critical bug by renaming a mislabeled market quality metric and correctly integrating the real sharp alignment score from the detector into strategy selection and signal fusion.
--   **Added Extensive Debug Logging:** Implemented new logging for large P&L trades and price source consistency to aid future debugging.
+-   **P&L Anomaly Root Cause Fixed:** Investigated and resolved a critical bug causing unrealistic P&L swings. The root cause was identified as expired/inactive markets broadcasting default  prices via WebSocket.
+-   **Implemented Tiered Kill Switch System:** Replaced the blunt price-based kill switch with a sophisticated, configurable system.
+    -   **Backend:** Added tiered validation logic in  that checks order book depth, recent volume, spread, and expiry for extreme-priced entries.
+    -   **Configuration:** Created a new  section in  with global defaults and per-strategy overrides.
+    -   **Frontend:** Built a new UI section in  to allow users to configure the tiered kill switch, its parameters, and strategy-specific overrides.
+-   **Data Source Filtering:** Implemented robust filtering in  and  to prevent expired markets from being ingested or cached.
+-   **Bug Fix:** Resolved a  in the exit logic of  caused by deleting a position from  twice.
+-   **Audit Performed:** Conducted a read-only audit of the new system, verifying that the tiered kill switch was working and that the  strategy was successfully entering trades at extreme prices.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Apify Test Script Error**
     -   **Debug checklist**: The test script for the Apify scraper fix from a previous fork produced an error: . This needs to be investigated in the test script or the data extraction logic.
     -   **Why to solve this issue and what will be achieved with this?**: Ensures the Apify integration is fully robust and testable.
+    -   **Should Test frontend/backend/both after fix?**: Backend
     -   **Is recurring issue?**: N
 
 **Known issue recurrence from previous fork**
@@ -89,71 +88,68 @@ The agent completed a comprehensive refactor to resolve a naming collision and b
 
 
 **Key Technical Concepts**
--   ** Flag:** A critical configuration flag in  that toggles execution logic. When  (paper mode), the system uses consistent mid-pricing for entry and exit to allow all strategies to be tested realistically. When , it uses orderbook-based execution for live trading.
--   **Hybrid Sharp Detection:** The  first attempts to use real data from identified professional traders. If none exists, it falls back to a proxy based on real-time signals like order flow, volume spikes, and price momentum.
--   **Metric Decoupling:** The refactor separated two distinct concepts that were previously conflated:  (measuring liquidity and spread for execution viability) and  (measuring agreement with pro traders for directional confidence).
--   **Background Data Pipelines:** The  runs background tasks initiated by  to continuously fetch trade data from Polymarket and periodically identify sharp traders.
+-   **Tiered Kill Switch:** A sophisticated, configurable system to validate market entries, replacing a blunt price-based kill switch. It uses layered checks (order book depth, recent volume, spread, expiry) and allows strategy-specific overrides (e.g., allowing  to trade at prices <3%). This provides a balance between safety and capturing high-convexity opportunities.
+-   **Data Source Filtering:** A critical fix implemented to prevent bad data from entering the system. The logic now filters out expired markets directly at the data source level ( and ) before they can be cached or used in trading decisions.
 
 **key DB schema**
 -   : Caches data for all scanned markets.
 -   : Stores actionable  signals from LLM analysis.
 -   : Stores broadcast  data with a short TTL.
 -   : Stores encrypted API keys.
--   : (NEW) Stores historical trade data fetched from Polymarket for sharp detection.
--   : (NEW) Stores a list of identified sharp trader addresses and their stats.
--   : (NEW) Caches current positions of identified sharp traders.
+-   : Stores historical trade data fetched from Polymarket for sharp detection.
+-   : Stores a list of identified sharp trader addresses and their stats.
+-   : Caches current positions of identified sharp traders.
+-   : Stores the user's risk configuration from the UI.
 
 **All files of reference**
--   : **CRITICAL & HEAVILY MODIFIED**. Contains the  checks, integration of the new  and , and new debug logging.
--   : **CRITICAL & REWRITTEN**. Contains the full 3-phase sharp detection logic and background tasks.
--   : Modified to correctly call the .
--   : Modified to add a  endpoint.
--   : Contains the  flag.
--   : Updated with documentation on the sharp detector, market making roadmap, and logic refactors.
+-   : **CRITICAL & HEAVILY MODIFIED**. Contains the tiered validation logic, bypass for existing positions, and bug fixes.
+-   : **CRITICAL & HEAVILY MODIFIED**. Contains the new UI for configuring the Tiered Kill Switch.
+-   : **CRITICAL & MODIFIED**. Now the source-of-truth for risk settings, including the new  config.
+-   : **MODIFIED**. Added API endpoints to get and update the new tiered validation configuration.
+-   : **MODIFIED**. Added filtering to exclude expired markets at the data fetching layer.
+-   : **MODIFIED**. Added logic to filter expired markets from the WebSocket stream and cache.
+-   : Modified to be a loader for the new JSON config.
 
 **Critical Info for New Agent**
--   **Your immediate priority is to investigate the large P&L anomaly.** A single trade yielded +3k in the last test run. Use the new  logging in  to debug this. It is crucial to determine if this is a valid market resolution or a persistent pricing bug.
--   The paper trading system now operates in two modes controlled by . It is currently , ensuring all entries and exits use consistent mid-pricing. This allows all HFT strategies to be tested.
--   The  is fully implemented and its background tasks are running, but it requires time (5+ minutes for trade data, 6+ hours for identification) to gather enough data to be effective. The  strategy will likely show 0 trades until this data is collected.
--   The logic for  has been completely refactored. The system now correctly distinguishes between  (for execution decisions) and  (for confidence).
+-   The P&L anomaly has been fully resolved. The root cause was expired markets sending default 0.5 prices. The fix is a robust, configurable Tiered Kill Switch system.
+-   This new system allows specific strategies (like ) to trade at extreme prices by bypassing the global kill switch if they meet additional validation criteria (order book depth, volume, etc.). This is fully configurable from the UI.
+-   The last action was a read-only audit requested by the user to verify the new system works. The agent confirmed it does. Your first step should be to present these findings and wait for the user's direction.
 
 **documents and test reports created in this job**
--   /app/test_reports/iteration_46.json
--   /app/backend/tests/test_hft_v2_deep_audit.py
--   /app/test_reports/iteration_47.json
--   /app/memory/PRD.md (updated)
+-    (updated with details of the P&L anomaly fix and tiered kill switch)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asked to proceed with implementing a comprehensive fix for the  logic. (DONE)
-2.  **Agent:** Implemented the full refactor, including renaming the legacy metric to , integrating the real , and updating all downstream logic. (DONE)
-3.  **Agent:** Noted a large PnL anomaly in the post-fix test but attributed it to a market resolution. (PENDING INVESTIGATION)
-4.  **User:** Asked for clarification on the old vs. new arbitrage thresholds, a comprehensive check of the refactor, and an analysis of the large PnL. (DONE)
-5.  **Agent:** Provided a detailed analysis, confirming the threshold changes, identifying orphaned config variables, and hypothesizing that the large PnL was due to a market moving from an extreme low to an extreme high price. Suggested adding more logging. (DONE)
-6.  **User:** Approved implementing the suggested optimal changes after a comprehensive review. (DONE)
-7.  **Agent:** Implemented all approved changes, including renaming config variables, updating logging, and adding price source consistency checks. (DONE)
-8.  **User:** Asked why  was not capturing any indicators. (DONE)
-9.  **Agent:** Explained that the  was missing key methods and data pipelines. (DONE)
-10. **User:** Approved the implementation of all three phases of the  pipeline. (DONE)
+1.  **User:** Requested an optimal solution for the P&L anomaly that doesn't block legitimate opportunities, after rejecting the agent's initial 500% change restriction idea.
+2.  **Agent:** Apologized and proposed filtering expired markets at the source and removing the restrictive band-aid fix.
+3.  **User:** Inquired if the kill switch contradicts the gamma-convexity and moonbag strategies.
+4.  **Agent:** Explained the conceptual tension and proposed a Tiered Validation approach as the optimal solution.
+5.  **User:** Approved the tiered validation approach and asked for it to be made configurable in the UI, with per-strategy overrides.
+6.  **Agent:** Implemented the full end-to-end solution: backend logic, JSON config, API endpoints, and frontend UI.
+7.  **User:** Requested a read-only audit to check if the new kill switches work and to analyze P&L per sub-strategy.
+8.  **Agent:** Agreed and began the comprehensive audit.
+9.  **Agent:** Presented audit findings, showing the kill switch config, positions by strategy, and confirmed  was successfully trading at extreme prices.
+10. **Agent:** Confirmed via log analysis that the tiered kill switch was working as intended, allowing extreme entries while preventing false exits.
 
 **Project Health Check:**
--   **Working**: Core app, , , HFT Engine logic,  background tasks.
--   **Broken**: Nothing is definitively broken, but the P&L calculation is under suspicion due to a high-profit anomaly.
+-   **Working**: Core app, HFT Engine V2, , all data pipelines. The P&L anomaly is resolved, and the new tiered kill switch is functioning.
+-   **Broken**: Nothing is definitively broken.
 -   **Mocked/Paused**: CryptoPanic service.
 
 **3rd Party Integrations**
--   **Polymarket CLOB API**: (NEWLY USED) For fetching historical trade data for the .
+-   **Polymarket CLOB API & Gamma API**: Used for fetching market and trade data.
 -   **OpenAI/Gemini**: Used for sentiment analysis (). Uses Emergent LLM Key.
 -   **Exa.ai**: Used for PULL-based news. Key is stored in the database.
--   **Apify ()**: Used for scraping Twitter. Key is stored in thedatabase.
+-   **Apify ()**: Used for scraping Twitter. Key is stored in the database.
 -   **The Odds API**: Used by SPORTS lane. Requires User API Key.
 -   **CryptoPanic**: Integrated but PAUSED. Requires User API Key.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES, multiple times for previous features. The most recent refactors have not been tested by the agent yet.
--   **Test files created**: 
--   **Known regressions**: None confirmed, but the P&L anomaly is a potential regression.
+-   **Testing agent used after significant changes**: NO
+-   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Test files created**: None in this session.
+-   **Known regressions**: None. The P&L anomaly that was a potential regression has been fixed.
 
 **What agent forgot to execute**
 -   The user's long-pending request to save in github has still not been addressed by reminding them of the platform feature.
 -   The minor error in the Apify test script () was noted but not fixed.
--   The agent identified an orphaned config variable () but did not remove it in the final implementation, only renaming it in the config loading step. A full cleanup is pending.</analysis>
+-   The agent identified an orphaned config variable () but did not remove it. This is now an upcoming task.</analysis>
