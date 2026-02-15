@@ -96,6 +96,12 @@ NEWS EVENT ARRIVES
    - 5 sub-strategies with capital allocation
    - MongoDB PATH A + PATH B integration
    - Legacy HFT loop DEPRECATED
+   - **Strategy-Specific Direction Logic (Feb 15, 2026)**:
+     - DELTA_NEUTRAL & EXTREME_SPREAD: Fair value comparison with 2% edge threshold
+     - VOLATILITY_EXPLOIT: Mean reversion at price extremes (<=0.15 or >=0.85)
+     - LIQUIDITY_PROVISION: Order flow imbalance (20% imbalance ratio)
+     - SHARP_FOLLOWING: Whale/sharp trader direction
+     - PATH A override when Bayes Factor >= 5.0
 
 3. **Markets-First Architecture Phase 1**
    - PolymarketScanner (500+ markets cached)
