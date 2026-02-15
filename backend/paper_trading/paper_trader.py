@@ -5651,22 +5651,66 @@ class PaperTrader:
             # ============================================
             # MAKER-FIRST EXECUTION STRATEGY
             # ============================================
-            # PAPER MODE (LIVE_MODE=False): Use mid-price for consistent entry/exit
-            # LIVE MODE (LIVE_MODE=True): Use orderbook-based maker execution
+            # BOTH MODES: Use orderbook for realistic entry pricing
+            # - Buy YES = pay the ask
+            # - Buy NO = pay the bid (equivalent to selling YES)
+            # LIVE_MODE only controls two-sided market making logic
             # ============================================
             execution_result = None
             actual_entry_price = current_price
             
-            # PAPER MODE: Skip orderbook requirement, use mid-price for all strategies
-            # This allows testing direction logic for all 5 HFT sub-strategies
-            if not HFTConfig.LIVE_MODE:
-                # Use current_price (mid-price) directly
+            # Fetch orderbook for accurate entry pricing
+            token_ids = market_data.get('token_ids', market_data.get('clobTokenIds', []))
+            token_index = 0 if side == 'YES' else 1
+            
+            # Try to get orderbook for entry pricing
+            order_book = market_data.get('order_book', {})
+            bids = order_book.get('bids', [])
+            asks = order_book.get('asks', [])
+            
+            # Fetch fresh orderbook if needed
+            if (not bids or not asks) and token_ids and len(token_ids) > token_index:
+                try:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        token_id = token_ids[token_index]
+                        order_book_data = await api.get_order_book(token_id)
+                        if order_book_data.get('bids') and order_book_data.get('asks'):
+                            bids = order_book_data.get('bids', [])
+                            asks = order_book_data.get('asks', [])
+                            market_data['order_book'] = order_book_data
+                            market_data['order_book_token'] = side
+                            logger.debug(f"[ENTRY-OB] Fetched {side} orderbook for entry: {market_id[:16]}")
+                except Exception as e:
+                    logger.debug(f"[ENTRY-OB] Could not fetch orderbook: {e}")
+            
+            # Use orderbook pricing if available
+            if bids and asks:
+                best_bid = float(bids[0]['price'])
+                best_ask = float(asks[0]['price'])
+                spread = best_ask - best_bid
+                
+                # Sanity check spread
+                if spread >= 0 and spread <= 0.20:  # Valid spread up to 20%
+                    if side == 'YES':
+                        actual_entry_price = best_ask  # Pay the ask to buy YES
+                    else:  # NO
+                        actual_entry_price = best_bid  # Pay the bid to buy NO
+                    price_source = 'orderbook_entry'
+                    logger.debug(f"[ENTRY] Using orderbook: side={side}, bid={best_bid:.4f}, ask={best_ask:.4f}, entry={actual_entry_price:.4f}")
+                else:
+                    # Suspicious spread, fallback to mid-price
+                    actual_entry_price = current_price
+                    price_source = 'mid_price_fallback'
+                    logger.warning(f"[ENTRY] Suspicious spread {spread:.4f}, using mid-price {current_price:.4f}")
+            else:
+                # No orderbook, use mid-price as fallback
                 actual_entry_price = current_price
-                # Store price source for exit verification
-                price_source = 'mid_price_paper_mode'
-                logger.debug(f"[PAPER-MODE] Entry using mid-price ${current_price:.4f} for {strategy} (source: {price_source})")
-                # Skip maker execution block - go straight to position creation
-            elif self.use_maker_execution:
+                price_source = 'mid_price_no_orderbook'
+                logger.debug(f"[ENTRY] No orderbook available, using mid-price ${current_price:.4f}")
+            
+            # LIVE_MODE: Additional two-sided market making logic
+            if HFTConfig.LIVE_MODE and self.use_maker_execution:
                 # ==========================================================================
                 # FETCH CORRECT ORDERBOOK FOR TRADING SIDE
                 # ==========================================================================
