@@ -1362,7 +1362,7 @@ async def get_config():
                         "kill_switch_low": 0.005,
                         "kill_switch_high": 0.995
                     },
-                    "hft_gamma_scalp": {
+                    "gamma_scalp": {
                         "enabled": True,
                         "kill_switch_low": 0.01,
                         "kill_switch_high": 0.99
@@ -1384,7 +1384,7 @@ async def get_config():
                         "kill_switch_low": 0.005,
                         "kill_switch_high": 0.995
                     },
-                    "hft_gamma_scalp": {
+                    "gamma_scalp": {
                         "enabled": True,
                         "kill_switch_low": 0.01,
                         "kill_switch_high": 0.99
