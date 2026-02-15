@@ -7749,9 +7749,13 @@ class PaperTrader:
         except Exception as e:
             logger.error(f"Error in session learning: {e}")
     
-    async def _get_active_markets(self) -> List[Dict]:
+    async def _get_active_markets(self, position_market_ids: set = None) -> List[Dict]:
         """
         Get active markets with DUAL-ZONE quality filters.
+        
+        Args:
+            position_market_ids: Set of market IDs that have open positions.
+                               These bypass kill switch filtering (needed for exits).
         
         DATA SOURCE PRIORITY:
         1. WebSocket (PRIMARY) - Sub-millisecond latency, real-time prices
