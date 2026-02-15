@@ -6136,14 +6136,10 @@ async def startup_event():
         # ================================================================
         # MARKETS-FIRST Exa.ai Polling Loop
         # ================================================================
-        def extract_key_terms(question: str) -> str:
+        def extract_key_terms(text: str) -> str:
             """
-            Extract key terms from market question for targeted news search.
-            
-            Examples:
-            - "Will Bitcoin hit $100k by March 2026?" -> "Bitcoin 100k price"
-            - "Will Trump win the 2024 election?" -> "Trump election 2024"
-            - "Will the Fed cut rates in January?" -> "Federal Reserve rate cut January"
+            Extract key terms from text for targeted news search.
+            Filters out common stop words and keeps meaningful terms.
             """
             import re
             
@@ -6154,11 +6150,14 @@ async def startup_event():
                 'by', 'on', 'in', 'at', 'to', 'for', 'of', 'with', 'before', 'after',
                 'this', 'that', 'these', 'those', 'it', 'its', 'or', 'and', 'but',
                 'win', 'reach', 'hit', 'get', 'make', 'take', 'go', 'come',
-                'yes', 'no', 'more', 'less', 'than', 'over', 'under'
+                'yes', 'no', 'more', 'less', 'than', 'over', 'under', 'market',
+                'resolve', 'resolves', 'resolved', 'polymarket', 'prediction',
+                'whether', 'according', 'based', 'if', 'when', 'what', 'who', 'how',
+                'any', 'all', 'some', 'each', 'every', 'other', 'another'
             }
             
-            # Clean the question
-            text = question.lower()
+            # Clean the text
+            text = text.lower()
             text = re.sub(r'[^\w\s$%]', ' ', text)  # Keep $ and % for prices
             
             # Extract meaningful words
@@ -6173,10 +6172,79 @@ async def startup_event():
                 elif word not in stop_words and len(word) > 2:
                     key_terms.append(word)
             
-            # Limit to 5 most important terms
-            key_terms = key_terms[:5]
+            return ' '.join(key_terms[:6]) if key_terms else ''
+        
+        def generate_optimal_query(market: dict) -> str:
+            """
+            Generate optimized news query from market data.
             
-            return ' '.join(key_terms) if key_terms else question[:50]
+            Uses a priority system:
+            1. Description (often contains richer context, resolution criteria, key dates)
+            2. Question + category-aware suffix
+            
+            Returns a targeted query string for Exa.ai search.
+            """
+            from datetime import datetime, timezone
+            from dateutil.parser import parse
+            
+            question = market.get('question', '')
+            description = market.get('description', '')
+            category = (market.get('category', '') or '').lower()
+            end_date_str = market.get('end_date')
+            
+            # === PRIORITY 1: Use description if rich enough ===
+            # Description often contains: resolution criteria, key dates, specific entities
+            if description and len(description) > 50:
+                # Combine question + first 200 chars of description for richer context
+                combined_text = f"{question} {description[:200]}"
+                query_base = extract_key_terms(combined_text)
+            else:
+                # === PRIORITY 2: Extract from question only ===
+                query_base = extract_key_terms(question)
+            
+            # Fallback if extraction failed
+            if not query_base:
+                query_base = question[:50]
+            
+            # === CATEGORY-AWARE SUFFIX ===
+            # Different categories need different search context
+            category_suffix = {
+                'crypto': 'price news update',
+                'politics': 'election news latest',
+                'sports': 'game result score',
+                'finance': 'announcement update',
+                'entertainment': 'news update',
+                'science': 'research news'
+            }.get(category, 'news')
+            
+            # === TIME-AWARE MODIFIER ===
+            # Markets close to resolution need "breaking" news
+            time_modifier = ''
+            if end_date_str:
+                try:
+                    end_date = parse(end_date_str)
+                    if end_date.tzinfo is None:
+                        end_date = end_date.replace(tzinfo=timezone.utc)
+                    days_until = (end_date - datetime.now(timezone.utc)).days
+                    
+                    if days_until < 7:
+                        time_modifier = 'breaking latest'
+                    elif days_until < 30:
+                        time_modifier = 'latest'
+                except Exception:
+                    pass
+            
+            # === BUILD FINAL QUERY ===
+            # Limit total query length to avoid noise
+            query_parts = [query_base]
+            if time_modifier:
+                query_parts.append(time_modifier)
+            query_parts.append(category_suffix)
+            
+            final_query = ' '.join(query_parts)
+            
+            # Cap at reasonable length for search API
+            return final_query[:100]
         
         async def exa_markets_first_loop():
             """MARKETS-FIRST: Poll Exa.ai with queries derived from active markets"""
