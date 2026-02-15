@@ -329,8 +329,18 @@ class NewsPoller:
         }
     
     def is_enabled(self) -> bool:
-        """Check if news polling is enabled"""
-        return bool(self.api_key)
+        """Check if news polling is enabled - re-checks environment for key"""
+        # Re-check environment in case key was loaded from MongoDB
+        current_key = os.environ.get('EXA_API_KEY')
+        if current_key and not self._is_placeholder_key(current_key):
+            return True
+        return bool(self.api_key) and not self._is_placeholder_key(self.api_key or '')
+    
+    def _is_placeholder_key(self, key: str) -> bool:
+        """Check if a key is a placeholder value"""
+        placeholders = ['your_', 'xxx', 'placeholder', 'change_me', 'hft-evolution']
+        key_lower = key.lower()
+        return any(p in key_lower for p in placeholders) or len(key) < 10
 
 
 # Singleton instance
