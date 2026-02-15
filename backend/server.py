@@ -5801,7 +5801,7 @@ async def get_sharp_detector_status():
         - Background task status
     """
     try:
-        from paper_trading.paper_trader import paper_trader
+        global paper_trader
         
         if not paper_trader or not paper_trader.sharp_detector:
             return {
