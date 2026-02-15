@@ -6130,11 +6130,9 @@ class PaperTrader:
             await broadcast_paper_event("paper_trade", {"trade": trade_log.copy()})
             await broadcast_paper_event("paper_status_update", {"status": self.get_status()})
             
-            # Remove from open positions
-            del self.paper_positions[market_id]
-            
-            # PERSIST: Delete position from database
-            await self._delete_position_from_db(market_id)
+            # NOTE: Position already removed at line ~5957 inside capital lock
+            # and database deletion already done at line ~5978
+            # No need to delete again here - was causing KeyError
             
             emoji = "✅" if is_win else "❌"
             logger.info(f"{emoji} PAPER EXIT: {side} ${size:.2f} | PnL: ${pnl:.2f} ({pnl_pct:.1%}) | Reason: {exit_reason} | RL Reward: {reward:.4f}")
