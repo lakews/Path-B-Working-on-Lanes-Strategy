@@ -13,7 +13,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://markets-first-arch.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://markets-first.preview.emergentagent.com')
 
 
 class TestRLDetailedStats:

@@ -14,7 +14,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://markets-first-arch.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://markets-first.preview.emergentagent.com').rstrip('/')
 AUTH_CREDENTIALS = ('admin', 'apex2026!')
 
 

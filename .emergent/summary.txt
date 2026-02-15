@@ -26,53 +26,66 @@ The user provided detailed specifications for this new architecture, including:
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack 5-lane trading bot with a Markets-First architecture on MongoDB. A major P&L anomaly caused by expired markets sending default prices (0.5) has been investigated and resolved. The fix involved implementing a sophisticated, configurable Tiered Kill Switch system that allows strategies like  to trade at extreme prices while protecting against bad data. This new system includes layered validation (order book depth, recent volume, spread) for extreme-price entries and is fully configurable from a new section in the UI. Expired markets are now filtered at the data source level to prevent them from entering the trading logic.
+A full-stack 5-lane trading bot featuring a Markets-First architecture on MongoDB. In this session, several critical bugs and logic flaws have been addressed. The paper trading engine now uses real orderbook data for more realistic P&L calculations. The HFT strategies (, ) have been refined to prevent overly aggressive trading on low-volatility, extreme-priced markets. A persistent, recurring issue with API keys (Exa.ai, Apify) being lost across forks has been resolved by implementing an encrypted MongoDB key store that loads keys into the environment on startup. The Markets-First news polling architecture, which was previously broken by hardcoded queries, has been restored to generate market-specific queries from high-volume markets, ensuring relevant news is fed into the LLM analysis pipeline.
 
 **Last working item**:
-The agent was asked to conduct a read-only audit of the new tiered kill switch, all trading strategies, and P&L per sub-strategy.
+The agent was investigating why the Markets-First news pipeline was generating zero signals. The root cause was identified as the system polling for generic news, which the LLM correctly identified as irrelevant to the markets being analyzed.
 
--   **Last item agent was working**: The agent performed the requested audit, confirming that the new tiered kill switch was configured correctly and that the  strategy was successfully entering positions at extreme prices (<3% and >97%) as intended. The agent analyzed open/closed positions and presented the findings.
--   **Status**: IN PROGRESS (The analysis was performed, but the next agent should be prepared for follow-up questions from the user before moving to the next task).
+-   **Last item agent was working**: Fixing the news polling logic. The agent removed the hardcoded generic queries and implemented a proper Markets-First approach, where news queries are generated dynamically from the key terms of high-volume markets cached by the . This ensures news is relevant by design.
+-   **Status**: IN PROGRESS (The core fix is implemented and verified via logs. However, the user then asked for further optimizations to the query generation logic, which have been suggested but not yet implemented.)
 -   **Agent Testing Done**: Y
--   **Which testing method agent to use?**: N/A (Last task was a read-only audit). For the next development task, use the appropriate method based on its complexity.
+-   **Which testing method agent to use?**: Manual testing by checking logs and MongoDB. The agent should verify that optimized queries lead to the creation of signals in the  collection.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Recurring Capital Discrepancy (Priority: P1 - Monitoring)**
+-   **Issue 1: Apify Integration Blocked (Priority: P0)**
+    -   **Description**: The Apify service is returning a  error. Although the user stated credits were added, the API check confirmed the block. This prevents the Twitter news source from functioning.
+    -   **Attempted fixes**: The agent confirmed the API key is correct and being loaded properly.
+    -   **Next debug checklist**: Re-run the Apify account status check script to confirm if the billing issue is resolved.
+    -   **Why fix this issue and what will be achieved with the fix?**: Unblocks a critical, high-speed news source (Twitter) for the .
+    -   **Status**: BLOCKED
+    -   **Is recurring issue?**: Y (Billing limits have occurred before).
+    -   **Should Test frontend/backend/both after fix?**: Backend
+-   **Issue 2: Recurring Capital Discrepancy (Priority: P1 - Monitoring)**
     -   **Description**: A persistent capital discrepancy bug was fixed in a previous fork with an . However, with ongoing major refactors, this remains a critical area to monitor for new race conditions.
     -   **Status**: USER VERIFICATION PENDING
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Backend
+-   **Issue 3: Apify Test Script Error (Priority: P2)**
+    -   **Description**: From the initial handoff, a test script for the Apify scraper produces an error: .
+    -   **Status**: NOT STARTED
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Backend
 
 **In progress Task List**:
--   **Task 1: Audit of new tiered kill switch and P&L analysis (Priority: P0)**
-    -   **Where to resume**: The initial audit results have been generated. The next agent should present these findings to the user and await feedback or approval to proceed with the next development task from the backlog.
-    -   **What will be achieved with this?**: Confirm for the user that the new, complex kill switch logic is working as designed and all strategies are operating correctly.
+-   **Task 1: Optimize Markets-First News Query Generation (Priority: P0)**
+    -   **Where to resume**: The agent proposed an optimal query generation strategy using market , , and  in addition to the title. This logic needs to be implemented in the  within .
+    -   **What will be achieved with this?**: Drastically improve the relevance of news polled from Exa.ai, which should lead to the successful generation of high-quality PATH A signals for the NEWS Sniper strategy.
     -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: N/A
-    -   **Blocked on something**: User feedback.
+    -   **Should Test frontend/backend/both after fix?**: Backend (verify logs for improved queries and check  collection).
+    -   **Blocked on something**: User approval to proceed with the suggested implementation.
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
+-   **Verify BF-based Kelly sizing (P1):** As per the user's document, audit the Kelly criterion sizing logic in  to ensure it's functioning correctly.
 -   **Clean up orphaned config variables (P2):** The refactor left  defined in  (line ~415) but it is no longer used. It should be removed.
 -   **Deprecate Old News Pipeline (P1):** Once the HFT engine is stable, remove the old news pipeline (, ).
 -   **Integrate Alpha/Gamma Lanes with Markets-First (P1):** Update the Alpha and Gamma loops to consume signals from the new MongoDB  collection.
 
 **Future Tasks:**
--   **Implement True Market Making Architecture (P2):** Implement the logic for true two-sided quoting when  is , including simultaneous bid/ask management and inventory tracking. This was logged in .
+-   **Implement True Market Making Architecture (P2):** Implement the logic for true two-sided quoting when  is , including simultaneous bid/ask management and inventory tracking.
 -   **SSOT Refactoring (P2):** Move  from  to .
 -   **Reactivate CryptoPanic (P2):** Currently disabled by user.
 -   **Save Documentation to GitHub (P2):** Remind the user about the platform's Save to Github feature.
 
 **Completed work in this session**
--   **P&L Anomaly Root Cause Fixed:** Investigated and resolved a critical bug causing unrealistic P&L swings. The root cause was identified as expired/inactive markets broadcasting default  prices via WebSocket.
--   **Implemented Tiered Kill Switch System:** Replaced the blunt price-based kill switch with a sophisticated, configurable system.
-    -   **Backend:** Added tiered validation logic in  that checks order book depth, recent volume, spread, and expiry for extreme-priced entries.
-    -   **Configuration:** Created a new  section in  with global defaults and per-strategy overrides.
-    -   **Frontend:** Built a new UI section in  to allow users to configure the tiered kill switch, its parameters, and strategy-specific overrides.
--   **Data Source Filtering:** Implemented robust filtering in  and  to prevent expired markets from being ingested or cached.
--   **Bug Fix:** Resolved a  in the exit logic of  caused by deleting a position from  twice.
--   **Audit Performed:** Conducted a read-only audit of the new system, verifying that the tiered kill switch was working and that the  strategy was successfully entering trades at extreme prices.
+-   **Gamma Scalp Config Fix:** Resolved a key mismatch ( vs ) between the frontend, backend, and config files that caused a UI error.
+-   **P&L Anomaly Investigation & Fix:** Identified and resolved the cause of extreme P&L figures. The issue was a  value in an in-memory position causing a calculation error. The stale in-memory state of the paper trader was reset.
+-   **HFT Strategy Tuning:** Fixed  and  strategies, which were too aggressive. The logic was updated to require both an extreme price AND a wide spread (≥7%) from the real orderbook to enter a trade, and to skip markets with tight spreads, preventing trades on dead/resolved markets.
+-   **Paper Trading Realism Overhaul:** Corrected a fundamental flaw where paper trading used . The logic was refactored to use real orderbook prices (/) for all entry and exit calculations, providing a more accurate simulation of trading costs.
+-   **Critical Exit Logic Fix:** Fixed a bug where exiting a  position incorrectly used the  token's orderbook. The logic now correctly fetches the orderbook for the specific token being sold ( or ).
+-   **API Key Persistence Architecture:** Solved a critical, recurring issue of API keys being lost. A robust system was implemented to save keys to an encrypted MongoDB collection () and load them into the environment on application startup.
+-   **Markets-First News Pipeline Restoration:** Fixed the news polling architecture, which was broken by hardcoded queries. The system now correctly generates market-specific queries from high-volume cached markets, feeding relevant news to the LLM analysis pipeline.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Apify Test Script Error**
@@ -88,68 +101,68 @@ The agent was asked to conduct a read-only audit of the new tiered kill switch, 
 
 
 **Key Technical Concepts**
--   **Tiered Kill Switch:** A sophisticated, configurable system to validate market entries, replacing a blunt price-based kill switch. It uses layered checks (order book depth, recent volume, spread, expiry) and allows strategy-specific overrides (e.g., allowing  to trade at prices <3%). This provides a balance between safety and capturing high-convexity opportunities.
--   **Data Source Filtering:** A critical fix implemented to prevent bad data from entering the system. The logic now filters out expired markets directly at the data source level ( and ) before they can be cached or used in trading decisions.
+-   **Markets-First News Generation:** The architecture was fixed to generate targeted news queries directly from active/high-volume market data (e.g., creating the query Fed interest rates decision news from the market Will the Fed raise rates?). This is a shift from polling generic news to finding news specific to active markets.
+-   **Orderbook-Based Paper Trading:** A significant realism enhancement. Paper trading no longer uses a theoretical . It now simulates real trading costs by using live  for buys and  for sells, accounting for the bid-ask spread.
+-   **Encrypted Key Persistence:** A critical fix to prevent API keys (Exa, Apify) from being lost. Keys are now saved in an encrypted format to a dedicated  MongoDB collection and loaded into the process environment on application startup.
+-   **Lazy Initialization:** The  service was refactored to initialize its API client just-in-time. This ensures it picks up the correct API key from the environment variables, which are populated from the database *after* the initial application startup sequence begins.
 
 **key DB schema**
 -   : Caches data for all scanned markets.
 -   : Stores actionable  signals from LLM analysis.
--   : Stores broadcast  data with a short TTL.
--   : Stores encrypted API keys.
--   : Stores historical trade data fetched from Polymarket for sharp detection.
--   : Stores a list of identified sharp trader addresses and their stats.
--   : Caches current positions of identified sharp traders.
--   : Stores the user's risk configuration from the UI.
+-   : Stores broadcast  data with a short TTL (currently 10 seconds).
+-   : (Newly Utilized) Stores encrypted API keys for services like Exa.ai and Apify.
+-   : Stores active paper trading positions.
 
 **All files of reference**
--   : **CRITICAL & HEAVILY MODIFIED**. Contains the tiered validation logic, bypass for existing positions, and bug fixes.
--   : **CRITICAL & HEAVILY MODIFIED**. Contains the new UI for configuring the Tiered Kill Switch.
--   : **CRITICAL & MODIFIED**. Now the source-of-truth for risk settings, including the new  config.
--   : **MODIFIED**. Added API endpoints to get and update the new tiered validation configuration.
--   : **MODIFIED**. Added filtering to exclude expired markets at the data fetching layer.
--   : **MODIFIED**. Added logic to filter expired markets from the WebSocket stream and cache.
--   : Modified to be a loader for the new JSON config.
+-   : CRITICAL & HEAVILY MODIFIED. Implemented the API key loading logic and the corrected Markets-First news polling loop.
+-   : CRITICAL & HEAVILY MODIFIED. Contains the logic to use real orderbook prices for entry/exit and the fix for -side position exits.
+-   : CRITICAL & MODIFIED. Contains the updated HFT mode selection logic to prevent over-trading.
+-   : CRITICAL. Contains the core logic for saving and loading encrypted API keys from MongoDB.
+-   : MODIFIED. Refactored to lazily initialize its API client, ensuring it uses the correct, database-loaded API key.
+-   : MODIFIED. Corrected a key mismatch for the  strategy configuration.
 
 **Critical Info for New Agent**
--   The P&L anomaly has been fully resolved. The root cause was expired markets sending default 0.5 prices. The fix is a robust, configurable Tiered Kill Switch system.
--   This new system allows specific strategies (like ) to trade at extreme prices by bypassing the global kill switch if they meet additional validation criteria (order book depth, volume, etc.). This is fully configurable from the UI.
--   The last action was a read-only audit requested by the user to verify the new system works. The agent confirmed it does. Your first step should be to present these findings and wait for the user's direction.
+-   The previous agent performed several critical, intertwined bug fixes. The root causes of incorrect P&L, overly aggressive trading, and unrealistic paper trades have been addressed. Review the Completed work section carefully.
+-   A robust solution for API key persistence is now in place. Keys are stored in MongoDB and loaded on startup. Do not use  files as the primary source for keys anymore.
+-   The Markets-First news architecture was broken and has been fixed. The system now generates specific queries from high-volume markets. The immediate next task is to further optimize this query generation logic as per the user's request.
+-   The user has stated that credits for Exa.ai and Apify have been topped up. However, the last check showed Apify was still blocked by a usage limit. This needs to be re-verified before assuming the Apify news source is working.
+-   Do not get confused by the  collection being empty. It has a 10-second TTL index by design. Documents are being written but expire quickly.
 
 **documents and test reports created in this job**
--    (updated with details of the P&L anomaly fix and tiered kill switch)
+-    (updated with details of the recent fixes)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Requested an optimal solution for the P&L anomaly that doesn't block legitimate opportunities, after rejecting the agent's initial 500% change restriction idea.
-2.  **Agent:** Apologized and proposed filtering expired markets at the source and removing the restrictive band-aid fix.
-3.  **User:** Inquired if the kill switch contradicts the gamma-convexity and moonbag strategies.
-4.  **Agent:** Explained the conceptual tension and proposed a Tiered Validation approach as the optimal solution.
-5.  **User:** Approved the tiered validation approach and asked for it to be made configurable in the UI, with per-strategy overrides.
-6.  **Agent:** Implemented the full end-to-end solution: backend logic, JSON config, API endpoints, and frontend UI.
-7.  **User:** Requested a read-only audit to check if the new kill switches work and to analyze P&L per sub-strategy.
-8.  **Agent:** Agreed and began the comprehensive audit.
-9.  **Agent:** Presented audit findings, showing the kill switch config, positions by strategy, and confirmed  was successfully trading at extreme prices.
-10. **Agent:** Confirmed via log analysis that the tiered kill switch was working as intended, allowing extreme entries while preventing false exits.
+1.  **User:** Approved implementing fixes for both the mid-price usage and the HFT volatility over-triggering.
+2.  **User:** Verified the logic for using top-of-book prices and requested a comprehensive audit of the changes.
+3.  **User:** Asked for the optimal fix for an incorrect exit logic for 'NO' side positions.
+4.  **User:** Approved fixing the 'NO' side exit logic.
+5.  **User:** Reported that the bot is still picking up too many 'vol' trades and incurring large P&L (with screenshot).
+6.  **User:** Approved implementing a fix to skip extreme-priced markets with tight spreads.
+7.  **User:** Asked why there are no NEWS sniper trades.
+8.  **User:** Stated that Exa.ai API key was put in the encrypted store to prevent it from getting lost, and asked for an optimal fix for key persistence.
+9.  **User:** Confirmed that Exa.ai has been paid and should work now.
+10. **User:** Asked to further investigate why PATH A is generating 0 signals and what exactly is being fed to the LLM.
 
 **Project Health Check:**
--   **Working**: Core app, HFT Engine V2, , all data pipelines. The P&L anomaly is resolved, and the new tiered kill switch is functioning.
--   **Broken**: Nothing is definitively broken.
+-   **Working**: Core app, HFT Engine V2, , all data pipelines, Tiered Kill Switch, API Key Persistence, Markets-First query generation, Exa.ai integration.
+-   **Broken**: Apify Twitter integration is likely blocked due to a billing/usage limit. This needs to be re-verified.
 -   **Mocked/Paused**: CryptoPanic service.
 
 **3rd Party Integrations**
 -   **Polymarket CLOB API & Gamma API**: Used for fetching market and trade data.
 -   **OpenAI/Gemini**: Used for sentiment analysis (). Uses Emergent LLM Key.
--   **Exa.ai**: Used for PULL-based news. Key is stored in the database.
--   **Apify ()**: Used for scraping Twitter. Key is stored in the database.
--   **The Odds API**: Used by SPORTS lane. Requires User API Key.
--   **CryptoPanic**: Integrated but PAUSED. Requires User API Key.
+-   **Exa.ai**: (✅ Working) Used for PULL-based news. Key is stored in the database and loaded on startup.
+-   **Apify ()**: (❌ Blocked) Used for scraping Twitter. Key is in the database but the service is blocked due to usage limits.
+-   **The Odds API**: Requires User API Key.
+-   **CryptoPanic**: (⏸️ Paused) Integrated but PAUSED. Requires User API Key.
 
 **Testing status**
 -   **Testing agent used after significant changes**: NO
 -   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**: None in this session.
--   **Known regressions**: None. The P&L anomaly that was a potential regression has been fixed.
+-   **Test files created**: Agent created several temporary  scripts to unit-test fixes for HFT mode selection and exit logic. No permanent test files were created.
+-   **Known regressions**: None.
 
 **What agent forgot to execute**
 -   The user's long-pending request to save in github has still not been addressed by reminding them of the platform feature.
 -   The minor error in the Apify test script () was noted but not fixed.
--   The agent identified an orphaned config variable () but did not remove it. This is now an upcoming task.</analysis>
+-   The agent identified an orphaned config variable () but did not remove it. This is in the upcoming tasks.</analysis>
