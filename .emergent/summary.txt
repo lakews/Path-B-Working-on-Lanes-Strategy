@@ -5,6 +5,7 @@ The user provided detailed specifications for this new architecture, including:
 1.  **Phase 1: Foundation:** Build the  and  services and the required MongoDB collections.
 2.  **HFT Engine V2:** Implement a new, sophisticated 5-strategy HFT engine that integrates with the new Markets-First signals. Then, merge all critical features from the legacy HFT loop into it and deprecate the old one.
 3.  **Phase 2: NEWS Lane Integration:** Implement a new, advanced  class (as per a provided document) that uses a  and tiered Kelly sizing, and reads signals from the new MongoDB pipeline.
+4.  **HFT V2 Refactor:** After auditing the HFT engine, the user requested a significant refactor to make the sub-strategies smarter and more independent in their trading decisions, with a clear path to switch to true market-making in a live environment.
 
 **PRODUCT REQUIREMENTS:**
 1.  **Enhance Performance UI:** **(COMPLETED)**
@@ -13,158 +14,126 @@ The user provided detailed specifications for this new architecture, including:
     *   **Phase 1: Foundation (Scanner & Injector):** **(COMPLETED)**
     *   **Implement HFT Engine V2 (with legacy merge):** **(COMPLETED)**
     *   **Phase 2: Integrate NEWS lane (new ):** **(COMPLETED)**
+    *   **Implement API Key Persistence:** **(COMPLETED)**
+    *   **Refactor HFT V2 for Strategy-Specific Logic:** **(IN PROGRESS)**
     *   **Phase 3 (Future):** Integrate the new signal pipeline with other lanes (Alpha, etc.) and remove the old signal processing infrastructure.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack 5-lane trading bot. The application has undergone a significant architectural refactor. It now operates on a MongoDB-only stack (Redis has been removed).
-
-The core components of the Markets-First system are in place:
-1.  : A background service that continuously caches all ~500 Polymarkets into MongoDB.
-2.  : A service that processes incoming news, using semantic search and LLM analysis to generate intelligent  signals and broad  opportunity broadcasts, both stored in MongoDB.
-3.  : A new, sophisticated HFT engine that has been implemented. It successfully merges critical compliance and logic features (Alpha target integration, HFT Math Engine, hysteresis, tick grid) from the legacy HFT loop, which has now been disabled. This engine is fully integrated with the new Markets-First signals from MongoDB.
-4.  : A new, advanced NEWS lane implementation as per the user's specification. It features a  (using source credibility, whale alignment, etc.) and tiered Kelly sizing. It is fully integrated and running in its own loop.
+A full-stack 5-lane trading bot operating on a MongoDB-only stack. All core Markets-First components are implemented and functional: , , the enhanced , and the advanced . An encrypted, persistent API key store has been implemented using MongoDB to prevent keys from being lost between sessions. The HFT engine is currently in a partially refactored state, with the goal of implementing strategy-specific directional logic.
 
 **Last working item**:
-The agent just completed the implementation of Phase 2: integrating the new, advanced NEWS lane () as specified in the user's document. This involved creating the  file, implementing the  class, integrating the new lane into  (with its own loop, status endpoints, and metrics), and successfully running a comprehensive suite of tests.
+The agent was in the middle of a major, user-approved refactor of the HFT V2 engine. The goal is to evolve it from a simple directional scalper (that defaults to 'YES' direction) into a more intelligent system where each of the 5 sub-strategies determines its own trade direction based on its unique philosophy (e.g., fair value, mean reversion, order flow). This also prepares the architecture for a future  where market-making strategies can perform true two-sided quoting.
 
--   **Last item agent was working**: Implementing and testing the new  (MongoDB version) for the NEWS lane.
--   **Status**: USER VERIFICATION PENDING
--   **Agent Testing Done**: Y
--   **Which testing method agent to use?**: Manual testing by user. The agent has already performed comprehensive automated testing.
+-   **Last item agent was working**: Implementing the HFT V2 refactor. The agent successfully added the new configuration to  and added the new direction-finding helper methods to .
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?**: backend testing agent (This is a significant backend logic change affecting the core trading engine).
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
 -   **Issue 1: Recurring Capital Discrepancy (Priority: P1 - Monitoring)**
-    -   **Description**: A persistent capital discrepancy bug was fixed in a previous session with . While multiple new components have been added, each was tested for integrity. However, this remains a critical area to monitor during live paper trading.
-    -   **Attempted fixes**: Extensive locking and atomic operations were implemented in . The new HFT and NEWS engines were designed to be compatible with this locking.
-    -   **Next debug checklist**: Monitor capital allocation and PnL during the first long-run paper trading session with the new HFT V2 and NewsSniper engines active.
-    -   **Why fix this issue?**: Core application integrity depends on flawless accounting.
+    -   **Description**: A persistent capital discrepancy bug was fixed in a previous session with . However, with the ongoing major refactor of the HFT engine, this remains a critical area to monitor for new race conditions.
     -   **Status**: USER VERIFICATION PENDING
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Backend
 
 **In progress Task List**:
-There are no tasks currently in progress. Phase 2 implementation is complete and awaits user review.
+-   **Task 1: Complete HFT V2 Logic Refactor (Priority: P0)**
+    -   **Where to resume**: The agent has added the new config and direction helper methods. The next steps are inside :
+        1.  Refactor  to accept  as an explicit parameter and remove the old default logic.
+        2.  Rewrite the main  loop to orchestrate the new flow: Check PATH B -> Check PATH A -> HFT Math -> **Call new strategy-specific direction logic** -> Build Params -> Execute.
+    -   **What will be achieved with this?**: The HFT engine will no longer default to 'YES' trades and will make more intelligent, strategy-specific decisions, providing more realistic paper trading data.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Backend
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
--   **Deprecate Old News Pipeline (P0):**
-    -   Now that  and the new  are active, the old news pipeline (, , and the associated logic in ) is redundant and creates a risk of conflict. This should be carefully removed.
--   **Integrate Alpha/Gamma Lanes with Markets-First (P1):**
-    -   Update the Alpha and Gamma loops to consume signals from the new MongoDB  collection, similar to how the NEWS and HFT lanes were updated. This will complete the Markets-First migration.
+-   **Deprecate Old News Pipeline (P0):** Once the HFT refactor is stable, remove the old news pipeline (, , and associated logic in ) to prevent conflicts.
+-   **Integrate Alpha/Gamma Lanes with Markets-First (P1):** Update the Alpha and Gamma loops to consume signals from the new MongoDB  collection.
 
 **Future Tasks:**
 -   **SSOT Refactoring (P2):** Move  from  to .
--   **Reactivate CryptoPanic (P2):** Set  in  when a premium key is available.
+-   **Reactivate CryptoPanic (P2):** Intentionally disabled by the user for now.
 -   **Save Documentation to GitHub (P2):** Remind the user about the platform's Save to Github feature.
 
 **Completed work in this session**
--   **Markets-First Phase 1 (Foundation):** Implemented and tested  and , establishing the MongoDB-only data pipeline.
--   **HFT Engine V2 Implementation:** Created the new HFT engine from the user's specification, integrated with MongoDB signals.
--   **HFT Engine V2 ENHANCEMENT (Legacy Merge):** Comprehensively merged critical features (Alpha target integration, HFT Math Engine, Polymarket compliance, hysteresis) from the old HFT loop into HFT V2, and then disabled the legacy loop to prevent conflicts.
--   **NEWS Lane Phase 2 (MongoDB Integration):** Implemented the advanced  class from the user's document, including the  and tiered Kelly sizing. Integrated it into the main application as a new, independent loop.
--   **Comprehensive Testing:** Created and passed extensive test suites for each major component ( to ).
+-   **NEWS Sniper Debug & Fix:** Fixed critical initialization and logic bugs ( check, incorrect edge calculation) that prevented the NEWS Sniper from executing trades. It is now fully operational.
+-   **HFT Engine V2 Debug & Fix:** Fixed multiple show-stopping bugs that prevented the HFT engine from running, including a missing  method and an incorrect execution method call.
+-   **API Key Persistence Service:** Implemented a new, secure service () to encrypt and store API keys in MongoDB, ensuring they persist across environment forks.
+-   **News Pipeline Verification:** Diagnosed and fixed issues with the news pipeline (invalid Exa.ai key) and performed comprehensive testing on the webhook and Apify scraper.
+-   **Deep HFT Architectural Audit:** Performed a multi-step audit of the HFT V2 engine, identifying that it was operating as a simple directional scalper, not a true market maker, and that PATH B data was being ignored.
+-   **Formulated HFT V2 Refactor Plan:** Collaborated with the user to create a detailed, approved plan to refactor HFT V2 for strategy-specific direction logic and a live/paper mode switch.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Save documentation to GitHub**
-    -   **Debug checklist**: This is a user-facing task. The agent needs to inform the user that they can use the platform's built-in Save to Github feature in the next  call.
-    -   **Why to solve this issue and what will be achieved with this?**: Fulfills a direct user request pending for multiple sessions.
-    -   **Should Test frontend/backend/both after fix**: N/A
+    -   **Debug checklist**: This is a user-facing reminder. Inform the user they can use the platform's built-in Save to Github feature in the next  call.
+    -   **Why to solve this issue and what will be achieved with this?**: Fulfills a long-pending user request.
     -   **Is recurring issue?**: Y
-
-**Known issue recurrence from previous fork**
--   None.
+-   **Issue 2: Apify Test Script Error**
+    -   **Debug checklist**: The test script for the Apify scraper fix produced an error: . This needs to be investigated in the test script or the data extraction logic.
+    -   **Why to solve this issue and what will be achieved with this?**: Ensures the Apify integration is fully robust and testable.
+    -   **Is recurring issue?**: N
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
+-   **API Key Persistence:** Encrypting API keys (PBKDF2 + Fernet) and storing them in a dedicated MongoDB collection () to survive environment forks.
+-   **Strategy-Specific Direction Logic:** Moving away from a monolithic direction source (PATH A) to having each HFT strategy determine its own direction based on its philosophy (fair value, mean reversion, order flow, etc.).
+-   **Paper vs. Live Mode Fork:** Designing a system with a  flag that allows strategies to behave differently in paper simulation (e.g., as directional scalpers) versus live trading (e.g., as true two-sided market makers).
 -   **Markets-First Architecture:** Proactively scanning the entire market and storing data in MongoDB before trading decisions are made.
--   **Dual-Path News Processing:** A hybrid news pipeline. Path A (slow, intelligent) uses an LLM for deep analysis, while Path B (fast, broad) broadcasts opportunities for HFT.
--   **MongoDB as Signal Cache:** Using MongoDB with TTL indexes to replace Redis for all signal and market data caching.
--   **HFT Engine V2 (Enhanced):** A modular, 5-strategy HFT engine that combines legacy compliance logic with new MongoDB-based signal intelligence.
--   **ConvictionEnhancer:** A new class in the NEWS lane that calculates a sophisticated conviction score by multiplying factors for source credibility, whale alignment, market regime, liquidity, and the signal's Bayes Factor.
--   **Tiered Kelly Sizing:** A position sizing model in the new NEWS lane that maps the conviction score to a specific Kelly fraction (e.g., conviction > 8 maps to 50% Kelly).
+-   **Dual-Path News Processing:** A hybrid news pipeline. Path A (slow, intelligent) for deep analysis, Path B (fast, broad) for HFT opportunity broadcasts.
 
 **key DB schema**
--   : Caches data and embeddings for all scanned markets.
+-   : Caches data for all scanned markets.
 -   : Stores actionable  signals from LLM analysis.
--   : Stores broadcast  data for all markets with a short TTL.
-
-**changes in tech stack**
--   **Redis has been completely deprecated and removed** from the signal processing pipeline, replaced by MongoDB.
+-   : Stores broadcast  data with a short TTL.
+-   : . Stores encrypted API keys.
 
 **All files of reference**
--   : Heavily modified to disable the legacy HFT loop and integrate the new  and  loops.
--   : **NEW & CRITICAL**. Contains the merged and enhanced HFT logic.
--   : **NEW & CRITICAL**. Contains the new advanced  logic with .
--   : Foundation of the Markets-First system.
--   : The new primary news processor.
--   : Updated with new health/status endpoints for HFT V2 and the News Sniper.
-
-**Areas that need refactoring**:
--   The old news pipeline (, ) is now redundant. The logic in  that calls  and the old  should be removed to prevent conflicts and simplify the codebase.
-
-**key api endpoints**
--   : Checks the status of the .
--   : Entry point for the .
--   : Returns status and metrics for the new HFT Engine V2.
--   : Returns the configuration for HFT Engine V2.
--   : **NEW**. Returns status and metrics for the new News Sniper lane.
+-   : **CRITICAL & IN REFACTOR**. Contains the HFT logic.
+-   : **CRITICAL & MODIFIED**. Contains new config for the HFT refactor.
+-   : **NEW**. Implements the API key persistence logic.
+-   : Modified to integrate the API key store and its endpoints.
+-   : Fixed and now operational.
+-   : Modified to add .
 
 **Critical Info for New Agent**
--   The user's primary goal of implementing the Markets-First architecture is well underway. Phase 1 (Foundation), HFT V2 (Implementation & Merge), and Phase 2 (NEWS Lane Integration) are **complete and tested**.
--   **Your next task is to get user verification for the newly implemented NEWS Sniper lane**.
--   After user approval, the highest priority is to **deprecate and remove the old news pipeline**. This is a critical cleanup step to prevent conflicts and redundant processing. This involves removing , , and related calls in .
--   The legacy HFT loop () has been disabled in 's  call.  is now the sole HFT implementation.
-
-**documents and test reports created in this job**
--    (updated with all new architectural changes)
--    (Phase 1 Testing)
--    (HFT V2 Initial Implementation Testing)
--    (HFT V2 Enhanced/Merged Testing)
--    (NEWS Sniper Lane Testing)
+-   **You are in the middle of a major, user-approved refactor of **. This is your highest priority task. Do not start other tasks until this is complete and tested.
+-   The goal of the refactor is to give each of the 5 HFT strategies its own direction-finding logic, making them smarter and more independent.
+-   The implementation is **partially complete**. New config and helper methods have been added. You need to finish the job by refactoring  and rewriting the main  loop to use the new logic. Refer to the plan in the chat history.
+-   The  flag is for future implementation; for now, all strategies should execute as directional scalpers in paper trading.
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. **User:** Asked for an explanation of the Alpha Target Integration (). (Answered)
-9.  **User:** Asked if all strategies are now working with the Markets-First/Dual-Injector system. (Answered: HFT yes, NEWS no)
-8.  **User:** Approved proceeding with Phase 2 (NEWS lane integration) after a comprehensive check. (Acknowledged)
-7.  **User:** Asked for an explanation of the Alpha Target Integration. (Answered)
-6.  **User:** Agreed to keep legacy HFT running in parallel for now. (Superseded by next message)
-5.  **User:** Instructed to do a comprehensive merge of legacy HFT features into HFT V2 and then deprecate the legacy loop. (Implemented)
-4.  **User:** Asked if HFT V2 is still needed now that HFT is implemented. (Answered with a comparison and recommendation to merge)
-3.  **User:** Confirmed their intent for HFT V2 to use PATH B for speed and PATH A for intelligence. (Acknowledged)
-2.  **User:** Asked how the proposed NEWS lane changes would conflict with the upcoming HFT V2 changes. (Answered with conflict analysis)
-1.  **User:** Instructed the agent to implement HFT V2 first, using MongoDB, and postpone the NEWS lane changes. (Implemented)
+-   (Summary) The user and agent engaged in a deep, iterative audit of the HFT V2 engine. This uncovered several layers of architectural mismatches:
+    1.  The agent first proposed a fix to make HFT V2 use PATH B data.
+    2.  The agent then self-corrected, realizing PATH B data is stale and the real fix is for the HFT Math Engine to determine direction.
+    3.  The user asked for clarification on the roles of the sub-strategies.
+    4.  The agent's audit revealed that strategies intended to be market-making were actually implemented as simple directional scalpers.
+    5.  The agent proposed a fix to implement true two-sided quoting for market-making strategies.
+    6.  The agent again self-corrected, realizing true market-making cannot be simulated in paper trading and would produce fantasy results.
+    7.  A final, optimal strategy was agreed upon: **Keep all strategies as directional scalpers for paper trading, but give each one its own unique, smart direction-finding logic based on its philosophy.** A  flag will be added to enable true market-making in the future.
+-   **Last User Message:**  - The user has given full approval to implement the final, combined optimal refactor plan.
 
 **Project Health Check:**
--   **Working**: The core 5-lane trading bot structure. The new Markets-First pipeline (, ), the enhanced HFT V2 engine, and the new  lane are all implemented, tested, and running. The UI is functional.
--   **Broken**: Nothing is broken, but the old news processing pipeline is now redundant and running in parallel with the new one, which is inefficient and a potential source of future bugs.
--   **Mocked/Paused**: The CryptoPanic service remains disabled.
+-   **Working**: Core app, , , , API Key Store, UI.
+-   **Broken**: The  file is in a non-functional, partially-refactored state. The backend service will likely fail or behave unexpectedly until the refactor is completed.
+-   **Mocked/Paused**: CryptoPanic service.
 
 **3rd Party Integrations**
--   **OpenAI GPT-4o-mini, GPT-5.2, Gemini 3 Flash**: Used for sentiment analysis (). Uses Emergent LLM Key.
--   **The Odds API**: Used by SPORTS lane. Requires User API Key.
--   **Exa.ai**: Used by the (old) NEWS lane for PULL-based news. Requires User API Key.
--   **Apify ()**: Used by the (old) NEWS lane for scraping Twitter. Requires User API Key.
+-   **OpenAI/Gemini**: Used for sentiment analysis (). Uses Emergent LLM Key.
+-   **Exa.ai**: Used for PULL-based news. Key is now stored in the database.
+-   **Apify ()**: Used for scraping Twitter. Key is stored in the database.
+-   **The Odds API**: Used by SPORTS lane. Requires User API Key (not yet in DB store).
 -   **CryptoPanic**: Integrated but PAUSED. Requires User API Key.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES. Extensively used for Phase 1, HFT V2, and the new News Sniper lane.
--   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**:
-    -   
-    -   
-    -   
-    -   
--   **Known regressions**: None.
-
-**Credentials to test flow:**
--   API keys are in .
--   Admin credentials for starting paper trading (/) are set in the environment.
+-   **Testing agent used after significant changes**: YES, multiple times for previous features and bug fixes.
+-   **Test files created**: ,  and others.
+-   **Known regressions**: The HFT V2 engine is currently broken due to the ongoing refactor.
 
 **What agent forgot to execute**
--   The user's long-pending request to save in github has still not been addressed. The agent should remind the user about the platform's Save to Github feature.
--   The refactoring task to move  to a JSON file is still pending.</analysis>
+-   The user's long-pending request to save in github has still not been addressed by reminding them of the platform feature.
+-   The minor error in the Apify test script () was noted but not fixed.</analysis>
