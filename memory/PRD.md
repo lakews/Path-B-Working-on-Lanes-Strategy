@@ -236,6 +236,22 @@ else:
 - `_evaluate_exit()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
 - `_execute_paper_exit()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
 
+### Change #4: Suspicious 0.5 Price Exit Safety (ACTIVE - Feb 15, 2026)
+**File**: `/app/backend/paper_trading/paper_trader.py` (~Line 7374)
+**Status**: ACTIVE
+**Root Cause**: Polymarket Gamma API sometimes returns `yes_price = 0.5` when real-time price data is unavailable
+**Issue**: Positions entered at extreme prices (e.g., 0.0015) would falsely exit with massive gains (33,000%+) when API returned 0.5
+**Fix**: Added safety check in `_universal_exit_check()` to skip exit decisions when:
+1. Current price is exactly 0.5 (± 0.001)
+2. Entry price was at an extreme (<0.10 or >0.90)
+**Logging**: `[SUSPICIOUS-PRICE]` and `[EXIT-SKIP]` warnings added for monitoring
+
+### Change #5: Duplicate Position Deletion Bug Fix (ACTIVE - Feb 15, 2026)
+**File**: `/app/backend/paper_trading/paper_trader.py` (~Line 6130)
+**Status**: ACTIVE
+**Issue**: `_execute_paper_exit()` was deleting positions twice, causing KeyError
+**Fix**: Removed duplicate `del self.paper_positions[market_id]` call
+
 ---
 
 ## Future Roadmap
