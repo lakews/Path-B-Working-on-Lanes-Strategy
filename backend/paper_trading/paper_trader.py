@@ -1021,6 +1021,109 @@ class PaperTrader:
             }
         }
     
+    def get_kill_switch_for_strategy(self, strategy: str) -> tuple:
+        """
+        Get kill switch bounds for a specific strategy.
+        Uses strategy-specific overrides if configured, otherwise global defaults.
+        
+        Returns:
+            tuple: (kill_switch_low, kill_switch_high)
+        """
+        config = getattr(self, 'extreme_price_config', {})
+        
+        # Check for strategy override
+        overrides = config.get('strategy_overrides', {})
+        if strategy in overrides and overrides[strategy].get('enabled', False):
+            return (
+                overrides[strategy].get('kill_switch_low', 0.03),
+                overrides[strategy].get('kill_switch_high', 0.97)
+            )
+        
+        # Fall back to global thresholds
+        return (
+            config.get('extreme_low_threshold', 0.03),
+            config.get('extreme_high_threshold', 0.97)
+        )
+    
+    def validate_extreme_price_entry(self, market_data: Dict, strategy: str) -> tuple:
+        """
+        Validate if an extreme price entry is allowed based on tiered requirements.
+        
+        For prices outside kill switch bounds, additional validation is required:
+        - Orderbook depth > threshold
+        - Spread < threshold
+        - Recent volume > threshold
+        - Time to expiry > threshold
+        
+        Args:
+            market_data: Market data dict with price, orderbook, volume, etc.
+            strategy: The strategy attempting the entry
+            
+        Returns:
+            tuple: (allowed: bool, reason: str)
+        """
+        config = getattr(self, 'extreme_price_config', {})
+        if not config.get('enabled', True):
+            # Extreme price validation disabled - use hard kill switch
+            kill_low, kill_high = self.get_kill_switch_for_strategy(strategy)
+            yes_price = market_data.get('yes_price', 0.5)
+            if yes_price < kill_low or yes_price > kill_high:
+                return (False, f"Price {yes_price:.4f} outside kill switch [{kill_low:.2f}-{kill_high:.2f}]")
+            return (True, "Within normal bounds")
+        
+        yes_price = market_data.get('yes_price', 0.5)
+        kill_low, kill_high = self.get_kill_switch_for_strategy(strategy)
+        
+        # If price is within normal bounds, allow
+        if kill_low <= yes_price <= kill_high:
+            return (True, "Within normal bounds")
+        
+        # Price is extreme - apply tiered validation
+        requirements = config.get('requirements', {})
+        
+        # 1. Orderbook depth check
+        orderbook = market_data.get('order_book', {})
+        bids = orderbook.get('bids', [])
+        asks = orderbook.get('asks', [])
+        bid_depth = sum(float(b.get('size', 0)) * float(b.get('price', 0)) for b in bids[:5]) if bids else 0
+        ask_depth = sum(float(a.get('size', 0)) * float(a.get('price', 0)) for a in asks[:5]) if asks else 0
+        total_depth = bid_depth + ask_depth
+        min_depth = requirements.get('min_orderbook_depth_usd', 100)
+        if total_depth < min_depth:
+            return (False, f"Orderbook depth ${total_depth:.0f} < ${min_depth} required for extreme price")
+        
+        # 2. Spread check
+        if bids and asks:
+            best_bid = float(bids[0].get('price', 0))
+            best_ask = float(asks[0].get('price', 0))
+            spread = (best_ask - best_bid) / best_ask if best_ask > 0 else 1.0
+            max_spread = requirements.get('min_spread_quality', 0.05)
+            if spread > max_spread:
+                return (False, f"Spread {spread:.1%} > {max_spread:.1%} required for extreme price")
+        
+        # 3. Volume check
+        volume_24h = market_data.get('volume_24h', 0)
+        min_volume = requirements.get('min_recent_volume_1h', 50) * 24  # Approximate 24h from 1h requirement
+        if volume_24h < min_volume:
+            return (False, f"Volume ${volume_24h:.0f} < ${min_volume:.0f} required for extreme price")
+        
+        # 4. Expiry check
+        end_date_str = market_data.get('end_date')
+        if end_date_str:
+            try:
+                from dateutil.parser import parse
+                end_date = parse(end_date_str)
+                if end_date.tzinfo is None:
+                    end_date = end_date.replace(tzinfo=timezone.utc)
+                hours_to_expiry = (end_date - datetime.now(timezone.utc)).total_seconds() / 3600
+                min_hours = requirements.get('min_time_to_expiry_hours', 24)
+                if hours_to_expiry < min_hours:
+                    return (False, f"Time to expiry {hours_to_expiry:.1f}h < {min_hours}h required for extreme price")
+            except:
+                pass  # If parsing fails, allow
+        
+        return (True, f"Extreme price validated (depth=${total_depth:.0f}, spread OK, volume=${volume_24h:.0f})")
+    
     async def start(self):
         """Start paper trading session with FIVE-LANE ARCHITECTURE"""
         self.running = True
