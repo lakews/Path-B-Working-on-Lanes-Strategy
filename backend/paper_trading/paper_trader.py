@@ -7389,10 +7389,6 @@ class PaperTrader:
                             trade_status = position.get('trade_status', 'ACTIVE')
                             peak_price = position.get('peak_price', entry_price)
                             
-                            # DEBUG: Log prices before exit check (using warning level to ensure visibility)
-                            if entry_price < 0.05:  # Only log extreme entries
-                                logger.warning(f"[EXIT-CHECK] {market_id[:16]} | entry={entry_price:.4f}, current={current_price:.4f}, current_yes={current_yes_price:.4f}, side={side}")
-                            
                             # Call ExitEngine
                             decision = self.exit_engine.check_exit(
                                 strategy=strategy,
