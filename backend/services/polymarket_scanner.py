@@ -428,6 +428,8 @@ class PolymarketScanner:
                     'category': market.get('category', 'Other'),
                     'end_date': market.get('end_date'),  # For time-aware queries
                     'price': yes_price,  # No default - skip if missing
+                    'yes_price': yes_price,  # Explicit yes_price for trade execution
+                    'no_price': 1 - yes_price,  # Calculate NO price
                     'bid_ask': {
                         'bid': yes_price - 0.01,
                         'ask': yes_price + 0.01
