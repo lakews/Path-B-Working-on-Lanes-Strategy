@@ -619,10 +619,11 @@ class NewsSniper:
     async def _get_market_data(self, market_id: str) -> Optional[Dict]:
         """Get market data for a market ID"""
         try:
-            # Try to get from paper_trader's market service
-            if self.paper_trader and hasattr(self.paper_trader, 'market_data_svc'):
-                svc = self.paper_trader.market_data_svc
-                if hasattr(svc, 'get_market'):
+            # Try to get from paper_trader's market service (try both attribute names)
+            if self.paper_trader:
+                svc = getattr(self.paper_trader, 'market_data_service', None) or \
+                      getattr(self.paper_trader, 'market_data_svc', None)
+                if svc and hasattr(svc, 'get_market'):
                     return await svc.get_market(market_id)
             
             # Fallback: check if we have it in polymarket_cache
@@ -632,6 +633,9 @@ class NewsSniper:
                     {'_id': 0}
                 )
                 if cached:
+                    # Normalize field names for compatibility
+                    if 'price' in cached and 'yes_price' not in cached:
+                        cached['yes_price'] = cached['price']
                     return cached
             
             return None
