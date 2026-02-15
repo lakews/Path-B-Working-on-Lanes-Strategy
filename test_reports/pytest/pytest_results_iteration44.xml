@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="27" skipped="0" tests="27" time="913.981" timestamp="2026-02-15T06:48:18.948930+00:00" hostname="agent-env-3cbd2b3f-7cc5-4569-88b2-18cbe70ef8d1"><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestHealthEndpoints" name="test_api_health" time="60.259"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:37: in test_api_health
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestHealthEndpoints" name="test_api_status" time="60.231"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:45: in test_api_status
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestScannerHealth" name="test_scanner_health_endpoint" time="60.220"><failure message="assert 520 in [200, 503]&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:58: in test_scanner_health_endpoint
+    assert response.status_code in [200, 503]
+E   assert 520 in [200, 503]
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestAPIKeyPersistence" name="test_api_keys_status" time="60.265"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:82: in test_api_keys_status
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestAPIKeyPersistence" name="test_api_keys_update" time="60.270"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:119: in test_api_keys_update
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestAPIKeyPersistence" name="test_api_keys_update_invalid_key" time="60.234"><failure message="assert 520 == 400&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:136: in test_api_keys_update_invalid_key
+    assert response.status_code == 400
+E   assert 520 == 400
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestAPIKeyPersistence" name="test_api_keys_reload" time="60.424"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:144: in test_api_keys_reload
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestMarketsFirstStatus" name="test_markets_first_status" time="60.242"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:158: in test_markets_first_status
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestMarketsFirstStatus" name="test_markets_first_signals" time="60.217"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:181: in test_markets_first_signals
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestWebhookNewsInjection" name="test_webhook_news_reuters" time="60.232"><failure message="assert 520 in [200, 503]&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:213: in test_webhook_news_reuters
+    assert response.status_code in [200, 503]
+E   assert 520 in [200, 503]
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestWebhookNewsInjection" name="test_webhook_news_bloomberg" time="60.272"><failure message="assert 520 in [200, 503]&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:233: in test_webhook_news_bloomberg
+    assert response.status_code in [200, 503]
+E   assert 520 in [200, 503]
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestWebhookNewsInjection" name="test_webhook_news_coindesk" time="30.284"><failure message="assert 520 in [200, 503]&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:251: in test_webhook_news_coindesk
+    assert response.status_code in [200, 503]
+E   assert 520 in [200, 503]
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestWebhookNewsInjection" name="test_webhook_news_whale_alert" time="30.141"><failure message="assert 520 in [200, 503]&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:264: in test_webhook_news_whale_alert
+    assert response.status_code in [200, 503]
+E   assert 520 in [200, 503]
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestWebhookNewsInjection" name="test_webhook_news_unknown_source" time="30.216"><failure message="assert 520 in [200, 503]&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:276: in test_webhook_news_unknown_source
+    assert response.status_code in [200, 503]
+E   assert 520 in [200, 503]
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestNewsSniperStatus" name="test_news_sniper_status" time="30.137"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:286: in test_news_sniper_status
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestHFTV2Status" name="test_hft_v2_status" time="30.251"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:317: in test_hft_v2_status
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestPaperTradingFlow" name="test_paper_status_before_start" time="30.127"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:343: in test_paper_status_before_start
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestPaperTradingFlow" name="test_paper_start" time="30.137"><failure message="assert 520 in [200, 400]&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:359: in test_paper_start
+    assert response.status_code in [200, 400]
+E   assert 520 in [200, 400]
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestPaperTradingFlow" name="test_paper_status_after_start" time="32.156"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:379: in test_paper_status_after_start
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestPaperTradingFlow" name="test_news_sniper_after_paper_start" time="6.238"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:393: in test_news_sniper_after_paper_start
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestPaperTradingFlow" name="test_hft_v2_after_paper_start" time="0.128"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:406: in test_hft_v2_after_paper_start
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestPaperTradingFlow" name="test_scanner_after_paper_start" time="0.115"><failure message="assert 520 in [200, 503]&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:418: in test_scanner_after_paper_start
+    assert response.status_code in [200, 503]
+E   assert 520 in [200, 503]
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestPaperTradingFlow" name="test_webhook_news_after_paper_start" time="0.136"><failure message="assert 520 in [200, 503]&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:442: in test_webhook_news_after_paper_start
+    assert response.status_code in [200, 503]
+E   assert 520 in [200, 503]
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestMongoDBSignalStorage" name="test_signals_endpoint" time="0.121"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:459: in test_signals_endpoint
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestMongoDBSignalStorage" name="test_opportunities_endpoint" time="0.116"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:485: in test_opportunities_endpoint
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestLaneInitialization" name="test_five_lane_dashboard" time="0.099"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:500: in test_five_lane_dashboard
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration44_hft_trading_bot.TestCleanup" name="test_paper_stop" time="0.226"><failure message="assert 520 in [200, 400]&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_iteration44_hft_trading_bot.py:524: in test_paper_stop
+    assert response.status_code in [200, 400]
+E   assert 520 in [200, 400]
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase></testsuite></testsuites>
