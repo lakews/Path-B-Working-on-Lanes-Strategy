@@ -5786,6 +5786,61 @@ async def get_news_sniper_status():
 
 
 # =============================================
+# SHARP DETECTOR STATUS ENDPOINT
+# =============================================
+
+@api_router.get("/sharp-detector/status")
+async def get_sharp_detector_status():
+    """
+    Get Sharp Detector status and statistics.
+    
+    Returns:
+        - Sharp traders identified
+        - Trades collected
+        - Active positions tracked
+        - Background task status
+    """
+    try:
+        from paper_trading.paper_trader import paper_trader
+        
+        if not paper_trader or not paper_trader.sharp_detector:
+            return {
+                "status": "not_initialized",
+                "message": "Sharp detector not available. Start paper trading to enable.",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        
+        stats = await paper_trader.sharp_detector.get_stats()
+        
+        return {
+            "status": "operational" if stats.get('background_tasks_running') else "initialized",
+            "stats": stats,
+            "config": {
+                "sharp_win_rate_threshold": 0.70,
+                "sharp_min_volume": 10000,
+                "sharp_min_trades": 10,
+                "tracking_window_days": 7,
+                "trade_fetch_interval_sec": 300,
+                "sharp_id_interval_sec": 21600,
+                "position_track_interval_sec": 60
+            },
+            "phases": {
+                "phase_1_proxy": "active",
+                "phase_2_trade_collection": "active" if stats.get('background_tasks_running') else "pending",
+                "phase_3_sharp_identification": "active" if stats.get('background_tasks_running') else "pending"
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting Sharp Detector status: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+# =============================================
 # API KEY MANAGEMENT ENDPOINTS
 # =============================================
 
