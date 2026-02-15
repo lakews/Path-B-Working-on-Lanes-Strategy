@@ -207,21 +207,32 @@ LIVE_MODE = True   # Live mode - orderbook-based execution
 
 ## Pending Code Changes Log (For Future Reverting)
 
-### Change #1: VOLATILITY_EXPLOIT Mode Selection (ACTIVE - May Revert Later)
+### Change #1: VOLATILITY_EXPLOIT Mode Selection (UPDATED - Dec 2025)
 **File**: `/app/backend/trading/hft_engine_v2.py` (~Line 595)
-**Status**: ACTIVE (not reverted)
-**Issue**: Allows VOLATILITY_EXPLOIT to trigger on price extremes, bypassing volatility score requirement
-**To Revert**:
+**Status**: FIXED
+**Previous Issue**: Allowed VOLATILITY_EXPLOIT to trigger on price extremes alone, bypassing volatility check
+**Fix Applied**: Now requires BOTH extreme price AND wide spread (≥7%) from real orderbook data
 ```python
-# CURRENT (changed):
+# FIXED (Dec 2025):
 price_at_extreme = price <= HFTConfig.MEAN_REVERSION_LOW or price >= HFTConfig.MEAN_REVERSION_HIGH
-if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE or price_at_extreme:
-    return HFTMode.VOLATILITY_EXPLOIT
-else:
-    return HFTMode.EXTREME_SPREAD
 
-# ORIGINAL (to restore):
-if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE:
+# Get real spread from orderbook
+order_book = market_data.get('order_book', {})
+bids = order_book.get('bids', [])
+asks = order_book.get('asks', [])
+
+real_spread_pct = 0.0
+if bids and asks:
+    best_bid = float(bids[0]['price'])
+    best_ask = float(asks[0]['price'])
+    mid_price = (best_bid + best_ask) / 2
+    if mid_price > 0:
+        real_spread_pct = (best_ask - best_bid) / mid_price
+
+has_volatility_signal = real_spread_pct >= 0.07  # 7%+ spread = uncertainty
+
+# Require EITHER high vol score OR (extreme price AND wide spread)
+if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE or (price_at_extreme and has_volatility_signal):
     return HFTMode.VOLATILITY_EXPLOIT
 else:
     return HFTMode.EXTREME_SPREAD
@@ -233,14 +244,18 @@ else:
 **Issue**: Caused PnL calculation mismatch (entry used current_price, exit used orderbook prices)
 **Result**: Inflated returns (+321% in 10 mins with 29.9% win rate - impossible)
 
-### Change #3: Paper Mode Mid-Price Consistency (ACTIVE - Feb 15, 2026)
+### Change #3: Paper Mode Uses Real Orderbook Prices (UPDATED - Dec 2025)
 **File**: `/app/backend/paper_trading/paper_trader.py`
-**Status**: ACTIVE
-**Purpose**: Enables all HFT strategies to execute in paper mode with consistent mid-price entry/exit
-**Locations**:
-- `_execute_paper_entry()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
-- `_evaluate_exit()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
-- `_execute_paper_exit()` - Checks `HFTConfig.LIVE_MODE`, uses mid-price if False
+**Status**: FIXED (was using mid-price, now uses orderbook)
+**Previous Issue**: Paper mode used mid-price for entry/exit, ignoring real spread costs
+**Fix Applied**: All directional trades now use orderbook prices:
+- Entry: Buy YES = pay ask, Buy NO = pay bid
+- Exit: Sell YES = hit bid, Sell NO = hit ask
+- `LIVE_MODE` flag now only controls two-sided market making logic, not orderbook usage
+**Locations Modified**:
+- `_execute_paper_entry()` (~Line 5650) - Fetches orderbook, uses ask/bid for entry
+- `_evaluate_exit()` (~Line 5200) - Fetches orderbook, uses bid/ask for exit eval
+- `_execute_paper_exit()` (~Line 5950) - Fetches orderbook, uses bid/ask for exit exec
 
 ### Change #4: Tiered Kill Switch / Extreme Price Validation (ACTIVE - Feb 15, 2026)
 **Files Modified**:
