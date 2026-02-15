@@ -105,6 +105,61 @@ class MarketDataService:
             return 'politics'
         return 'finance'
     
+    async def get_active_markets(self, limit: int = 100) -> List[Dict]:
+        """Get active markets for HFT processing.
+        
+        Returns markets from polymarket_cache collection sorted by volume.
+        """
+        try:
+            if self.db is None:
+                logger.warning("[MARKET DATA SVC] db is None")
+                return []
+            
+            # Get markets from polymarket_cache (populated by PolymarketScanner)
+            cursor = self.db.polymarket_cache.find(
+                {},
+                {'_id': 0}
+            ).sort('volume_24h', -1).limit(limit)
+            
+            markets = await cursor.to_list(length=limit)
+            
+            # Normalize market ID field for HFT V2 compatibility
+            for market in markets:
+                if 'market_id' in market and 'id' not in market:
+                    market['id'] = market['market_id']
+                if 'price' in market and 'yes_price' not in market:
+                    market['yes_price'] = market['price']
+            
+            logger.debug(f"[MARKET DATA SVC] Returning {len(markets)} active markets for HFT")
+            return markets
+            
+        except Exception as e:
+            logger.error(f"[MARKET DATA SVC] get_active_markets error: {e}")
+            return []
+    
+    async def get_market(self, market_id: str) -> Optional[Dict]:
+        """Get a single market by ID"""
+        try:
+            if self.db is None:
+                return None
+            
+            market = await self.db.polymarket_cache.find_one(
+                {'market_id': market_id},
+                {'_id': 0}
+            )
+            
+            if market:
+                if 'market_id' in market and 'id' not in market:
+                    market['id'] = market['market_id']
+                if 'price' in market and 'yes_price' not in market:
+                    market['yes_price'] = market['price']
+            
+            return market
+            
+        except Exception as e:
+            logger.error(f"[MARKET DATA SVC] get_market error: {e}")
+            return None
+    
     async def update_market(self, market_data: Dict):
         """Update market in database"""
         try:
