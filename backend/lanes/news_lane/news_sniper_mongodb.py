@@ -376,13 +376,14 @@ class NewsSniper:
             'mongodb_reads': 0,
             'mongodb_errors': 0,
             'total_conviction_sum': 0.0,
+            'total_time_decay_sum': 0.0,  # Track average decay
             'errors': 0
         }
         
         logger.info("[NEWS SNIPER] Initialized with MongoDB integration")
         logger.info("  ├─ Signal Source: MongoDB signals collection (PATH A)")
-        logger.info("  ├─ Conviction: 5-factor enhancement")
-        logger.info("  └─ Kelly: Tiered (5%-50% based on conviction)")
+        logger.info("  ├─ Conviction: 5-factor enhancement + TIME DECAY")
+        logger.info("  └─ Kelly: Tiered (5%-50% based on decayed conviction)")
     
     async def start_news_loop(self):
         """
