@@ -600,8 +600,8 @@ class HighFrequencyTradingEngineV2:
                 # 2. Price at extreme AND real spread >= 7% (market uncertainty)
                 #
                 # Real spread from orderbook is the best volatility proxy:
-                # - Tight spread (1-3%) = market makers confident, low vol
-                # - Wide spread (7%+) = market makers uncertain, high vol
+                # - Tight spread (1-3%) = market makers confident, low vol / dead market
+                # - Wide spread (7%+) = market makers uncertain, high vol / active market
                 price_at_extreme = price <= HFTConfig.MEAN_REVERSION_LOW or price >= HFTConfig.MEAN_REVERSION_HIGH
                 
                 # Get real spread from orderbook if available
@@ -617,12 +617,20 @@ class HighFrequencyTradingEngineV2:
                     if mid_price > 0:
                         real_spread_pct = (best_ask - best_bid) / mid_price
                 
-                # Require EITHER high vol score OR (extreme price AND wide spread)
                 has_volatility_signal = real_spread_pct >= 0.07  # 7%+ spread indicates uncertainty
                 
-                if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE or (price_at_extreme and has_volatility_signal):
-                    return HFTMode.VOLATILITY_EXPLOIT
+                # Decision logic for extreme price zones:
+                if price_at_extreme:
+                    if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE or has_volatility_signal:
+                        # Active volatile market at extreme price - trade it
+                        return HFTMode.VOLATILITY_EXPLOIT
+                    else:
+                        # Extreme price BUT tight spread = likely dead/resolved market
+                        # SKIP entirely - don't trade these
+                        logger.debug(f"[HFT] Skipping extreme-price market with tight spread ({real_spread_pct:.1%})")
+                        return None
                 else:
+                    # Not at extreme price but in extreme zone - use spread strategy
                     return HFTMode.EXTREME_SPREAD
             
             # STANDARD ZONE: Multiple strategies possible
