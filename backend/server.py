@@ -6247,7 +6247,7 @@ async def startup_event():
             return final_query[:100]
         
         async def exa_markets_first_loop():
-            """MARKETS-FIRST: Poll Exa.ai with queries derived from active markets"""
+            """MARKETS-FIRST: Poll Exa.ai with optimized queries derived from active markets"""
             from services.news_service import get_news_poller
             poller = get_news_poller()
             
@@ -6255,7 +6255,7 @@ async def startup_event():
                 logger.warning("[NEWS/EXA] Exa.ai disabled - no API key")
                 return
             
-            logger.info("[NEWS/EXA] Starting MARKETS-FIRST polling (60s interval)")
+            logger.info("[NEWS/EXA] Starting OPTIMIZED MARKETS-FIRST polling (60s interval)")
             
             while True:
                 try:
@@ -6286,15 +6286,16 @@ async def startup_event():
                         question = market.get('question', '')
                         market_id = market.get('market_id') or market.get('id')
                         volume = market.get('volume_24h', 0)
+                        category = market.get('category', '')
                         
                         if not question:
                             continue
                         
-                        # Extract key terms for targeted query
-                        key_terms = extract_key_terms(question)
-                        query = f"{key_terms} news"
+                        # === OPTIMIZED QUERY GENERATION ===
+                        # Uses description, category, and time-awareness for better relevance
+                        query = generate_optimal_query(market)
                         
-                        logger.info(f"[NEWS/EXA] Market: '{question[:40]}...' (vol=${volume:,.0f}) → Query: '{key_terms}'")
+                        logger.info(f"[NEWS/EXA] Market: '{question[:40]}...' (vol=${volume:,.0f}, cat={category}) → Query: '{query}'")
                         
                         try:
                             events = await poller.poll_news(query=query, num_results=3, hours_back=2)
@@ -6310,13 +6311,13 @@ async def startup_event():
                                         'urgency': 'normal',
                                         'source_type': 'exa_ai',
                                         'target_market_id': market_id,  # Direct market association
-                                        'market_query': key_terms
+                                        'market_query': query
                                     })
                                     if signals:
                                         logger.info(f"[NEWS/EXA] ✓ {len(signals)} signals for '{question[:30]}...'")
                             
                             if events:
-                                logger.debug(f"[NEWS/EXA] '{key_terms}' → {len(events)} events")
+                                logger.debug(f"[NEWS/EXA] '{query}' → {len(events)} events")
                         
                         except Exception as query_err:
                             logger.debug(f"[NEWS/EXA] Query error for '{key_terms}': {query_err}")
