@@ -413,18 +413,26 @@ class PolymarketScanner:
                 embedding = embeddings.get(market_id)
                 embedding_list = embedding.tolist() if embedding is not None else None
                 
+                # CRITICAL: Only use yes_price if it exists and is valid (not 0 or null)
+                # DO NOT default to 0.5 as this causes massive P&L anomalies
+                yes_price = market.get('yes_price')
+                if yes_price is None or yes_price == 0:
+                    # Skip markets without valid price - can't trade without price data
+                    logger.debug(f"[SCANNER] Skipping {market_id[:16]} - no valid yes_price")
+                    continue
+                
                 doc = {
                     'market_id': market_id,
                     'question': market.get('question', ''),
                     'category': market.get('category', 'Other'),
-                    'price': market.get('yes_price', 0.5),
+                    'price': yes_price,  # No default - skip if missing
                     'bid_ask': {
-                        'bid': market.get('yes_price', 0.5) - 0.01,
-                        'ask': market.get('yes_price', 0.5) + 0.01
+                        'bid': yes_price - 0.01,
+                        'ask': yes_price + 0.01
                     },
                     'liquidity': market.get('liquidity', 0),
                     'volume_24h': market.get('volume_24h', 0) or market.get('volume', 0),
-                    'volatility': market.get('volatility', 0.5),
+                    'volatility': market.get('volatility', 0.05),  # Lower default volatility
                     'embedding': embedding_list,
                     '_data_quality': market.get('_data_quality', {}),
                     'cached_at': datetime.now(timezone.utc)
