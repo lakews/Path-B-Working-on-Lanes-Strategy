@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List
+from typing import Dict, List, Optional
 from database import get_db
 from data.websocket_client import PolymarketWebSocket
 from data.polymarket_api import PolymarketAPI
