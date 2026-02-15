@@ -5533,7 +5533,9 @@ class PaperTrader:
             if not HFTConfig.LIVE_MODE:
                 # Use current_price (mid-price) directly
                 actual_entry_price = current_price
-                logger.debug(f"[PAPER-MODE] Entry using mid-price ${current_price:.4f} for {strategy}")
+                # Store price source for exit verification
+                price_source = 'mid_price_paper_mode'
+                logger.debug(f"[PAPER-MODE] Entry using mid-price ${current_price:.4f} for {strategy} (source: {price_source})")
                 # Skip maker execution block - go straight to position creation
             elif self.use_maker_execution:
                 # ==========================================================================
