@@ -171,7 +171,38 @@ NEWS EVENT ARRIVES
 - `/app/test_reports/iteration_41.json` - HFT Engine V2 (37 tests passed)
 - `/app/test_reports/iteration_42.json` - HFT Engine V2 ENHANCED (64 tests passed)
 - `/app/test_reports/iteration_43.json` - NEWS Sniper MongoDB Phase 2 (74 tests passed)
-- `/app/test_reports/iteration_46.json` - **HFT V2 Direction Refactor (61 tests passed)**
+- `/app/test_reports/iteration_46.json` - HFT V2 Direction Refactor (61 tests passed)
+- `/app/test_reports/iteration_47.json` - HFT V2 Deep Audit (84 tests passed)
+
+---
+
+## Pending Code Changes Log (For Future Reverting)
+
+### Change #1: VOLATILITY_EXPLOIT Mode Selection (ACTIVE - May Revert Later)
+**File**: `/app/backend/trading/hft_engine_v2.py` (~Line 595)
+**Status**: ACTIVE (not reverted)
+**Issue**: Allows VOLATILITY_EXPLOIT to trigger on price extremes, bypassing volatility score requirement
+**To Revert**:
+```python
+# CURRENT (changed):
+price_at_extreme = price <= HFTConfig.MEAN_REVERSION_LOW or price >= HFTConfig.MEAN_REVERSION_HIGH
+if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE or price_at_extreme:
+    return HFTMode.VOLATILITY_EXPLOIT
+else:
+    return HFTMode.EXTREME_SPREAD
+
+# ORIGINAL (to restore):
+if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE:
+    return HFTMode.VOLATILITY_EXPLOIT
+else:
+    return HFTMode.EXTREME_SPREAD
+```
+
+### Change #2: Directional Strategy Orderbook Bypass (REVERTED Feb 15, 2026)
+**File**: `/app/backend/paper_trading/paper_trader.py` (~Line 5474)
+**Status**: REVERTED
+**Issue**: Caused PnL calculation mismatch (entry used current_price, exit used orderbook prices)
+**Result**: Inflated returns (+321% in 10 mins with 29.9% win rate - impossible)
 
 ---
 
