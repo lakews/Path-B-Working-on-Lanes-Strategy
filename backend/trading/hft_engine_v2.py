@@ -596,11 +596,31 @@ class HighFrequencyTradingEngineV2:
                 vol_score = market_data.get('volatility', 0.5)
                 
                 # VOLATILITY_EXPLOIT (directional) - triggers on:
-                # 1. High volatility score, OR
-                # 2. Price at mean-reversion extremes (<=0.15 or >=0.85) for paper trading
+                # 1. High volatility score (from ML model), OR
+                # 2. Price at extreme AND real spread >= 7% (market uncertainty)
+                #
+                # Real spread from orderbook is the best volatility proxy:
+                # - Tight spread (1-3%) = market makers confident, low vol
+                # - Wide spread (7%+) = market makers uncertain, high vol
                 price_at_extreme = price <= HFTConfig.MEAN_REVERSION_LOW or price >= HFTConfig.MEAN_REVERSION_HIGH
                 
-                if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE or price_at_extreme:
+                # Get real spread from orderbook if available
+                order_book = market_data.get('order_book', {})
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
+                
+                real_spread_pct = 0.0
+                if bids and asks:
+                    best_bid = float(bids[0]['price'])
+                    best_ask = float(asks[0]['price'])
+                    mid_price = (best_bid + best_ask) / 2
+                    if mid_price > 0:
+                        real_spread_pct = (best_ask - best_bid) / mid_price
+                
+                # Require EITHER high vol score OR (extreme price AND wide spread)
+                has_volatility_signal = real_spread_pct >= 0.07  # 7%+ spread indicates uncertainty
+                
+                if vol_score >= HFTConfig.VOLATILITY_MIN_SCORE or (price_at_extreme and has_volatility_signal):
                     return HFTMode.VOLATILITY_EXPLOIT
                 else:
                     return HFTMode.EXTREME_SPREAD
