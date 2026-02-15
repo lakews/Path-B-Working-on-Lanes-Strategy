@@ -61,6 +61,20 @@ class PolymarketAPI:
     def _normalize_gamma_market(self, m: Dict) -> Optional[Dict]:
         """Normalize Gamma API market to standard format"""
         try:
+            # EXPIRATION CHECK - Block expired markets at the source
+            end_date_str = m.get('endDate')
+            if end_date_str:
+                try:
+                    from dateutil.parser import parse
+                    end_date = parse(end_date_str)
+                    if end_date.tzinfo is None:
+                        end_date = end_date.replace(tzinfo=timezone.utc)
+                    if end_date < datetime.now(timezone.utc):
+                        logger.debug(f"[API] Expired market {m.get('conditionId', 'unknown')[:16]} (ended {end_date_str}) - skipping")
+                        return None
+                except Exception as e:
+                    logger.debug(f"[API] Could not parse end_date for {m.get('conditionId', 'unknown')[:16]}: {e}")
+            
             # Parse clobTokenIds
             token_ids = m.get('clobTokenIds', [])
             if isinstance(token_ids, str):
