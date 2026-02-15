@@ -65,20 +65,20 @@ class DualPathNewsInjector:
     Both write to MongoDB (NO Redis).
     """
     
-    # Base TTL by signal strength (seconds)
+    # Base TTL by signal strength (seconds) - INCREASED for cost optimization
     BASE_TTL = {
-        'resolution': 600,   # 10 min
-        'strong': 300,       # 5 min
-        'moderate': 180,     # 3 min
-        'weak': 60           # 1 min
+        'resolution': 900,   # 15 min (was 10 min) - resolution news stays relevant longer
+        'strong': 600,       # 10 min (was 5 min) - strong signals are worth keeping
+        'moderate': 300,     # 5 min (was 3 min) - moderate signals get more time
+        'weak': 120          # 2 min (was 1 min) - weak signals still worth a look
     }
     
     # Regime multipliers for adaptive TTL
     REGIME_MULTIPLIERS = {
-        MarketRegime.QUIET: 1.5,      # Keep longer
-        MarketRegime.NORMAL: 1.0,     # No change
-        MarketRegime.VOLATILE: 0.6,   # Expire faster
-        MarketRegime.CRISIS: 0.3      # Very fast
+        MarketRegime.QUIET: 2.0,      # Keep much longer in quiet markets
+        MarketRegime.NORMAL: 1.5,     # Keep longer (was 1.0)
+        MarketRegime.VOLATILE: 1.0,   # Standard (was 0.6)
+        MarketRegime.CRISIS: 0.5      # Still fast but not extreme (was 0.3)
     }
     
     def __init__(
