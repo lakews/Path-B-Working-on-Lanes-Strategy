@@ -419,8 +419,8 @@ class DualPathNewsInjector:
         mult = self.REGIME_MULTIPLIERS.get(regime, 1.0)
         adaptive_ttl = int(base_ttl * mult)
         
-        # Clamp: 30s to 20min
-        adaptive_ttl = max(30, min(adaptive_ttl, 1200))
+        # Clamp: 60s to 30min (increased max from 20min for cost savings)
+        adaptive_ttl = max(60, min(adaptive_ttl, 1800))
         
         return adaptive_ttl
     
