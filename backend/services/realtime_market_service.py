@@ -183,6 +183,24 @@ class RealTimeMarketService:
             
         market = self._market_cache[market_id]
         
+        # EXPIRATION CHECK - Ignore updates for expired markets and evict them
+        end_date_str = market.get('end_date')
+        if end_date_str:
+            try:
+                from dateutil.parser import parse
+                end_date = parse(end_date_str)
+                if end_date.tzinfo is None:
+                    end_date = end_date.replace(tzinfo=timezone.utc)
+                if end_date < datetime.now(timezone.utc):
+                    # Evict expired market from cache
+                    del self._market_cache[market_id]
+                    if market_id in self._yes_price_cache:
+                        del self._yes_price_cache[market_id]
+                    logger.debug(f"[WS-UPDATE] Ignoring and evicting expired market {market_id[:16]}")
+                    return
+            except:
+                pass
+        
         if outcome == 'Yes':
             # This is the YES token price - use directly
             self._yes_price_cache[market_id] = price
