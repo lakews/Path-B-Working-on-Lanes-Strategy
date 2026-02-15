@@ -184,9 +184,10 @@ class DualPathNewsInjector:
                 return []
             
             # Semantic search: find top 3 most relevant markets (reduced from 10 to save LLM costs)
-            # Only markets with >0.3 similarity will be analyzed
+            # Only markets with >0.4 similarity will be analyzed (based on embedding analysis)
+            # 0.4+ typically indicates genuinely related content
             relevant = self._semantic_search(
-                news_embedding, cached_embeddings, cached_markets, top_k=3, min_similarity=0.3
+                news_embedding, cached_embeddings, cached_markets, top_k=3, min_similarity=0.4
             )
             
             logger.info(f"[NEWS INJECTOR] Found {len(relevant)} relevant markets via semantic search")
