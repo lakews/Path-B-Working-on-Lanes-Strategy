@@ -6217,6 +6217,7 @@ async def startup_event():
                     for market in sorted_markets:
                         question = market.get('question', '')
                         market_id = market.get('market_id') or market.get('id')
+                        volume = market.get('volume_24h', 0)
                         
                         if not question:
                             continue
