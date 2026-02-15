@@ -7347,19 +7347,26 @@ class PaperTrader:
                             
                             # Get current price from market_prices (already fetched above)
                             current_yes_price = market_prices.get(market_id)
+                            price_source = "market_prices"
                             if current_yes_price is None:
                                 # Try to find in the markets list
                                 for m in markets:
                                     if m.get('id') == market_id:
                                         current_yes_price = m.get('yes_price')
+                                        price_source = "markets_list"
                                         logger.warning(f"[PRICE-FALLBACK] {market_id[:16]} - found in markets: {current_yes_price}")
                                         break
                             
                             if current_yes_price is None or current_yes_price == 0:
-                                # Can't evaluate without price
+                                # Can't evaluate without price - SKIP this position
+                                logger.debug(f"[EXIT-SKIP] {market_id[:16]} - no valid price found")
                                 continue
                             
                             current_yes_price = float(current_yes_price)
+                            
+                            # CRITICAL: Warn if price looks like a default (0.5)
+                            if abs(current_yes_price - 0.5) < 0.001:
+                                logger.warning(f"[SUSPICIOUS-PRICE] {market_id[:16]} - price={current_yes_price:.4f} (source: {price_source})")
                             
                             # Calculate current price for the side we're holding
                             if side == 'YES':
