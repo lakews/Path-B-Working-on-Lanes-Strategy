@@ -7875,11 +7875,19 @@ class PaperTrader:
                     safe_max = RISK.KILL_SWITCH_HIGH
                 
                 if yes_price < safe_min:
-                    quality_stats['rejected_extreme_price'] += 1
-                    continue
+                    # EXCEPTION: Allow markets with open positions (needed for exits)
+                    if position_market_ids and m.get('id') in position_market_ids:
+                        pass  # Allow - has open position
+                    else:
+                        quality_stats['rejected_extreme_price'] += 1
+                        continue
                 if yes_price > safe_max:
-                    quality_stats['rejected_extreme_price'] += 1
-                    continue
+                    # EXCEPTION: Allow markets with open positions (needed for exits)
+                    if position_market_ids and m.get('id') in position_market_ids:
+                        pass  # Allow - has open position
+                    else:
+                        quality_stats['rejected_extreme_price'] += 1
+                        continue
                 
                 # ============================================================
                 # DYNAMIC VOLUME/LIQUIDITY CHECK (Sports Override)
