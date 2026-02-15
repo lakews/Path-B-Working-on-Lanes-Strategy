@@ -536,6 +536,7 @@ class NewsSniper:
             breakdown['decayed_conviction'] = conviction
             
             self.stats['total_conviction_sum'] += conviction
+            self.stats['total_time_decay_sum'] += time_decay
             
             # Get Kelly fraction based on DECAYED conviction tier
             kelly_fraction = self._conviction_to_kelly(conviction)
