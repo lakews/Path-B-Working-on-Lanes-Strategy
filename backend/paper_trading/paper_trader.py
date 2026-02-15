@@ -7116,13 +7116,8 @@ class PaperTrader:
             except Exception:
                 pass
             
-            try:
-                sharp_result = await self.sharp_detector.get_alignment_signal(market_data.get('id'))
-                if sharp_result and sharp_result.get('alignment_score') is not None:
-                    ml_sharp = sharp_result.get('alignment_score', sharp_alignment)
-                    signals['sharp_alignment'] = round((sharp_alignment * 0.5 + ml_sharp * 0.5), 4)
-            except Exception:
-                pass
+            # Note: sharp_alignment is now fetched earlier in this method directly
+            # from self.sharp_detector.get_alignment_signal() - no need to re-fetch here
             
             return signals
             
@@ -7133,6 +7128,7 @@ class PaperTrader:
                 'volatility': 0.05,  # Moderate default
                 'sentiment': 0.5,
                 'sharp_alignment': 0.5,
+                'market_quality_score': 0.5,
                 'whale_activity': 0.0
             }
     
