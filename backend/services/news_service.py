@@ -102,20 +102,9 @@ class NewsPoller:
     ]
     
     def __init__(self):
-        self.api_key = os.environ.get('EXA_API_KEY')
+        self.api_key = None
         self._exa_client: Optional[Exa] = None
-        
-        if not self.api_key:
-            logger.warning("[NEWS POLLER] EXA_API_KEY not configured - news polling disabled")
-            logger.warning("[NEWS POLLER] To enable: Add EXA_API_KEY to backend/.env")
-        elif not EXA_SDK_AVAILABLE:
-            logger.error("[NEWS POLLER] exa-py SDK not installed. Run: pip install exa-py")
-        else:
-            try:
-                self._exa_client = Exa(api_key=self.api_key)
-                logger.info("[NEWS POLLER] ✅ Exa.ai SDK initialized successfully")
-            except Exception as e:
-                logger.error(f"[NEWS POLLER] Failed to initialize Exa client: {e}")
+        self._client_initialized = False
         
         # Polling configuration
         self.default_num_results = 10
