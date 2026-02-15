@@ -400,6 +400,7 @@ class DualPathNewsInjector:
         """Cache signal to MongoDB with adaptive TTL"""
         try:
             if self.db is None:
+                logger.warning("[NEWS INJECTOR] MongoDB db is None, skipping signal cache")
                 return
             
             ttl = self._calculate_adaptive_ttl(signal, market_data)
@@ -423,6 +424,7 @@ class DualPathNewsInjector:
                 'created_at': datetime.now(timezone.utc)
             }
             
+            logger.info(f"[NEWS INJECTOR] Writing PATH A signal to MongoDB: {signal['market_id'][:16]}...")
             await self.db.signals.update_one(
                 {
                     'market_id': signal['market_id'],
@@ -433,7 +435,7 @@ class DualPathNewsInjector:
             )
             
             self.stats['mongodb_writes'] += 1
-            logger.debug(f"[NEWS INJECTOR] Cached signal: {signal['market_id'][:16]}... (TTL: {ttl}s, Regime: {regime.value})")
+            logger.info(f"[NEWS INJECTOR] ✓ Cached signal: {signal['market_id'][:16]}... (TTL: {ttl}s, Regime: {regime.value})")
         
         except Exception as e:
             logger.error(f"[NEWS INJECTOR] MongoDB cache error: {e}")
