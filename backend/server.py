@@ -6255,7 +6255,7 @@ async def startup_event():
                 logger.warning("[NEWS/EXA] Exa.ai disabled - no API key")
                 return
             
-            logger.info("[NEWS/EXA] Starting OPTIMIZED MARKETS-FIRST polling (60s interval)")
+            logger.info("[NEWS/EXA] Starting OPTIMIZED MARKETS-FIRST polling (120s interval - reduced for cost savings)")
             
             while True:
                 try:
