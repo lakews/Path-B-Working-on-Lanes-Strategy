@@ -395,6 +395,8 @@ class TradingConfig(BaseModel):
     spread_policy: Optional[Dict[str, float]] = None      # Max spreads, fees, EV params
     # Variance Sizing (Tail Risk)
     variance_sizing: Optional[Dict[str, float]] = None    # Kill switch thresholds
+    # Extreme Price Validation (Tiered Kill Switch)
+    extreme_price_validation: Optional[Dict[str, Any]] = None  # Strategy-specific kill switch overrides
 
 # Default event caps (used for reset)
 DEFAULT_EVENT_CAPS = {
