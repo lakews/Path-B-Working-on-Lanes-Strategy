@@ -238,6 +238,25 @@ class RealTimeMarketService:
                     market_id = market.get('id') or market.get('condition_id')
                     if not market_id:
                         continue
+                    
+                    # EXPIRATION CHECK - Don't cache expired markets
+                    end_date_str = market.get('end_date')
+                    if end_date_str:
+                        try:
+                            from dateutil.parser import parse
+                            end_date = parse(end_date_str)
+                            if end_date.tzinfo is None:
+                                end_date = end_date.replace(tzinfo=timezone.utc)
+                            if end_date < datetime.now(timezone.utc):
+                                # Remove from cache if it was previously cached
+                                if market_id in self._market_cache:
+                                    del self._market_cache[market_id]
+                                    if market_id in self._yes_price_cache:
+                                        del self._yes_price_cache[market_id]
+                                    logger.debug(f"[WS-CACHE] Evicted expired market {market_id[:16]}")
+                                continue
+                        except:
+                            pass
                         
                     self._market_cache[market_id] = market
                     
