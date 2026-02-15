@@ -763,15 +763,16 @@ class NewsSniper:
     
     def get_stats(self) -> Dict:
         """Return NEWS sniper statistics"""
-        avg_conviction = (
-            self.stats['total_conviction_sum'] / max(1, self.stats['signals_processed'])
-        )
+        signals_processed = max(1, self.stats['signals_processed'])
+        avg_conviction = self.stats['total_conviction_sum'] / signals_processed
+        avg_time_decay = self.stats['total_time_decay_sum'] / signals_processed
         
         return {
             **self.stats,
             'running': self._running,
             'last_cycle_time_ms': self._last_cycle_time,
-            'avg_conviction': round(avg_conviction, 2)
+            'avg_conviction': round(avg_conviction, 2),
+            'avg_time_decay': round(avg_time_decay, 2)  # 1.0 = all fresh, 0.5 = all stale
         }
 
 
