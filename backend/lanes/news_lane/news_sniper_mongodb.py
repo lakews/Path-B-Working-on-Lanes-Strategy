@@ -532,8 +532,7 @@ class NewsSniper:
                 conviction=conviction,
                 breakdown=breakdown
             )
-            
-            self.stats['trades_executed'] += 1
+            # Note: stats['trades_executed'] is incremented in _execute_trade
             
         except Exception as e:
             self.stats['errors'] += 1
