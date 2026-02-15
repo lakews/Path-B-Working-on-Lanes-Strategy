@@ -108,6 +108,12 @@ NEWS EVENT ARRIVES
    - DualPathNewsInjector (PATH A + PATH B)
    - MongoDB collections with TTL indexes
 
+4. **Optimized News Query Generation (Feb 15, 2026)**
+   - Uses market description for richer context
+   - Category-aware suffixes (crypto → "price news update", politics → "election news latest", etc.)
+   - Time-aware modifiers ("breaking latest" for markets expiring within 7 days)
+   - Key stored in MongoDB with DB_NAME-derived encryption
+
 ---
 
 ## Key Files Reference
@@ -116,8 +122,9 @@ NEWS EVENT ARRIVES
 |------|---------|
 | `/app/backend/lanes/news_lane/news_sniper_mongodb.py` | **NEWS Sniper MongoDB** - Phase 2 trade execution |
 | `/app/backend/trading/hft_engine_v2.py` | **HFT Engine V2 ENHANCED** - Sole HFT implementation |
-| `/app/backend/services/polymarket_scanner.py` | **PolymarketScanner** - Market caching |
+| `/app/backend/services/polymarket_scanner.py` | **PolymarketScanner** - Market caching + description/end_date |
 | `/app/backend/services/news_injector_dual_path.py` | **DualPathNewsInjector** - PATH A/B signal creation |
+| `/app/backend/services/api_key_store.py` | **API Key Persistence** - Encrypted MongoDB storage |
 | `/app/backend/paper_trading/paper_trader.py` | Paper trading with all integrations |
 
 ---
