@@ -6327,7 +6327,7 @@ async def startup_event():
                 except Exception as e:
                     logger.error(f"[NEWS/EXA] Poll cycle error: {e}")
                 
-                await asyncio.sleep(60)  # 60 second interval between cycles
+                await asyncio.sleep(120)  # 120 second interval between cycles (reduced from 60s for cost savings)
         
         asyncio.create_task(exa_markets_first_loop())
         logger.info("[NEWS] ✓ MARKETS-FIRST Exa.ai loop started")
