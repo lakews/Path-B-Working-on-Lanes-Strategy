@@ -183,9 +183,10 @@ class DualPathNewsInjector:
                 logger.warning("[NEWS INJECTOR] No cached markets for PATH A")
                 return []
             
-            # Semantic search: find top 5-10 relevant markets
+            # Semantic search: find top 3 most relevant markets (reduced from 10 to save LLM costs)
+            # Only markets with >0.3 similarity will be analyzed
             relevant = self._semantic_search(
-                news_embedding, cached_embeddings, cached_markets, top_k=10
+                news_embedding, cached_embeddings, cached_markets, top_k=3, min_similarity=0.3
             )
             
             logger.info(f"[NEWS INJECTOR] Found {len(relevant)} relevant markets via semantic search")
