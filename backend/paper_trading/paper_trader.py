@@ -5203,65 +5203,64 @@ class PaperTrader:
             # ==========================================================================
             # EXIT PRICE DETERMINATION
             # ==========================================================================
-            # PAPER MODE (LIVE_MODE=False): Use mid-price for consistent entry/exit
-            # LIVE MODE (LIVE_MODE=True): Use orderbook-based spread-aware pricing
+            # BOTH MODES: Use orderbook for realistic exit pricing
+            # - Sell YES = hit the bid
+            # - Sell NO = hit the ask (equivalent to buying YES)
             # ==========================================================================
             
-            if not HFTConfig.LIVE_MODE:
-                # PAPER MODE: Use current mid-price directly (matches entry pricing)
-                exit_yes_price = current_price
-                current_spread_pct = 0.02  # Assume 2% spread for calculations
-                logger.debug(f"[PAPER-MODE] Exit eval using mid-price ${current_price:.4f}")
-            else:
-                # LIVE MODE: Fetch fresh orderbook for spread-aware exit
-                bids = []
-                asks = []
-                current_spread_pct = 0.05  # Default 5% spread estimate
-                try:
-                    token_ids = market_data.get('token_ids', [])
-                    if token_ids:
-                        from data.polymarket_api import PolymarketAPI
-                        async with PolymarketAPI() as api:
-                            fresh_orderbook = await api.get_order_book(token_ids[0])
-                            bids = fresh_orderbook.get('bids', [])
-                            asks = fresh_orderbook.get('asks', [])
-                            if bids and asks:
-                                best_bid = float(bids[0]['price'])
-                                best_ask = float(asks[0]['price'])
-                                mid_price = (best_bid + best_ask) / 2
-                                current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.05
-                                logger.debug(f"[EXIT-OB] Fresh orderbook: bid={best_bid}, ask={best_ask}, spread={current_spread_pct:.2%}")
-                except Exception as e:
-                    logger.debug(f"[EXIT-OB] Could not fetch fresh orderbook: {e}")
+            # Fetch fresh orderbook for exit evaluation
+            bids = []
+            asks = []
+            current_spread_pct = 0.02  # Default if no orderbook
+            
+            try:
+                token_ids = market_data.get('token_ids', [])
+                if token_ids:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        fresh_orderbook = await api.get_order_book(token_ids[0])
+                        bids = fresh_orderbook.get('bids', [])
+                        asks = fresh_orderbook.get('asks', [])
+                        if bids and asks:
+                            best_bid = float(bids[0]['price'])
+                            best_ask = float(asks[0]['price'])
+                            mid_price = (best_bid + best_ask) / 2
+                            current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.02
+                            logger.debug(f"[EXIT-OB] Fresh orderbook: bid={best_bid:.4f}, ask={best_ask:.4f}, spread={current_spread_pct:.2%}")
+            except Exception as e:
+                logger.debug(f"[EXIT-OB] Could not fetch fresh orderbook: {e}")
+            
+            # Fallback to cached orderbook if fresh fetch failed
+            if not bids or not asks:
+                order_book = market_data.get('order_book', {})
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
+            
+            if bids and asks:
+                best_bid = float(bids[0]['price'])
+                best_ask = float(asks[0]['price'])
+                spread = best_ask - best_bid
+                mid_price = (best_bid + best_ask) / 2
+                current_spread_pct = spread / mid_price if mid_price > 0 else 0.02
                 
-                # Fallback to cached orderbook if fresh fetch failed
-                if not bids or not asks:
-                    order_book = market_data.get('order_book', {})
-                    bids = order_book.get('bids', [])
-                    asks = order_book.get('asks', [])
-                
-                if bids and asks:
-                    best_bid = float(bids[0]['price'])
-                    best_ask = float(asks[0]['price'])
-                    spread = best_ask - best_bid
-                    mid_price = (best_bid + best_ask) / 2
-                    current_spread_pct = spread / mid_price if mid_price > 0 else 0.05
-                    
-                    # SANITY CHECK: Reject if spread is too wide (>15%)
-                    if spread < 0 or spread > 0.15:
-                        logger.warning(f"[EXIT-EVAL] Suspicious orderbook spread={spread:.2%}, using midpoint instead")
-                        exit_yes_price = current_price
-                    elif side == 'YES':
-                        exit_yes_price = best_bid  # Selling YES = hitting bid
-                    else:
-                        exit_yes_price = best_ask  # Selling NO = buying YES = hitting ask
+                # SANITY CHECK: Reject if spread is too wide (>20%)
+                if spread < 0 or spread > 0.20:
+                    logger.warning(f"[EXIT-EVAL] Suspicious orderbook spread={spread:.2%}, using midpoint instead")
+                    exit_yes_price = current_price
+                elif side == 'YES':
+                    exit_yes_price = best_bid  # Selling YES = hitting bid
                 else:
-                    spread_estimate = 0.02
-                    if side == 'YES':
-                        exit_yes_price = current_price - (spread_estimate / 2)
-                    else:
-                        exit_yes_price = current_price + (spread_estimate / 2)
-                    exit_yes_price = max(0.001, min(0.999, exit_yes_price))
+                    exit_yes_price = best_ask  # Selling NO = buying YES = hitting ask
+                logger.debug(f"[EXIT-EVAL] Using orderbook: side={side}, exit_price={exit_yes_price:.4f}")
+            else:
+                # No orderbook available - use mid-price with spread estimate
+                spread_estimate = 0.02
+                if side == 'YES':
+                    exit_yes_price = current_price - (spread_estimate / 2)
+                else:
+                    exit_yes_price = current_price + (spread_estimate / 2)
+                exit_yes_price = max(0.001, min(0.999, exit_yes_price))
+                logger.debug(f"[EXIT-EVAL] No orderbook, using estimated exit: {exit_yes_price:.4f}")
             
             # UPDATE position's current_price for UI display
             if side == 'YES':
