@@ -6138,7 +6138,9 @@ class PaperTrader:
             logger.info(f"{emoji} PAPER EXIT: {side} ${size:.2f} | PnL: ${pnl:.2f} ({pnl_pct:.1%}) | Reason: {exit_reason} | RL Reward: {reward:.4f}")
             
         except Exception as e:
+            import traceback
             logger.error(f"Error executing paper exit: {e}")
+            logger.error(f"   Traceback: {traceback.format_exc()}")
     
     def _calculate_rl_reward(self, pnl_pct: float, is_win: bool, exit_reason: str, 
                               position: Dict = None, hold_time_hours: float = 0) -> float:
