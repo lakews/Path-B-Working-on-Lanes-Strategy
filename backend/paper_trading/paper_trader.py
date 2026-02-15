@@ -8354,13 +8354,15 @@ class PaperTrader:
             # Only include strategies with activity (trades or open positions)
             if trades > 0 or open_pos > 0:
                 strategy_results[strategy] = {
-                    'trades': trades,  # Closed trades
+                    'trades': trades,  # Total entries (open + closed)
+                    'closed_trades': closed_trades,  # Only closed trades
                     'open_positions': open_pos,
                     'wins': wins,
                     'pnl': pnl,  # Realized P&L (closed)
                     'unrealized_pnl': round(unrealized, 2),  # Live P&L (open)
                     'total_pnl': round(pnl + unrealized, 2),  # Total P&L
-                    'win_rate': wins / trades if trades > 0 else 0,
+                    # Win rate should be based on CLOSED trades only
+                    'win_rate': wins / closed_trades if closed_trades > 0 else 0,
                     'profit_factor': round(gross_profit / gross_loss, 2) if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
                     'avg_hold_time': round(avg_hold_time, 2),  # Average hold time in hours
                     'gross_profit': gross_profit,
