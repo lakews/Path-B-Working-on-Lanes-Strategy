@@ -518,35 +518,50 @@ class NewsSniper:
                 logger.info(f"[NEWS SNIPER] No market data for {market_id[:16]}... (not in cache)")
                 return
             
-            # Calculate enhanced conviction
-            conviction, breakdown = await self.conviction_enhancer.calculate_conviction(
+            # ============================================
+            # TIME DECAY: Weight signal by freshness
+            # ============================================
+            time_decay = calculate_time_decay(signal)
+            
+            # Calculate enhanced conviction (then apply time decay)
+            raw_conviction, breakdown = await self.conviction_enhancer.calculate_conviction(
                 signal, market_data
             )
             
+            # Apply time decay to conviction
+            conviction = raw_conviction * time_decay
+            breakdown['time_decay'] = time_decay
+            breakdown['raw_conviction'] = raw_conviction
+            breakdown['decayed_conviction'] = conviction
+            
             self.stats['total_conviction_sum'] += conviction
             
-            # Get Kelly fraction based on conviction tier
+            # Get Kelly fraction based on DECAYED conviction tier
             kelly_fraction = self._conviction_to_kelly(conviction)
             
             logger.info(
                 f"[NEWS SNIPER] Processing {market_id[:16]}... | "
-                f"BF={signal.get('bayes_factor', 0):.1f}, Conv={conviction:.2f}, Kelly={kelly_fraction:.0%}"
+                f"BF={signal.get('bayes_factor', 0):.1f}, RawConv={raw_conviction:.2f}, "
+                f"Decay={time_decay:.0%}, Conv={conviction:.2f}, Kelly={kelly_fraction:.0%}"
             )
             
             if kelly_fraction == 0:
                 self.stats['trades_skipped_low_conviction'] += 1
                 logger.debug(
                     f"[NEWS SNIPER] Skipping {market_id[:16]}... | "
-                    f"Conviction {conviction:.2f} too low"
+                    f"Conviction {conviction:.2f} too low (decay={time_decay:.0%})"
                 )
                 return
             
-            # Check edge
+            # Check edge (also apply time decay to confidence for edge calculation)
             direction = signal.get('direction', 'YES')
             # Support both 'yes_price' and 'price' field names
             yes_price = float(market_data.get('yes_price') or market_data.get('price', 0.5) or 0.5)
             no_price = 1 - yes_price
-            confidence = signal.get('confidence', 0.5)
+            raw_confidence = signal.get('confidence', 0.5)
+            
+            # Apply time decay to confidence (stale signals = less confident)
+            confidence = 0.5 + (raw_confidence - 0.5) * time_decay  # Decay towards 0.5 (neutral)
             
             # Edge = our confidence in direction - market price for that direction
             # confidence is the confidence IN THE SIGNAL'S DIRECTION
@@ -557,7 +572,8 @@ class NewsSniper:
             
             logger.info(
                 f"[NEWS SNIPER] Edge check {market_id[:16]}... | "
-                f"Dir={direction}, Conf={confidence:.0%}, Price={yes_price if direction == 'YES' else no_price:.1%}, Edge={edge:.2%}"
+                f"Dir={direction}, RawConf={raw_confidence:.0%}, Conf={confidence:.0%}, "
+                f"Price={yes_price if direction == 'YES' else no_price:.1%}, Edge={edge:.2%}"
             )
             
             if edge < 0.02:  # 2% minimum edge
