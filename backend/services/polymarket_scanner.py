@@ -424,7 +424,9 @@ class PolymarketScanner:
                 doc = {
                     'market_id': market_id,
                     'question': market.get('question', ''),
+                    'description': market.get('description', ''),  # Rich context for news queries
                     'category': market.get('category', 'Other'),
+                    'end_date': market.get('end_date'),  # For time-aware queries
                     'price': yes_price,  # No default - skip if missing
                     'bid_ask': {
                         'bid': yes_price - 0.01,
