@@ -592,6 +592,13 @@ class PaperTrader:
             'gamma_scalp': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
             'sports_arbitrage': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
             'news_sniper': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            # HFT Engine V2 strategies (Jan 2026)
+            'hft_liquidity_provision': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'hft_volatility_exploit': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'hft_extreme_spread': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'volatility_exploitation': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'hft_sharp_following': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'hft_delta_neutral': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
         }
         
         # Asset class tracking (with full metrics like backtest)
