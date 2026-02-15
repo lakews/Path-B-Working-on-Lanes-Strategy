@@ -197,12 +197,18 @@ class DualPathNewsInjector:
             signals = []
             for market in relevant:
                 try:
+                    market_question = market.get('question', 'Unknown')
+                    logger.info(f"[NEWS INJECTOR] PATH A: Analyzing market '{market_question[:50]}...' against news '{headline[:40]}...'")
+                    
                     conviction = await self._llm_analyze_market(
                         headline, market, source, content
                     )
                     if conviction:
+                        logger.info(f"[NEWS INJECTOR] PATH A: ✓ Signal generated - direction={conviction.get('direction')}, BF={conviction.get('bayes_factor'):.2f}")
                         signals.append(conviction)
                         self.stats['llm_calls'] += 1
+                    else:
+                        logger.debug(f"[NEWS INJECTOR] PATH A: ✗ No signal (LLM returned not relevant)")
                 except Exception as e:
                     logger.error(f"[NEWS INJECTOR] LLM error for market: {e}")
                     continue
