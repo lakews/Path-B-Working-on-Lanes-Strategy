@@ -38,7 +38,7 @@
         "kill_switch_high": 0.995,
         "description": "Volatility exploit needs access to extreme prices for convexity"
       },
-      "gamma_scalp": {
+      "hft_gamma_scalp": {
         "enabled": true,
         "kill_switch_low": 0.01,
         "kill_switch_high": 0.99,
