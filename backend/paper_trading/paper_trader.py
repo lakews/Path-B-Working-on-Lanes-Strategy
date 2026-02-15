@@ -626,6 +626,13 @@ class PaperTrader:
             'gamma_scalp': 0.0,
             'sports_arbitrage': 0.0,
             'news_sniper': 0.0,
+            # HFT Engine V2 strategies (Jan 2026)
+            'hft_liquidity_provision': 0.0,
+            'hft_volatility_exploit': 0.0,
+            'hft_extreme_spread': 0.0,
+            'volatility_exploitation': 0.0,
+            'hft_sharp_following': 0.0,
+            'hft_delta_neutral': 0.0,
         }
         
         # Five-Lane Equity Tracking (Updated Jan 2026)
