@@ -5822,6 +5822,16 @@ async def startup_event():
         logger.warning(f"Could not load saved config: {e}")
     
     # =============================================
+    # API KEY PERSISTENCE (Load from MongoDB)
+    # =============================================
+    try:
+        db = get_db()
+        await init_api_key_store(db)
+        logger.info("[API KEY STORE] ✓ API keys loaded from MongoDB")
+    except Exception as e:
+        logger.warning(f"[API KEY STORE] Could not load API keys: {e}")
+    
+    # =============================================
     # MARKETS-FIRST ARCHITECTURE INITIALIZATION
     # =============================================
     try:
