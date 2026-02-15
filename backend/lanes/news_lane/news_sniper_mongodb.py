@@ -371,15 +371,17 @@ class NewsSniper:
             signals = await self._read_fresh_signals()
             
             if not signals:
+                logger.debug("[NEWS SNIPER] No fresh PATH A signals found")
                 return
             
+            logger.info(f"[NEWS SNIPER] Found {len(signals)} fresh PATH A signals to process")
             self.stats['signals_processed'] += len(signals)
             
             for signal in signals:
                 try:
                     await self._process_single_signal(signal)
                 except Exception as e:
-                    logger.debug(f"[NEWS SNIPER] Signal processing error: {e}")
+                    logger.warning(f"[NEWS SNIPER] Signal processing error: {e}")
                     continue
                     
         except Exception as e:
