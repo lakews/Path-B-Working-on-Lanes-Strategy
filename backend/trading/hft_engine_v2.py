@@ -631,6 +631,187 @@ class HighFrequencyTradingEngineV2:
             return False
     
     # =========================================================================
+    # DIRECTION DETERMINATION (Strategy-Specific)
+    # =========================================================================
+    
+    async def _determine_direction(
+        self,
+        hft_mode: HFTMode,
+        market_data: Dict,
+        adjusted_fair: float,
+        signal: Optional[Dict]
+    ) -> Optional[str]:
+        """
+        Determine trade direction based on strategy type.
+        
+        Each strategy has its own direction logic:
+        - DELTA_NEUTRAL, EXTREME_SPREAD: Fair value vs current price
+        - LIQUIDITY_PROVISION: Order flow imbalance
+        - VOLATILITY_EXPLOIT: Mean reversion at extremes
+        - SHARP_FOLLOWING: Whale/sharp trader direction
+        
+        PATH A can override if Bayes Factor is high enough.
+        
+        Returns: 'YES', 'NO', or None (skip - no edge)
+        """
+        current_price = float(market_data.get('price', market_data.get('yes_price', 0.5)) or 0.5)
+        edge_threshold = HFTConfig.EDGE_THRESHOLD
+        direction = None
+        
+        # Strategy-specific direction logic
+        if hft_mode in [HFTMode.DELTA_NEUTRAL, HFTMode.EXTREME_SPREAD]:
+            # Market making strategies: Fair value comparison
+            edge_yes = adjusted_fair - current_price
+            edge_no = current_price - adjusted_fair
+            
+            if edge_yes >= edge_threshold:
+                direction = 'YES'  # Market underpriced, buy YES
+            elif edge_no >= edge_threshold:
+                direction = 'NO'   # Market overpriced, buy NO
+            else:
+                logger.debug(f"[HFT V2] {hft_mode.value}: No edge (fair={adjusted_fair:.3f}, price={current_price:.3f})")
+                return None  # No edge, skip
+                
+        elif hft_mode == HFTMode.LIQUIDITY_PROVISION:
+            # Order flow imbalance direction
+            direction = self._get_order_flow_direction(market_data)
+            
+        elif hft_mode == HFTMode.VOLATILITY_EXPLOIT:
+            # Mean reversion at extremes
+            direction = self._get_mean_reversion_direction(current_price)
+            if direction is None:
+                return None  # Price not at extremes, skip
+                
+        elif hft_mode == HFTMode.SHARP_FOLLOWING:
+            # Follow whale/sharp traders
+            direction = await self._get_sharp_direction(market_data.get('market_id', ''))
+            
+        else:
+            # Fallback to fair value comparison
+            if adjusted_fair > current_price + edge_threshold:
+                direction = 'YES'
+            elif adjusted_fair < current_price - edge_threshold:
+                direction = 'NO'
+            else:
+                return None
+        
+        # PATH A override check (only for high Bayes Factor)
+        if signal and signal.get('bayes_factor', 0) >= HFTConfig.PATH_A_OVERRIDE_BF:
+            path_a_direction = signal.get('direction')
+            if path_a_direction and path_a_direction != direction:
+                logger.info(
+                    f"[HFT V2] PATH A override: BF={signal['bayes_factor']:.1f}, "
+                    f"{hft_mode.value} {direction}→{path_a_direction}"
+                )
+                direction = path_a_direction
+        
+        return direction
+    
+    def _get_mean_reversion_direction(self, price: float) -> Optional[str]:
+        """
+        Mean reversion strategy: Bet against extremes.
+        
+        Returns direction if price is at extreme, None otherwise.
+        """
+        if price <= HFTConfig.MEAN_REVERSION_LOW:
+            return 'YES'  # Too low, expect reversion up
+        elif price >= HFTConfig.MEAN_REVERSION_HIGH:
+            return 'NO'   # Too high, expect reversion down
+        else:
+            return None   # Not at extreme, don't trade mean reversion
+    
+    async def _get_sharp_direction(self, market_id: str) -> str:
+        """
+        Follow sharp/whale traders direction.
+        
+        Returns the direction whales are betting, or 'YES' as default.
+        """
+        try:
+            # Try whale_tracker first
+            if hasattr(self, 'whale_tracker') and self.whale_tracker:
+                if hasattr(self.whale_tracker, 'get_market_bias'):
+                    whale_bias = await self.whale_tracker.get_market_bias(market_id)
+                    if whale_bias and whale_bias.get('direction'):
+                        return whale_bias['direction']
+                elif hasattr(self.whale_tracker, 'get_whale_direction'):
+                    direction = await self.whale_tracker.get_whale_direction(market_id)
+                    if direction:
+                        return direction
+            
+            # Try sharp_detector
+            if self.sharp_detector:
+                if hasattr(self.sharp_detector, 'get_sharp_direction'):
+                    direction = await self.sharp_detector.get_sharp_direction(market_id)
+                    if direction:
+                        return direction
+                elif hasattr(self.sharp_detector, 'detect_sharp_movement'):
+                    result = await self.sharp_detector.detect_sharp_movement(market_id)
+                    if result.get('direction'):
+                        return result['direction']
+            
+            return 'YES'  # Default if no whale/sharp data
+            
+        except Exception as e:
+            logger.debug(f"[HFT V2] Sharp direction error: {e}")
+            return 'YES'
+    
+    def _get_order_flow_direction(self, market_data: Dict) -> str:
+        """
+        Determine direction from order flow imbalance.
+        
+        If buy volume significantly exceeds sell volume, lean YES.
+        If sell volume significantly exceeds buy volume, lean NO.
+        """
+        buy_volume = float(market_data.get('buy_volume', 0) or 0)
+        sell_volume = float(market_data.get('sell_volume', 0) or 0)
+        
+        imbalance_ratio = HFTConfig.ORDER_FLOW_IMBALANCE_RATIO
+        
+        if buy_volume > sell_volume * imbalance_ratio:
+            return 'YES'  # More buying pressure
+        elif sell_volume > buy_volume * imbalance_ratio:
+            return 'NO'   # More selling pressure
+        
+        # No significant imbalance - use volume trend or default
+        volume_24h = float(market_data.get('volume_24h', market_data.get('volume', 0)) or 0)
+        price = float(market_data.get('price', 0.5) or 0.5)
+        
+        # Lean with the trend if high volume
+        if volume_24h > HFTConfig.LIQUIDITY_MIN_VOLUME:
+            # High volume + price > 0.5 suggests YES momentum
+            return 'YES' if price > 0.5 else 'NO'
+        
+        return 'YES'  # Default
+    
+    def _log_drift(self, path_b_data: Dict, market_data: Dict) -> float:
+        """
+        Log drift between PATH B price and current market price.
+        
+        Returns: drift percentage (absolute)
+        """
+        try:
+            path_b_price = float(path_b_data.get('yes_price', 0) or 0)
+            current_price = float(market_data.get('price', market_data.get('yes_price', 0)) or 0)
+            
+            if path_b_price <= 0 or current_price <= 0:
+                return 0.0
+            
+            drift = abs(current_price - path_b_price)
+            
+            if drift > HFTConfig.MAX_DRIFT_PCT:
+                logger.info(
+                    f"[HFT V2] Drift detected: {drift:.2%} | "
+                    f"PATH B: ${path_b_price:.3f} → Current: ${current_price:.3f} | "
+                    f"News: {path_b_data.get('news_headline', 'unknown')[:50]}..."
+                )
+            
+            return drift
+            
+        except Exception as e:
+            logger.debug(f"[HFT V2] Drift log error: {e}")
+            return 0.0
+    
+    # =========================================================================
     # TRADE PARAMETER BUILDING
     # =========================================================================
     
