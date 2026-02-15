@@ -1343,6 +1343,52 @@ async def get_config():
                 "kill_switch_low": 0.03,
                 "kill_switch_high": 0.97
             },
+            # Extreme Price Validation (Tiered Kill Switch)
+            "extreme_price_validation": saved_config.get("extreme_price_validation", {
+                "enabled": True,
+                "extreme_low_threshold": 0.03,
+                "extreme_high_threshold": 0.97,
+                "requirements": {
+                    "min_orderbook_depth_usd": 100,
+                    "min_spread_quality": 0.05,
+                    "min_recent_volume_1h": 50,
+                    "min_time_to_expiry_hours": 24
+                },
+                "strategy_overrides": {
+                    "hft_volatility_exploit": {
+                        "enabled": True,
+                        "kill_switch_low": 0.005,
+                        "kill_switch_high": 0.995
+                    },
+                    "hft_gamma_scalp": {
+                        "enabled": True,
+                        "kill_switch_low": 0.01,
+                        "kill_switch_high": 0.99
+                    }
+                }
+            }) if saved_config else {
+                "enabled": True,
+                "extreme_low_threshold": 0.03,
+                "extreme_high_threshold": 0.97,
+                "requirements": {
+                    "min_orderbook_depth_usd": 100,
+                    "min_spread_quality": 0.05,
+                    "min_recent_volume_1h": 50,
+                    "min_time_to_expiry_hours": 24
+                },
+                "strategy_overrides": {
+                    "hft_volatility_exploit": {
+                        "enabled": True,
+                        "kill_switch_low": 0.005,
+                        "kill_switch_high": 0.995
+                    },
+                    "hft_gamma_scalp": {
+                        "enabled": True,
+                        "kill_switch_low": 0.01,
+                        "kill_switch_high": 0.99
+                    }
+                }
+            },
         }
     except Exception as e:
         logger.error(f"Error getting config: {e}")
