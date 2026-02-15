@@ -7880,6 +7880,20 @@ class PaperTrader:
                 
                 yes_price = float(yes_price)
                 
+                # EXPIRATION CHECK - Skip markets that have passed their end date
+                end_date_str = m.get('end_date') or m.get('endDate')
+                if end_date_str:
+                    try:
+                        from dateutil.parser import parse
+                        end_date = parse(end_date_str)
+                        if end_date.tzinfo is None:
+                            end_date = end_date.replace(tzinfo=timezone.utc)
+                        if end_date < datetime.now(timezone.utc):
+                            quality_stats['rejected_extreme_price'] += 1  # Reuse counter
+                            continue
+                    except:
+                        pass  # If parsing fails, allow the market
+                
                 # ==========================================================
                 # DYNAMIC PRICE CAPS (Sports Override)
                 # ==========================================================
