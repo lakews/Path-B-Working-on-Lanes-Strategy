@@ -447,17 +447,19 @@ class NewsSniper:
         try:
             market_id = signal.get('market_id', '')
             if not market_id:
+                logger.debug("[NEWS SNIPER] Signal has no market_id, skipping")
                 return
             
             # Check if we already have a position
             if self.paper_trader and market_id in getattr(self.paper_trader, 'paper_positions', {}):
                 self.stats['trades_skipped_position_exists'] += 1
+                logger.debug(f"[NEWS SNIPER] Position exists for {market_id[:16]}...")
                 return
             
             # Get market data
             market_data = await self._get_market_data(market_id)
             if not market_data:
-                logger.debug(f"[NEWS SNIPER] No market data for {market_id[:16]}...")
+                logger.info(f"[NEWS SNIPER] No market data for {market_id[:16]}... (not in cache)")
                 return
             
             # Calculate enhanced conviction
