@@ -55,18 +55,18 @@ class DualPathNewsInjector:
             'errors': 0
         }
         
-        # PATH A: Architecture C Ultimate (replaces old semantic search)
-        self.arch_c_index = None
+        # PATH A: News-to-Market Matching & Signal Generation Engine
+        self.path_a_engine = None
         try:
-            from .reverse_market_index_ultimate import ReverseMarketIndexUltimate
-            from config import arch_c_config
-            self.arch_c_index = ReverseMarketIndexUltimate(
+            from .path_a_engine import PathAEngine
+            from config import path_a_config
+            self.path_a_engine = PathAEngine(
                 polymarket_scanner=polymarket_scanner,
                 llm_service=llm_service,
                 mongo_db=db_mongo,
-                config=arch_c_config.ARCH_C_CONFIG
+                config=path_a_config.PATH_A_CONFIG
             )
-            logger.info("[DUAL PATH] ✓ PATH A initialized (Architecture C Ultimate)")
+            logger.info("[DUAL PATH] ✓ PATH A Engine initialized")
         except Exception as e:
             logger.error(f"[DUAL PATH] Failed to initialize PATH A: {e}")
     
