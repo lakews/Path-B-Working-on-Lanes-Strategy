@@ -5527,6 +5527,24 @@ async def get_arch_c_stats():
         )
 
 
+@api_router.get("/news-aggregator/stats")
+async def get_news_aggregator_stats():
+    """Get Polymarket News Aggregator statistics"""
+    try:
+        from services.polymarket_news_sources import get_news_aggregator
+        aggregator = get_news_aggregator()
+        if aggregator:
+            return aggregator.get_stats()
+        else:
+            return {'error': 'News aggregator not initialized'}
+    except Exception as e:
+        logger.error(f"Error getting news aggregator stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
 @api_router.post("/webhooks/news")
 async def receive_news(news: Dict[str, Any]):
     """
