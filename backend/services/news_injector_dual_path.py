@@ -101,8 +101,24 @@ class DualPathNewsInjector:
             'path_b_broadcasts': 0,
             'llm_calls': 0,
             'mongodb_writes': 0,
-            'errors': 0
+            'errors': 0,
+            'arch_c_signals': 0
         }
+        
+        # Initialize Architecture C Ultimate
+        self.arch_c_index = None
+        try:
+            from .reverse_market_index_ultimate import ReverseMarketIndexUltimate
+            from config import arch_c_config
+            self.arch_c_index = ReverseMarketIndexUltimate(
+                polymarket_scanner=polymarket_scanner,
+                llm_service=llm_service,
+                mongo_db=db_mongo,
+                config=arch_c_config.ARCH_C_CONFIG
+            )
+            logger.info("[DUAL PATH] Architecture C Ultimate initialized")
+        except Exception as e:
+            logger.warning(f"[DUAL PATH] Could not init Architecture C: {e}")
     
     async def process_news_event(self, news: Dict) -> Tuple[List[Dict], int]:
         """
