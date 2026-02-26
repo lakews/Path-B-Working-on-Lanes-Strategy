@@ -101,6 +101,282 @@ CATEGORY_BAYES_MULTIPLIERS = {
 }
 
 # ============================================================================
+# POLYMARKET CATEGORY MAPPING
+# ============================================================================
+
+POLYMARKET_CATEGORY_MAP = {
+    # Polymarket category -> Our category
+    'Politics': 'POLITICS',
+    'Crypto': 'CRYPTO',
+    'Sports': 'SPORTS',
+    'Pop Culture': 'ENTERTAINMENT',
+    'Business': 'FINANCE',
+    'Science': 'TECH',
+    'Finance & Econ': 'FINANCE',
+    'Science & Tech': 'TECH',
+    'World': 'GEOPOLITICS',
+    'Entertainment': 'ENTERTAINMENT',
+    'Gaming': 'ENTERTAINMENT',
+    'NA': 'GENERAL',
+    '': 'GENERAL',
+}
+
+# ============================================================================
+# ENTITY SYNONYMS DICTIONARY (300+ entries for Polymarket relevance)
+# ============================================================================
+
+ENTITY_SYNONYMS = {
+    # =========================================================================
+    # POLITICS - US Politicians & Figures
+    # =========================================================================
+    'trump': ['trump', 'donald trump', 'president trump', 'former president trump', 'trump administration', 'maga'],
+    'biden': ['biden', 'joe biden', 'president biden', 'biden administration'],
+    'harris': ['harris', 'kamala harris', 'vp harris', 'vice president harris'],
+    'desantis': ['desantis', 'ron desantis', 'governor desantis'],
+    'newsom': ['newsom', 'gavin newsom', 'governor newsom'],
+    'pence': ['pence', 'mike pence'],
+    'obama': ['obama', 'barack obama'],
+    'clinton': ['clinton', 'hillary clinton', 'bill clinton'],
+    'pelosi': ['pelosi', 'nancy pelosi'],
+    'mcconnell': ['mcconnell', 'mitch mcconnell'],
+    'schumer': ['schumer', 'chuck schumer'],
+    'aoc': ['aoc', 'ocasio-cortez', 'alexandria ocasio-cortez'],
+    'sanders': ['sanders', 'bernie sanders'],
+    'warren': ['warren', 'elizabeth warren'],
+    'haley': ['haley', 'nikki haley'],
+    'ramaswamy': ['ramaswamy', 'vivek ramaswamy'],
+    'rfk': ['rfk', 'kennedy', 'robert kennedy', 'rfk jr'],
+    'vance': ['vance', 'jd vance'],
+    'walz': ['walz', 'tim walz'],
+    'shapiro': ['shapiro', 'josh shapiro'],
+    'whitmer': ['whitmer', 'gretchen whitmer'],
+    'abbott': ['abbott', 'greg abbott'],
+    'scott_tim': ['tim scott', 'senator scott'],
+    'pompeo': ['pompeo', 'mike pompeo'],
+    'barr': ['barr', 'bill barr', 'william barr'],
+    'garland': ['garland', 'merrick garland'],
+    'jack_smith': ['jack smith', 'special counsel smith'],
+    'cannon': ['cannon', 'judge cannon', 'aileen cannon'],
+    'chutkan': ['chutkan', 'judge chutkan'],
+    'bragg': ['bragg', 'alvin bragg'],
+    'james': ['letitia james', 'ag james'],
+    'fani_willis': ['fani willis', 'willis'],
+    
+    # =========================================================================
+    # POLITICS - World Leaders
+    # =========================================================================
+    'putin': ['putin', 'vladimir putin', 'russia president'],
+    'zelensky': ['zelensky', 'zelenskyy', 'volodymyr zelensky', 'ukraine president'],
+    'xi': ['xi', 'xi jinping', 'china president', 'chinese president'],
+    'netanyahu': ['netanyahu', 'bibi', 'benjamin netanyahu', 'israel pm'],
+    'macron': ['macron', 'emmanuel macron', 'france president'],
+    'scholz': ['scholz', 'olaf scholz', 'germany chancellor'],
+    'sunak': ['sunak', 'rishi sunak', 'uk pm', 'british pm'],
+    'starmer': ['starmer', 'keir starmer'],
+    'trudeau': ['trudeau', 'justin trudeau', 'canada pm'],
+    'modi': ['modi', 'narendra modi', 'india pm'],
+    'erdogan': ['erdogan', 'recep erdogan', 'turkey president'],
+    'lula': ['lula', 'lula da silva', 'brazil president'],
+    'milei': ['milei', 'javier milei', 'argentina president'],
+    'kim': ['kim jong un', 'kim jong-un', 'north korea leader'],
+    'khamenei': ['khamenei', 'ayatollah khamenei', 'iran leader'],
+    'mbs': ['mbs', 'mohammed bin salman', 'saudi crown prince'],
+    'orban': ['orban', 'viktor orban', 'hungary pm'],
+    
+    # =========================================================================
+    # CRYPTO - Coins & Tokens
+    # =========================================================================
+    'bitcoin': ['bitcoin', 'btc', 'satoshi', 'bitcoin price', 'btc price'],
+    'ethereum': ['ethereum', 'eth', 'ether', 'ethereum price', 'eth price'],
+    'solana': ['solana', 'sol'],
+    'xrp': ['xrp', 'ripple'],
+    'dogecoin': ['dogecoin', 'doge'],
+    'cardano': ['cardano', 'ada'],
+    'avalanche': ['avalanche', 'avax'],
+    'polkadot': ['polkadot', 'dot'],
+    'chainlink': ['chainlink', 'link'],
+    'polygon': ['polygon', 'matic'],
+    'uniswap': ['uniswap', 'uni'],
+    'litecoin': ['litecoin', 'ltc'],
+    'shiba': ['shiba', 'shib', 'shiba inu'],
+    'pepe': ['pepe', 'pepe coin'],
+    'bonk': ['bonk'],
+    'wif': ['wif', 'dogwifhat'],
+    'toncoin': ['toncoin', 'ton'],
+    'bnb': ['bnb', 'binance coin'],
+    'tether': ['tether', 'usdt'],
+    'usdc': ['usdc', 'usd coin'],
+    
+    # =========================================================================
+    # CRYPTO - Entities & Events
+    # =========================================================================
+    'bitcoin_etf': ['bitcoin etf', 'btc etf', 'spot bitcoin etf', 'spot etf'],
+    'ethereum_etf': ['ethereum etf', 'eth etf', 'spot ethereum etf'],
+    'halving': ['halving', 'bitcoin halving', 'btc halving', 'halvening'],
+    'sec_crypto': ['sec', 'sec crypto', 'gensler', 'gary gensler'],
+    'binance': ['binance', 'cz', 'changpeng zhao'],
+    'coinbase': ['coinbase', 'brian armstrong'],
+    'ftx': ['ftx', 'sbf', 'sam bankman-fried', 'bankman-fried'],
+    'tether_co': ['tether', 'bitfinex'],
+    'microstrategy': ['microstrategy', 'saylor', 'michael saylor'],
+    'grayscale': ['grayscale', 'gbtc'],
+    'blackrock_crypto': ['blackrock etf', 'ibit', 'blackrock bitcoin'],
+    'vitalik': ['vitalik', 'vitalik buterin', 'buterin'],
+    
+    # =========================================================================
+    # FINANCE - Federal Reserve & Rates
+    # =========================================================================
+    'fed': ['fed', 'federal reserve', 'fomc', 'the fed', 'us fed'],
+    'powell': ['powell', 'jerome powell', 'fed chair', 'fed chairman'],
+    'rate_cut': ['rate cut', 'rate cuts', 'cut rates', 'cutting rates', 'lower rates', 'rate reduction'],
+    'rate_hike': ['rate hike', 'rate hikes', 'raise rates', 'raising rates', 'higher rates', 'rate increase'],
+    'interest_rates': ['interest rate', 'interest rates', 'rates', 'fed rate', 'fed funds'],
+    'inflation': ['inflation', 'cpi', 'consumer price', 'pce', 'core inflation'],
+    'recession': ['recession', 'economic recession', 'downturn'],
+    'gdp': ['gdp', 'gross domestic product', 'economic growth'],
+    'jobs_report': ['jobs report', 'employment', 'unemployment', 'nonfarm payrolls', 'jobless claims'],
+    'ecb': ['ecb', 'european central bank', 'lagarde', 'christine lagarde'],
+    'boj': ['boj', 'bank of japan', 'japan rates'],
+    
+    # =========================================================================
+    # FINANCE - Markets & Companies
+    # =========================================================================
+    'sp500': ['s&p', 's&p 500', 'sp500', 'spy'],
+    'nasdaq': ['nasdaq', 'qqq', 'nasdaq 100'],
+    'dow': ['dow', 'dow jones', 'djia'],
+    'nvidia': ['nvidia', 'nvda', 'jensen huang'],
+    'apple': ['apple', 'aapl', 'tim cook'],
+    'microsoft': ['microsoft', 'msft', 'satya nadella'],
+    'amazon': ['amazon', 'amzn', 'jeff bezos', 'andy jassy'],
+    'google': ['google', 'alphabet', 'googl', 'sundar pichai'],
+    'meta': ['meta', 'facebook', 'fb', 'zuckerberg', 'mark zuckerberg'],
+    'tesla': ['tesla', 'tsla'],
+    'berkshire': ['berkshire', 'warren buffett', 'buffett'],
+    
+    # =========================================================================
+    # TECH - AI & Companies
+    # =========================================================================
+    'openai': ['openai', 'chatgpt', 'gpt', 'gpt-4', 'gpt-5', 'sam altman', 'altman'],
+    'anthropic': ['anthropic', 'claude', 'dario amodei'],
+    'deepseek': ['deepseek'],
+    'xai': ['xai', 'grok'],
+    'gemini': ['gemini', 'google ai', 'bard'],
+    'musk': ['musk', 'elon musk', 'elon'],
+    'spacex': ['spacex', 'starship', 'starlink', 'falcon'],
+    'neuralink': ['neuralink', 'brain chip'],
+    'agi': ['agi', 'artificial general intelligence'],
+    
+    # =========================================================================
+    # SPORTS - NBA
+    # =========================================================================
+    'nba': ['nba', 'basketball', 'nba finals', 'nba playoffs', 'nba championship'],
+    'lebron': ['lebron', 'lebron james', 'james'],
+    'curry': ['curry', 'steph curry', 'stephen curry'],
+    'durant': ['durant', 'kevin durant', 'kd'],
+    'giannis': ['giannis', 'giannis antetokounmpo', 'antetokounmpo'],
+    'jokic': ['jokic', 'nikola jokic'],
+    'embiid': ['embiid', 'joel embiid'],
+    'tatum': ['tatum', 'jayson tatum'],
+    'luka': ['luka', 'luka doncic', 'doncic'],
+    'wemby': ['wemby', 'wembanyama', 'victor wembanyama'],
+    'lakers': ['lakers', 'la lakers', 'los angeles lakers'],
+    'celtics': ['celtics', 'boston celtics'],
+    'warriors': ['warriors', 'golden state warriors', 'gsw'],
+    'nuggets': ['nuggets', 'denver nuggets'],
+    'bucks': ['bucks', 'milwaukee bucks'],
+    'heat': ['heat', 'miami heat'],
+    'suns': ['suns', 'phoenix suns'],
+    'knicks': ['knicks', 'new york knicks'],
+    'sixers': ['sixers', '76ers', 'philadelphia 76ers'],
+    'thunder': ['thunder', 'okc thunder', 'oklahoma city thunder'],
+    'timberwolves': ['timberwolves', 'wolves', 'minnesota timberwolves'],
+    'cavaliers': ['cavaliers', 'cavs', 'cleveland cavaliers'],
+    'mavericks': ['mavericks', 'mavs', 'dallas mavericks'],
+    'clippers': ['clippers', 'la clippers'],
+    'nba_mvp': ['nba mvp', 'mvp race', 'mvp award'],
+    
+    # =========================================================================
+    # SPORTS - NFL
+    # =========================================================================
+    'nfl': ['nfl', 'football', 'nfl playoffs', 'nfl draft'],
+    'super_bowl': ['super bowl', 'superbowl', 'sb'],
+    'mahomes': ['mahomes', 'patrick mahomes'],
+    'allen': ['josh allen', 'allen'],
+    'burrow': ['burrow', 'joe burrow'],
+    'lamar': ['lamar', 'lamar jackson'],
+    'hurts': ['hurts', 'jalen hurts'],
+    'kelce': ['kelce', 'travis kelce'],
+    'chiefs': ['chiefs', 'kansas city chiefs', 'kc chiefs'],
+    'eagles': ['eagles', 'philadelphia eagles', 'philly eagles'],
+    'bills': ['bills', 'buffalo bills'],
+    'bengals': ['bengals', 'cincinnati bengals'],
+    'niners': ['49ers', 'niners', 'san francisco 49ers', 'sf 49ers'],
+    'cowboys': ['cowboys', 'dallas cowboys'],
+    'ravens': ['ravens', 'baltimore ravens'],
+    'lions': ['lions', 'detroit lions'],
+    'packers': ['packers', 'green bay packers'],
+    'dolphins': ['dolphins', 'miami dolphins'],
+    
+    # =========================================================================
+    # SPORTS - Other
+    # =========================================================================
+    'mlb': ['mlb', 'baseball', 'world series'],
+    'ohtani': ['ohtani', 'shohei ohtani'],
+    'judge': ['judge', 'aaron judge'],
+    'nhl': ['nhl', 'hockey', 'stanley cup'],
+    'ufc': ['ufc', 'mma'],
+    'soccer': ['soccer', 'football', 'world cup'],
+    'messi': ['messi', 'lionel messi'],
+    'ronaldo': ['ronaldo', 'cristiano ronaldo', 'cr7'],
+    'mbappe': ['mbappe', 'kylian mbappe'],
+    'haaland': ['haaland', 'erling haaland'],
+    'premier_league': ['premier league', 'epl', 'english premier league'],
+    'champions_league': ['champions league', 'ucl'],
+    'olympics': ['olympics', 'olympic games', 'paris olympics', '2024 olympics'],
+    
+    # =========================================================================
+    # GEOPOLITICS - Conflicts & Regions
+    # =========================================================================
+    'ukraine_war': ['ukraine', 'ukraine war', 'russia ukraine', 'kyiv', 'kiev'],
+    'russia': ['russia', 'russian', 'moscow', 'kremlin'],
+    'israel_gaza': ['israel', 'gaza', 'hamas', 'palestine', 'palestinian'],
+    'iran': ['iran', 'iranian', 'tehran'],
+    'china_taiwan': ['taiwan', 'china taiwan', 'strait'],
+    'north_korea': ['north korea', 'dprk', 'pyongyang'],
+    'nato': ['nato', 'north atlantic treaty'],
+    'un': ['un', 'united nations', 'security council'],
+    'ceasefire': ['ceasefire', 'peace deal', 'peace talks', 'truce'],
+    
+    # =========================================================================
+    # ENTERTAINMENT & POP CULTURE
+    # =========================================================================
+    'taylor_swift': ['taylor swift', 'swift', 'swifties'],
+    'oscars': ['oscars', 'oscar', 'academy awards', 'academy award'],
+    'grammys': ['grammys', 'grammy', 'grammy awards'],
+    'emmys': ['emmys', 'emmy', 'emmy awards'],
+    'netflix': ['netflix', 'nflx'],
+    'disney': ['disney', 'dis', 'disney+'],
+    'spotify': ['spotify', 'spot'],
+    'youtube': ['youtube', 'yt'],
+    'tiktok': ['tiktok', 'tik tok'],
+    'kardashian': ['kardashian', 'kim kardashian', 'kardashians'],
+    'kanye': ['kanye', 'kanye west', 'ye'],
+    
+    # =========================================================================
+    # EVENTS & MISC
+    # =========================================================================
+    'election_2024': ['2024 election', 'election 2024', 'presidential election', 'november election'],
+    'election_2028': ['2028 election', 'election 2028'],
+    'inauguration': ['inauguration', 'inaugurated', 'sworn in'],
+    'impeachment': ['impeachment', 'impeach', 'impeached'],
+    'indictment': ['indictment', 'indicted', 'charged'],
+    'verdict': ['verdict', 'guilty', 'acquitted', 'convicted'],
+    'shutdown': ['shutdown', 'government shutdown'],
+    'debt_ceiling': ['debt ceiling', 'debt limit'],
+    'tariffs': ['tariffs', 'tariff', 'trade war'],
+}
+
+# ============================================================================
 # HELPER FUNCTIONS: CATEGORY DETECTION
 # ============================================================================
 
