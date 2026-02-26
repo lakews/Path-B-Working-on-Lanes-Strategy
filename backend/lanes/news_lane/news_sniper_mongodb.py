@@ -557,8 +557,12 @@ class NewsSniper:
             
             # Check edge (also apply time decay to confidence for edge calculation)
             direction = signal.get('direction', 'YES')
-            # Support both 'yes_price' and 'price' field names
-            yes_price = float(market_data.get('yes_price') or market_data.get('price', 0.5) or 0.5)
+            # Support both 'yes_price' and 'price' field names - no fallback, skip if missing
+            yes_price_raw = market_data.get('yes_price') or market_data.get('price')
+            if not yes_price_raw or yes_price_raw <= 0:
+                logger.info(f"[NEWS SNIPER] No valid price for {market_id[:16]}... - skipping")
+                return
+            yes_price = float(yes_price_raw)
             no_price = 1 - yes_price
             raw_confidence = signal.get('confidence', 0.5)
             
