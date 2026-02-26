@@ -246,7 +246,7 @@ class PathAConfig:
             'category_bayes_enabled': True,
             # Optimization #3: Early Termination (Hybrid Scoring)
             'early_termination_enabled': True,
-            'early_term_threshold': 0.40,
+            'early_term_threshold': 0.25,  # Lowered from 0.40 to allow more matches through
             # Optimization #4: Adaptive TTL
             'adaptive_ttl_enabled': True,
             # Optimization #5: Priority Queue
