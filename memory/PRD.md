@@ -139,8 +139,10 @@ NEWS EVENT ARRIVES
 |------|---------|
 | `/app/backend/lanes/news_lane/news_sniper_mongodb.py` | **NEWS Sniper MongoDB** - Phase 2 trade execution |
 | `/app/backend/trading/hft_engine_v2.py` | **HFT Engine V2 ENHANCED** - Sole HFT implementation |
-| `/app/backend/services/polymarket_scanner.py` | **PolymarketScanner** - Market caching + description/end_date |
+| `/app/backend/services/polymarket_scanner.py` | **PolymarketScanner** - Market caching + MongoDB fallback |
 | `/app/backend/services/news_injector_dual_path.py` | **DualPathNewsInjector** - PATH A/B signal creation |
+| `/app/backend/services/path_a_engine.py` | **PATH A Engine** - Hybrid scoring + Two-tier LLM |
+| `/app/backend/services/polymarket_news_sources.py` | **News Aggregator** - Finnhub + RSS feeds |
 | `/app/backend/services/api_key_store.py` | **API Key Persistence** - Encrypted MongoDB storage |
 | `/app/backend/paper_trading/paper_trader.py` | Paper trading with all integrations |
 
