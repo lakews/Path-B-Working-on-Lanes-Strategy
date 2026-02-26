@@ -1,18 +1,21 @@
 """
-REVERSE MARKET INDEX - ARCHITECTURE C ULTIMATE
+PATH A ENGINE - News-to-Market Matching & Signal Generation
 
-Core index implementation - CUSTOMIZED FOR YOUR CODEBASE
+Core engine for PATH A in the dual-path news processing system.
 
-Integration points:
-- Uses your EmergentLLMService.analyze_news_for_market()
-- Gets markets from PolymarketScanner.get_cached_markets() (Dict format)
-- Writes to your db.signals collection
-- Compatible with your Config class
+Features:
+- O(1) keyword lookup using reverse index (1,800+ keywords)
+- 330+ entity synonyms for accurate matching
+- Hybrid relevance scoring (Category + Entity + Keyword)
+- Two-tier LLM analysis (Resolution + Sentiment)
+- 7 optimizations: dedup, early termination, clustering, adaptive TTL, priority queue, Bayes multipliers, hot-swap
 
-Author: Architecture C Team
-Version: 2.0.0 Ultimate (Integrated)
-Date: 2026-02-17
-Repo: github.com/lakews/5-lane-strategy-B-Improving-HFT
+Integration:
+- Reads markets from PolymarketScanner
+- Writes signals to db.signals (type: 'path_a')
+- Consumed by NewsSniper for trade execution
+
+Version: 3.0.0 (PATH A)
 """
 import re
 import asyncio
