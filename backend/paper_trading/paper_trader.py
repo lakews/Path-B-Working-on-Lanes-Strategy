@@ -3548,7 +3548,12 @@ class PaperTrader:
             
             # Calculate entry price - USE ACTUAL API PRICES (not computed)
             # The time difference between lookup vs compute is ~7 nanoseconds - negligible
-            yes_price = float(market_data.get('yes_price', 0.5))
+            # FIX: Handle case where yes_price is None - fall back to price field
+            yes_price_raw = market_data.get('yes_price') or market_data.get('price')
+            if yes_price_raw is None or yes_price_raw == 0:
+                logger.warning(f"[SPORTS] No valid price for {market_id[:16]} - skipping")
+                return
+            yes_price = float(yes_price_raw)
             no_price = float(market_data.get('no_price') or (1 - yes_price))  # Fallback only if API missing
             
             if signal.side == 'YES':
@@ -3568,7 +3573,7 @@ class PaperTrader:
                 'size': trade_size,
                 'shares': shares,
                 'entry_price': entry_price,
-                'yes_entry_price': float(market_data.get('yes_price', 0.5)),  # Store YES price for P&L calc
+                'yes_entry_price': yes_price,  # Store YES price for P&L calc (use the validated value)
                 'entry_time': datetime.now(timezone.utc).isoformat(),
                 'strategy': 'sports_arbitrage',
                 'asset_class': 'sports',  # Add asset class
