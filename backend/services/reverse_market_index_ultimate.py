@@ -1177,31 +1177,56 @@ class ReverseMarketIndexUltimate:
         self, news_item: dict, matched_markets: List[Tuple[dict, float]]
     ) -> List[Tuple[dict, float]]:
         """
-        Skip LLM calls for low-relevance matches.
-        If relevance score < threshold, the news is probably not impactful.
-        Saves 50-80% of LLM costs on routine news.
-        INTEGRATED: Saves your LLM API credits!
+        Skip LLM calls for low-relevance matches using HYBRID SCORING.
+        
+        Hybrid Score = Category Match (0.3) + Entity Match (0.4) + Keyword Overlap (0.3)
+        
+        If hybrid score < threshold, the news is probably not impactful.
+        Saves 50-80% of LLM costs on routine news while allowing relevant matches through.
         """
         threshold = self.config.get('early_term_threshold', 0.40)
         filtered = []
         terminated = 0
-
-        for market, relevance in matched_markets:
-            if relevance < threshold:
+        passed = 0
+        
+        # Get news text and category
+        headline = news_item.get('headline', '')
+        content = news_item.get('content', '')
+        news_text = f"{headline} {content}"
+        news_category = news_item.get('_category', 'GENERAL')
+        
+        for market, old_relevance in matched_markets:
+            # Calculate hybrid relevance score
+            hybrid_score, breakdown = calculate_hybrid_relevance(
+                news_text=news_text,
+                market=market,
+                news_category=news_category
+            )
+            
+            if hybrid_score < threshold:
                 terminated += 1
                 logger.debug(
-                    f"[EARLY_TERM] Skipping low-relevance: "
-                    f"market={market.get('question', 'unknown')[:50]}, relevance={relevance:.2f}"
+                    f"[EARLY_TERM] Filtered: {market.get('question', 'unknown')[:40]}... | "
+                    f"score={hybrid_score:.2f} (cat={breakdown['category']:.1f}, "
+                    f"ent={breakdown['entity']:.1f}, kw={breakdown['keyword']:.2f})"
                 )
                 continue
-            filtered.append((market, relevance))
+            
+            # Passed hybrid threshold
+            passed += 1
+            logger.info(
+                f"[HYBRID PASS] ✓ {market.get('question', 'unknown')[:40]}... | "
+                f"score={hybrid_score:.2f} | entities={breakdown['entities_matched']}"
+            )
+            filtered.append((market, hybrid_score))  # Use hybrid score instead of old relevance
 
         if terminated > 0:
             logger.info(
-                f"[EARLY_TERM] Terminated {terminated}/{len(matched_markets)} "
-                f"low-relevance matches (saved {terminated} LLM calls)"
+                f"[EARLY_TERM] Filtered {terminated}/{len(matched_markets)} | "
+                f"Passed {passed} (saved {terminated} LLM calls)"
             )
             self.stats['llm_calls_saved'] += terminated
+        
         return filtered
 
     async def _cluster_markets(
