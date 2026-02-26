@@ -455,6 +455,7 @@ def calculate_relevance_score(news_keywords: List[str], market_keywords: List[st
 def extract_entities(text: str) -> Set[str]:
     """
     Extract normalized entities from text using synonym dictionary.
+    Uses word boundary matching to avoid false positives.
     Returns set of canonical entity names found in text.
     """
     text_lower = text.lower()
@@ -462,9 +463,19 @@ def extract_entities(text: str) -> Set[str]:
     
     for canonical, synonyms in ENTITY_SYNONYMS.items():
         for synonym in synonyms:
-            if synonym in text_lower:
-                found_entities.add(canonical)
-                break  # Found one synonym, move to next entity
+            # Use word boundary matching for short synonyms to avoid false positives
+            # e.g., 'sol' should not match 'resolution' or 'solitary'
+            if len(synonym) <= 4:
+                # Use regex word boundary for short terms
+                pattern = r'\b' + re.escape(synonym) + r'\b'
+                if re.search(pattern, text_lower):
+                    found_entities.add(canonical)
+                    break
+            else:
+                # For longer synonyms, simple contains is fine
+                if synonym in text_lower:
+                    found_entities.add(canonical)
+                    break
     
     return found_entities
 
