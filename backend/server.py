@@ -5491,36 +5491,36 @@ async def health_scanner():
         )
 
 
-@api_router.get("/arch-c/health")
-async def get_arch_c_health():
-    """Architecture C Ultimate health check"""
+@api_router.get("/path-a/health")
+async def get_path_a_health():
+    """PATH A Engine health check"""
     global dual_path_news_injector
     
     try:
-        if dual_path_news_injector and dual_path_news_injector.arch_c_index:
-            return await dual_path_news_injector.arch_c_index.health_check()
+        if dual_path_news_injector and dual_path_news_injector.path_a_engine:
+            return await dual_path_news_injector.path_a_engine.health_check()
         else:
-            return {'status': 'error', 'message': 'Architecture C not initialized'}
+            return {'status': 'error', 'message': 'PATH A not initialized'}
     except Exception as e:
-        logger.error(f"Error getting Architecture C health: {e}")
+        logger.error(f"Error getting PATH A health: {e}")
         return JSONResponse(
             status_code=500,
             content={"error": str(e)}
         )
 
 
-@api_router.get("/arch-c/stats")
-async def get_arch_c_stats():
-    """Architecture C Ultimate statistics"""
+@api_router.get("/path-a/stats")
+async def get_path_a_stats():
+    """PATH A Engine statistics"""
     global dual_path_news_injector
     
     try:
-        if dual_path_news_injector and dual_path_news_injector.arch_c_index:
-            return dual_path_news_injector.arch_c_index.get_stats()
+        if dual_path_news_injector and dual_path_news_injector.path_a_engine:
+            return dual_path_news_injector.path_a_engine.get_stats()
         else:
-            return {'error': 'Architecture C not initialized'}
+            return {'error': 'PATH A not initialized'}
     except Exception as e:
-        logger.error(f"Error getting Architecture C stats: {e}")
+        logger.error(f"Error getting PATH A stats: {e}")
         return JSONResponse(
             status_code=500,
             content={"error": str(e)}
@@ -6155,35 +6155,35 @@ async def startup_event():
         # ================================================================
         # ARCHITECTURE C ULTIMATE INITIALIZATION
         # ================================================================
-        # Use the arch_c_index that was created by DualPathNewsInjector
+        # Use the path_a_engine that was created by DualPathNewsInjector
         # Start background tasks AFTER a short delay to allow scanner to cache markets
-        async def start_arch_c_background_tasks():
-            """Start Architecture C background tasks after scanner has cached markets"""
+        async def start_path_a_background_tasks():
+            """Start PATH A background tasks after scanner has cached markets"""
             try:
                 # Wait for scanner to cache initial markets
                 await asyncio.sleep(10)
                 
-                logger.info("[ARCH_C] Starting Architecture C Ultimate background tasks...")
-                from config import arch_c_config
+                logger.info("[PATH_A] Starting PATH A Engine background tasks...")
+                from config import path_a_config
                 
-                if dual_path_news_injector and dual_path_news_injector.arch_c_index:
-                    arch_c_index = dual_path_news_injector.arch_c_index
+                if dual_path_news_injector and dual_path_news_injector.path_a_engine:
+                    path_a_engine = dual_path_news_injector.path_a_engine
                     # Start background index refresh
-                    asyncio.create_task(arch_c_index.start_auto_refresh())
+                    asyncio.create_task(path_a_engine.start_auto_refresh())
                     # Start queue processor (if enabled)
-                    if arch_c_config.ARCH_C_CONFIG.get('priority_queue_enabled'):
-                        asyncio.create_task(arch_c_index.process_queue())
+                    if path_a_config.PATH_A_CONFIG.get('priority_queue_enabled'):
+                        asyncio.create_task(path_a_engine.process_queue())
                     # Start stats logger
-                    asyncio.create_task(arch_c_index.start_stats_logger())
+                    asyncio.create_task(path_a_engine.start_stats_logger())
                     
-                    logger.info("[ARCH_C] ✓ Architecture C Ultimate background tasks started")
+                    logger.info("[PATH_A] ✓ PATH A Engine background tasks started")
                 else:
-                    logger.warning("[ARCH_C] DualPathNewsInjector.arch_c_index not available")
+                    logger.warning("[PATH_A] DualPathNewsInjector.path_a_engine not available")
             except Exception as e:
-                logger.error(f"[ARCH_C] Failed to start background tasks: {e}")
+                logger.error(f"[PATH_A] Failed to start background tasks: {e}")
         
-        # Start Architecture C background tasks with delay
-        asyncio.create_task(start_arch_c_background_tasks())
+        # Start PATH A background tasks with delay
+        asyncio.create_task(start_path_a_background_tasks())
         
         # ================================================================
         # AUTOMATIC NEWS AGGREGATION (Independent of Paper Trading)
