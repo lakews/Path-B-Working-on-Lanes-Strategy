@@ -260,19 +260,25 @@ class EmergentLLMService:
         news_headline: str,
         news_content: str,
         market_question: str,
-        market_description: str = ""
+        market_description: str = "",
+        use_sentiment_tier: bool = True
     ) -> LLMAnalysisResult:
         """
         Analyze a news item against a specific market question.
         
-        Uses the Event Resolution Adjudicator prompt for strict,
-        calibrated analysis focusing on the YES outcome.
+        TWO-TIER SYSTEM:
+        - Tier 1: Event Resolution Adjudicator (strict, for resolution events)
+        - Tier 2: Sentiment Signal Analyzer (looser, for leading indicators)
+        
+        If Tier 1 returns is_relevant=False and use_sentiment_tier=True,
+        automatically falls back to Tier 2 for sentiment signals.
         
         Args:
             news_headline: News headline
             news_content: Full news content
             market_question: The prediction market question
             market_description: Additional market context
+            use_sentiment_tier: Whether to use Tier 2 fallback (default True)
         
         Returns:
             LLMAnalysisResult with parsed analysis
@@ -284,6 +290,7 @@ class EmergentLLMService:
                 is_bullish_for_yes=False,
                 confidence=0.5,
                 rationale="LLM service unavailable",
+                signal_type="NOISE",
                 error="No LLM client"
             )
         
@@ -299,33 +306,43 @@ class EmergentLLMService:
 Respond with ONLY the JSON object as specified. No other text."""
 
         try:
-            # Call LLM with the Event Resolution Adjudicator prompt
-            # Use UserMessage wrapper as required by emergentintegrations
+            # TIER 1: Event Resolution Adjudicator (strict)
             user_msg = self._UserMessage(text=user_prompt)
             response = await client.send_message(user_msg)
-            
-            # Parse response
             parsed = self._parse_json_response(response)
             
-            if parsed:
-                logger.info(f"[LLM SERVICE] Analysis result: is_relevant={parsed.get('is_relevant')}, confidence={parsed.get('confidence')}, direction={parsed.get('is_bullish_for_yes')}")
+            if parsed and parsed.get('is_relevant', False):
+                # Tier 1 found relevant - use strict analysis
+                signal_type = "RESOLUTION" if parsed.get('confidence', 0) >= 0.90 else "STRONG"
+                logger.info(f"[LLM SERVICE] Tier 1 HIT: is_relevant=True, confidence={parsed.get('confidence')}, signal_type={signal_type}")
                 return LLMAnalysisResult(
-                    is_relevant=parsed.get('is_relevant', False),
+                    is_relevant=True,
                     is_bullish_for_yes=parsed.get('is_bullish_for_yes', False),
                     confidence=float(parsed.get('confidence', 0.5)),
                     rationale=parsed.get('rationale', ''),
+                    signal_type=signal_type,
                     raw_response=response
                 )
-            else:
-                logger.warning(f"[LLM SERVICE] Failed to parse response: {response[:200]}")
-                return LLMAnalysisResult(
-                    is_relevant=False,
-                    is_bullish_for_yes=False,
-                    confidence=0.5,
-                    rationale="Failed to parse LLM response",
-                    raw_response=response,
-                    error="Parse error"
+            
+            # TIER 2: Sentiment Signal Analyzer (if enabled and Tier 1 returned not relevant)
+            if use_sentiment_tier:
+                tier2_result = await self._analyze_sentiment_tier(
+                    news_headline, news_content, market_question, market_description
                 )
+                if tier2_result.is_relevant:
+                    logger.info(f"[LLM SERVICE] Tier 2 HIT: signal_type={tier2_result.signal_type}, confidence={tier2_result.confidence}")
+                    return tier2_result
+            
+            # Both tiers returned not relevant
+            logger.debug(f"[LLM SERVICE] No signal: Both tiers returned is_relevant=False")
+            return LLMAnalysisResult(
+                is_relevant=False,
+                is_bullish_for_yes=False,
+                confidence=0.5,
+                rationale="No actionable signal detected",
+                signal_type="NOISE",
+                raw_response=response
+            )
                 
         except Exception as e:
             logger.error(f"[LLM SERVICE] Analysis error: {e}")
@@ -334,6 +351,92 @@ Respond with ONLY the JSON object as specified. No other text."""
                 is_bullish_for_yes=False,
                 confidence=0.5,
                 rationale=str(e),
+                signal_type="NOISE",
+                error=str(e)
+            )
+    
+    async def _analyze_sentiment_tier(
+        self,
+        news_headline: str,
+        news_content: str,
+        market_question: str,
+        market_description: str = ""
+    ) -> LLMAnalysisResult:
+        """
+        Tier 2: Sentiment Signal Analyzer
+        
+        Uses a looser prompt to detect leading indicators and sentiment shifts
+        that may not constitute resolution events but still provide trading signals.
+        """
+        client = await self._get_client()
+        if not client:
+            return LLMAnalysisResult(
+                is_relevant=False,
+                is_bullish_for_yes=False,
+                confidence=0.5,
+                rationale="LLM service unavailable",
+                signal_type="NOISE",
+                error="No LLM client"
+            )
+        
+        # Use the sentiment prompt
+        user_prompt = f"""Analyze this news for market sentiment signals.
+
+**Market Question:** {market_question}
+{f'**Market Description:** {market_description}' if market_description else ''}
+
+**News Headline:** {news_headline}
+**News Content:** {news_content[:1000]}
+
+Respond with ONLY the JSON object as specified. No other text."""
+
+        try:
+            # Create a new conversation with the sentiment prompt
+            from emergentintegrations.llm.chat import ChatManager
+            
+            sentiment_chat = ChatManager(
+                api_key=self._api_key,
+                model=self.model,
+                system_prompt=SYSTEM_PROMPT_SENTIMENT
+            )
+            
+            user_msg = self._UserMessage(text=user_prompt)
+            response = await sentiment_chat.send_message(user_msg)
+            parsed = self._parse_json_response(response)
+            
+            if parsed:
+                is_relevant = parsed.get('is_relevant', False)
+                confidence = float(parsed.get('confidence', 0.5))
+                signal_type = parsed.get('signal_type', 'NOISE')
+                
+                # Only return relevant if confidence > 0.55
+                if is_relevant and confidence > 0.55:
+                    return LLMAnalysisResult(
+                        is_relevant=True,
+                        is_bullish_for_yes=parsed.get('is_bullish_for_yes', False),
+                        confidence=confidence,
+                        rationale=parsed.get('rationale', ''),
+                        signal_type=signal_type,
+                        raw_response=response
+                    )
+            
+            return LLMAnalysisResult(
+                is_relevant=False,
+                is_bullish_for_yes=False,
+                confidence=0.5,
+                rationale="No sentiment signal",
+                signal_type="NOISE",
+                raw_response=response if response else ""
+            )
+                
+        except Exception as e:
+            logger.error(f"[LLM SERVICE] Tier 2 analysis error: {e}")
+            return LLMAnalysisResult(
+                is_relevant=False,
+                is_bullish_for_yes=False,
+                confidence=0.5,
+                rationale=str(e),
+                signal_type="NOISE",
                 error=str(e)
             )
     
