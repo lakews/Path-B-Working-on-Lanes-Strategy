@@ -6203,6 +6203,25 @@ async def startup_event():
         logger.info("[NEWS] ✓ WebhookSourcesManager started (Apify + Whale)")
         
         # ================================================================
+        # POLYMARKET NEWS AGGREGATOR (Phase 1 & 2 Sources)
+        # ================================================================
+        try:
+            from services.polymarket_news_sources import init_news_aggregator
+            
+            news_aggregator = await init_news_aggregator(
+                news_callback=direct_news_to_injector
+            )
+            
+            # Start the aggregator with 2-minute polling interval
+            asyncio.create_task(news_aggregator.start(interval_seconds=120))
+            
+            logger.info("[NEWS] ✓ Polymarket News Aggregator started")
+            logger.info("  • Finnhub API: Finance, Crypto")
+            logger.info("  • RSS Feeds: AP, Reuters, Fed, ESPN, Politico, CoinDesk")
+        except Exception as e:
+            logger.error(f"[NEWS] Failed to start Polymarket News Aggregator: {e}")
+        
+        # ================================================================
         # MARKETS-FIRST Exa.ai Polling Loop
         # ================================================================
         def extract_key_terms(text: str) -> str:
