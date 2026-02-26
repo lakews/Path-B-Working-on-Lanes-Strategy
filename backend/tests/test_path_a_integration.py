@@ -6,7 +6,7 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from services.reverse_market_index_ultimate import (
+from services.path_a_engine import (
     detect_category,
     calculate_bayes_factor_enhanced,
     calculate_adaptive_ttl,
@@ -96,7 +96,7 @@ def test_news_priority():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("ARCHITECTURE C ULTIMATE - INTEGRATION TEST")
+    print("PATH A ENGINE - INTEGRATION TEST")
     print("=" * 60)
     test_category_detection()
     test_bayes_multipliers()
