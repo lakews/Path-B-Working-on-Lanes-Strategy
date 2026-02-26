@@ -1531,11 +1531,20 @@ class PathAEngine:
 
                 # Create signal compatible with signals collection
                 market_id = market.get('id') or market.get('market_id')
+                now = datetime.now(timezone.utc)
+                
+                # Calculate bayes_factor for NewsSniper compatibility
+                base_bf = 1.0 + (final_confidence - 0.5) * 2  # Convert confidence to BF
+                bayes_factor = base_bf * CATEGORY_BAYES_MULTIPLIERS.get(category, 1.0)
+                
                 signal = {
                     'market_id': market_id,
+                    'market_question': market_question,  # Required by NewsSniper
                     'type': 'path_a',
                     'direction': direction,
                     'confidence': final_confidence,
+                    'bayes_factor': round(bayes_factor, 3),  # Required for NewsSniper sorting
+                    'signal_type': 'STRONG' if final_confidence >= 0.7 else ('MODERATE' if final_confidence >= 0.5 else 'WEAK'),
                     'impact': impact,
                     'category': category,
                     'news_headline': headline,
@@ -1543,8 +1552,9 @@ class PathAEngine:
                     'ttl_seconds': ttl_seconds,
                     'regime': regime.value if regime else None,
                     'relevance_score': relevance,
-                    'created_at': datetime.now(timezone.utc),
-                    'expires_at': datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds),
+                    'timestamp': now,  # For sorting compatibility
+                    'created_at': now,
+                    'expires_at': now + timedelta(seconds=ttl_seconds),
                     'source': 'path_a',
                     'version': '2.0.0'
                 }
