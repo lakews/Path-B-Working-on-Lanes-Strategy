@@ -3369,8 +3369,12 @@ class PaperTrader:
             # Determine side
             side = 'YES' if direction == 'YES' else 'NO'
             
-            # Get prices
-            yes_price = float(market_data.get('yes_price', 0.5))
+            # Get prices - no fallback, skip if missing
+            yes_price_raw = market_data.get('yes_price') or market_data.get('price')
+            if not yes_price_raw or yes_price_raw <= 0:
+                logger.debug(f"[NEWS SNIPER] Skipping {market_id_short} - no valid price")
+                return
+            yes_price = float(yes_price_raw)
             
             # Calculate position size using fractional Kelly with Bayesian posterior
             # f* = posterior * kelly_fraction
