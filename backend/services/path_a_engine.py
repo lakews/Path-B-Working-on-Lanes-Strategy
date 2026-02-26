@@ -1369,7 +1369,7 @@ class PathAEngine:
         If hybrid score < threshold, the news is probably not impactful.
         Saves 50-80% of LLM costs on routine news while allowing relevant matches through.
         """
-        threshold = self.config.get('early_term_threshold', 0.40)
+        threshold = self.config.get('early_term_threshold', 0.25)
         filtered = []
         terminated = 0
         passed = 0
@@ -1380,7 +1380,8 @@ class PathAEngine:
         news_text = f"{headline} {content}"
         news_category = news_item.get('_category', 'GENERAL')
         
-        for market, old_relevance in matched_markets:
+        # Log first few markets for debugging
+        for i, (market, old_relevance) in enumerate(matched_markets):
             # Calculate hybrid relevance score
             hybrid_score, breakdown = calculate_hybrid_relevance(
                 news_text=news_text,
@@ -1388,13 +1389,17 @@ class PathAEngine:
                 news_category=news_category
             )
             
+            # Log first 3 for debugging
+            if i < 3:
+                logger.debug(
+                    f"[HYBRID DEBUG] Market: {market.get('question', 'unknown')[:35]}... | "
+                    f"score={hybrid_score:.2f} (cat={breakdown['category']:.1f}, "
+                    f"ent={breakdown['entity']:.1f}, kw={breakdown['keyword']:.2f}) | "
+                    f"entities={breakdown['entities_matched'][:3]}"
+                )
+            
             if hybrid_score < threshold:
                 terminated += 1
-                logger.debug(
-                    f"[EARLY_TERM] Filtered: {market.get('question', 'unknown')[:40]}... | "
-                    f"score={hybrid_score:.2f} (cat={breakdown['category']:.1f}, "
-                    f"ent={breakdown['entity']:.1f}, kw={breakdown['keyword']:.2f})"
-                )
                 continue
             
             # Passed hybrid threshold
@@ -1408,7 +1413,7 @@ class PathAEngine:
         if terminated > 0:
             logger.info(
                 f"[EARLY_TERM] Filtered {terminated}/{len(matched_markets)} | "
-                f"Passed {passed} (saved {terminated} LLM calls)"
+                f"Passed {passed} (threshold={threshold}, saved {terminated} LLM calls)"
             )
             self.stats['llm_calls_saved'] += terminated
         
