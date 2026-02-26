@@ -5,7 +5,7 @@ DUAL-PATH NEWS INJECTOR SERVICE
 Markets-First Architecture - Optimized
 
 Dual-path news processing:
-- PATH A: Architecture C Ultimate (keyword matching + LLM analysis + 7 optimizations)
+- PATH A: PATH A Ultimate (keyword matching + LLM analysis + 7 optimizations)
 - PATH B: Broadcast ALL markets → HFT opportunities
 
 Features:
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class DualPathNewsInjector:
     """
     Dual-path news processing:
-    - PATH A: Architecture C Ultimate (optimized keyword matching + LLM)
+    - PATH A: PATH A Ultimate (optimized keyword matching + LLM)
     - PATH B: Broadcast ALL markets → HFT opportunities
     """
     
@@ -101,16 +101,16 @@ class DualPathNewsInjector:
             self.stats['path_b_broadcasts'] += path_b_count
             logger.info(f"[NEWS INJECTOR] ✓ PATH B: {path_b_count} opportunities")
             
-            # PATH A: Architecture C Ultimate (keyword matching + LLM + optimizations)
+            # PATH A: PATH A Ultimate (keyword matching + LLM + optimizations)
             path_a_signals = []
-            if self.arch_c_index:
+            if self.path_a_engine:
                 try:
                     if urgency == 'breaking':
                         # Fire and forget for breaking news (speed critical)
                         asyncio.create_task(self._process_path_a_async(news))
                         logger.info("[NEWS INJECTOR] ✓ PATH A: Deferred to background (breaking)")
                     else:
-                        result = await self.arch_c_index.process_news_event(news)
+                        result = await self.path_a_engine.process_news_event(news)
                         signals_count = result.get('signals_generated', 0)
                         self.stats['path_a_signals'] += signals_count
                         self.stats['llm_calls'] += result.get('matched_markets', 0) - result.get('optimizations_applied', []).count('early_termination')
@@ -124,7 +124,7 @@ class DualPathNewsInjector:
                 except Exception as e:
                     logger.error(f"[NEWS INJECTOR] PATH A error: {e}")
             else:
-                logger.warning("[NEWS INJECTOR] PATH A not available (arch_c_index is None)")
+                logger.warning("[NEWS INJECTOR] PATH A not available (path_a_engine is None)")
             
             self.stats['news_processed'] += 1
             return path_a_signals, path_b_count
@@ -137,8 +137,8 @@ class DualPathNewsInjector:
     async def _process_path_a_async(self, news: Dict):
         """PATH A async for background execution (breaking news)"""
         try:
-            if self.arch_c_index:
-                result = await self.arch_c_index.process_news_event(news)
+            if self.path_a_engine:
+                result = await self.path_a_engine.process_news_event(news)
                 signals_count = result.get('signals_generated', 0)
                 self.stats['path_a_signals'] += signals_count
                 logger.info(f"[NEWS INJECTOR] ✓ PATH A (async): {signals_count} signals")
@@ -205,24 +205,24 @@ class DualPathNewsInjector:
             return 0
     
     def get_stats(self) -> Dict:
-        """Return statistics including PATH A (Architecture C) stats"""
+        """Return statistics including PATH A (PATH A) stats"""
         base_stats = {
             **self.stats,
             'running': self._running
         }
         
-        # Include Architecture C detailed stats
-        if self.arch_c_index:
-            arch_c_stats = self.arch_c_index.get_stats()
+        # Include PATH A detailed stats
+        if self.path_a_engine:
+            path_a_stats = self.path_a_engine.get_stats()
             base_stats['path_a_details'] = {
-                'index_size': arch_c_stats.get('index_size', 0),
-                'markets_cached': arch_c_stats.get('markets_cached', 0),
-                'dedup_prevented': arch_c_stats.get('dedup_prevented', 0),
-                'early_terminations': arch_c_stats.get('early_terminations', 0),
-                'llm_calls_saved': arch_c_stats.get('llm_calls_saved', 0),
-                'clustering_groups': arch_c_stats.get('clustering_groups', 0),
-                'avg_latency_ms': arch_c_stats.get('avg_latency_ms', 0),
-                'last_refresh': arch_c_stats.get('last_refresh')
+                'index_size': path_a_stats.get('index_size', 0),
+                'markets_cached': path_a_stats.get('markets_cached', 0),
+                'dedup_prevented': path_a_stats.get('dedup_prevented', 0),
+                'early_terminations': path_a_stats.get('early_terminations', 0),
+                'llm_calls_saved': path_a_stats.get('llm_calls_saved', 0),
+                'clustering_groups': path_a_stats.get('clustering_groups', 0),
+                'avg_latency_ms': path_a_stats.get('avg_latency_ms', 0),
+                'last_refresh': path_a_stats.get('last_refresh')
             }
         
         return base_stats
