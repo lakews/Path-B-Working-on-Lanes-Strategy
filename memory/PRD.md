@@ -168,6 +168,8 @@ NEWS EVENT ARRIVES
 | `/api/markets-first/status` | GET | Full system status |
 | `/api/markets-first/signals` | GET | Active PATH A signals |
 | `/api/markets-first/opportunities` | GET | PATH B HFT opportunities |
+| `/api/path-a/health` | GET | PATH A Engine health check |
+| `/api/path-a/stats` | GET | PATH A Engine statistics |
 
 ---
 
