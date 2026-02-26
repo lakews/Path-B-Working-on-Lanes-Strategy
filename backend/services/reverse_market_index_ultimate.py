@@ -344,8 +344,27 @@ ENTITY_SYNONYMS = {
     'china_taiwan': ['taiwan', 'china taiwan', 'strait'],
     'north_korea': ['north korea', 'dprk', 'pyongyang'],
     'nato': ['nato', 'north atlantic treaty'],
-    'un': ['un', 'united nations', 'security council'],
+    'un': ['united nations', 'security council'],
     'ceasefire': ['ceasefire', 'peace deal', 'peace talks', 'truce'],
+    # NEW: Additional geopolitics
+    'south_korea': ['south korea', 'seoul', 'korean'],
+    'japan': ['japan', 'tokyo', 'kishida', 'japanese'],
+    'india': ['india', 'delhi', 'indian'],
+    'pakistan': ['pakistan', 'islamabad'],
+    'philippines': ['philippines', 'marcos', 'manila'],
+    'vietnam': ['vietnam', 'hanoi'],
+    'indonesia': ['indonesia', 'jakarta'],
+    'australia': ['australia', 'canberra', 'albanese'],
+    'brazil': ['brazil', 'brasilia'],
+    'mexico': ['mexico', 'amlo', 'sheinbaum'],
+    'argentina': ['argentina', 'buenos aires'],
+    'venezuela': ['venezuela', 'maduro', 'caracas'],
+    'colombia': ['colombia', 'petro', 'bogota'],
+    'syria': ['syria', 'assad', 'damascus'],
+    'lebanon': ['lebanon', 'beirut', 'hezbollah'],
+    'sudan': ['sudan', 'khartoum'],
+    'ethiopia': ['ethiopia', 'addis ababa'],
+    'myanmar': ['myanmar', 'burma'],
     
     # =========================================================================
     # ENTERTAINMENT & POP CULTURE
@@ -357,10 +376,21 @@ ENTITY_SYNONYMS = {
     'netflix': ['netflix', 'nflx'],
     'disney': ['disney', 'dis', 'disney+'],
     'spotify': ['spotify', 'spot'],
-    'youtube': ['youtube', 'yt'],
+    'youtube': ['youtube'],
     'tiktok': ['tiktok', 'tik tok'],
     'kardashian': ['kardashian', 'kim kardashian', 'kardashians'],
-    'kanye': ['kanye', 'kanye west', 'ye'],
+    'kanye': ['kanye', 'kanye west'],
+    # NEW: Additional entertainment
+    'super_bowl_halftime': ['halftime show', 'super bowl halftime'],
+    'coachella': ['coachella'],
+    'met_gala': ['met gala'],
+    'golden_globes': ['golden globes'],
+    'bafta': ['bafta', 'baftas'],
+    'cannes': ['cannes', 'cannes film festival'],
+    'sundance': ['sundance', 'sundance film festival'],
+    'gta6': ['gta 6', 'gta vi', 'grand theft auto 6'],
+    'elder_scrolls': ['elder scrolls 6', 'tes 6'],
+    'elden_ring': ['elden ring', 'shadow of the erdtree'],
     
     # =========================================================================
     # EVENTS & MISC
@@ -374,6 +404,145 @@ ENTITY_SYNONYMS = {
     'shutdown': ['shutdown', 'government shutdown'],
     'debt_ceiling': ['debt ceiling', 'debt limit'],
     'tariffs': ['tariffs', 'tariff', 'trade war'],
+    
+    # =========================================================================
+    # POLITICS - NEW: Cabinet & Officials (Trump 2.0)
+    # =========================================================================
+    'bessent': ['bessent', 'scott bessent'],
+    'rubio': ['rubio', 'marco rubio'],
+    'hegseth': ['hegseth', 'pete hegseth'],
+    'gabbard': ['gabbard', 'tulsi gabbard'],
+    'ratcliffe': ['ratcliffe', 'john ratcliffe'],
+    'kash_patel': ['kash patel', 'patel'],
+    'bondi': ['bondi', 'pam bondi'],
+    'burgum': ['burgum', 'doug burgum'],
+    'lutnick': ['lutnick', 'howard lutnick'],
+    'mike_johnson': ['mike johnson', 'speaker johnson'],
+    'jeffries': ['jeffries', 'hakeem jeffries'],
+    'thune': ['thune', 'john thune'],
+    
+    # =========================================================================
+    # POLITICS - NEW: Supreme Court Justices
+    # =========================================================================
+    'clarence_thomas': ['clarence thomas', 'justice thomas'],
+    'alito': ['alito', 'justice alito', 'samuel alito'],
+    'roberts': ['chief justice roberts', 'john roberts'],
+    'sotomayor': ['sotomayor', 'justice sotomayor'],
+    'kagan': ['kagan', 'justice kagan'],
+    'ketanji': ['ketanji jackson', 'justice jackson', 'ketanji brown jackson'],
+    'kavanaugh': ['kavanaugh', 'justice kavanaugh'],
+    'gorsuch': ['gorsuch', 'justice gorsuch'],
+    'barrett': ['barrett', 'amy coney barrett', 'justice barrett'],
+    
+    # =========================================================================
+    # CRYPTO - NEW: Additional Tokens & Projects
+    # =========================================================================
+    'sui': ['sui', 'sui network'],
+    'aptos': ['aptos', 'apt'],
+    'sei': ['sei', 'sei network'],
+    'celestia': ['celestia', 'tia'],
+    'injective': ['injective', 'inj'],
+    'render': ['render', 'rndr'],
+    'fetch_ai': ['fetch.ai', 'fet'],
+    'worldcoin': ['worldcoin', 'wld'],
+    'jupiter': ['jupiter', 'jup'],
+    'jito': ['jito'],
+    'pyth': ['pyth', 'pyth network'],
+    'raydium': ['raydium', 'ray'],
+    'ondo': ['ondo', 'ondo finance'],
+    'ethena': ['ethena', 'ena'],
+    'pendle': ['pendle'],
+    'lido': ['lido', 'steth', 'lido finance'],
+    'renzo': ['renzo', 'ezeth'],
+    'eigenlayer': ['eigenlayer', 'eigen'],
+    'layerzero': ['layerzero', 'zro'],
+    'starknet': ['starknet', 'strk'],
+    'zksync': ['zksync', 'zk sync'],
+    'scroll': ['scroll'],
+    'linea': ['linea'],
+    'base_chain': ['base chain', 'coinbase l2'],
+    'blast_chain': ['blast l2'],
+    'manta': ['manta', 'manta network'],
+    'metis': ['metis'],
+    
+    # =========================================================================
+    # SPORTS - NEW: NBA Players (2024-25)
+    # =========================================================================
+    'anthony_edwards': ['anthony edwards', 'ant edwards'],
+    'shai': ['shai', 'shai gilgeous-alexander', 'sga'],
+    'brunson': ['brunson', 'jalen brunson'],
+    'donovan_mitchell': ['donovan mitchell', 'spida'],
+    'fox': ['de\'aaron fox'],
+    'morant': ['ja morant', 'morant'],
+    'booker': ['devin booker', 'booker'],
+    'towns': ['karl-anthony towns', 'kat'],
+    'randle': ['julius randle', 'randle'],
+    'haliburton': ['tyrese haliburton', 'haliburton'],
+    'chet': ['chet holmgren', 'chet'],
+    'paolo': ['paolo banchero', 'paolo'],
+    
+    # =========================================================================
+    # SPORTS - NEW: NFL Players & Teams (2024-25)
+    # =========================================================================
+    'stroud': ['cj stroud', 'stroud'],
+    'purdy': ['brock purdy', 'purdy'],
+    'love': ['jordan love'],
+    'jayden_daniels': ['jayden daniels'],
+    'richardson': ['anthony richardson'],
+    'caleb_williams': ['caleb williams'],
+    'maye': ['drake maye', 'maye'],
+    'penix': ['michael penix', 'penix'],
+    'texans': ['texans', 'houston texans'],
+    'jaguars': ['jaguars', 'jacksonville jaguars', 'jags'],
+    'colts': ['colts', 'indianapolis colts'],
+    'titans': ['titans', 'tennessee titans'],
+    'broncos': ['broncos', 'denver broncos'],
+    'raiders': ['raiders', 'las vegas raiders'],
+    'chargers': ['chargers', 'los angeles chargers'],
+    'commanders': ['commanders', 'washington commanders'],
+    'bears': ['bears', 'chicago bears'],
+    'vikings': ['vikings', 'minnesota vikings'],
+    'saints': ['saints', 'new orleans saints'],
+    'falcons': ['falcons', 'atlanta falcons'],
+    'panthers': ['panthers', 'carolina panthers'],
+    'buccaneers': ['buccaneers', 'bucs', 'tampa bay buccaneers'],
+    'cardinals_nfl': ['arizona cardinals'],
+    'rams': ['rams', 'los angeles rams'],
+    'seahawks': ['seahawks', 'seattle seahawks'],
+    
+    # =========================================================================
+    # SPORTS - NEW: Soccer/Football
+    # =========================================================================
+    'real_madrid': ['real madrid', 'los blancos'],
+    'barcelona_fc': ['barcelona', 'barca', 'fc barcelona'],
+    'man_city': ['manchester city', 'man city'],
+    'man_united': ['manchester united', 'man united'],
+    'arsenal_fc': ['arsenal', 'gunners'],
+    'chelsea_fc': ['chelsea', 'blues'],
+    'liverpool_fc': ['liverpool', 'reds'],
+    'tottenham': ['tottenham', 'spurs'],
+    'bayern': ['bayern munich', 'bayern'],
+    'psg_fc': ['psg', 'paris saint-germain'],
+    'inter': ['inter milan', 'inter'],
+    'ac_milan': ['ac milan'],
+    
+    # =========================================================================
+    # TECH/AI - NEW: Additional Companies
+    # =========================================================================
+    'perplexity': ['perplexity', 'perplexity ai'],
+    'midjourney': ['midjourney'],
+    'stability': ['stability ai', 'stable diffusion', 'sdxl'],
+    'runway': ['runway', 'runway ml'],
+    'character_ai': ['character ai', 'character.ai'],
+    'inflection': ['inflection', 'inflection ai'],
+    'cohere_ai': ['cohere'],
+    'ai21': ['ai21', 'ai21 labs'],
+    'huggingface': ['huggingface', 'hugging face'],
+    'databricks': ['databricks'],
+    'snowflake': ['snowflake'],
+    'palantir': ['palantir', 'pltr'],
+    'c3ai': ['c3.ai', 'c3 ai'],
+    'soundhound': ['soundhound'],
 }
 
 # ============================================================================
