@@ -6138,25 +6138,34 @@ async def startup_event():
         # ARCHITECTURE C ULTIMATE INITIALIZATION
         # ================================================================
         # Use the arch_c_index that was created by DualPathNewsInjector
-        try:
-            logger.info("[STARTUP] Setting up Architecture C Ultimate background tasks...")
-            from config import arch_c_config
-            
-            if dual_path_news_injector and dual_path_news_injector.arch_c_index:
-                arch_c_index = dual_path_news_injector.arch_c_index
-                # Start background index refresh
-                asyncio.create_task(arch_c_index.start_auto_refresh())
-                # Start queue processor (if enabled)
-                if arch_c_config.ARCH_C_CONFIG.get('priority_queue_enabled'):
-                    asyncio.create_task(arch_c_index.process_queue())
-                # Start stats logger
-                asyncio.create_task(arch_c_index.start_stats_logger())
+        # Start background tasks AFTER a short delay to allow scanner to cache markets
+        async def start_arch_c_background_tasks():
+            """Start Architecture C background tasks after scanner has cached markets"""
+            try:
+                # Wait for scanner to cache initial markets
+                await asyncio.sleep(10)
                 
-                logger.info("[STARTUP] ✓ Architecture C Ultimate background tasks started")
-            else:
-                logger.warning("[STARTUP] DualPathNewsInjector.arch_c_index not available, skipping Architecture C")
-        except Exception as e:
-            logger.error(f"[STARTUP] Failed to setup Architecture C: {e}")
+                logger.info("[ARCH_C] Starting Architecture C Ultimate background tasks...")
+                from config import arch_c_config
+                
+                if dual_path_news_injector and dual_path_news_injector.arch_c_index:
+                    arch_c_index = dual_path_news_injector.arch_c_index
+                    # Start background index refresh
+                    asyncio.create_task(arch_c_index.start_auto_refresh())
+                    # Start queue processor (if enabled)
+                    if arch_c_config.ARCH_C_CONFIG.get('priority_queue_enabled'):
+                        asyncio.create_task(arch_c_index.process_queue())
+                    # Start stats logger
+                    asyncio.create_task(arch_c_index.start_stats_logger())
+                    
+                    logger.info("[ARCH_C] ✓ Architecture C Ultimate background tasks started")
+                else:
+                    logger.warning("[ARCH_C] DualPathNewsInjector.arch_c_index not available")
+            except Exception as e:
+                logger.error(f"[ARCH_C] Failed to start background tasks: {e}")
+        
+        # Start Architecture C background tasks with delay
+        asyncio.create_task(start_arch_c_background_tasks())
         
         # ================================================================
         # AUTOMATIC NEWS AGGREGATION (Independent of Paper Trading)
