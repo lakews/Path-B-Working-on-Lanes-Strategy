@@ -3442,8 +3442,12 @@ class PaperTrader:
         try:
             market_id = market_data.get('id', '')
             question = market_data.get('question', '')
-            # FIX: Handle None yes_price - fall back to price field
-            yes_price = float(market_data.get('yes_price') or market_data.get('price') or 0.5)
+            # No fallback - skip if no valid price (realistic trading conditions)
+            yes_price_raw = market_data.get('yes_price') or market_data.get('price')
+            if not yes_price_raw or yes_price_raw <= 0:
+                logger.debug(f"[SPORTS] Skipping {market_id[:16]} - no valid yes_price")
+                return
+            yes_price = float(yes_price_raw)
             
             # Skip if already have position
             if market_id in self.paper_positions:
