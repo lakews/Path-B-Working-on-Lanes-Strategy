@@ -878,7 +878,7 @@ def calculate_adaptive_ttl(impact: str, market_data: Optional[dict], category: O
         # Crisis: very high recent volume
         if volatility_proxy > 3.0 or volume > 1000000:
             regime = MarketRegime.CRISIS
-            ttl = min(base_ttl * 0.5, 90)  # 50% reduction, max 90s
+            ttl = min(base_ttl * 0.7, 300)  # 30% reduction, min 5 minutes
         # Volatile: high volume
         elif volatility_proxy > 1.5 or volume > 500000:
             regime = MarketRegime.VOLATILE
