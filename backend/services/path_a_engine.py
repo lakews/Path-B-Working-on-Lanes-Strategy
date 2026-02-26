@@ -1771,7 +1771,8 @@ class PathAEngine:
 # ============================================================================
 
 __all__ = [
-    'ReverseMarketIndexUltimate', 'detect_category', 'calculate_bayes_factor_enhanced',
+    'PathAEngine', 'detect_category', 'calculate_bayes_factor_enhanced',
     'calculate_adaptive_ttl', 'calculate_news_priority', 'MarketRegime',
-    'PrioritizedNews', 'ALL_CATEGORY_KEYWORDS', 'CATEGORY_BAYES_MULTIPLIERS'
+    'PrioritizedNews', 'ALL_CATEGORY_KEYWORDS', 'CATEGORY_BAYES_MULTIPLIERS',
+    'calculate_hybrid_relevance', 'extract_entities', 'ENTITY_SYNONYMS'
 ]
