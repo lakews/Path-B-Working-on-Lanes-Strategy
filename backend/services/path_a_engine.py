@@ -848,14 +848,15 @@ def calculate_adaptive_ttl(impact: str, market_data: Optional[dict], category: O
         (ttl_seconds, regime)
     """
     # Default TTL by impact (matches YOUR impact levels)
+    # Increased TTLs to give NewsSniper more time to consume signals
     base_ttls = {
-        'resolution': 120,  # 2 minutes - very urgent
-        'strong': 180,      # 3 minutes
-        'moderate': 300,    # 5 minutes
-        'weak': 600,        # 10 minutes
-        'none': 900         # 15 minutes
+        'resolution': 300,  # 5 minutes - very urgent
+        'strong': 600,      # 10 minutes
+        'moderate': 900,    # 15 minutes
+        'weak': 1200,       # 20 minutes
+        'none': 1800        # 30 minutes
     }
-    base_ttl = base_ttls.get(impact.lower() if impact else 'moderate', 300)
+    base_ttl = base_ttls.get(impact.lower() if impact else 'moderate', 900)
 
     # Determine market regime from YOUR market data
     regime = MarketRegime.NORMAL
