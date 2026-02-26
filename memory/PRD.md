@@ -186,6 +186,7 @@ NEWS EVENT ARRIVES
 - [x] **System Audit (Dec 2025)** - Verified tiered kill switch working, hft_volatility_exploit trading at extreme prices
 - [x] **Markets-First News Query Optimization (Feb 15, 2026)** - Optimized query generation using market description, category, and time-awareness; Fixed API key encryption issue
 - [x] **Market Quality Score Optimization (Feb 26, 2026)** - Optimized for prediction markets: `spread*5` penalty (less aggressive), weights `0.4/0.6` (prioritize spread), threshold `0.5`
+- [x] **PATH A Engine Ultimate (Feb 26, 2026)** - Full refactor from "Architecture C" to PATH A, hybrid scoring, two-tier LLM, MongoDB fallback for scanner
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
