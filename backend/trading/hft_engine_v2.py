@@ -704,7 +704,10 @@ class HighFrequencyTradingEngineV2:
         
         Returns: 'YES', 'NO', or None (skip - no edge)
         """
-        current_price = float(market_data.get('price', market_data.get('yes_price', 0.5)) or 0.5)
+        current_price_raw = market_data.get('price') or market_data.get('yes_price')
+        if not current_price_raw or current_price_raw <= 0:
+            return None  # Skip if no valid price
+        current_price = float(current_price_raw)
         edge_threshold = HFTConfig.EDGE_THRESHOLD
         direction = None
         
