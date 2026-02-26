@@ -392,9 +392,9 @@ Respond with ONLY the JSON object as specified. No other text."""
 
         try:
             # Create a new conversation with the sentiment prompt
-            from emergentintegrations.llm.chat import ChatManager
+            from emergentintegrations.llm.chat import LlmChat
             
-            sentiment_chat = ChatManager(
+            sentiment_chat = LlmChat(
                 api_key=self._api_key,
                 model=self.model,
                 system_prompt=SYSTEM_PROMPT_SENTIMENT
