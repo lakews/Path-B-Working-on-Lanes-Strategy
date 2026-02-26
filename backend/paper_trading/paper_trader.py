@@ -1080,12 +1080,16 @@ class PaperTrader:
         if not config.get('enabled', True):
             # Extreme price validation disabled - use hard kill switch
             kill_low, kill_high = self.get_kill_switch_for_strategy(strategy)
-            yes_price = market_data.get('yes_price', 0.5)
+            yes_price = market_data.get('yes_price') or market_data.get('price')
+            if yes_price is None:
+                return (False, "No valid price data")
             if yes_price < kill_low or yes_price > kill_high:
                 return (False, f"Price {yes_price:.4f} outside kill switch [{kill_low:.2f}-{kill_high:.2f}]")
             return (True, "Within normal bounds")
         
-        yes_price = market_data.get('yes_price', 0.5)
+        yes_price = market_data.get('yes_price') or market_data.get('price')
+        if yes_price is None:
+            return (False, "No valid price data")
         kill_low, kill_high = self.get_kill_switch_for_strategy(strategy)
         
         # If price is within normal bounds, allow
