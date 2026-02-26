@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="27" skipped="0" tests="27" time="820.316" timestamp="2026-02-26T22:23:44.002797+00:00" hostname="agent-env-f4003cc6-0f38-473d-802d-8156a28205bc"><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestRealtimeMarketService" name="test_realtime_status_endpoint" time="60.252"><failure message="AssertionError: Expected 200, got 502&#10;assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:34: in test_realtime_status_endpoint
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+E   AssertionError: Expected 200, got 502
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestRealtimeMarketService" name="test_websocket_is_primary_data_source" time="60.303"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:59: in test_websocket_is_primary_data_source
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestRealtimeMarketService" name="test_scanner_caches_markets_with_prices" time="60.371"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:81: in test_scanner_caches_markets_with_prices
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestPolymarketScanner" name="test_scanner_health_endpoint" time="60.281"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:109: in test_scanner_health_endpoint
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestPolymarketScanner" name="test_scanner_stats_show_ws_primary" time="60.259"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:126: in test_scanner_stats_show_ws_primary
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestPathAEngine" name="test_path_a_health_endpoint" time="60.379"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:151: in test_path_a_health_endpoint
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestPathAEngine" name="test_path_a_stats_endpoint" time="60.319"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:175: in test_path_a_stats_endpoint
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestPathAEngine" name="test_path_a_index_built_from_scanner" time="60.256"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:202: in test_path_a_index_built_from_scanner
+    assert scanner_response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestNewsSniperMongoDB" name="test_news_sniper_status_endpoint" time="60.265"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:230: in test_news_sniper_status_endpoint
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestNewsSniperMongoDB" name="test_news_sniper_reads_mongodb_signals" time="60.287"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:246: in test_news_sniper_reads_mongodb_signals
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestNewsSniperMongoDB" name="test_news_sniper_conviction_enhancement" time="60.257"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:264: in test_news_sniper_conviction_enhancement
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestNewsSniperMongoDB" name="test_news_sniper_kelly_tiering" time="60.246"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:296: in test_news_sniper_kelly_tiering
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestNewsSniperMongoDB" name="test_news_sniper_trade_execution_stats" time="60.244"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:318: in test_news_sniper_trade_execution_stats
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestAPIEndpoints" name="test_health_endpoint" time="34.395"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:349: in test_health_endpoint
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestAPIEndpoints" name="test_realtime_status_endpoint_exists" time="0.200"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:358: in test_realtime_status_endpoint_exists
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestAPIEndpoints" name="test_scanner_health_endpoint_exists" time="0.193"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:369: in test_scanner_health_endpoint_exists
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestAPIEndpoints" name="test_path_a_health_endpoint_exists" time="0.104"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:379: in test_path_a_health_endpoint_exists
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestAPIEndpoints" name="test_path_a_stats_endpoint_exists" time="0.186"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:389: in test_path_a_stats_endpoint_exists
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestAPIEndpoints" name="test_news_sniper_status_endpoint_exists" time="0.159"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:399: in test_news_sniper_status_endpoint_exists
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestPathASignalStructure" name="test_path_a_generates_signals" time="0.149"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:413: in test_path_a_generates_signals
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestPathASignalStructure" name="test_path_a_hybrid_scoring" time="0.152"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:430: in test_path_a_hybrid_scoring
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestTwoTierLLMAnalysis" name="test_llm_savings_tracked" time="0.126"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:452: in test_llm_savings_tracked
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestTwoTierLLMAnalysis" name="test_llm_calls_saved_in_stats" time="0.122"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:470: in test_llm_calls_saved_in_stats
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestWebSocketPriceData" name="test_websocket_provides_prices" time="0.120"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:488: in test_websocket_provides_prices
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestWebSocketPriceData" name="test_markets_have_prices" time="0.118"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:503: in test_markets_have_prices
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestPaperTradingIntegration" name="test_paper_trading_status" time="0.108"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:530: in test_paper_trading_status
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration48_markets_first_path_a.TestPaperTradingIntegration" name="test_start_paper_trading" time="0.134"><failure message="AssertionError: Unexpected status: 502&#10;assert 502 in [200, 400]&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_iteration48_markets_first_path_a.py:539: in test_start_paper_trading
+    assert response.status_code in [200, 400], f"Unexpected status: {response.status_code}"
+E   AssertionError: Unexpected status: 502
+E   assert 502 in [200, 400]
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase></testsuite></testsuites>
