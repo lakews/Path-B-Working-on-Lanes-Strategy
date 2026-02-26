@@ -827,7 +827,10 @@ class HighFrequencyTradingEngineV2:
         
         # No significant imbalance - use volume trend or default
         volume_24h = float(market_data.get('volume_24h', market_data.get('volume', 0)) or 0)
-        price = float(market_data.get('price', 0.5) or 0.5)
+        price_raw = market_data.get('price') or market_data.get('yes_price')
+        if not price_raw or price_raw <= 0:
+            return 'YES'  # Default if no price data
+        price = float(price_raw)
         
         # Lean with the trend if high volume
         if volume_24h > HFTConfig.LIQUIDITY_MIN_VOLUME:
