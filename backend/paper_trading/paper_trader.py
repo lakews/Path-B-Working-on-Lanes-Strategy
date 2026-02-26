@@ -8329,7 +8329,9 @@ class PaperTrader:
                 continue
                 
             side = position.get('side', 'YES')
-            yes_entry_price = position.get('yes_entry_price', position.get('entry_price', 0))
+            yes_entry_price = position.get('yes_entry_price') or position.get('entry_price')
+            if not yes_entry_price or yes_entry_price <= 0:
+                continue  # Skip positions with no valid entry price
             
             # Get current price from market data if available, else use stored current_price
             current_price = position.get('current_price', yes_entry_price)
