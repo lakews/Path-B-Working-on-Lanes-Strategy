@@ -7531,12 +7531,12 @@ class PaperTrader:
                                     
                                     # CORRECT CALCULATION: Return value based on shares sold
                                     # Size is in USD, we need to calculate shares and exit value
-                                    entry_price = position.get('yes_entry_price', position.get('entry_price', 0.5))
-                                    if entry_price > 0:
-                                        shares_sold = exit_order.size / entry_price
-                                        exit_value = shares_sold * exit_order.price
-                                    else:
-                                        exit_value = exit_order.size  # Fallback
+                                    entry_price = position.get('yes_entry_price') or position.get('entry_price')
+                                    if not entry_price or entry_price <= 0:
+                                        logger.error(f"[FREE-ROLL] No valid entry_price for {market_id[:16]} - skipping")
+                                        continue
+                                    shares_sold = exit_order.size / entry_price
+                                    exit_value = shares_sold * exit_order.price
                                     
                                     # Update position and capital atomically
                                     async with self._capital_lock:
