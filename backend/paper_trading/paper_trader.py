@@ -7582,8 +7582,11 @@ class PaperTrader:
                             asset_class = position.get('asset_class', 'unknown')
                             side = position.get('side', 'YES')
                             
-                            # Get entry price (use yes_entry_price for consistency)
-                            yes_entry_price = position.get('yes_entry_price', position.get('entry_price', 0.5))
+                            # Get entry price (use yes_entry_price for consistency) - no fallback
+                            yes_entry_price = position.get('yes_entry_price') or position.get('entry_price')
+                            if not yes_entry_price or yes_entry_price <= 0:
+                                logger.warning(f"[UNREALIZED-PNL] No valid entry_price for {market_id[:16]} - skipping")
+                                continue
                             
                             # Get current price from market_prices (already fetched above)
                             current_yes_price = market_prices.get(market_id)
