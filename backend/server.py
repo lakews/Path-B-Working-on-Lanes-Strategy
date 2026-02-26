@@ -5491,6 +5491,42 @@ async def health_scanner():
         )
 
 
+@api_router.get("/arch-c/health")
+async def get_arch_c_health():
+    """Architecture C Ultimate health check"""
+    global dual_path_news_injector
+    
+    try:
+        if dual_path_news_injector and dual_path_news_injector.arch_c_index:
+            return await dual_path_news_injector.arch_c_index.health_check()
+        else:
+            return {'status': 'error', 'message': 'Architecture C not initialized'}
+    except Exception as e:
+        logger.error(f"Error getting Architecture C health: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@api_router.get("/arch-c/stats")
+async def get_arch_c_stats():
+    """Architecture C Ultimate statistics"""
+    global dual_path_news_injector
+    
+    try:
+        if dual_path_news_injector and dual_path_news_injector.arch_c_index:
+            return dual_path_news_injector.arch_c_index.get_stats()
+        else:
+            return {'error': 'Architecture C not initialized'}
+    except Exception as e:
+        logger.error(f"Error getting Architecture C stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
 @api_router.post("/webhooks/news")
 async def receive_news(news: Dict[str, Any]):
     """
