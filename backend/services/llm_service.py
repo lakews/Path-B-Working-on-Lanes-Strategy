@@ -368,17 +368,6 @@ Respond with ONLY the JSON object as specified. No other text."""
         Uses a looser prompt to detect leading indicators and sentiment shifts
         that may not constitute resolution events but still provide trading signals.
         """
-        client = await self._get_client()
-        if not client:
-            return LLMAnalysisResult(
-                is_relevant=False,
-                is_bullish_for_yes=False,
-                confidence=0.5,
-                rationale="LLM service unavailable",
-                signal_type="NOISE",
-                error="No LLM client"
-            )
-        
         # Use the sentiment prompt
         user_prompt = f"""Analyze this news for market sentiment signals.
 
@@ -392,12 +381,14 @@ Respond with ONLY the JSON object as specified. No other text."""
 
         try:
             # Create a new conversation with the sentiment prompt
+            import uuid
             from emergentintegrations.llm.chat import LlmChat
             
+            session_id = f"tier2_{uuid.uuid4().hex[:8]}"
             sentiment_chat = LlmChat(
                 api_key=self._api_key,
-                model=self.model,
-                system_prompt=SYSTEM_PROMPT_SENTIMENT
+                session_id=session_id,
+                system_message=SYSTEM_PROMPT_SENTIMENT
             )
             
             user_msg = self._UserMessage(text=user_prompt)
@@ -411,6 +402,7 @@ Respond with ONLY the JSON object as specified. No other text."""
                 
                 # Only return relevant if confidence > 0.55
                 if is_relevant and confidence > 0.55:
+                    logger.info(f"[LLM SERVICE] Tier 2 HIT: signal_type={signal_type}, confidence={confidence}")
                     return LLMAnalysisResult(
                         is_relevant=True,
                         is_bullish_for_yes=parsed.get('is_bullish_for_yes', False),
