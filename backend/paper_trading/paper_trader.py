@@ -2698,7 +2698,18 @@ class PaperTrader:
             Dict with execution result
         """
         market_id = market_data.get('id', 'unknown')
-        market_price = float(market_data.get('yes_price', 0.5))
+        market_price_raw = market_data.get('yes_price') or market_data.get('price')
+        if not market_price_raw or market_price_raw <= 0:
+            return {
+                'lane': lane,
+                'strategy': strategy,
+                'market_id': market_id,
+                'side': side,
+                'edge': edge,
+                'executed': False,
+                'reason': 'No valid price data'
+            }
+        market_price = float(market_price_raw)
         
         result = {
             'lane': lane,
