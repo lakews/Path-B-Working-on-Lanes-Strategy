@@ -6122,16 +6122,17 @@ async def startup_event():
         
         logger.info("[MARKETS-FIRST] ✓ MongoDB indexes created")
         
-        # Get realtime market service for WebSocket data
-        from services.realtime_market_service import get_realtime_market_service
-        rtm_service = get_realtime_market_service()
+        # Get and START realtime market service for WebSocket data (PRIMARY)
+        from services.realtime_market_service import get_realtime_market_service, init_realtime_market_service
+        rtm_service = await init_realtime_market_service()  # Start WebSocket connection
+        logger.info("[MARKETS-FIRST] ✓ RealTimeMarketService started (WebSocket PRIMARY)")
         
         # Initialize PolymarketScanner
         logger.info("[MARKETS-FIRST] Initializing PolymarketScanner...")
         polymarket_scanner = await init_polymarket_scanner(
             db=db,
             websocket_market_service=rtm_service,
-            gamma_api_client=None,  # Will use internal PolymarketAPI
+            gamma_api_client=None,  # Will use internal PolymarketAPI (FALLBACK)
             embedding_model=None    # Will use SimpleEmbeddingModel
         )
         
