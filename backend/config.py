@@ -220,22 +220,22 @@ def is_spread_acceptable(spread: float, is_hft: bool = False) -> bool:
 
 
 # =========================================================================
-# ARCHITECTURE C ULTIMATE CONFIGURATION
+# PATH A ENGINE CONFIGURATION
 # =========================================================================
 
-class ArchCConfig:
-    """Architecture C Ultimate configuration class"""
+class PathAConfig:
+    """PATH A Engine configuration class"""
     
     @property
-    def ARCH_C_REFRESH_INTERVAL(self):
+    def PATH_A_REFRESH_INTERVAL(self):
         """How often to rebuild reverse index (seconds)"""
-        return int(os.environ.get('ARCH_C_REFRESH_INTERVAL', '300'))  # 5 min
+        return int(os.environ.get('PATH_A_REFRESH_INTERVAL', '300'))  # 5 min
 
     @property
-    def ARCH_C_CONFIG(self):
-        """Architecture C Ultimate configuration"""
+    def PATH_A_CONFIG(self):
+        """PATH A Engine configuration"""
         return {
-            'refresh_interval': self.ARCH_C_REFRESH_INTERVAL,
+            'refresh_interval': self.PATH_A_REFRESH_INTERVAL,
             'batch_size': 50,
             'max_workers': 5,
             'max_matches_per_news': 20,
@@ -244,7 +244,7 @@ class ArchCConfig:
             'dedup_window_seconds': 300,
             # Optimization #2: Category Bayes Multipliers
             'category_bayes_enabled': True,
-            # Optimization #3: Early Termination
+            # Optimization #3: Early Termination (Hybrid Scoring)
             'early_termination_enabled': True,
             'early_term_threshold': 0.40,
             # Optimization #4: Adaptive TTL
@@ -258,5 +258,5 @@ class ArchCConfig:
             'hot_swap_enabled': True,
         }
 
-# Singleton instance for Architecture C config
-arch_c_config = ArchCConfig()
+# Singleton instance for PATH A config
+path_a_config = PathAConfig()
