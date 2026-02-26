@@ -1004,34 +1004,36 @@ def calculate_market_similarity(market1: dict, market2: dict) -> float:
 # MAIN CLASS: REVERSE MARKET INDEX ULTIMATE
 # ============================================================================
 
-class ReverseMarketIndexUltimate:
+class PathAEngine:
     """
-    Architecture C Ultimate: High-performance news-to-market matching
-    INTEGRATED with your codebase:
-    - Uses your EmergentLLMService.analyze_news_for_market()
-    - Gets markets from PolymarketScanner.get_cached_markets() (Dict format)
-    - Writes to your db.signals collection
-
+    PATH A Engine: High-performance news-to-market matching & signal generation
+    
+    Core component of the dual-path news processing system:
+    - PATH A (this): Deep analysis with LLM for actionable signals
+    - PATH B: Fast broadcast to HFT for immediate opportunities
+    
     Features:
-    - O(1) keyword lookup using reverse index
-    - 1,445+ category keywords
-    - Batch LLM processing
-    - 7 optimizations for production Performance:
-    - 91ms average latency per news event
-    - 54.9 events/sec throughput (5 workers)
-    - 26× faster than baseline
+    - O(1) keyword lookup using reverse index (1,800+ keywords)
+    - 330+ entity synonyms for accurate matching
+    - Hybrid relevance scoring
+    - Two-tier LLM analysis
+    - 7 optimizations for production performance
+    
+    Signal Flow:
+    News → Hybrid Filter → LLM Analysis → db.signals → NewsSniper → Trades
     """
 
     def __init__(
         self, polymarket_scanner, llm_service, mongo_db, config: dict
     ):
         """
-        Initialize Architecture C Ultimate
+        Initialize PATH A Engine
+        
         Args:
-            polymarket_scanner: Your PolymarketScanner instance
-            llm_service: Your EmergentLLMService instance
+            polymarket_scanner: PolymarketScanner instance
+            llm_service: EmergentLLMService instance
             mongo_db: MongoDB database instance (motor)
-            config: Configuration dict from config.ARCH_C_CONFIG
+            config: Configuration dict from config.PATH_A_CONFIG
         """
         self.scanner = polymarket_scanner
         self.llm_service = llm_service
