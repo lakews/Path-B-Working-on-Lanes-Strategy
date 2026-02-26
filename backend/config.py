@@ -217,3 +217,46 @@ def is_spread_acceptable(spread: float, is_hft: bool = False) -> bool:
     """Check if a spread is acceptable for trading."""
     max_spread = SPREAD_RULES['MAX_SPREAD_HFT'] if is_hft else SPREAD_RULES['MAX_SPREAD_ALPHA']
     return spread <= max_spread
+
+
+# =========================================================================
+# ARCHITECTURE C ULTIMATE CONFIGURATION
+# =========================================================================
+
+class ArchCConfig:
+    """Architecture C Ultimate configuration class"""
+    
+    @property
+    def ARCH_C_REFRESH_INTERVAL(self):
+        """How often to rebuild reverse index (seconds)"""
+        return int(os.environ.get('ARCH_C_REFRESH_INTERVAL', '300'))  # 5 min
+
+    @property
+    def ARCH_C_CONFIG(self):
+        """Architecture C Ultimate configuration"""
+        return {
+            'refresh_interval': self.ARCH_C_REFRESH_INTERVAL,
+            'batch_size': 50,
+            'max_workers': 5,
+            'max_matches_per_news': 20,
+            # Optimization #1: Deduplication
+            'dedup_enabled': True,
+            'dedup_window_seconds': 300,
+            # Optimization #2: Category Bayes Multipliers
+            'category_bayes_enabled': True,
+            # Optimization #3: Early Termination
+            'early_termination_enabled': True,
+            'early_term_threshold': 0.40,
+            # Optimization #4: Adaptive TTL
+            'adaptive_ttl_enabled': True,
+            # Optimization #5: Priority Queue
+            'priority_queue_enabled': True,
+            # Optimization #6: Market Clustering
+            'clustering_enabled': True,
+            'cluster_similarity_threshold': 0.70,
+            # Optimization #7: Dual-Index Hot-Swap
+            'hot_swap_enabled': True,
+        }
+
+# Singleton instance for Architecture C config
+arch_c_config = ArchCConfig()
