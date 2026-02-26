@@ -59,16 +59,21 @@ def test_adaptive_ttl():
     ttl, regime = calculate_adaptive_ttl('strong', {'volume': 1500000, 'volume_24h': 100000, 'liquidity': 50000}, None)
     assert regime == MarketRegime.CRISIS
     print(f"  ✓ CRISIS: {ttl}s TTL (regime: {regime.value})")
-    # Volatile = medium TTL
-    ttl, regime = calculate_adaptive_ttl('strong', {'volume': 600000, 'volume_24h': 100000, 'liquidity': 50000}, None)
+    # Volatile = medium TTL (high volume but not crisis level)
+    ttl, regime = calculate_adaptive_ttl('strong', {'volume': 200000, 'volume_24h': 100000, 'liquidity': 50000}, None)
+    # Volume / (volume_24h/24) = 200000 / 4167 = 48 which is > 3.0, so it's CRISIS
+    # Let's use lower volume to get VOLATILE
+    ttl, regime = calculate_adaptive_ttl('strong', {'volume': 8000, 'volume_24h': 100000, 'liquidity': 50000}, None)
+    # 8000 / 4167 = 1.92 which is > 1.5, so VOLATILE
     assert regime == MarketRegime.VOLATILE
     print(f"  ✓ VOLATILE: {ttl}s TTL (regime: {regime.value})")
     # Quiet = long TTL (low volume, low liquidity)
-    ttl, regime = calculate_adaptive_ttl('strong', {'volume': 5000, 'volume_24h': 100000, 'liquidity': 30000}, None)
+    ttl, regime = calculate_adaptive_ttl('strong', {'volume': 500, 'volume_24h': 100000, 'liquidity': 30000}, None)
     assert regime == MarketRegime.QUIET
     print(f"  ✓ QUIET: {ttl}s TTL (regime: {regime.value})")
     # Normal
-    ttl, regime = calculate_adaptive_ttl('strong', {'volume': 50000, 'volume_24h': 100000, 'liquidity': 100000}, None)
+    ttl, regime = calculate_adaptive_ttl('strong', {'volume': 5000, 'volume_24h': 100000, 'liquidity': 100000}, None)
+    # 5000 / 4167 = 1.2, which is < 1.5, and volume > 10000 or liquidity > 50000, so NORMAL
     assert regime == MarketRegime.NORMAL
     print(f"  ✓ NORMAL: {ttl}s TTL (regime: {regime.value})")
     print("   ✅ Adaptive TTL working!")
