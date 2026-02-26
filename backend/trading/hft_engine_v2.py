@@ -240,8 +240,11 @@ class HighFrequencyTradingEngineV2:
             if self.paper_trader and market_id in getattr(self.paper_trader, 'paper_positions', {}):
                 return None
             
-            # Get current price
-            yes_price = float(market_data.get('yes_price', market_data.get('price', 0.5)))
+            # Get current price - no fallback, skip if missing
+            yes_price_raw = market_data.get('yes_price') or market_data.get('price')
+            if not yes_price_raw or yes_price_raw <= 0:
+                return None  # Skip markets with no valid price
+            yes_price = float(yes_price_raw)
             
             # STEP 2: Check Alpha target (strategy_context bridge)
             alpha_target = None
