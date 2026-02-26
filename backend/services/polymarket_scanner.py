@@ -238,8 +238,12 @@ class PolymarketScanner:
                 all_markets = await self._fetch_from_rest_api()
             
             if not all_markets:
-                logger.warning("[SCANNER] No markets fetched from either source")
-                return
+                # MongoDB fallback when API is unavailable
+                all_markets = await self._fetch_from_mongodb_cache()
+                if not all_markets:
+                    logger.warning("[SCANNER] No markets fetched from any source (API + MongoDB)")
+                    return
+                logger.info(f"[SCANNER] Loaded {len(all_markets)} markets from MongoDB cache fallback")
             
             self.stats['ws_markets_fetched'] += len(all_markets)
             
