@@ -156,6 +156,7 @@ class LLMAnalysisResult:
     is_bullish_for_yes: bool
     confidence: float
     rationale: str
+    signal_type: str = "NOISE"  # RESOLUTION, STRONG, MODERATE, WEAK, NOISE
     raw_response: str = ""
     error: Optional[str] = None
     
@@ -165,6 +166,7 @@ class LLMAnalysisResult:
             'is_bullish_for_yes': self.is_bullish_for_yes,
             'confidence': self.confidence,
             'rationale': self.rationale,
+            'signal_type': self.signal_type,
             'error': self.error
         }
     
