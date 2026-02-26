@@ -6099,6 +6099,36 @@ async def startup_event():
         logger.info("[MARKETS-FIRST] ✓ DualPathNewsInjector initialized")
         
         # ================================================================
+        # ARCHITECTURE C ULTIMATE INITIALIZATION
+        # ================================================================
+        arch_c_index = None
+        try:
+            logger.info("[STARTUP] Initializing Architecture C Ultimate...")
+            from services.reverse_market_index_ultimate import ReverseMarketIndexUltimate
+            from config import arch_c_config
+            
+            if polymarket_scanner and llm_service:
+                arch_c_index = ReverseMarketIndexUltimate(
+                    polymarket_scanner=polymarket_scanner,
+                    llm_service=llm_service,
+                    mongo_db=db,
+                    config=arch_c_config.ARCH_C_CONFIG
+                )
+                # Start background index refresh
+                asyncio.create_task(arch_c_index.start_auto_refresh())
+                # Start queue processor (if enabled)
+                if arch_c_config.ARCH_C_CONFIG.get('priority_queue_enabled'):
+                    asyncio.create_task(arch_c_index.process_queue())
+                # Start stats logger
+                asyncio.create_task(arch_c_index.start_stats_logger())
+                
+                logger.info("[STARTUP] ✓ Architecture C Ultimate initialized")
+            else:
+                logger.warning("[STARTUP] Scanner or LLM not ready, skipping Architecture C")
+        except Exception as e:
+            logger.error(f"[STARTUP] Failed to init Architecture C: {e}")
+        
+        # ================================================================
         # AUTOMATIC NEWS AGGREGATION (Independent of Paper Trading)
         # ================================================================
         # MARKETS-FIRST Architecture:
