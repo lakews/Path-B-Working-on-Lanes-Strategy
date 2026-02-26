@@ -164,6 +164,7 @@ NEWS EVENT ARRIVES
 - [x] **P&L Anomaly Resolution (Feb 15, 2026)** - Fixed expired markets sending 0.5 prices, tiered validation system
 - [x] **System Audit (Dec 2025)** - Verified tiered kill switch working, hft_volatility_exploit trading at extreme prices
 - [x] **Markets-First News Query Optimization (Feb 15, 2026)** - Optimized query generation using market description, category, and time-awareness; Fixed API key encryption issue
+- [x] **Market Quality Score Optimization (Feb 26, 2026)** - Optimized for prediction markets: `spread*5` penalty (less aggressive), weights `0.4/0.6` (prioritize spread), threshold `0.5`
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
