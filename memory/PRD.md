@@ -115,6 +115,22 @@ NEWS EVENT ARRIVES
    - Time-aware modifiers ("breaking latest" for markets expiring within 7 days)
    - Key stored in MongoDB with DB_NAME-derived encryption
 
+5. **PATH A Engine Ultimate (Feb 26, 2026)** ✅
+   - File: `/app/backend/services/path_a_engine.py`
+   - Renamed from "Architecture C Ultimate" to "PATH A Engine"
+   - **Hybrid Relevance Scoring**: Category match + Entity match + Keyword overlap
+   - **Two-Tier LLM Analysis**: Resolution prompt (Tier 1) → Sentiment prompt (Tier 2)
+   - **330+ Entity Synonyms** for robust news-to-market matching
+   - **7 Optimizations**: Dedup, Early Termination, Clustering, Adaptive TTL, Priority Queue, Bayes Multipliers, Hot-swap
+   - **O(1) Keyword Lookup** via 2,800+ keyword reverse index
+   - **MongoDB Cache Fallback** for scanner when Gamma API unavailable
+   - **Signal Structure**: Includes `bayes_factor`, `market_question`, `signal_type`, `timestamp` for NewsSniper compatibility
+
+6. **Polymarket News Aggregator (Feb 26, 2026)** ✅
+   - File: `/app/backend/services/polymarket_news_sources.py`
+   - Aggregates from Finnhub API (general + crypto)
+   - 10 RSS feeds: AP News, Reuters, ESPN, Politico, CoinDesk, Federal Reserve
+
 ---
 
 ## Key Files Reference
