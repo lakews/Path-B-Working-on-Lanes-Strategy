@@ -175,6 +175,16 @@ class DualPathNewsInjector:
                 )
                 logger.info(f"[NEWS INJECTOR] ✓ PATH A: {len(path_a_signals)} signals")
             
+            # ARCHITECTURE C ULTIMATE: Process through reverse index
+            if self.arch_c_index:
+                try:
+                    arch_c_result = await self.arch_c_index.process_news_event(news)
+                    arch_c_signals = arch_c_result.get('signals_generated', 0)
+                    self.stats['arch_c_signals'] += arch_c_signals
+                    logger.info(f"[ARCH_C] Processed via Ultimate: {arch_c_result}")
+                except Exception as e:
+                    logger.error(f"[ARCH_C] Processing error: {e}")
+            
             self.stats['news_processed'] += 1
             return path_a_signals, path_b_count
         
