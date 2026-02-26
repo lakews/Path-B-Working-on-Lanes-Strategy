@@ -7310,9 +7310,10 @@ class PaperTrader:
             # MARKET QUALITY SCORE (for execution decisions)
             # ================================================================
             # This measures market tradability: liquidity + spread tightness
+            # Optimized for prediction markets: prioritize tight spreads over raw liquidity
             liquidity_score = min(1.0, liquidity / 100000) if liquidity > 0 else 0
-            spread_score = max(0, 1 - spread * 10)
-            market_quality_score = (liquidity_score * 0.6 + spread_score * 0.4)
+            spread_score = max(0, 1 - spread * 5)  # Less aggressive penalty (was *10)
+            market_quality_score = (liquidity_score * 0.4 + spread_score * 0.6)  # Prioritize spread
             
             # ================================================================
             # REAL SHARP ALIGNMENT (from SharpDetector)
