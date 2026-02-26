@@ -449,6 +449,142 @@ def calculate_relevance_score(news_keywords: List[str], market_keywords: List[st
 
 
 # ============================================================================
+# HYBRID RELEVANCE SCORING (Option 5)
+# ============================================================================
+
+def extract_entities(text: str) -> Set[str]:
+    """
+    Extract normalized entities from text using synonym dictionary.
+    Returns set of canonical entity names found in text.
+    """
+    text_lower = text.lower()
+    found_entities = set()
+    
+    for canonical, synonyms in ENTITY_SYNONYMS.items():
+        for synonym in synonyms:
+            if synonym in text_lower:
+                found_entities.add(canonical)
+                break  # Found one synonym, move to next entity
+    
+    return found_entities
+
+
+def score_entity_match(news_entities: Set[str], market_entities: Set[str]) -> float:
+    """
+    Score based on entity overlap.
+    More entity matches = higher score (capped at 0.4)
+    
+    Returns: float 0.0-0.4
+    """
+    if not news_entities or not market_entities:
+        return 0.0
+    
+    overlap = len(news_entities & market_entities)
+    
+    # Scoring: 1 entity = 0.2, 2 = 0.3, 3+ = 0.4 (capped)
+    if overlap >= 3:
+        return 0.4
+    elif overlap == 2:
+        return 0.3
+    elif overlap == 1:
+        return 0.2
+    return 0.0
+
+
+def calculate_hybrid_relevance(
+    news_text: str,
+    market: dict,
+    news_category: str
+) -> Tuple[float, dict]:
+    """
+    Calculate hybrid relevance score combining:
+    1. Category match (max 0.3)
+    2. Entity match (max 0.4)
+    3. Keyword overlap (max 0.3)
+    
+    Total max = 1.0
+    
+    Args:
+        news_text: Full news text (headline + content)
+        market: Market dict with 'question', 'category', '_keywords'
+        news_category: Detected news category (CRYPTO, POLITICS, etc.)
+    
+    Returns:
+        (score, breakdown_dict)
+    """
+    breakdown = {
+        'category': 0.0,
+        'entity': 0.0,
+        'keyword': 0.0,
+        'entities_matched': []
+    }
+    total_score = 0.0
+    
+    # =========================================================================
+    # Component 1: Category match (max 0.3)
+    # =========================================================================
+    market_category_raw = market.get('category', '')
+    market_category = POLYMARKET_CATEGORY_MAP.get(market_category_raw, 'GENERAL')
+    
+    # Also try to detect category from market question if no category field
+    if market_category == 'GENERAL':
+        market_question = market.get('question', '')
+        detected_market_cat, _, _ = detect_category(market_question)
+        market_category = detected_market_cat
+    
+    if news_category == market_category and news_category != 'GENERAL':
+        breakdown['category'] = 0.3
+        total_score += 0.3
+    elif news_category != 'GENERAL' and market_category != 'GENERAL':
+        # Partial credit for related categories
+        related_categories = {
+            ('POLITICS', 'LEGAL'): 0.15,
+            ('LEGAL', 'POLITICS'): 0.15,
+            ('FINANCE', 'CRYPTO'): 0.15,
+            ('CRYPTO', 'FINANCE'): 0.15,
+            ('TECH', 'CRYPTO'): 0.1,
+            ('CRYPTO', 'TECH'): 0.1,
+            ('GEOPOLITICS', 'POLITICS'): 0.1,
+            ('POLITICS', 'GEOPOLITICS'): 0.1,
+        }
+        partial = related_categories.get((news_category, market_category), 0.0)
+        breakdown['category'] = partial
+        total_score += partial
+    
+    # =========================================================================
+    # Component 2: Entity match (max 0.4)
+    # =========================================================================
+    news_entities = extract_entities(news_text)
+    market_question = market.get('question', '') + ' ' + market.get('description', '')
+    market_entities = extract_entities(market_question)
+    
+    entity_score = score_entity_match(news_entities, market_entities)
+    matched_entities = list(news_entities & market_entities)
+    
+    breakdown['entity'] = entity_score
+    breakdown['entities_matched'] = matched_entities
+    total_score += entity_score
+    
+    # =========================================================================
+    # Component 3: Keyword overlap (max 0.3)
+    # =========================================================================
+    news_keywords = extract_keywords(news_text)
+    market_keywords = market.get('_keywords', [])
+    
+    if not market_keywords:
+        # Extract from question if not pre-computed
+        market_keywords = extract_keywords(market_question)
+    
+    jaccard = calculate_relevance_score(news_keywords, market_keywords)
+    keyword_score = min(jaccard * 0.5, 0.3)  # Scale and cap at 0.3
+    
+    breakdown['keyword'] = round(keyword_score, 3)
+    total_score += keyword_score
+    
+    return (round(total_score, 3), breakdown)
+
+
+# ============================================================================
 # OPTIMIZATION #2: CATEGORY BAYES MULTIPLIERS
 # ============================================================================
 
