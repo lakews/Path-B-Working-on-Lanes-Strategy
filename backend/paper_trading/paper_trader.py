@@ -7081,7 +7081,7 @@ class PaperTrader:
                     'sentiment': 0.5,
                     'sharp_alignment': 0.5,
                     'market_quality_score': 0.5,
-                    'price_uncertainty': 0.5,
+                    'price_uncertainty': 0.8,  # High uncertainty when errors occur - protects capital
                     'volume_signal': 0.0,
                     'momentum': 0.0,
                     'edge': 0.0,
