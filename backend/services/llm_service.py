@@ -157,6 +157,7 @@ class LLMAnalysisResult:
     confidence: float
     rationale: str
     signal_type: str = "NOISE"  # RESOLUTION, STRONG, MODERATE, WEAK, NOISE
+    tier: int = 1  # 1 = Resolution (strict), 2 = Sentiment (looser)
     raw_response: str = ""
     error: Optional[str] = None
     
@@ -167,6 +168,7 @@ class LLMAnalysisResult:
             'confidence': self.confidence,
             'rationale': self.rationale,
             'signal_type': self.signal_type,
+            'tier': self.tier,
             'error': self.error
         }
     
@@ -330,7 +332,9 @@ Respond with ONLY the JSON object as specified. No other text."""
                     news_headline, news_content, market_question, market_description
                 )
                 if tier2_result.is_relevant:
-                    logger.info(f"[LLM SERVICE] Tier 2 HIT: signal_type={tier2_result.signal_type}, confidence={tier2_result.confidence}")
+                    # Mark as Tier 2 for downstream BF calculation (0.5x multiplier)
+                    tier2_result.tier = 2
+                    logger.info(f"[LLM SERVICE] Tier 2 HIT: signal_type={tier2_result.signal_type}, confidence={tier2_result.confidence}, tier=2")
                     return tier2_result
             
             # Both tiers returned not relevant

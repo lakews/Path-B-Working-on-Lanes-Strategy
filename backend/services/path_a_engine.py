@@ -848,15 +848,14 @@ def calculate_adaptive_ttl(impact: str, market_data: Optional[dict], category: O
         (ttl_seconds, regime)
     """
     # Default TTL by impact (matches YOUR impact levels)
-    # Increased TTLs to give NewsSniper more time to consume signals
     base_ttls = {
-        'resolution': 300,  # 5 minutes - very urgent
-        'strong': 600,      # 10 minutes
-        'moderate': 900,    # 15 minutes
-        'weak': 1200,       # 20 minutes
-        'none': 1800        # 30 minutes
+        'resolution': 120,  # 2 minutes - very urgent
+        'strong': 180,      # 3 minutes
+        'moderate': 300,    # 5 minutes
+        'weak': 600,        # 10 minutes
+        'none': 900         # 15 minutes
     }
-    base_ttl = base_ttls.get(impact.lower() if impact else 'moderate', 900)
+    base_ttl = base_ttls.get(impact.lower() if impact else 'moderate', 300)
 
     # Determine market regime from YOUR market data
     regime = MarketRegime.NORMAL
@@ -878,7 +877,7 @@ def calculate_adaptive_ttl(impact: str, market_data: Optional[dict], category: O
         # Crisis: very high recent volume
         if volatility_proxy > 3.0 or volume > 1000000:
             regime = MarketRegime.CRISIS
-            ttl = min(base_ttl * 0.7, 300)  # 30% reduction, min 5 minutes
+            ttl = min(base_ttl * 0.5, 90)  # 50% reduction, max 90s
         # Volatile: high volume
         elif volatility_proxy > 1.5 or volume > 500000:
             regime = MarketRegime.VOLATILE
@@ -1539,9 +1538,12 @@ class PathAEngine:
                 market_id = market.get('id') or market.get('market_id')
                 now = datetime.now(timezone.utc)
                 
-                # Calculate bayes_factor for NewsSniper compatibility
-                base_bf = 1.0 + (final_confidence - 0.5) * 2  # Convert confidence to BF
-                bayes_factor = base_bf * CATEGORY_BAYES_MULTIPLIERS.get(category, 1.0)
+                # Calculate bayes_factor using correct Bayesian formula
+                # BF = P(H|E) / P(¬H|E) = confidence / (1 - confidence)
+                base_bf, _, _ = calculate_bayes_factor_enhanced(final_confidence, impact, category)
+                # Apply tier multiplier: Tier 1 (Resolution) = 1.0, Tier 2 (Sentiment) = 0.5
+                tier_mult = 0.5 if getattr(analysis, 'tier', 1) == 2 else 1.0
+                bayes_factor = base_bf * tier_mult
                 
                 signal = {
                     'market_id': market_id,
