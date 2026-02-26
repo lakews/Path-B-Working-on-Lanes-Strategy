@@ -3442,7 +3442,8 @@ class PaperTrader:
         try:
             market_id = market_data.get('id', '')
             question = market_data.get('question', '')
-            yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+            # FIX: Handle None yes_price - fall back to price field
+            yes_price = float(market_data.get('yes_price') or market_data.get('price') or 0.5)
             
             # Skip if already have position
             if market_id in self.paper_positions:
