@@ -1290,30 +1290,44 @@ class ReverseMarketIndexUltimate:
     ) -> List[dict]:
         """
         Analyze cluster of markets with LLM
-        INTEGRATED: Uses YOUR EmergentLLMService.analyze_news_for_market()
+        INTEGRATED: Uses EmergentLLMService.analyze_news_for_market()
         """
         signals = []
         headline = news_item.get('headline', '')
         content = news_item.get('content', '')
         category = news_item.get('_category', 'GENERAL')
 
-        # Process each market (YOUR LLM service analyzes one at a time)
+        # Process each market
         for market, relevance in markets:
             try:
-                # Call YOUR LLM service
+                # Extract market details
+                market_question = market.get('question', '')
+                market_description = market.get('description', '')
+                
+                # Call LLM service with correct parameters
                 analysis = await self.llm_service.analyze_news_for_market(
                     news_headline=headline,
                     news_content=content,
-                    market=market
+                    market_question=market_question,
+                    market_description=market_description
                 )
 
-                # Handle both dict and object return formats
-                if hasattr(analysis, 'direction'):
-                    # LLMAnalysisResult object
+                # Handle LLMAnalysisResult object
+                if hasattr(analysis, 'is_relevant'):
+                    # New LLMAnalysisResult format
+                    if not analysis.is_relevant:
+                        continue  # Skip non-relevant
+                    
+                    direction = 'YES' if analysis.is_bullish_for_yes else 'NO'
+                    confidence = analysis.confidence
+                    impact = getattr(analysis, 'impact', 'moderate')
+                    reasoning = analysis.rationale
+                elif hasattr(analysis, 'direction'):
+                    # Old format with direction
                     direction = analysis.direction
                     confidence = analysis.confidence
-                    impact = analysis.impact
-                    reasoning = analysis.rationale
+                    impact = getattr(analysis, 'impact', 'moderate')
+                    reasoning = getattr(analysis, 'rationale', '')
                 else:
                     # Dict format
                     direction = analysis.get('direction', 'NEUTRAL')
@@ -1341,7 +1355,7 @@ class ReverseMarketIndexUltimate:
                     ttl_seconds = 300  # Default 5 minutes
                     regime = None
 
-                # Create signal compatible with YOUR signals collection
+                # Create signal compatible with signals collection
                 market_id = market.get('id') or market.get('market_id')
                 signal = {
                     'market_id': market_id,
@@ -1361,6 +1375,11 @@ class ReverseMarketIndexUltimate:
                     'version': '2.0.0'
                 }
                 signals.append(signal)
+                
+                logger.info(
+                    f"[ARCH_C] ✓ Signal: {direction} {market_question[:40]}... | "
+                    f"conf={final_confidence:.2f}"
+                )
 
             except Exception as e:
                 market_id = market.get('id') or market.get('market_id')
