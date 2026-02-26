@@ -3678,8 +3678,12 @@ class PaperTrader:
                 100.0  # Cap at $100 for Alpha
             )
             
-            # Determine strategy
-            yes_price = float(market_data.get('yes_price', 0.5))
+            # Determine strategy - no fallback, skip if missing price
+            yes_price_raw = market_data.get('yes_price') or market_data.get('price')
+            if not yes_price_raw or yes_price_raw <= 0:
+                logger.debug(f"[ALPHA] Skipping {market_id[:16]} - no valid price")
+                return
+            yes_price = float(yes_price_raw)
             if yes_price < 0.25 or yes_price > 0.75:
                 strategy = 'alpha_directional'
             else:
