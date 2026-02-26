@@ -347,6 +347,48 @@ class PolymarketScanner:
             logger.error(f"[SCANNER] REST API fetch error: {e}")
             return []
     
+    async def _fetch_from_mongodb_cache(self) -> List[Dict]:
+        """Fetch markets from MongoDB cache when API is unavailable"""
+        try:
+            if self.db is None:
+                logger.warning("[SCANNER] MongoDB db is None, cannot use cache fallback")
+                return []
+            
+            # Load from polymarket_cache collection
+            cursor = self.db.polymarket_cache.find(
+                {'price': {'$ne': None}, 'yes_price': {'$gt': 0}},
+                {'_id': 0}  # Exclude ObjectId
+            )
+            markets = await cursor.to_list(length=2000)
+            
+            if markets:
+                # Normalize field names to match API format
+                normalized = []
+                for m in markets:
+                    norm = {
+                        'id': m.get('market_id'),
+                        'market_id': m.get('market_id'),
+                        'condition_id': m.get('market_id'),
+                        'question': m.get('question', ''),
+                        'description': m.get('description', ''),
+                        'yes_price': m.get('yes_price', m.get('price', 0.5)),
+                        'no_price': m.get('no_price', 0.5),
+                        'volume_24h': m.get('volume_24h', 0),
+                        'liquidity': m.get('liquidity', 0),
+                        'category': m.get('category', 'Other'),
+                        'end_date': m.get('end_date'),
+                        'active': True,  # Assume active if in cache
+                        'volatility': m.get('volatility', 0.05),
+                    }
+                    normalized.append(norm)
+                logger.info(f"[SCANNER] MongoDB cache: {len(normalized)} markets loaded")
+                return normalized
+            return []
+        
+        except Exception as e:
+            logger.error(f"[SCANNER] MongoDB cache fetch error: {e}")
+            return []
+    
     def _filter_valid_markets(self, markets: List[Dict]) -> List[Dict]:
         """Remove clearly invalid markets only"""
         filtered = []
