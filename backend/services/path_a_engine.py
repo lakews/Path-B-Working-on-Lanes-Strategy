@@ -1071,7 +1071,7 @@ class PathAEngine:
             'avg_latency_ms': 0.0,
         }
 
-        logger.info("[ARCH_C] Initialized Architecture C Ultimate (Integrated)")
+        logger.info("[PATH_A] Initialized Architecture C Ultimate (Integrated)")
 
     async def build_index(self) -> dict:
         """
@@ -1081,7 +1081,7 @@ class PathAEngine:
             dict: Build statistics
         """
         t0 = time.time()
-        logger.info("[ARCH_C] Building reverse index...")
+        logger.info("[PATH_A] Building reverse index...")
 
         # Get markets from YOUR scanner (returns Dict[str, Dict])
         try:
@@ -1092,26 +1092,26 @@ class PathAEngine:
             elif isinstance(markets_dict, list):
                 markets = markets_dict
             else:
-                logger.error(f"[ARCH_C] Unexpected markets format: {type(markets_dict)}")
+                logger.error(f"[PATH_A] Unexpected markets format: {type(markets_dict)}")
                 markets = []
         except Exception as e:
-            logger.error(f"[ARCH_C] Failed to get markets from scanner: {e}")
+            logger.error(f"[PATH_A] Failed to get markets from scanner: {e}")
             # Fallback: Get from MongoDB directly
             try:
                 cursor = self.db.polymarket_cache.find({'price': {'$ne': None}})
                 markets = await cursor.to_list(length=None)
-                logger.info(f"[ARCH_C] Loaded {len(markets)} markets from MongoDB fallback")
+                logger.info(f"[PATH_A] Loaded {len(markets)} markets from MongoDB fallback")
             except Exception as e2:
-                logger.error(f"[ARCH_C] MongoDB fallback also failed: {e2}")
+                logger.error(f"[PATH_A] MongoDB fallback also failed: {e2}")
                 return {'error': 'No markets available'}
 
         if not markets:
-            logger.error("[ARCH_C] No markets returned!")
+            logger.error("[PATH_A] No markets returned!")
             return {'error': 'No markets available'}
 
         # Filter active markets
         active_markets = [m for m in markets if m.get('active', True)]
-        logger.info(f"[ARCH_C] Processing {len(active_markets)} active markets (out of {len(markets)} total)")
+        logger.info(f"[PATH_A] Processing {len(active_markets)} active markets (out of {len(markets)} total)")
 
         # Build new index
         new_index = defaultdict(list)
@@ -1156,8 +1156,8 @@ class PathAEngine:
             'build_time_ms': build_time_ms,
             'timestamp': self.last_refresh.isoformat()
         }
-        logger.info(f"[ARCH_C] ✓ Index built: {len(new_index)} keywords → {len(active_markets)} markets")
-        logger.info(f"[ARCH_C] Build stats: {json.dumps(stats)}")
+        logger.info(f"[PATH_A] ✓ Index built: {len(new_index)} keywords → {len(active_markets)} markets")
+        logger.info(f"[PATH_A] Build stats: {json.dumps(stats)}")
         return stats
 
     async def match_news_to_markets(self, news_item: dict) -> List[Tuple[dict, float]]:
@@ -1220,7 +1220,7 @@ class PathAEngine:
         t1 = time.time()
         lookup_time_ms = int((t1 - t0) * 1000)
         logger.info(
-            f"[ARCH_C] Matched {len(matched_markets)} markets in {lookup_time_ms} ms  "
+            f"[PATH_A] Matched {len(matched_markets)} markets in {lookup_time_ms} ms  "
             f"(category: {category}, confidence: {category_confidence:.2f})"
         )
         return matched_markets
@@ -1311,7 +1311,7 @@ class PathAEngine:
         self.stats['avg_latency_ms'] = ((prev_avg * (n - 1)) + result['latency_ms']) / n
 
         logger.info(
-            f"[ARCH_C] Processed news in {result['latency_ms']} ms  "
+            f"[PATH_A] Processed news in {result['latency_ms']} ms  "
             f"(matched {result['matched_markets']}, signals {result['signals_generated']})"
         )
         return result
@@ -1533,7 +1533,7 @@ class PathAEngine:
                 market_id = market.get('id') or market.get('market_id')
                 signal = {
                     'market_id': market_id,
-                    'type': 'architecture_c_ultimate',
+                    'type': 'path_a',
                     'direction': direction,
                     'confidence': final_confidence,
                     'impact': impact,
@@ -1545,19 +1545,19 @@ class PathAEngine:
                     'relevance_score': relevance,
                     'created_at': datetime.now(timezone.utc),
                     'expires_at': datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds),
-                    'source': 'architecture_c_ultimate',
+                    'source': 'path_a',
                     'version': '2.0.0'
                 }
                 signals.append(signal)
                 
                 logger.info(
-                    f"[ARCH_C] ✓ Signal: {direction} {market_question[:40]}... | "
+                    f"[PATH_A] ✓ Signal: {direction} {market_question[:40]}... | "
                     f"conf={final_confidence:.2f}"
                 )
 
             except Exception as e:
                 market_id = market.get('id') or market.get('market_id')
-                logger.error(f"[ARCH_C] LLM analysis failed for market {market_id}: {e}")
+                logger.error(f"[PATH_A] LLM analysis failed for market {market_id}: {e}")
                 continue
         return signals
 
@@ -1567,16 +1567,16 @@ class PathAEngine:
             if signals:
                 # Write to YOUR signals collection
                 await self.db.signals.insert_many(signals)
-                logger.info(f"[ARCH_C] Wrote {len(signals)} signals to db.signals")
+                logger.info(f"[PATH_A] Wrote {len(signals)} signals to db.signals")
         except Exception as e:
-            logger.error(f"[ARCH_C] Failed to write signals: {e}")
+            logger.error(f"[PATH_A] Failed to write signals: {e}")
 
     async def start_auto_refresh(self) -> None:
         """
         Start background task for automatic index refresh
         """
         refresh_interval = self.config.get('refresh_interval', 300)
-        logger.info(f"[ARCH_C] Starting auto-refresh (interval: {refresh_interval}s)")
+        logger.info(f"[PATH_A] Starting auto-refresh (interval: {refresh_interval}s)")
 
         # Initial build
         await self.build_index()
@@ -1585,10 +1585,10 @@ class PathAEngine:
         while True:
             await asyncio.sleep(refresh_interval)
             try:
-                logger.info("[ARCH_C] Refreshing index...")
+                logger.info("[PATH_A] Refreshing index...")
                 await self.build_index()
             except Exception as e:
-                logger.error(f"[ARCH_C] Index refresh failed: {e}")
+                logger.error(f"[PATH_A] Index refresh failed: {e}")
 
     async def enqueue_news(self, news_item: dict) -> None:
         """Add news to priority queue (if enabled) or regular queue.
@@ -1610,7 +1610,7 @@ class PathAEngine:
 
     async def process_queue(self) -> None:
         """Process news queue continuously. Can be started as background task in your server.py"""
-        logger.info("[ARCH_C] Starting queue processor...")
+        logger.info("[PATH_A] Starting queue processor...")
         while True:
             try:
                 # Get next item
@@ -1644,10 +1644,10 @@ class PathAEngine:
                 **self.get_stats(),
                 'timestamp': datetime.now(timezone.utc)
             }
-            # Write to arch_c_stats collection
-            await self.db.arch_c_stats.insert_one(stats_doc)
+            # Write to path_a_stats collection
+            await self.db.path_a_stats.insert_one(stats_doc)
         except Exception as e:
-            logger.error(f"[ARCH_C] Failed to persist stats: {e}")
+            logger.error(f"[PATH_A] Failed to persist stats: {e}")
 
     async def start_stats_logger(self) -> None:
         """Background task to log stats every 60 seconds. Can be started in your server.py startup"""
@@ -1655,13 +1655,13 @@ class PathAEngine:
             try:
                 await asyncio.sleep(60)
                 stats = self.get_stats()
-                logger.info(f"[ARCH_C] Stats: {json.dumps(stats)}")
+                logger.info(f"[PATH_A] Stats: {json.dumps(stats)}")
                 await self.persist_stats()
             except asyncio.CancelledError:
-                logger.info("[ARCH_C] Stats logger cancelled")
+                logger.info("[PATH_A] Stats logger cancelled")
                 break
             except Exception as e:
-                logger.error(f"[ARCH_C] Stats logging error: {e}")
+                logger.error(f"[PATH_A] Stats logging error: {e}")
 
     def get_stats(self) -> dict:
         """Get current statistics"""
