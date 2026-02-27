@@ -297,7 +297,9 @@ class PolymarketScanner:
                 current_cat = (m.get('category') or '').lower()
                 if tag_library and (not current_cat or current_cat == 'other'):
                     try:
-                        cat_result = tag_library.classify_market({'question': m.get('question', '')})
+                        # CRITICAL: Pass the FULL market object so TagLibraryService
+                        # can use all available data (tags, category field, question)
+                        cat_result = tag_library.classify_market(m)
                         m['category'] = cat_result.category
                     except:
                         m['category'] = 'other'
@@ -489,7 +491,9 @@ class PolymarketScanner:
                     try:
                         from services.tag_library_service import get_tag_library_service
                         tag_library = get_tag_library_service()
-                        cat_result = tag_library.classify_market({'question': market.get('question', '')})
+                        # CRITICAL: Pass the FULL market object so TagLibraryService
+                        # can use all available data (tags, category field, question)
+                        cat_result = tag_library.classify_market(market)
                         category = cat_result.category
                     except Exception:
                         category = 'other'
