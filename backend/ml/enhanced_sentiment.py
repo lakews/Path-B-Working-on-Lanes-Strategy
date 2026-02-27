@@ -573,15 +573,14 @@ class EnhancedSentimentAnalyzer:
                 # ============================================================
                 
                 # Get market-implied price (primary signal)
-                market_price = float(market_data.get('yes_price') or 0.5)
+                market_price = float(market_data.get('yes_price') or 0)
                 
-                # Get order flow sentiment (validation signal)
-                orderflow_sentiment = result['polymarket_sentiment']  # From orderbook/trade analysis
+                # Get order flow sentiment (validation signal) - may be None if no valid data
+                orderflow_sentiment = result['polymarket_sentiment']
                 orderflow_confidence = result['polymarket_confidence']
                 
-                # Sanity check: reject if market price is exactly 0.5 (likely no real data)
-                if abs(market_price - 0.5) < 0.01:
-                    # Price too close to 0.5 - likely default, not real market
+                # BLOCK if market price is 0.5 (default, no real data)
+                if abs(market_price - 0.5) < 0.01 or market_price == 0:
                     combined_sentiment = None  # Signal to BLOCK
                     combined_confidence = 0.0
                     weight_breakdown = {
@@ -595,14 +594,31 @@ class EnhancedSentimentAnalyzer:
                     result['fusion_strategy'] = 'SPORTS BLOCKED: Price=0.5 indicates no real market data'
                     result['sports_data_tier'] = 0
                     result['block_reason'] = 'polymarket_price_is_default'
+                
+                # BLOCK if order flow returned None (no valid signals)
+                elif orderflow_sentiment is None:
+                    combined_sentiment = None  # Signal to BLOCK
+                    combined_confidence = 0.0
+                    weight_breakdown = {
+                        'sports_odds': 0.0,
+                        'orderflow': 0.0,
+                        'llm': 0.0,
+                        'github': 0.0,
+                        'social': 0.0,
+                        'correlation': 0.0,
+                    }
+                    result['fusion_strategy'] = 'SPORTS BLOCKED: No valid order flow data'
+                    result['sports_data_tier'] = 0
+                    result['block_reason'] = result.get('orderflow_invalid_reason', 'orderflow_none')
+                    logger.warning(f"[SPORTS BLOCKED] No valid order flow for {question[:30]}...")
+                
                 else:
-                    # Combine: 70% market price + 30% order flow
+                    # Valid data - combine market price + order flow
                     market_weight = 0.70
                     orderflow_weight = 0.30
                     
                     # If order flow has low confidence, rely more on market price
                     if orderflow_confidence < 0.4:
-                        # Order flow data is weak - increase market weight
                         market_weight = 0.85
                         orderflow_weight = 0.15
                         logger.debug(f"[SPORTS TIER-2] Low orderflow confidence ({orderflow_confidence:.2f}), using 85/15 split")
