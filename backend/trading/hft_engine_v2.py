@@ -90,8 +90,14 @@ SPORTS_KEYWORDS = {
     # Soccer Teams (Major European)
     'real madrid', 'barcelona', 'manchester united', 'manchester city', 'liverpool',
     'chelsea', 'arsenal', 'tottenham', 'bayern', 'dortmund', 'juventus', 'inter',
-    'ac milan', 'roma', 'napoli', 'psg', 'marseille', 'lyon', 'atletico', 'sevilla',
-    'valencia', 'villarreal', 'ajax', 'benfica', 'porto', 'sporting',
+    'ac milan', 'roma', 'napoli', 'psg', 'marseille', 'lyon', 'atletico', 'atlético',
+    'sevilla', 'valencia', 'villarreal', 'ajax', 'benfica', 'porto', 'sporting',
+    'borussia', 'schalke', 'leverkusen', 'wolfsburg', 'frankfurt', 'leipzig',
+    'lazio', 'fiorentina', 'atalanta', 'torino', 'sampdoria',
+    'everton', 'west ham', 'newcastle', 'leicester', 'aston villa', 'wolves',
+    'crystal palace', 'brighton', 'fulham', 'bournemouth', 'nottingham forest',
+    # Additional soccer patterns
+    'cf ', ' cf', ' fc', 'fc ', 'united', 'city fc',
     # Player names (star athletes)
     'doncic', 'lebron', 'curry', 'giannis', 'jokic', 'embiid', 'tatum', 'durant',
     'mahomes', 'allen', 'burrow', 'jackson', 'hurts', 'kelce',
