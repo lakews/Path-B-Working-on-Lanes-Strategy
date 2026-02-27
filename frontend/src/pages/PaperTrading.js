@@ -2645,14 +2645,93 @@ const CategoryDashboard = ({
 
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-      <div className="p-4 border-b border-white/10 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Layers className="w-5 h-5 text-orange-400" />{title}
-        </h3>
-        {showLiveBadge && (
-          <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>LIVE
-          </span>
+      <div className="p-4 border-b border-white/10">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Layers className="w-5 h-5 text-orange-400" />{title}
+          </h3>
+          <div className="flex items-center gap-2">
+            {showLiveBadge && (
+              <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>LIVE
+              </span>
+            )}
+            {/* Control Buttons */}
+            <div className="flex items-center gap-1">
+              {hasAnySubCategories && (
+                <>
+                  <button
+                    onClick={expandAll}
+                    className="px-2 py-1 text-[10px] bg-white/10 hover:bg-white/20 text-white/70 rounded transition-colors"
+                    title="Expand all sub-categories"
+                  >
+                    <ChevronsUpDown className="w-3 h-3 inline mr-1" />Expand All
+                  </button>
+                  <button
+                    onClick={collapseAll}
+                    className="px-2 py-1 text-[10px] bg-white/10 hover:bg-white/20 text-white/70 rounded transition-colors"
+                    title="Collapse all sub-categories"
+                  >
+                    <ChevronsUpDown className="w-3 h-3 inline mr-1 rotate-90" />Collapse
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`px-2 py-1 text-[10px] ${showFilters ? 'bg-orange-500/30 text-orange-400' : 'bg-white/10 text-white/70'} hover:bg-white/20 rounded transition-colors flex items-center gap-1`}
+                title="Filter categories"
+              >
+                <Filter className="w-3 h-3" />
+                {Object.keys(hiddenCategories).filter(k => hiddenCategories[k]).length > 0 && (
+                  <span className="bg-orange-500 text-white rounded-full w-3 h-3 text-[8px] flex items-center justify-center">
+                    {Object.keys(hiddenCategories).filter(k => hiddenCategories[k]).length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Category Filter Panel */}
+        {showFilters && (
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-white/50 uppercase">Show/Hide Categories</span>
+              {Object.keys(hiddenCategories).some(k => hiddenCategories[k]) && (
+                <button
+                  onClick={showAll}
+                  className="text-[10px] text-cyan-400 hover:text-cyan-300"
+                >
+                  Show All
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {allCategoriesForFilter.map(([category, data]) => {
+                const meta = CATEGORY_META[category] || CATEGORY_META.default;
+                const isHidden = hiddenCategories[category];
+                return (
+                  <button
+                    key={category}
+                    onClick={() => toggleHideCategory(category)}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] transition-all ${
+                      isHidden 
+                        ? 'bg-white/5 text-white/30 line-through' 
+                        : 'bg-white/10 text-white/80 hover:bg-white/15'
+                    }`}
+                  >
+                    <div 
+                      className={`w-2 h-2 rounded-full ${isHidden ? 'opacity-30' : ''}`} 
+                      style={{ backgroundColor: meta.color }} 
+                    />
+                    <span className="capitalize">{meta.label || category}</span>
+                    <span className="text-white/40">({data.totalTrades})</span>
+                    {isHidden && <X className="w-3 h-3 text-red-400/50" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
       <div className="overflow-x-auto">
