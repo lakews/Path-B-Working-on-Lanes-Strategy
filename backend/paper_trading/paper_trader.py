@@ -3855,6 +3855,16 @@ class PaperTrader:
             if 'sports_arbitrage' in self.strategy_stats:
                 self.strategy_stats['sports_arbitrage']['trades'] += 1
             
+            # Track asset class stats (for Category P&L Dashboard)
+            asset_class = 'sports'
+            if asset_class not in self.asset_class_stats:
+                self.asset_class_stats[asset_class] = {
+                    'trades': 0, 'wins': 0, 'pnl': 0.0, 
+                    'gross_profit': 0.0, 'gross_loss': 0.0,
+                    'total_hold_time': 0.0, 'closed_trades': 0
+                }
+            self.asset_class_stats[asset_class]['trades'] += 1
+            
             # Log the trade
             logger.info(
                 f"🏈 [SPORTS TRADE] {signal.side} ${trade_size:.2f} @ {entry_price:.4f} | "
