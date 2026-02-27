@@ -115,6 +115,12 @@ class HighFrequencyTradingEngineV2:
         self._orders_lock = Lock()
         self.active_orders: Dict[str, Dict] = {}
         
+        # PATH A In-Memory Cache (HFT-grade latency)
+        self._path_a_cache: Dict[str, Dict] = {}  # market_id → signal
+        self._path_a_cache_refresh_interval = 5  # seconds
+        self._path_a_cache_last_refresh = None
+        self._path_a_cache_task = None
+        
         # Engine state
         self._running = False
         self._last_cycle_time = None
