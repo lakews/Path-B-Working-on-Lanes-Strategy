@@ -79,10 +79,23 @@ def is_sports_market(market_data: Dict) -> bool:
     """
     try:
         tag_library = get_tag_library_service()
-        return tag_library.is_sports_market(market_data)
+        result = tag_library.is_sports_market(market_data)
+        
+        # DEBUG: Log sports detection for debugging
+        question = (market_data.get('question') or '')[:50]
+        market_id = (market_data.get('id') or market_data.get('condition_id') or '')[:20]
+        if result:
+            logger.info(f"[HFT SPORTS FILTER] ✓ BLOCKED: {market_id}... '{question}...' -> Routed to SPORTS lane")
+        elif any(kw in question.lower() for kw in ['madrid', 'barcelona', 'vs', 'win the', 'nba', 'nfl', 'la liga']):
+            # Log potential false negatives
+            category = market_data.get('category', 'NONE')
+            asset_class = market_data.get('asset_class', 'NONE')
+            logger.warning(f"[HFT SPORTS FILTER] ⚠️ PASSED (potential sports): {market_id}... '{question}...' | cat={category}, asset={asset_class}")
+        
+        return result
     except Exception as e:
         # Fallback to API category check if service unavailable
-        logger.debug(f"[HFT V2] TagLibraryService fallback: {e}")
+        logger.warning(f"[HFT V2] TagLibraryService fallback: {e}")
         category = (market_data.get('category') or '').lower()
         return category in {'sports', 'esports'}
 
