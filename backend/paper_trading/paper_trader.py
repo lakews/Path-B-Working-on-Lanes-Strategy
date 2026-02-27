@@ -3001,16 +3001,12 @@ class PaperTrader:
                     # ==========================================================
                     # SPORTS DETECTION (Feb 2026 - Symmetric with all lanes)
                     # ==========================================================
-                    # Use Polymarket's authoritative category field first
+                    # Use Polymarket's authoritative category field (no fallback)
                     question = market_data.get('question', '').lower()
-                    raw_category = (market_data.get('category') or 'unknown').lower()
+                    raw_category = (market_data.get('category') or '').lower()
                     
-                    # Primary: Use category field from API (authoritative)
+                    # Use category field from API (authoritative)
                     is_sports = raw_category in {'sports', 'esports'}
-                    
-                    # Fallback: Use pattern matching if category not available
-                    if not is_sports and raw_category == 'unknown':
-                        is_sports = is_sports_market(question)
                     
                     # ==========================================================
                     # SPORTS ROUTING (Green Lane)
