@@ -3692,8 +3692,11 @@ class PaperTrader:
             question = market_data.get('question', '').lower()
             market_category = (market_data.get('category') or '').lower()
             
-            # Use authoritative category field from Polymarket API
-            if market_category in {'sports', 'esports'}:
+            # Sports detection (category + keyword fallback)
+            SPORTS_KW = {'nba', 'nfl', 'mlb', 'nhl', 'ncaa', 'ufc', 'championship', 'playoff', 'finals', 'mvp'}
+            is_sports = market_category in {'sports', 'esports'} or any(kw in question for kw in SPORTS_KW)
+            
+            if is_sports:
                 logger.debug(f"[ALPHA] Sports market should use sports handler: {question[:40]}...")
                 return
             
