@@ -272,5 +272,130 @@
     "conflict": 0.10,
     "social": 0.10,
     "unknown": 0.15
+  },
+  
+  "categories": {
+    "_metadata": {
+      "description": "Hierarchical category structure for granular P&L, capital allocation, and risk management",
+      "version": "1.0.0"
+    },
+    "sports": {
+      "label": "Sports",
+      "lane": "SPORTS",
+      "allocation_pct": 0.15,
+      "max_position_pct": 0.05,
+      "sub_categories": {
+        "basketball": { "allocation_pct": 0.25, "tp_mult": 1.0, "sl_mult": 1.5 },
+        "american-football": { "allocation_pct": 0.25, "tp_mult": 1.0, "sl_mult": 1.5 },
+        "soccer": { "allocation_pct": 0.20, "tp_mult": 1.0, "sl_mult": 1.5 },
+        "mma": { "allocation_pct": 0.10, "tp_mult": 1.2, "sl_mult": 1.3 },
+        "boxing": { "allocation_pct": 0.05, "tp_mult": 1.2, "sl_mult": 1.3 },
+        "tennis": { "allocation_pct": 0.05, "tp_mult": 1.0, "sl_mult": 1.2 },
+        "formula1": { "allocation_pct": 0.03, "tp_mult": 1.0, "sl_mult": 1.2 },
+        "baseball": { "allocation_pct": 0.03, "tp_mult": 1.0, "sl_mult": 1.5 },
+        "ice-hockey": { "allocation_pct": 0.02, "tp_mult": 1.0, "sl_mult": 1.5 },
+        "golf": { "allocation_pct": 0.02, "tp_mult": 1.5, "sl_mult": 1.0 },
+        "esports": { "allocation_pct": 0.10, "tp_mult": 1.5, "sl_mult": 1.0 },
+        "_default": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 }
+      }
+    },
+    "crypto": {
+      "label": "Crypto",
+      "lane": "ALPHA",
+      "allocation_pct": 0.20,
+      "max_position_pct": 0.03,
+      "sub_categories": {
+        "btc": { "allocation_pct": 0.40, "tp_mult": 1.5, "sl_mult": 1.5 },
+        "eth": { "allocation_pct": 0.25, "tp_mult": 1.5, "sl_mult": 1.5 },
+        "altcoin": { "allocation_pct": 0.10, "tp_mult": 2.0, "sl_mult": 1.2 },
+        "defi": { "allocation_pct": 0.15, "tp_mult": 2.0, "sl_mult": 1.0 },
+        "nft": { "allocation_pct": 0.05, "tp_mult": 2.0, "sl_mult": 0.8 },
+        "meme": { "allocation_pct": 0.03, "tp_mult": 3.0, "sl_mult": 0.5 },
+        "exchange": { "allocation_pct": 0.02, "tp_mult": 1.5, "sl_mult": 1.0 },
+        "_default": { "allocation_pct": 0.05, "tp_mult": 1.5, "sl_mult": 1.5 }
+      }
+    },
+    "politics": {
+      "label": "Politics",
+      "lane": "NEWS",
+      "allocation_pct": 0.25,
+      "max_position_pct": 0.05,
+      "sub_categories": {
+        "us-politics": { "allocation_pct": 0.70, "tp_mult": 1.2, "sl_mult": 1.0 },
+        "uk-politics": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 },
+        "international-politics": { "allocation_pct": 0.20, "tp_mult": 1.0, "sl_mult": 1.2 },
+        "_default": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 }
+      }
+    },
+    "economics": {
+      "label": "Economics",
+      "lane": "ALPHA",
+      "allocation_pct": 0.20,
+      "max_position_pct": 0.05,
+      "sub_categories": {
+        "macro": { "allocation_pct": 0.50, "tp_mult": 1.0, "sl_mult": 1.2 },
+        "markets": { "allocation_pct": 0.30, "tp_mult": 1.0, "sl_mult": 1.0 },
+        "commodities": { "allocation_pct": 0.20, "tp_mult": 1.2, "sl_mult": 1.0 },
+        "_default": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 }
+      }
+    },
+    "science-tech": {
+      "label": "Science & Tech",
+      "lane": "ALPHA",
+      "allocation_pct": 0.05,
+      "max_position_pct": 0.03,
+      "sub_categories": {
+        "ai": { "allocation_pct": 0.40, "tp_mult": 2.0, "sl_mult": 0.5 },
+        "space": { "allocation_pct": 0.30, "tp_mult": 2.0, "sl_mult": 0.5 },
+        "health": { "allocation_pct": 0.15, "tp_mult": 1.5, "sl_mult": 1.0 },
+        "climate": { "allocation_pct": 0.10, "tp_mult": 2.0, "sl_mult": 0.5 },
+        "cybersecurity": { "allocation_pct": 0.05, "tp_mult": 1.5, "sl_mult": 1.0 },
+        "_default": { "allocation_pct": 0.10, "tp_mult": 1.5, "sl_mult": 1.0 }
+      }
+    },
+    "entertainment": {
+      "label": "Entertainment",
+      "lane": "ALPHA",
+      "allocation_pct": 0.10,
+      "max_position_pct": 0.03,
+      "sub_categories": {
+        "media": { "allocation_pct": 0.30, "tp_mult": 2.0, "sl_mult": 0.8 },
+        "film": { "allocation_pct": 0.25, "tp_mult": 2.0, "sl_mult": 0.8 },
+        "tv": { "allocation_pct": 0.15, "tp_mult": 2.0, "sl_mult": 0.8 },
+        "music": { "allocation_pct": 0.15, "tp_mult": 2.0, "sl_mult": 0.8 },
+        "gaming": { "allocation_pct": 0.15, "tp_mult": 1.5, "sl_mult": 1.0 },
+        "_default": { "allocation_pct": 0.10, "tp_mult": 1.5, "sl_mult": 1.0 }
+      }
+    },
+    "geopolitics": {
+      "label": "Geopolitics",
+      "lane": "NEWS",
+      "allocation_pct": 0.05,
+      "max_position_pct": 0.03,
+      "sub_categories": {
+        "conflict": { "allocation_pct": 0.30, "tp_mult": 1.0, "sl_mult": 1.2 },
+        "middle-east": { "allocation_pct": 0.25, "tp_mult": 1.0, "sl_mult": 1.2 },
+        "ukraine": { "allocation_pct": 0.20, "tp_mult": 1.0, "sl_mult": 1.2 },
+        "europe": { "allocation_pct": 0.15, "tp_mult": 1.0, "sl_mult": 1.0 },
+        "asia": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 },
+        "_default": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 }
+      }
+    },
+    "default": {
+      "label": "Default",
+      "lane": "ALPHA",
+      "allocation_pct": 0.05,
+      "max_position_pct": 0.02,
+      "sub_categories": {
+        "_default": { "allocation_pct": 1.0, "tp_mult": 1.0, "sl_mult": 1.0 }
+      }
+    }
+  },
+  
+  "tag_library_sync": {
+    "enabled": true,
+    "sync_interval_minutes": 60,
+    "auto_classify_new_tags": true,
+    "unknown_tag_queue_enabled": true
   }
 }
