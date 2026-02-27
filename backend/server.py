@@ -5166,10 +5166,10 @@ async def get_cumulative_stats():
         
         # Calculate cumulative strategy stats
         cumulative_strategy = {
-            'delta_neutral': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0},
-            'volatility_exploitation': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0},
-            'alpha_directional': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0},
-            'arbitrage': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0}
+            'delta_neutral': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0, 'closed_trades': 0},
+            'volatility_exploitation': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0, 'closed_trades': 0},
+            'alpha_directional': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0, 'closed_trades': 0},
+            'arbitrage': {'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0, 'closed_trades': 0}
         }
         
         # Calculate cumulative asset class stats
