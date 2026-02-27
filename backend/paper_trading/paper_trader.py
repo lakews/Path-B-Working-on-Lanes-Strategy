@@ -2600,11 +2600,16 @@ class PaperTrader:
             market_id = market_data.get('id', '')
             
             # ==========================================================
-            # LIVE EVENT FILTER (Jan 2026 - Critical Fix)
+            # SPORTS FILTER (Feb 2026 - Route to SPORTS lane)
             # ==========================================================
-            question = market_data.get('question', '').lower()
+            # Use Polymarket's authoritative category field first
+            category = (market_data.get('category') or '').lower()
+            if category in {'sports', 'esports'}:
+                logger.debug(f"[HFT] Sports market {market_id[:16]}... routed to SPORTS lane")
+                return
             
-            # Skip live sports matchups (Team vs Team pattern)
+            # Fallback: regex pattern for live sports matchups (if category not available)
+            question = market_data.get('question', '').lower()
             import re
             sports_pattern = re.compile(r'\bvs\.?\b|\bversus\b', re.IGNORECASE)
             is_sports_matchup = bool(sports_pattern.search(question))
