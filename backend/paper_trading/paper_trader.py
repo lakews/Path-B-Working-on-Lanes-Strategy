@@ -57,7 +57,39 @@ from services.risk_manager import get_risk_manager, RiskManager, OrderCheckResul
 from utils.position_sizer import PositionSizer, SizingResult
 from services.news_service import get_news_poller, NewsPoller
 
+# TagLibraryService for accurate market categorization
+from services.tag_library_service import get_tag_library_service, CategoryResult
+
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# MARKET CATEGORIZATION HELPER (Uses TagLibraryService)
+# =============================================================================
+
+def get_market_category_info(market_data: Dict) -> Tuple[str, str]:
+    """
+    Get market category and sub-category using TagLibraryService.
+    
+    This is the single source of truth for market categorization across
+    the paper trading engine.
+    
+    Args:
+        market_data: Dict with market info (tags, category, question, etc.)
+        
+    Returns:
+        Tuple of (category, sub_category)
+    """
+    try:
+        tag_library = get_tag_library_service()
+        result = tag_library.classify_market(market_data)
+        return (result.category, result.sub_category)
+    except Exception as e:
+        # Fallback to legacy categorization
+        logger.debug(f"[PaperTrader] TagLibraryService fallback: {e}")
+        asset_class = market_data.get('asset_class', market_data.get('category', 'default'))
+        return (asset_class.lower() if asset_class else 'default', 'default')
+
 
 # =============================================================================
 # FIVE-LANE ARCHITECTURE: SHARED STATE MANAGEMENT
