@@ -323,6 +323,10 @@ class HighFrequencyTradingEngineV2:
             if not market_id:
                 return None
             
+            # STEP 0: Skip sports markets (route to SPORTS lane, not HFT)
+            if is_sports_market(market_data):
+                return None
+            
             # STEP 1: Skip if we already have a position
             if self.paper_trader and market_id in getattr(self.paper_trader, 'paper_positions', {}):
                 return None
