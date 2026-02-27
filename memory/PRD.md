@@ -213,7 +213,8 @@ NEWS EVENT ARRIVES
     - Now fetches trades/orderbook from Polymarket CLOB API for accurate order flow
   - **TIER 0**: BLOCKED (when Odds API fails AND insufficient liquidity OR price=0.5)
   - Tracks `data_tier`, `fusion_strategy`, `tier2_orderflow` in trade records for analysis
-  - Files modified: `ml/enhanced_sentiment.py`, `strategies/sports_strategy.py`, `paper_trading/paper_trader.py`
+  - **Fixed order flow edge cases**: Empty bids (0.2 score = extremely bearish), empty asks (0.8 score = extremely bullish)
+  - Files modified: `ml/enhanced_sentiment.py`, `ml/polymarket_sentiment.py`, `strategies/sports_strategy.py`, `paper_trading/paper_trader.py`
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
