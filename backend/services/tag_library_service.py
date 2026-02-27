@@ -962,7 +962,7 @@ class TagLibraryService:
     
     async def save_market_category(self, market_id: str, result: CategoryResult):
         """Persist market category to MongoDB"""
-        if not self.db or not market_id:
+        if self.db is None or not market_id:
             return
         
         await self.db.market_categories.update_one(
