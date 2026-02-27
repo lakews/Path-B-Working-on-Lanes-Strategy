@@ -292,8 +292,10 @@ class PolymarketScanner:
             
             for m in valid_markets:
                 market_id = m.get('market_id') or m.get('id')
-                # Ensure category is set using TagLibraryService
-                if tag_library and not m.get('category'):
+                # Ensure category is properly set using TagLibraryService
+                # Always re-classify if category is missing, empty, or 'other'
+                current_cat = (m.get('category') or '').lower()
+                if tag_library and (not current_cat or current_cat == 'other'):
                     try:
                         cat_result = tag_library.classify_market({'question': m.get('question', '')})
                         m['category'] = cat_result.category
