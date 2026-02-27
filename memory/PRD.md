@@ -233,6 +233,14 @@ NEWS EVENT ARRIVES
   - **Verified**: 18 pytest tests pass covering category field detection, tag-based detection, HFT filtering, esports, and non-sports markets
   - Files modified: `services/polymarket_scanner.py`, `data/polymarket_api.py`
   - Test file: `/app/backend/tests/test_sports_classification_fix.py`
+- [x] **Sports Classification Additional Fix (Feb 27, 2026)** - Fixed additional leak paths:
+  - **Root cause 2**: `MarketDataService.normalize_market_data()` was using basic `_infer_category()` method instead of TagLibraryService
+  - **Root cause 3**: `RealTimeMarketService` cached markets without proper categorization
+  - **Root cause 4**: `TagLibraryService.classify_market()` didn't check `asset_class` field when API `category` was 'other'
+  - **Fix**: Added `_get_market_category()` method to `MarketDataService` and `RealTimeMarketService` that uses TagLibraryService
+  - **Fix**: Added LAYER 3.5 in `TagLibraryService.classify_market()` to check `asset_class` field
+  - **Verified**: 9 tests pass including new asset_class fallback tests
+  - Files modified: `services/market_data_service.py`, `services/realtime_market_service.py`, `services/tag_library_service.py`
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
