@@ -259,6 +259,7 @@ NEWS EVENT ARRIVES
 - `/app/test_reports/iteration_43.json` - NEWS Sniper MongoDB Phase 2 (74 tests passed)
 - `/app/test_reports/iteration_46.json` - HFT V2 Direction Refactor (61 tests passed)
 - `/app/test_reports/iteration_47.json` - HFT V2 Deep Audit (84 tests passed)
+- `/app/test_reports/iteration_49.json` - Sports Classification Fix (18 tests passed)
 
 ---
 
