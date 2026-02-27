@@ -539,57 +539,75 @@ const ResetButton = ({ onClick, label = "Reset" }) => (
 
 // Metric Card Component
 // Redesigned MetricCard with overflow handling and improved typography
-const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = "cyan", valueColor, subtitleColor, large = false }) => (
-  <div className={`rounded-xl bg-gradient-to-br from-${color}-500/10 to-${color}-600/5 border border-${color}-500/20 p-4 min-w-0 overflow-hidden ${large ? 'col-span-2' : ''}`}>
-    <div className="flex items-center justify-between mb-2 min-w-0">
-      <span className="text-[10px] sm:text-xs text-white/50 uppercase tracking-wider truncate">{title}</span>
-      {Icon && <Icon className={`w-4 h-4 flex-shrink-0 text-${color}-400/70`} />}
-    </div>
-    <div className="flex flex-col min-w-0">
-      <span className={`text-lg sm:text-xl lg:text-2xl font-bold font-mono tracking-tight truncate ${valueColor || 'text-white'}`}>
-        {value}
-      </span>
-      {trend !== undefined && (
-        <span className={`text-xs font-mono flex items-center mt-1 ${trend >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-          {trend >= 0 ? <ArrowUpRight className="w-3 h-3 flex-shrink-0" /> : <ArrowDownRight className="w-3 h-3 flex-shrink-0" />}
-          <span className="truncate">{Math.abs(trend).toFixed(1)}%</span>
+const MetricCard = ({ title, value, subtitle, icon: Icon, trend, color = "cyan", valueColor, subtitleColor, large = false }) => {
+  const colorMap = {
+    cyan: 'from-cyan-500/[0.08] border-cyan-500/10',
+    emerald: 'from-emerald-500/[0.08] border-emerald-500/10',
+    rose: 'from-rose-500/[0.08] border-rose-500/10',
+    blue: 'from-blue-500/[0.08] border-blue-500/10',
+    amber: 'from-amber-500/[0.08] border-amber-500/10',
+    purple: 'from-purple-500/[0.08] border-purple-500/10',
+  };
+  const iconColorMap = {
+    cyan: 'text-cyan-400/60',
+    emerald: 'text-emerald-400/60',
+    rose: 'text-rose-400/60',
+    blue: 'text-blue-400/60',
+    amber: 'text-amber-400/60',
+    purple: 'text-purple-400/60',
+  };
+  return (
+    <div className={`rounded-xl bg-gradient-to-br ${colorMap[color] || colorMap.cyan} to-transparent border p-5 min-w-0 overflow-hidden hover:border-white/10 transition-all ${large ? 'col-span-2' : ''}`}>
+      <div className="flex items-center justify-between mb-3 min-w-0">
+        <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium truncate">{title}</span>
+        {Icon && <Icon className={`w-4 h-4 flex-shrink-0 ${iconColorMap[color] || iconColorMap.cyan}`} />}
+      </div>
+      <div className="flex flex-col min-w-0">
+        <span className={`text-xl lg:text-2xl font-bold font-mono tracking-tight truncate ${valueColor || 'text-white'}`}>
+          {value}
         </span>
-      )}
+        {trend !== undefined && (
+          <span className={`text-xs font-mono flex items-center mt-1.5 ${trend >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {trend >= 0 ? <ArrowUpRight className="w-3 h-3 flex-shrink-0" /> : <ArrowDownRight className="w-3 h-3 flex-shrink-0" />}
+            <span className="truncate">{Math.abs(trend).toFixed(1)}%</span>
+          </span>
+        )}
+      </div>
+      {subtitle && <p className={`text-[10px] mt-2 truncate ${subtitleColor || 'text-white/30'}`}>{subtitle}</p>}
     </div>
-    {subtitle && <p className={`text-[10px] sm:text-xs mt-1.5 truncate ${subtitleColor || 'text-white/40'}`}>{subtitle}</p>}
-  </div>
-);
+  );
+};
 
 // Compact P&L Card for the breakdown display
 const PnLBreakdownCard = ({ realized, unrealized, realizedPct, unrealizedPct, isPositive }) => (
-  <div className={`rounded-xl border p-4 min-w-0 overflow-hidden col-span-2 sm:col-span-1 ${
+  <div className={`rounded-xl border p-5 min-w-0 overflow-hidden col-span-2 sm:col-span-1 bg-gradient-to-br to-transparent hover:border-white/10 transition-all ${
     isPositive 
-      ? 'bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20' 
-      : 'bg-gradient-to-br from-rose-500/10 to-rose-600/5 border-rose-500/20'
+      ? 'from-emerald-500/[0.08] border-emerald-500/10' 
+      : 'from-rose-500/[0.08] border-rose-500/10'
   }`}>
     <div className="flex items-center justify-between mb-3 min-w-0">
-      <span className="text-[10px] sm:text-xs uppercase tracking-wider text-white/50">P&L Breakdown</span>
-      <TrendingUp className={`w-4 h-4 flex-shrink-0 ${isPositive ? 'text-emerald-400/60' : 'text-rose-400/60'}`} />
+      <span className="text-[10px] uppercase tracking-wider text-white/40 font-medium">P&L Breakdown</span>
+      <TrendingUp className={`w-4 h-4 flex-shrink-0 ${isPositive ? 'text-emerald-400/50' : 'text-rose-400/50'}`} />
     </div>
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <div className="flex items-center justify-between gap-2 min-w-0">
-        <span className="text-[10px] sm:text-xs text-white/50 flex-shrink-0">Realized</span>
-        <div className="text-right min-w-0 flex items-baseline gap-1">
+        <span className="text-[10px] text-white/40 flex-shrink-0 uppercase tracking-wider">Realized</span>
+        <div className="text-right min-w-0 flex items-baseline gap-1.5">
           <span className={`text-sm font-bold font-mono truncate ${realized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {realized >= 0 ? '+' : '-'}${Math.abs(realized).toFixed(2)}
           </span>
-          <span className={`text-[10px] font-mono ${realizedPct >= 0 ? 'text-emerald-400/60' : 'text-rose-400/60'}`}>
+          <span className={`text-[10px] font-mono ${realizedPct >= 0 ? 'text-emerald-400/50' : 'text-rose-400/50'}`}>
             ({realizedPct >= 0 ? '+' : ''}{realizedPct.toFixed(1)}%)
           </span>
         </div>
       </div>
       <div className="flex items-center justify-between gap-2 min-w-0">
-        <span className="text-[10px] sm:text-xs text-white/50 flex-shrink-0">Unrealized</span>
-        <div className="text-right min-w-0 flex items-baseline gap-1">
+        <span className="text-[10px] text-white/40 flex-shrink-0 uppercase tracking-wider">Unrealized</span>
+        <div className="text-right min-w-0 flex items-baseline gap-1.5">
           <span className={`text-sm font-bold font-mono truncate ${unrealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {unrealized >= 0 ? '+' : '-'}${Math.abs(unrealized).toFixed(2)}
           </span>
-          <span className={`text-[10px] font-mono ${unrealizedPct >= 0 ? 'text-emerald-400/60' : 'text-rose-400/60'}`}>
+          <span className={`text-[10px] font-mono ${unrealizedPct >= 0 ? 'text-emerald-400/50' : 'text-rose-400/50'}`}>
             ({unrealizedPct >= 0 ? '+' : ''}{unrealizedPct.toFixed(1)}%)
           </span>
         </div>
