@@ -274,17 +274,18 @@ class HighFrequencyTradingEngineV2:
                 else:
                     self.stats['alpha_misses'] += 1
             
-            # STEP 3: Check PATH B for fresh news broadcast (speed)
-            has_news, opportunity = await self._check_path_b_opportunity(market_id)
+            # STEP 3: Get PATH A signal from in-memory cache (O(1) lookup)
+            # PATH A provides LLM-analyzed intelligence with Bayes Factor
+            signal = self._get_path_a_signal_cached(market_id)
+            bayes_factor = signal.get('bayes_factor', 0.0) if signal else 0.0
+            if signal:
+                self.stats['path_a_hits'] += 1
             
-            # STEP 4: Get PATH A analysis for bayes_factor (intelligence)
-            signal = None
-            bayes_factor = 0.0
+            # STEP 4: Check PATH B for fresh news trigger (optional enhancement)
+            has_news, opportunity = await self._check_path_b_opportunity(market_id)
             if has_news:
-                signal = await self._read_path_a_signal(market_id)
-                if signal:
-                    bayes_factor = signal.get('bayes_factor', 0.0)
-                    self.stats['path_a_hits'] += 1
+                # PATH B confirms fresh news - can use for urgency boost if needed
+                pass
             
             # STEP 5: Classify news strength and get multipliers
             news_strength = get_news_strength(bayes_factor)
