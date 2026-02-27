@@ -605,9 +605,14 @@ class HighFrequencyTradingEngineV2:
         if signal:
             # Double-check expiry (belt and suspenders)
             expires_at = signal.get('expires_at')
-            if expires_at and expires_at > datetime.now(timezone.utc):
-                self.stats['path_a_cache_hits'] += 1
-                return signal
+            if expires_at:
+                # Handle both naive and aware datetimes
+                now = datetime.now(timezone.utc)
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if expires_at > now:
+                    self.stats['path_a_cache_hits'] += 1
+                    return signal
         return None
     
     async def _check_path_b_opportunity(self, market_id: str) -> Tuple[bool, Optional[Dict]]:
