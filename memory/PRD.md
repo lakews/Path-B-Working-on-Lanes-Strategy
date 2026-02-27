@@ -484,3 +484,22 @@ CategoryResult {
 - Sub-category P&L tracking verified
 - Risk config categories validated
 
+## Category P&L Dashboard (COMPLETED Feb 27, 2026)
+
+### Overview
+Replaced the old 'Asset Class Performance' tables with a new 'Category P&L Dashboard' component that provides:
+- Expandable category rows with dropdown for sub-categories
+- All required columns: Asset Class, Live P&L, Closed P&L, Total P&L, Open, Closed, Total, Win Rate, PF, Avg Hold
+- Visual hierarchy with indented sub-category rows
+- Color-coded categories with icons
+- Live badge indicator
+
+### Files Changed
+- **UPDATED**: /app/frontend/src/pages/PaperTrading.js - Added CategoryDashboard component
+
+### Features
+1. **Expandable Categories**: Click on a category row to expand and see sub-categories
+2. **Live Session View**: Shows real-time category P&L with live badge
+3. **Cumulative View**: Shows aggregated P&L across all sessions
+4. **Sub-category Breakdown**: Granular insights like 'basketball P&L' within 'sports'
+5. **Color-coded Categories**: Each category has a unique color for visual identification
