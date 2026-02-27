@@ -8761,7 +8761,8 @@ class PaperTrader:
                 # Win rate based on CLOSED trades only (not open positions)
                 'win_rate': round(stats['wins'] / stats['closed_trades'] * 100 if stats['closed_trades'] > 0 else 0, 1),
                 'volume': round(deployed, 2),
-                'profit_factor': round(stats['gross_profit'] / stats['gross_loss'] if stats['gross_loss'] > 0 else (2.0 if stats['gross_profit'] > 0 else 0), 2)
+                # Fix: Use tolerance for floating point comparison (1e-6 threshold)
+                'profit_factor': round(stats['gross_profit'] / stats['gross_loss'] if stats['gross_loss'] > 1e-6 else (2.0 if stats['gross_profit'] > 1e-6 else 0), 2)
             }
         
         # Keep legacy hft/alpha keys for backward compatibility
