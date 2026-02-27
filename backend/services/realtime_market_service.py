@@ -382,8 +382,23 @@ class RealTimeMarketService:
         markets.sort(key=lambda m: m.get('volume_24h', 0), reverse=True)
         
         # Enrich with latest prices from YES price cache
+        # and ensure category is properly classified
         for market in markets[:limit]:
             market_id = market.get('id')
+            
+            # CRITICAL: Ensure category is properly classified
+            # This catches any markets cached before proper categorization
+            current_cat = (market.get('category') or '').lower()
+            if not current_cat or current_cat in ('', 'other', 'finance', 'default'):
+                try:
+                    from services.tag_library_service import get_tag_library_service
+                    tag_library = get_tag_library_service()
+                    result = tag_library.classify_market(market)
+                    market['category'] = result.category
+                except Exception:
+                    # Fallback to asset_class if available
+                    if market.get('asset_class'):
+                        market['category'] = market['asset_class']
             
             # Use YES price cache (correctly computed from YES or NO token updates)
             yes_price = self._yes_price_cache.get(market_id)
