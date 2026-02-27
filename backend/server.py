@@ -5324,6 +5324,89 @@ async def get_cumulative_stats():
         )
 
 # =============================================
+# TAG LIBRARY SERVICE ENDPOINTS
+# =============================================
+
+@api_router.get("/tag-library/stats")
+async def get_tag_library_stats():
+    """Get TagLibraryService statistics for monitoring"""
+    try:
+        from services.tag_library_service import get_tag_library_service
+        tag_library = get_tag_library_service()
+        return {
+            "status": "active",
+            "stats": tag_library.get_stats(),
+            "message": "TagLibraryService is operational"
+        }
+    except Exception as e:
+        logger.error(f"Error getting tag library stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get tag library stats: {str(e)}"}
+        )
+
+
+@api_router.get("/tag-library/categories")
+async def get_tag_library_categories():
+    """Get category and sub-category mappings from TagLibraryService"""
+    try:
+        from services.tag_library_service import get_tag_library_service
+        tag_library = get_tag_library_service()
+        
+        # Get all category slugs with counts
+        categories = {}
+        stats = tag_library.get_stats()
+        tags_by_category = stats.get('tags_by_category', {})
+        
+        for category, count in tags_by_category.items():
+            slugs = tag_library.get_slugs_by_category(category)
+            categories[category] = {
+                'tag_count': count,
+                'slugs': slugs[:10],  # Return first 10 for preview
+                'total_slugs': len(slugs)
+            }
+        
+        return {
+            "categories": categories,
+            "total_tags": stats.get('total_tags', 0),
+            "allocation_template": tag_library.get_category_allocation_template()
+        }
+    except Exception as e:
+        logger.error(f"Error getting categories: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to get categories: {str(e)}"}
+        )
+
+
+@api_router.post("/tag-library/classify")
+async def classify_market(market_data: dict):
+    """Classify a market using TagLibraryService (for testing)"""
+    try:
+        from services.tag_library_service import get_tag_library_service
+        tag_library = get_tag_library_service()
+        
+        result = tag_library.classify_market(market_data)
+        
+        return {
+            "classification": {
+                "category": result.category,
+                "sub_category": result.sub_category,
+                "confidence": result.confidence,
+                "source": result.source,
+                "tag_slug": result.tag_slug
+            },
+            "is_sports": result.category == "sports"
+        }
+    except Exception as e:
+        logger.error(f"Error classifying market: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Failed to classify market: {str(e)}"}
+        )
+
+
+# =============================================
 # STRATEGY OPTIMIZER ENDPOINTS
 # =============================================
 
