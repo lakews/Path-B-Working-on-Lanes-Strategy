@@ -533,6 +533,72 @@ class HighFrequencyTradingEngineV2:
     # PATH A/B SIGNAL INTEGRATION
     # =========================================================================
     
+    async def _path_a_cache_refresh_loop(self):
+        """
+        Background task: Bulk refresh PATH A signals into memory every 5 seconds.
+        Provides O(1) lookup for HFT-grade latency.
+        """
+        while self._running:
+            try:
+                await self._refresh_path_a_cache()
+                await asyncio.sleep(self._path_a_cache_refresh_interval)
+            except asyncio.CancelledError:
+                logger.info("[HFT V2] PATH A cache refresh task cancelled")
+                break
+            except Exception as e:
+                logger.error(f"[HFT V2] PATH A cache refresh error: {e}")
+                await asyncio.sleep(self._path_a_cache_refresh_interval)
+    
+    async def _refresh_path_a_cache(self):
+        """Bulk load all active PATH A signals into memory."""
+        try:
+            if self.db is None:
+                return
+            
+            now = datetime.now(timezone.utc)
+            cursor = self.db.signals.find(
+                {
+                    'type': 'path_a',
+                    'expires_at': {'$gt': now}
+                },
+                {'_id': 0}
+            )
+            signals = await cursor.to_list(length=1000)
+            
+            # Build market_id → signal mapping
+            new_cache = {}
+            for signal in signals:
+                market_id = signal.get('market_id')
+                if market_id:
+                    # Keep most recent signal per market
+                    existing = new_cache.get(market_id)
+                    if not existing or signal.get('timestamp', now) > existing.get('timestamp', now):
+                        new_cache[market_id] = signal
+            
+            self._path_a_cache = new_cache
+            self._path_a_cache_last_refresh = now
+            self.stats['path_a_cache_refreshes'] += 1
+            
+            if signals:
+                logger.debug(f"[HFT V2] PATH A cache refreshed: {len(new_cache)} signals")
+                
+        except Exception as e:
+            logger.error(f"[HFT V2] PATH A cache refresh error: {e}")
+    
+    def _get_path_a_signal_cached(self, market_id: str) -> Optional[Dict]:
+        """
+        O(1) in-memory lookup for PATH A signal.
+        Returns cached signal if exists and not expired.
+        """
+        signal = self._path_a_cache.get(market_id)
+        if signal:
+            # Double-check expiry (belt and suspenders)
+            expires_at = signal.get('expires_at')
+            if expires_at and expires_at > datetime.now(timezone.utc):
+                self.stats['path_a_cache_hits'] += 1
+                return signal
+        return None
+    
     async def _check_path_b_opportunity(self, market_id: str) -> Tuple[bool, Optional[Dict]]:
         """Check PATH B (hft_opportunities) for fresh news broadcast."""
         try:
