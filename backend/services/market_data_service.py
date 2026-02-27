@@ -80,11 +80,15 @@ class MarketDataService:
         yes_price = float(raw_yes) if raw_yes is not None and raw_yes != 0 else None
         no_price = float(raw_no) if raw_no is not None and raw_no != 0 else None
         
+        # CRITICAL: Use TagLibraryService for accurate category classification
+        # Pass the FULL raw_data so it can use tags, category field, and question
+        category = self._get_market_category(raw_data)
+        
         return {
             "id": raw_data.get('condition_id', str(uuid.uuid4())),
             "condition_id": raw_data.get('condition_id'),
             "question": raw_data.get('question', ''),
-            "category": self._infer_category(raw_data.get('question', '')),
+            "category": category,
             "end_date": raw_data.get('end_date'),
             "yes_price": yes_price,
             "no_price": no_price,
@@ -93,6 +97,26 @@ class MarketDataService:
             "order_book": {},
             "last_update": datetime.now(timezone.utc).isoformat()
         }
+    
+    def _get_market_category(self, market_data: Dict) -> str:
+        """
+        Get market category using TagLibraryService with full market data.
+        
+        CRITICAL: Pass the FULL market object so TagLibraryService can use
+        all available data (tags, category field from API, question).
+        """
+        try:
+            from services.tag_library_service import get_tag_library_service
+            tag_library = get_tag_library_service()
+            result = tag_library.classify_market(market_data)
+            return result.category
+        except Exception as e:
+            logger.debug(f"TagLibraryService unavailable: {e}")
+            # Fallback to API category field first, then basic keyword matching
+            api_category = (market_data.get('category') or '').lower()
+            if api_category and api_category not in ('', 'other'):
+                return api_category
+            return self._infer_category(market_data.get('question', ''))
     
     def _infer_category(self, question: str) -> str:
         """Infer market category from question"""
