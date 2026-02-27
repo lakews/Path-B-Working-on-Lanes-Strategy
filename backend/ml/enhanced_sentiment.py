@@ -365,6 +365,7 @@ class EnhancedSentimentAnalyzer:
         # ================================================================
         # 1. POLYMARKET-NATIVE SENTIMENT (Always collected - Order Flow)
         # ================================================================
+        orderflow_valid = False
         if self.polymarket_sentiment:
             try:
                 poly_result = await self.polymarket_sentiment.analyze_market(
@@ -374,14 +375,23 @@ class EnhancedSentimentAnalyzer:
                     order_book=order_book
                 )
                 
-                result['polymarket_sentiment'] = poly_result.get('combined_score', 0.5)
+                # Check if order flow returned valid data (not None)
+                poly_score = poly_result.get('combined_score')
+                if poly_score is not None:
+                    result['polymarket_sentiment'] = poly_score
+                    orderflow_valid = True
+                else:
+                    # No valid order flow data - don't default to 0.5
+                    result['polymarket_sentiment'] = None
+                    result['orderflow_invalid_reason'] = poly_result.get('reason', 'no_valid_signals')
+                
                 result['polymarket_momentum'] = poly_result.get('sentiment_momentum', {})
                 result['polymarket_signals'] = poly_result.get('signals', {})
                 result['polymarket_interpretation'] = poly_result.get('interpretation', '')
                 
                 # Confidence based on data quality
                 data_quality = poly_result.get('data_quality', {})
-                poly_confidence = 0.3  # Base confidence
+                poly_confidence = 0.0 if not orderflow_valid else 0.3  # 0 if invalid
                 if data_quality.get('has_trades'):
                     poly_confidence += 0.2
                 if data_quality.get('has_order_book'):
@@ -392,10 +402,13 @@ class EnhancedSentimentAnalyzer:
                     poly_confidence += 0.15
                 
                 result['polymarket_confidence'] = min(0.9, poly_confidence)
-                sources_used.append('orderflow')
+                if orderflow_valid:
+                    sources_used.append('orderflow')
                 
             except Exception as e:
                 logger.debug(f"Polymarket sentiment error: {e}")
+                result['polymarket_sentiment'] = None
+                result['orderflow_invalid_reason'] = str(e)
         
         # ================================================================
         # 2. SPORTS ODDS API (ONLY for sports markets - REAL DATA)
