@@ -196,6 +196,7 @@ class HighFrequencyTradingEngineV2:
             'trades_executed': 0,
             'trades_by_mode': {mode.value: 0 for mode in HFTMode},
             'paused_cycles': 0,
+            'sports_filtered': 0,  # Markets skipped (routed to SPORTS lane)
             'path_a_hits': 0,
             'path_a_cache_hits': 0,
             'path_a_cache_refreshes': 0,
@@ -214,6 +215,7 @@ class HighFrequencyTradingEngineV2:
         logger.info("  ├─ Polymarket Compliance: Tick Grid + Hysteresis + Kill Zones")
         logger.info("  ├─ Alpha Integration: strategy_context bridge")
         logger.info("  ├─ PATH A Cache: In-memory with 5s refresh (HFT-grade latency)")
+        logger.info("  ├─ Sports Filter: Routes sports markets to SPORTS lane")
         logger.info("  └─ Signal Sources: MongoDB PATH A + PATH B")
     
     async def start_hft_loop(self):
