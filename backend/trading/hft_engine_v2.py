@@ -160,6 +160,10 @@ class HighFrequencyTradingEngineV2:
         logger.info("[HFT V2] Starting enhanced HFT loop...")
         self._running = True
         
+        # Start PATH A cache refresh background task
+        self._path_a_cache_task = asyncio.create_task(self._path_a_cache_refresh_loop())
+        logger.info("[HFT V2] PATH A cache refresh task started (5s interval)")
+        
         while self._running:
             try:
                 cycle_start = time.time()
