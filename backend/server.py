@@ -5235,12 +5235,15 @@ async def get_cumulative_stats():
             for asset_class, data in paper_trader.asset_class_stats.items():
                 if asset_class not in cumulative_asset_class:
                     cumulative_asset_class[asset_class] = {
-                        'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0
+                        'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0,
+                        'closed_trades': 0  # Add closed_trades for frontend consistency
                     }
                 if data.get('trades', 0) > 0:
                     cumulative_asset_class[asset_class]['total_trades'] += data.get('trades', 0)
                     cumulative_asset_class[asset_class]['total_wins'] += data.get('wins', 0)
                     cumulative_asset_class[asset_class]['total_pnl'] += data.get('pnl', 0)
+                    # For current session, use closed_trades if available, otherwise use trades count
+                    cumulative_asset_class[asset_class]['closed_trades'] += data.get('closed_trades', data.get('trades', 0))
         
         # Calculate win rates and avg trades
         overall['win_rate'] = overall['total_wins'] / overall['total_trades'] if overall['total_trades'] > 0 else 0
