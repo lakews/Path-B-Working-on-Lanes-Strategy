@@ -1,0 +1,56 @@
+{
+  "summary": "Sports Classification Fix (LAYER 3.5) Verified - All 29 tests passed. The fix correctly routes sports markets with category='other' but asset_class='sports' to the SPORTS lane instead of HFT lane.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_sports_classification_iteration50.py",
+    "/app/backend/tests/test_sports_classification_fix.py",
+    "/app/test_reports/pytest/pytest_results_iteration50.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED FIX: TagLibraryService.classify_market() now has LAYER 3.5 (lines 822-848) that checks asset_class field when API category is 'other'",
+    "VERIFIED: LAYER 3.5 correctly excludes 'other', 'default', 'finance', and empty string from asset_class mapping",
+    "VERIFIED: LAYER 3.5 maps asset_class='sports' to category='sports' with source='asset_class' and confidence=0.85",
+    "VERIFIED: MarketDataService._get_market_category() passes full market object to classify_market()",
+    "VERIFIED: MarketDataService.get_active_markets() reclassifies markets with category='other' using _get_market_category()",
+    "VERIFIED: RealTimeMarketService._discover_markets() reclassifies markets with category='other' using TagLibraryService",
+    "VERIFIED: RealTimeMarketService.get_markets() reclassifies markets with category='other' using TagLibraryService",
+    "VERIFIED: HFT engine is_sports_market() correctly uses TagLibraryService.is_sports_market() which calls classify_market()",
+    "VERIFIED: Priority order is correct: Tags (LAYER 2) > API category (LAYER 3) > asset_class (LAYER 3.5) > Keywords (LAYER 4)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_sports_classification_iteration50.py"
+  ],
+  "success_rate": {
+    "backend": "100% (29/29 tests passed)",
+    "frontend": "N/A (backend only testing)"
+  },
+  "test_credentials": {},
+  "seed_data_creation": "None - unit tests with mock market data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Sports classification LAYER 3.5 fix verified. The bug was that Polymarket API returns category='other' for many sports markets, but polymarket_api.py correctly sets asset_class='sports'. The fix adds LAYER 3.5 in TagLibraryService.classify_market() to check asset_class field when API category is 'other'. All 29 tests pass covering: LAYER 3.5 asset_class fallback for sports/crypto/politics/geopolitics/entertainment/science-tech/economics, HFT engine filtering, MarketDataService and RealTimeMarketService category classification, edge cases (empty/other/default/finance asset_class), and priority order verification.",
+  "bug_rca": {
+    "root_cause": "Polymarket API returns category='other' for many sports markets. The previous fix addressed polymarket_scanner.py but MarketDataService, RealTimeMarketService, and TagLibraryService had additional code paths that weren't using the asset_class field set by polymarket_api.py",
+    "impact": "Sports markets like 'Pelicans vs. Jazz' with category='other' but asset_class='sports' were being classified as 'default' and routed to HFT lane instead of SPORTS lane",
+    "fix_applied": "Added LAYER 3.5 in TagLibraryService.classify_market() (lines 822-848) to check asset_class field when API category is 'other'. Also updated MarketDataService and RealTimeMarketService to reclassify markets with category='other'",
+    "verification": "29 pytest tests verify the fix works for all scenarios: asset_class fallback for all categories, HFT filtering, service-level classification, edge cases, and priority order"
+  },
+  "test_coverage": {
+    "TestLayer35AssetClassFallback": "7 tests - Pelicans vs Jazz, generic question, crypto, politics, no asset_class, empty string, asset_class='other'",
+    "TestHFTEngineSportsFilterWithAssetClass": "3 tests - sports with asset_class, crypto with asset_class, sports with category",
+    "TestMarketDataServiceCategoryClassification": "2 tests - _get_market_category, normalize_market_data",
+    "TestRealTimeMarketServiceCategoryClassification": "1 test - get_markets category classification",
+    "TestEdgeCasesLayer35": "6 tests - finance, default, geopolitics, entertainment, science-tech, economics",
+    "TestCategoryPriorityOrder": "3 tests - tags priority, API category priority, asset_class used when category='other'",
+    "Original test_sports_classification_fix.py": "7 tests - category field, lowercase, question-only, tags, HFT filter, esports, asset_class fallback"
+  }
+}
