@@ -806,11 +806,42 @@ class TagLibraryService:
             
             if api_category in category_mapping:
                 cat, sub = category_mapping[api_category]
+                # CRITICAL: Don't accept 'other' -> 'default' mapping here
+                # Fall through to check asset_class instead
+                if cat != 'default':
+                    result = CategoryResult(
+                        category=cat,
+                        sub_category=sub,
+                        confidence=0.9,
+                        source="api_category"
+                    )
+                    self._stats['api_category_hits'] += 1
+                    self._cache_market(market_id, result)
+                    return result
+        
+        # LAYER 3.5: Check asset_class field (set by polymarket_api.py using TagLibraryService)
+        # This handles cases where API category is 'other' but we've computed the real category
+        asset_class = (market_data.get('asset_class') or '').lower()
+        if asset_class and asset_class not in ('', 'other', 'default', 'finance'):
+            # asset_class is already properly classified
+            category_mapping_asset = {
+                'sports': ('sports', 'default'),
+                'esports': ('sports', 'esports'),
+                'crypto': ('crypto', 'crypto-general'),
+                'politics': ('politics', 'us-politics'),
+                'economics': ('economics', 'markets'),
+                'science-tech': ('science-tech', 'tech-general'),
+                'entertainment': ('entertainment', 'entertainment-general'),
+                'geopolitics': ('geopolitics', 'conflict'),
+            }
+            
+            if asset_class in category_mapping_asset:
+                cat, sub = category_mapping_asset[asset_class]
                 result = CategoryResult(
                     category=cat,
                     sub_category=sub,
-                    confidence=0.9,
-                    source="api_category"
+                    confidence=0.85,
+                    source="asset_class"
                 )
                 self._stats['api_category_hits'] += 1
                 self._cache_market(market_id, result)
