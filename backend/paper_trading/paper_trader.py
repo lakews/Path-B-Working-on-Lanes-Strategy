@@ -3660,16 +3660,31 @@ class PaperTrader:
             logger.info(f"[SPORTS] Processing: {question[:50]}...")
             
             # ==========================================================
-            # STEP 1: Get real odds from Sports Odds API
+            # STEP 1: Get real odds from Sports Odds API + Order Flow
             # ==========================================================
             sentiment_analyzer = get_enhanced_sentiment_analyzer()
+            
+            # Fetch trades and orderbook for order flow analysis
+            trades = None
+            order_book = None
+            token_ids = market_data.get('clobTokenIds') or market_data.get('token_ids', [])
+            
+            if token_ids:
+                try:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        trades = await api.get_trades(token_ids[0], limit=30)
+                        order_book = await api.get_order_book(token_ids[0])
+                        logger.debug(f"[SPORTS] Fetched {len(trades) if trades else 0} trades, orderbook: {order_book is not None}")
+                except Exception as e:
+                    logger.debug(f"[SPORTS] Could not fetch trades/orderbook: {e}")
             
             # The enhanced sentiment analyzer handles sports routing internally
             # It implements the INTELLIGENT FALLBACK SYSTEM:
             # - TIER 1: 85% sports odds + 15% order flow (Odds API available)
-            # - TIER 2: 100% market-implied price (high liquidity fallback)
+            # - TIER 2: 70% market-implied + 30% order flow (high liquidity fallback)
             # - TIER 0: BLOCKED (insufficient data)
-            analysis = await sentiment_analyzer.analyze(market_data)
+            analysis = await sentiment_analyzer.analyze(market_data, trades=trades, order_book=order_book)
             
             # Extract fair value - may be None if BLOCKED by sentiment analyzer
             fair_value = analysis.get('combined_sentiment')  # None = blocked
