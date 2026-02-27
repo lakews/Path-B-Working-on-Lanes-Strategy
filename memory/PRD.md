@@ -196,6 +196,11 @@ NEWS EVENT ARRIVES
   - Legacy HFT: `category` + regex fallback (line 2604)
   - Alpha Lane: `category` primary + `is_sports_market()` fallback (lines 3005-3012, 3689-3692, 8098-8102)
   - All NO-side bet checks: `category` primary (lines 2011-2013, 2068-2070, 2459-2460, 2489-2490)
+- [x] **Five Lane Architecture UI (Feb 27, 2026)** - Refactored UI from "Three-Speed Architecture" to "Five Lane Architecture":
+  - Created `FiveLaneArchitectureCard` component displaying all 5 lanes (HFT, Alpha, Gamma, Sports Arb, News Sniper)
+  - Updated "Equity by Lane" chart to include Sports and News Sniper lanes
+  - Chart legend now shows: HFT, Alpha, Gamma, Sports Arb, News Sniper, Total Equity
+  - Updated `prepareEquityCurveData` function to include `sports_pnl` and `news_pnl`
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
@@ -204,6 +209,7 @@ NEWS EVENT ARRIVES
 - [ ] SSOT Refactoring: Move `EXIT_STRATEGY_CONFIG` to `risk_config.json`
 - [ ] Clean up orphaned config variable (`sharp_alignment_threshold` in paper_trader.py)
 - [ ] Live trading validation
+- [ ] Reset cumulative stats button (to clear historical "Other" category trades)
 
 ### P2 - Future
 - [ ] Reactivate CryptoPanic with premium API key
