@@ -96,10 +96,9 @@ def is_sports_market(market_data: Dict) -> bool:
     
     Returns True if:
     1. Category is sports/esports/gaming, OR
-    2. Question contains sports matchup patterns (vs, beat, etc.), OR
-    3. Question contains known sports team/league names
+    2. Question contains sports matchup patterns AND sports indicators
     """
-    # Check category
+    # Check category first (most reliable)
     category = (market_data.get('category') or market_data.get('asset_class') or '').lower()
     if category in SPORTS_CATEGORIES:
         return True
@@ -107,16 +106,19 @@ def is_sports_market(market_data: Dict) -> bool:
     # Check question for sports patterns
     question = (market_data.get('question') or '').lower()
     
-    # Check for matchup pattern (vs, beat, etc.)
-    if SPORTS_MATCHUP_PATTERN.search(question):
-        # Additional check: make sure it's not political "beat in election"
-        if 'election' not in question and 'vote' not in question:
-            return True
+    # Must have BOTH: matchup pattern AND sports indicator
+    has_matchup = bool(SPORTS_MATCHUP_PATTERN.search(question))
+    has_sports_term = any(indicator in question for indicator in SPORTS_INDICATORS)
     
-    # Check for sports team/league indicators
-    for indicator in SPORTS_INDICATORS:
-        if indicator in question:
-            return True
+    # If has matchup pattern, only flag as sports if it also has sports terms
+    # This prevents "Biden beat Trump" from being flagged
+    if has_matchup and has_sports_term:
+        return True
+    
+    # Check for direct sports league mentions (always sports)
+    league_terms = ['nba', 'nfl', 'mlb', 'nhl', 'mls', 'ufc', 'wwe', 'premier league', 'champions league']
+    if any(term in question for term in league_terms):
+        return True
     
     return False
 
