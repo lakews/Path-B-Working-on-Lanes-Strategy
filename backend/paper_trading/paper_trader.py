@@ -602,15 +602,24 @@ class PaperTrader:
         }
         
         # Asset class tracking (with full metrics like backtest)
-        # Initialize ALL asset classes upfront
+        # Initialize ALL asset classes upfront (aligned with TagLibraryService categories)
         self.asset_class_stats = {
-            'finance': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
-            'politics': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
-            'crypto': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
-            'entertainment': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
-            'science': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
             'sports': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'crypto': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'politics': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'economics': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'science-tech': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'entertainment': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'geopolitics': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'default': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            # Legacy category names (for backward compatibility)
+            'finance': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
+            'science': {'trades': 0, 'wins': 0, 'pnl': 0.0, 'gross_profit': 0.0, 'gross_loss': 0.0, 'total_hold_time': 0.0, 'closed_trades': 0},
         }
+        
+        # Sub-category P&L tracking (granular insights per sub-category)
+        # Structure: {category: {sub_category: {trades, wins, pnl, ...}}}
+        self.sub_category_stats: Dict[str, Dict[str, Dict]] = {}
         
         # Returns distribution tracking
         self.trade_returns: List[float] = []
