@@ -223,7 +223,17 @@ class HighFrequencyTradingEngineV2:
     async def stop(self):
         """Stop the HFT engine"""
         self._running = False
-        logger.info("[HFT V2] Stop requested")
+        
+        # Cancel PATH A cache refresh task
+        if self._path_a_cache_task:
+            self._path_a_cache_task.cancel()
+            try:
+                await self._path_a_cache_task
+            except asyncio.CancelledError:
+                pass
+            self._path_a_cache_task = None
+        
+        logger.info("[HFT V2] Stop requested, PATH A cache task cancelled")
     
     async def execute_hft_scalp(self, market_data: Dict) -> Optional[Dict]:
         """
