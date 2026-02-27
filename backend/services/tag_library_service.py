@@ -913,7 +913,7 @@ class TagLibraryService:
     
     async def _populate_tag_library(self):
         """Populate MongoDB tag_library from RAW_TAGS"""
-        if not self.db:
+        if self.db is None:
             return
         
         now = datetime.now(timezone.utc)
