@@ -2460,6 +2460,312 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
   );
 };
 
+// Category Dashboard Component with expandable sub-categories
+const CategoryDashboard = ({ 
+  title, 
+  assetClassData, 
+  subCategoryData, 
+  showLiveBadge = false,
+  initialCapital = 10000
+}) => {
+  const [expandedCategories, setExpandedCategories] = useState({});
+
+  // Category metadata for colors and icons
+  const CATEGORY_META = {
+    sports: { color: '#ec4899', label: 'Sports', icon: '🏆' },
+    crypto: { color: '#10b981', label: 'Crypto', icon: '₿' },
+    politics: { color: '#f59e0b', label: 'Politics', icon: '🏛️' },
+    economics: { color: '#3b82f6', label: 'Economics', icon: '📊' },
+    'science-tech': { color: '#8b5cf6', label: 'Science & Tech', icon: '🔬' },
+    entertainment: { color: '#06b6d4', label: 'Entertainment', icon: '🎬' },
+    geopolitics: { color: '#f97316', label: 'Geopolitics', icon: '🌍' },
+    finance: { color: '#ef4444', label: 'Finance', icon: '💰' },
+    science: { color: '#a855f7', label: 'Science', icon: '⚗️' },
+    default: { color: '#64748b', label: 'Default', icon: '📁' },
+    other: { color: '#94a3b8', label: 'Other', icon: '📋' }
+  };
+
+  const toggleCategory = (category) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
+  // Merge asset class data with sub-category data
+  const mergedData = {};
+  
+  // First, add all asset classes
+  if (assetClassData) {
+    Object.entries(assetClassData).forEach(([key, data]) => {
+      // Calculate live P&L (unrealized) and closed P&L
+      const livePnl = data.unrealized_pnl ?? 0;
+      const closedPnl = data.pnl ?? data.total_pnl ?? 0;
+      const openPositions = data.open_positions ?? ((data.trades ?? data.total_trades ?? 0) - (data.closed_trades ?? 0));
+      const closedTrades = data.closed_trades ?? 0;
+      const totalTrades = openPositions + closedTrades;
+      const wins = data.wins ?? data.total_wins ?? 0;
+      const winRate = closedTrades > 0 ? wins / closedTrades : 0;
+      
+      // Calculate profit factor
+      const grossProfit = data.gross_profit ?? (closedPnl > 0 ? closedPnl : 0);
+      const grossLoss = data.gross_loss ?? (closedPnl < 0 ? Math.abs(closedPnl) : 0);
+      const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? 2.0 : 0);
+      
+      mergedData[key] = {
+        livePnl,
+        closedPnl,
+        totalPnl: livePnl + closedPnl,
+        openPositions,
+        closedTrades,
+        totalTrades,
+        wins,
+        winRate,
+        profitFactor,
+        avgHoldTime: data.avg_hold_time ?? 0,
+        subCategories: {}
+      };
+    });
+  }
+
+  // Then, merge sub-category data if available
+  if (subCategoryData) {
+    Object.entries(subCategoryData).forEach(([category, catData]) => {
+      if (mergedData[category]) {
+        mergedData[category].subCategories = catData.sub_categories || {};
+      } else {
+        // Category exists in sub_category data but not in asset_class
+        mergedData[category] = {
+          livePnl: 0,
+          closedPnl: catData.total_pnl || 0,
+          totalPnl: catData.total_pnl || 0,
+          openPositions: 0,
+          closedTrades: catData.total_trades || 0,
+          totalTrades: catData.total_trades || 0,
+          wins: 0,
+          winRate: 0,
+          profitFactor: 0,
+          avgHoldTime: 0,
+          subCategories: catData.sub_categories || {}
+        };
+      }
+    });
+  }
+
+  // Filter out categories with no activity
+  const activeCategories = Object.entries(mergedData)
+    .filter(([_, data]) => data.totalTrades > 0 || data.totalPnl !== 0)
+    .sort((a, b) => b[1].totalPnl - a[1].totalPnl);
+
+  // Calculate grand totals
+  const totals = activeCategories.reduce((acc, [_, d]) => ({
+    livePnl: acc.livePnl + d.livePnl,
+    closedPnl: acc.closedPnl + d.closedPnl,
+    totalPnl: acc.totalPnl + d.totalPnl,
+    openPositions: acc.openPositions + d.openPositions,
+    closedTrades: acc.closedTrades + d.closedTrades,
+    totalTrades: acc.totalTrades + d.totalTrades,
+    wins: acc.wins + d.wins,
+    grossProfit: acc.grossProfit + (d.closedPnl > 0 ? d.closedPnl : 0),
+    grossLoss: acc.grossLoss + (d.closedPnl < 0 ? Math.abs(d.closedPnl) : 0),
+    totalHoldTime: acc.totalHoldTime + (d.avgHoldTime * d.closedTrades)
+  }), { livePnl: 0, closedPnl: 0, totalPnl: 0, openPositions: 0, closedTrades: 0, totalTrades: 0, wins: 0, grossProfit: 0, grossLoss: 0, totalHoldTime: 0 });
+
+  totals.winRate = totals.closedTrades > 0 ? totals.wins / totals.closedTrades : 0;
+  totals.profitFactor = totals.grossLoss > 0 ? totals.grossProfit / totals.grossLoss : (totals.grossProfit > 0 ? 2.0 : 0);
+  totals.avgHoldTime = totals.closedTrades > 0 ? totals.totalHoldTime / totals.closedTrades : 0;
+
+  const formatHoldTime = (hours) => {
+    if (!hours || hours === 0) return '-';
+    if (hours < 1) return `${Math.round(hours * 60)}m`;
+    if (hours < 24) return `${hours.toFixed(1)}h`;
+    return `${(hours / 24).toFixed(1)}d`;
+  };
+
+  const formatPnl = (value, showSign = true) => {
+    if (value === 0) return '-';
+    const sign = showSign && value > 0 ? '+' : '';
+    return `${sign}$${value.toFixed(2)}`;
+  };
+
+  if (activeCategories.length === 0) {
+    return (
+      <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Layers className="w-5 h-5 text-orange-400" />{title}
+          </h3>
+          {showLiveBadge && (
+            <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>LIVE
+            </span>
+          )}
+        </div>
+        <div className="p-8 text-center text-white/40">No data yet - start paper trading</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+      <div className="p-4 border-b border-white/10 flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <Layers className="w-5 h-5 text-orange-400" />{title}
+        </h3>
+        {showLiveBadge && (
+          <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>LIVE
+          </span>
+        )}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full" data-testid="category-dashboard-table">
+          <thead>
+            <tr className="bg-white/5 text-left">
+              <th className="py-2 px-3 text-[10px] text-white/60 uppercase">Asset Class</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Live P&L</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Closed P&L</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Total P&L</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Open</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Closed</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Total</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Win Rate</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">PF</th>
+              <th className="py-2 px-2 text-[10px] text-white/60 uppercase text-right">Avg Hold</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activeCategories.map(([category, data]) => {
+              const meta = CATEGORY_META[category] || CATEGORY_META.default;
+              const hasSubCategories = data.subCategories && Object.keys(data.subCategories).length > 0;
+              const isExpanded = expandedCategories[category];
+              const isLivePositive = data.livePnl >= 0;
+              const isClosedPositive = data.closedPnl >= 0;
+              const isTotalPositive = data.totalPnl >= 0;
+
+              return (
+                <React.Fragment key={category}>
+                  {/* Category Row */}
+                  <tr 
+                    className={`border-b border-white/5 hover:bg-white/5 ${hasSubCategories ? 'cursor-pointer' : ''}`}
+                    onClick={() => hasSubCategories && toggleCategory(category)}
+                    data-testid={`category-row-${category}`}
+                  >
+                    <td className="py-2 px-3">
+                      <div className="flex items-center gap-2">
+                        {hasSubCategories && (
+                          <ChevronRight 
+                            className={`w-4 h-4 text-white/40 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} 
+                          />
+                        )}
+                        {!hasSubCategories && <div className="w-4" />}
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: meta.color }} />
+                        <span className="text-xs text-white font-medium capitalize">{meta.label || category}</span>
+                        {hasSubCategories && (
+                          <span className="text-[10px] text-white/40 ml-1">
+                            ({Object.keys(data.subCategories).length})
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className={`py-2 px-2 text-right text-xs ${data.livePnl === 0 ? 'text-white/40' : isLivePositive ? 'text-cyan-400' : 'text-orange-400'}`}>
+                      {formatPnl(data.livePnl)}
+                    </td>
+                    <td className={`py-2 px-2 text-right text-xs ${data.closedPnl === 0 ? 'text-white/40' : isClosedPositive ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatPnl(data.closedPnl)}
+                    </td>
+                    <td className={`py-2 px-2 text-right text-xs font-bold ${isTotalPositive ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatPnl(data.totalPnl)}
+                    </td>
+                    <td className="py-2 px-2 text-right text-xs text-cyan-400">{data.openPositions || 0}</td>
+                    <td className="py-2 px-2 text-right text-xs text-white">{data.closedTrades}</td>
+                    <td className="py-2 px-2 text-right text-xs text-white/60">{data.totalTrades}</td>
+                    <td className={`py-2 px-2 text-right text-xs ${data.winRate >= 0.5 ? 'text-green-400' : data.closedTrades > 0 ? 'text-red-400' : 'text-white/40'}`}>
+                      {data.closedTrades > 0 ? `${(data.winRate * 100).toFixed(0)}%` : '-'}
+                    </td>
+                    <td className={`py-2 px-2 text-right text-xs ${data.profitFactor >= 1.5 ? 'text-green-400' : data.profitFactor >= 1 ? 'text-yellow-400' : data.closedTrades > 0 ? 'text-red-400' : 'text-white/40'}`}>
+                      {data.closedTrades > 0 ? data.profitFactor.toFixed(2) : '-'}
+                    </td>
+                    <td className="py-2 px-2 text-right text-xs text-white/60">
+                      {formatHoldTime(data.avgHoldTime)}
+                    </td>
+                  </tr>
+                  
+                  {/* Sub-category Rows (Expandable) */}
+                  {hasSubCategories && isExpanded && (
+                    Object.entries(data.subCategories).map(([subCat, subData]) => {
+                      const subIsClosedPositive = subData.pnl >= 0;
+                      return (
+                        <tr 
+                          key={`${category}-${subCat}`} 
+                          className="bg-white/3 border-b border-white/5"
+                          data-testid={`subcategory-row-${category}-${subCat}`}
+                        >
+                          <td className="py-1.5 px-3 pl-10">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full opacity-60" style={{ backgroundColor: meta.color }} />
+                              <span className="text-[11px] text-white/70 capitalize">{subCat}</span>
+                            </div>
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-[11px] text-white/40">-</td>
+                          <td className={`py-1.5 px-2 text-right text-[11px] ${subData.pnl === 0 ? 'text-white/40' : subIsClosedPositive ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                            {formatPnl(subData.pnl)}
+                          </td>
+                          <td className={`py-1.5 px-2 text-right text-[11px] font-medium ${subIsClosedPositive ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                            {formatPnl(subData.pnl)}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-[11px] text-white/40">-</td>
+                          <td className="py-1.5 px-2 text-right text-[11px] text-white/70">{subData.closed_trades || 0}</td>
+                          <td className="py-1.5 px-2 text-right text-[11px] text-white/50">{subData.trades || 0}</td>
+                          <td className={`py-1.5 px-2 text-right text-[11px] ${subData.win_rate >= 0.5 ? 'text-green-400/80' : subData.closed_trades > 0 ? 'text-red-400/80' : 'text-white/40'}`}>
+                            {subData.closed_trades > 0 ? `${(subData.win_rate * 100).toFixed(0)}%` : '-'}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-[11px] text-white/40">
+                            {subData.gross_loss > 0 ? (subData.gross_profit / subData.gross_loss).toFixed(2) : (subData.gross_profit > 0 ? '2.00' : '-')}
+                          </td>
+                          <td className="py-1.5 px-2 text-right text-[11px] text-white/50">
+                            {formatHoldTime(subData.avg_hold_time)}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </React.Fragment>
+              );
+            })}
+            
+            {/* Totals Row */}
+            <tr className="bg-white/10 font-bold border-t-2 border-white/20">
+              <td className="py-2 px-3 text-white text-xs">TOTAL</td>
+              <td className={`py-2 px-2 text-right text-xs ${totals.livePnl >= 0 ? 'text-cyan-400' : 'text-orange-400'}`}>
+                {formatPnl(totals.livePnl)}
+              </td>
+              <td className={`py-2 px-2 text-right text-xs ${totals.closedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {formatPnl(totals.closedPnl)}
+              </td>
+              <td className={`py-2 px-2 text-right text-sm font-bold ${totals.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {formatPnl(totals.totalPnl)}
+              </td>
+              <td className="py-2 px-2 text-right text-xs text-cyan-400">{totals.openPositions}</td>
+              <td className="py-2 px-2 text-right text-xs text-white">{totals.closedTrades}</td>
+              <td className="py-2 px-2 text-right text-xs text-white/60">{totals.totalTrades}</td>
+              <td className={`py-2 px-2 text-right text-xs ${totals.winRate >= 0.5 ? 'text-green-400' : totals.closedTrades > 0 ? 'text-red-400' : 'text-white/40'}`}>
+                {totals.closedTrades > 0 ? `${(totals.winRate * 100).toFixed(0)}%` : '-'}
+              </td>
+              <td className={`py-2 px-2 text-right text-xs ${totals.profitFactor >= 1.5 ? 'text-green-400' : totals.profitFactor >= 1 ? 'text-yellow-400' : totals.closedTrades > 0 ? 'text-red-400' : 'text-white/40'}`}>
+                {totals.closedTrades > 0 ? totals.profitFactor.toFixed(2) : '-'}
+              </td>
+              <td className="py-2 px-2 text-right text-xs text-white/60">
+                {formatHoldTime(totals.avgHoldTime)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 // P&L Distribution Chart Component
 const PnLDistributionChart = ({ data, title = "P&L Distribution" }) => {
   if (!data?.bins || data.bins.length === 0) {
