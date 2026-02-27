@@ -5233,6 +5233,8 @@ async def get_cumulative_stats():
                     cumulative_strategy[strategy]['total_trades'] += data.get('trades', 0)
                     cumulative_strategy[strategy]['total_wins'] += data.get('wins', 0)
                     cumulative_strategy[strategy]['total_pnl'] += data.get('pnl', 0)
+                    # For current session, use closed_trades if available, otherwise use trades count
+                    cumulative_strategy[strategy]['closed_trades'] += data.get('closed_trades', data.get('trades', 0))
             
             for asset_class, data in paper_trader.asset_class_stats.items():
                 if asset_class not in cumulative_asset_class:
