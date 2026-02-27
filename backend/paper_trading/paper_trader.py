@@ -3803,6 +3803,8 @@ class PaperTrader:
                 'sports_matched_event': signal.matched_event,
                 'bookmakers_used': signal.bookmakers_used,
                 'lane': 'SPORTS',
+                'data_tier': analysis.get('sports_data_tier', 0),  # Track data quality tier
+                'fusion_strategy': analysis.get('fusion_strategy', ''),  # How fair_value was derived
             }
             
             # Add to positions and deduct capital atomically (with duplicate check inside lock)
