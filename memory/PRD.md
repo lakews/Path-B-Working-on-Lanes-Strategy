@@ -398,3 +398,89 @@ Fixed naming collision and integrated real sharp data:
 - HFT Engine V2 ENHANCED is the **sole HFT implementation** (legacy disabled)
 - NEWS Sniper MongoDB handles **trade execution** (legacy loop handles ingestion)
 - Markets-First system provides unified signal pipeline for HFT and NEWS lanes
+
+---
+
+## TagLibraryService Architecture (COMPLETED Feb 27, 2026)
+
+### Overview
+The TagLibraryService is a centralized market categorization system that replaces all keyword-based sports detection with a pre-curated tag library providing 99%+ accurate classification.
+
+### Key Features
+1. **398 Pre-Curated Tags** across 7 categories:
+   - Sports (182 tags): basketball, american-football, soccer, mma, tennis, formula1, baseball, ice-hockey, golf, esports, etc.
+   - Crypto (34 tags): btc, eth, altcoin, defi, nft, meme, exchange, stablecoin
+   - Politics (41 tags): us-politics, uk-politics, international-politics
+   - Economics (29 tags): macro, markets, commodities
+   - Science-Tech (38 tags): ai, space, health, climate, cybersecurity
+   - Entertainment (37 tags): media, film, tv, music, gaming
+   - Geopolitics (37 tags): conflict, middle-east, ukraine, europe, asia, africa
+
+2. **O(1) Lookups** via in-memory slug→category mapping
+
+3. **Sub-Category P&L Tracking** enables granular insights (e.g., basketball P&L vs soccer P&L)
+
+4. **Hierarchical Risk Controls** via extended risk_config.json with per-category and per-sub-category settings
+
+### Files Changed
+- **NEW**: `/app/backend/services/tag_library_service.py` - Core service with RAW_TAGS library
+- **UPDATED**: `/app/backend/trading/hft_engine_v2.py` - Uses TagLibraryService for sports detection
+- **UPDATED**: `/app/backend/lanes/news_lane/news_sniper_mongodb.py` - Uses TagLibraryService for category filtering
+- **UPDATED**: `/app/backend/paper_trading/paper_trader.py` - Sub-category tracking for P&L
+- **UPDATED**: `/app/backend/config/risk_config.json` - Added categories section with sub-categories
+- **UPDATED**: `/app/backend/server.py` - Added /api/tag-library/* endpoints
+- **DEPRECATED**: `/app/backend/utils/sports_detection.py` - Now wraps TagLibraryService
+
+### API Endpoints
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/tag-library/stats` | Service statistics (total tags, hit rate, lookups) |
+| `GET /api/tag-library/categories` | Category slugs and allocation templates |
+| `POST /api/tag-library/classify` | Classify a market (for testing) |
+
+### Classification Flow
+```
+Market Data → TagLibraryService.classify_market()
+       ↓
+┌─────────────────────────────────────────────────┐
+│ Layer 1: Check cache (O(1))                     │
+│ Layer 2: Match market.tags[] against library    │
+│ Layer 3: Use API category field (if available)  │
+│ Layer 4: Keyword fallback (last resort)         │
+└─────────────────────────────────────────────────┘
+       ↓
+CategoryResult {
+  category: "sports",
+  sub_category: "basketball", 
+  confidence: 1.0,
+  source: "tag_library"
+}
+```
+
+### risk_config.json Categories Structure
+```json
+{
+  "categories": {
+    "sports": {
+      "label": "Sports",
+      "lane": "SPORTS",
+      "allocation_pct": 0.15,
+      "max_position_pct": 0.05,
+      "sub_categories": {
+        "basketball": { "allocation_pct": 0.25, "tp_mult": 1.0, "sl_mult": 1.5 },
+        "american-football": { "allocation_pct": 0.25, ... },
+        ...
+      }
+    },
+    ...
+  }
+}
+```
+
+### Testing Results (Feb 27, 2026)
+- **26/26 tests passed**
+- Tag library hit rate: 100% (no keyword fallbacks)
+- Sports markets correctly routed to SPORTS lane
+- Sub-category P&L tracking verified
+- Risk config categories validated
+
