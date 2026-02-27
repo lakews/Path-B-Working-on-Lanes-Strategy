@@ -987,7 +987,7 @@ class TagLibraryService:
         self._unknown_tags.add(tag_slug)
         self._stats['unknown_tags_queued'] += 1
         
-        if self.db:
+        if self.db is not None:
             await self.db.unknown_tags_queue.update_one(
                 {"slug": tag_slug},
                 {"$set": {
