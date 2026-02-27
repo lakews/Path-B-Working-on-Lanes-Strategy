@@ -6221,6 +6221,14 @@ async def startup_event():
         
         logger.info("[MARKETS-FIRST] ✓ MongoDB indexes created")
         
+        # =============================================
+        # TAG LIBRARY SERVICE INITIALIZATION
+        # =============================================
+        logger.info("[TAG LIBRARY] Initializing TagLibraryService...")
+        from services.tag_library_service import init_tag_library_service
+        await init_tag_library_service(db=db)
+        logger.info("[TAG LIBRARY] ✓ TagLibraryService initialized with MongoDB")
+        
         # Get and START realtime market service for WebSocket data (PRIMARY)
         from services.realtime_market_service import get_realtime_market_service, init_realtime_market_service
         rtm_service = await init_realtime_market_service()  # Start WebSocket connection
