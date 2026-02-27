@@ -2698,32 +2698,33 @@ const CategoryDashboard = ({
                       return (
                         <tr 
                           key={`${category}-${subCat}`} 
-                          className="bg-white/3 border-b border-white/5"
+                          className="bg-gradient-to-r from-white/5 to-transparent border-b border-white/5"
+                          style={{ borderLeft: `3px solid ${meta.color}40` }}
                           data-testid={`subcategory-row-${category}-${subCat}`}
                         >
-                          <td className="py-1.5 px-3 pl-10">
+                          <td className="py-2 px-3 pl-12">
                             <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full opacity-60" style={{ backgroundColor: meta.color }} />
-                              <span className="text-[11px] text-white/70 capitalize">{subCat}</span>
+                              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: meta.color, opacity: 0.7 }} />
+                              <span className="text-[11px] text-white/80 capitalize font-medium">{subCat}</span>
                             </div>
                           </td>
-                          <td className="py-1.5 px-2 text-right text-[11px] text-white/40">-</td>
-                          <td className={`py-1.5 px-2 text-right text-[11px] ${subData.pnl === 0 ? 'text-white/40' : subIsClosedPositive ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                          <td className="py-2 px-2 text-right text-[11px] text-white/30">-</td>
+                          <td className={`py-2 px-2 text-right text-[11px] ${subData.pnl === 0 ? 'text-white/30' : subIsClosedPositive ? 'text-green-400' : 'text-red-400'}`}>
                             {formatPnl(subData.pnl)}
                           </td>
-                          <td className={`py-1.5 px-2 text-right text-[11px] font-medium ${subIsClosedPositive ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                          <td className={`py-2 px-2 text-right text-[11px] font-medium ${subIsClosedPositive ? 'text-green-400' : 'text-red-400'}`}>
                             {formatPnl(subData.pnl)}
                           </td>
-                          <td className="py-1.5 px-2 text-right text-[11px] text-white/40">-</td>
-                          <td className="py-1.5 px-2 text-right text-[11px] text-white/70">{subData.closed_trades || 0}</td>
-                          <td className="py-1.5 px-2 text-right text-[11px] text-white/50">{subData.trades || 0}</td>
-                          <td className={`py-1.5 px-2 text-right text-[11px] ${subData.win_rate >= 0.5 ? 'text-green-400/80' : subData.closed_trades > 0 ? 'text-red-400/80' : 'text-white/40'}`}>
+                          <td className="py-2 px-2 text-right text-[11px] text-white/30">-</td>
+                          <td className="py-2 px-2 text-right text-[11px] text-white/80">{subData.closed_trades || 0}</td>
+                          <td className="py-2 px-2 text-right text-[11px] text-white/60">{subData.trades || 0}</td>
+                          <td className={`py-2 px-2 text-right text-[11px] ${subData.win_rate >= 0.5 ? 'text-green-400' : subData.closed_trades > 0 ? 'text-red-400' : 'text-white/30'}`}>
                             {subData.closed_trades > 0 ? `${(subData.win_rate * 100).toFixed(0)}%` : '-'}
                           </td>
-                          <td className="py-1.5 px-2 text-right text-[11px] text-white/40">
+                          <td className="py-2 px-2 text-right text-[11px] text-white/50">
                             {subData.gross_loss > 0 ? (subData.gross_profit / subData.gross_loss).toFixed(2) : (subData.gross_profit > 0 ? '2.00' : '-')}
                           </td>
-                          <td className="py-1.5 px-2 text-right text-[11px] text-white/50">
+                          <td className="py-2 px-2 text-right text-[11px] text-white/60">
                             {formatHoldTime(subData.avg_hold_time)}
                           </td>
                         </tr>
