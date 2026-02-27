@@ -148,11 +148,18 @@ class MarketDataService:
             markets = await cursor.to_list(length=limit)
             
             # Normalize market ID field for HFT V2 compatibility
+            # and ensure category is properly classified
             for market in markets:
                 if 'market_id' in market and 'id' not in market:
                     market['id'] = market['market_id']
                 if 'price' in market and 'yes_price' not in market:
                     market['yes_price'] = market['price']
+                
+                # CRITICAL: Ensure category is properly set using TagLibraryService
+                # This catches any markets that were cached before proper categorization
+                current_cat = (market.get('category') or '').lower()
+                if not current_cat or current_cat in ('', 'other', 'finance', 'default'):
+                    market['category'] = self._get_market_category(market)
             
             logger.debug(f"[MARKET DATA SVC] Returning {len(markets)} active markets for HFT")
             return markets
