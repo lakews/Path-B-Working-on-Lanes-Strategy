@@ -278,6 +278,20 @@ class RealTimeMarketService:
                         
                     self._market_cache[market_id] = market
                     
+                    # CRITICAL: Ensure category is properly classified using TagLibraryService
+                    # This prevents sports markets from leaking into HFT lane
+                    current_cat = (market.get('category') or '').lower()
+                    if not current_cat or current_cat in ('', 'other', 'finance', 'default'):
+                        try:
+                            from services.tag_library_service import get_tag_library_service
+                            tag_library = get_tag_library_service()
+                            result = tag_library.classify_market(market)
+                            market['category'] = result.category
+                        except Exception:
+                            # Fallback to asset_class if TagLibraryService unavailable
+                            if market.get('asset_class'):
+                                market['category'] = market['asset_class']
+                    
                     # Track token mappings with YES/NO outcomes
                     tokens = market.get('tokens') or market.get('clobTokenIds', [])
                     
