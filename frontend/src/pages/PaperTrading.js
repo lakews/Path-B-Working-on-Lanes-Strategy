@@ -2469,6 +2469,8 @@ const CategoryDashboard = ({
   initialCapital = 10000
 }) => {
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [hiddenCategories, setHiddenCategories] = useState({});
+  const [showFilters, setShowFilters] = useState(false);
 
   // Category metadata for colors and icons
   const CATEGORY_META = {
@@ -2490,6 +2492,31 @@ const CategoryDashboard = ({
       ...prev,
       [category]: !prev[category]
     }));
+  };
+
+  const expandAll = () => {
+    const allExpanded = {};
+    Object.keys(mergedData).forEach(cat => {
+      if (mergedData[cat].subCategories && Object.keys(mergedData[cat].subCategories).length > 0) {
+        allExpanded[cat] = true;
+      }
+    });
+    setExpandedCategories(allExpanded);
+  };
+
+  const collapseAll = () => {
+    setExpandedCategories({});
+  };
+
+  const toggleHideCategory = (category) => {
+    setHiddenCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
+  const showAll = () => {
+    setHiddenCategories({});
   };
 
   // Merge asset class data with sub-category data
