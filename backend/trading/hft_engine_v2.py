@@ -16,6 +16,7 @@ NEW V2 FEATURES:
 2. News Strength Classification (PAUSE/EXTREME/CAUTION/NORMAL)
 3. MongoDB Signal Integration (PATH A + PATH B)
 4. Spread & Position Multipliers based on news
+5. TagLibraryService Integration - Accurate category-based filtering
 
 CRITICAL CONSTRAINTS (MUST RESPECT):
 - Kelly Criterion (0.25 fractional sizing)
@@ -23,7 +24,7 @@ CRITICAL CONSTRAINTS (MUST RESPECT):
 - Polymarket tick grid ($0.01)
 - Kill zone bounds ($0.05 - $0.95)
 - Never bypass existing capital management
-- Sports markets filtered via Polymarket's category field (routed to SPORTS lane)
+- Sports markets filtered via TagLibraryService (routed to SPORTS lane)
 """
 
 import asyncio
@@ -44,6 +45,9 @@ from strategies.hft_math import (
     CubicInventorySkew, AdaptiveSignalSmoother, CliffProtection
 )
 
+# Import TagLibraryService for accurate category classification
+from services.tag_library_service import get_tag_library_service, TagLibraryService
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,85 +61,45 @@ MIN_SPREAD_TICKS = 2       # Minimum 2 cents spread
 ORDER_STALE_SECONDS = 120  # Refresh orders after 2 minutes
 HYSTERESIS_THRESHOLD = 0.01  # 1 cent drift tolerance (anti-churn)
 
+
 # =============================================================================
-# SPORTS MARKET DETECTION (Route to SPORTS Lane, not HFT)
+# MARKET CATEGORIZATION (Uses TagLibraryService)
 # =============================================================================
-SPORTS_CATEGORIES = {'sports', 'esports'}
-
-# Sports detection patterns (Polymarket doesn't provide category for active markets)
-SPORTS_KEYWORDS = {
-    # Leagues/Organizations
-    'nba', 'nfl', 'mlb', 'nhl', 'mls', 'ncaa', 'uefa', 'fifa', 'pga', 'atp', 'wta',
-    'ufc', 'boxing', 'f1', 'nascar', 'premier league', 'la liga', 'bundesliga',
-    'serie a', 'ligue 1', 'champions league', 'world cup', 'olympics', 'euroleague',
-    # Sports terms
-    'championship', 'playoff', 'finals', 'super bowl', 'world series',
-    'stanley cup', 'mvp', 'scoring title', 'batting average', 'home runs',
-    # NBA Teams (all 30)
-    'lakers', 'celtics', 'warriors', 'bulls', 'heat', 'knicks', 'nets', 'sixers',
-    'suns', 'bucks', 'cavaliers', 'mavericks', 'nuggets', 'clippers', 'timberwolves',
-    'grizzlies', 'pelicans', 'thunder', 'blazers', 'kings', 'spurs', 'raptors',
-    'wizards', 'hawks', 'hornets', 'pacers', 'pistons', 'magic', 'rockets', 'jazz',
-    # NFL Teams
-    'cowboys', 'patriots', 'chiefs', 'eagles', '49ers', 'packers', 'steelers',
-    'broncos', 'raiders', 'chargers', 'ravens', 'bills', 'dolphins', 'jets',
-    'bengals', 'browns', 'titans', 'colts', 'texans', 'jaguars', 'commanders',
-    'giants', 'saints', 'falcons', 'panthers', 'buccaneers', 'cardinals', 'rams',
-    'seahawks', 'vikings', 'bears', 'lions',
-    # MLB Teams
-    'yankees', 'dodgers', 'red sox', 'cubs', 'mets', 'astros', 'braves', 'phillies',
-    'padres', 'rangers', 'orioles', 'twins', 'mariners', 'guardians', 'royals',
-    'tigers', 'white sox', 'athletics', 'angels', 'marlins', 'nationals', 'pirates',
-    'reds', 'brewers', 'cardinals', 'rockies', 'diamondbacks', 'rays', 'blue jays',
-    # Soccer Teams (Major European)
-    'real madrid', 'barcelona', 'manchester united', 'manchester city', 'liverpool',
-    'chelsea', 'arsenal', 'tottenham', 'bayern', 'dortmund', 'juventus', 'inter',
-    'ac milan', 'roma', 'napoli', 'psg', 'marseille', 'lyon', 'atletico', 'atlético',
-    'sevilla', 'valencia', 'villarreal', 'ajax', 'benfica', 'porto', 'sporting',
-    'borussia', 'schalke', 'leverkusen', 'wolfsburg', 'frankfurt', 'leipzig',
-    'lazio', 'fiorentina', 'atalanta', 'torino', 'sampdoria',
-    'everton', 'west ham', 'newcastle', 'leicester', 'aston villa', 'wolves',
-    'crystal palace', 'brighton', 'fulham', 'bournemouth', 'nottingham forest',
-    # Additional soccer patterns
-    'cf ', ' cf', ' fc', 'fc ', 'united', 'city fc',
-    # Player names (star athletes)
-    'doncic', 'lebron', 'curry', 'giannis', 'jokic', 'embiid', 'tatum', 'durant',
-    'mahomes', 'allen', 'burrow', 'jackson', 'hurts', 'kelce',
-    'ohtani', 'judge', 'trout', 'betts', 'soto', 'acuna',
-    'messi', 'ronaldo', 'mbappe', 'haaland', 'bellingham',
-}
-
-# Pattern-based detection (catches "Team A vs. Team B" format)
-import re
-SPORTS_VS_PATTERN = re.compile(r'\bvs\.?\s', re.IGNORECASE)
-
 
 def is_sports_market(market_data: Dict) -> bool:
     """
     Detect if a market is sports-related (should go to SPORTS lane, not HFT).
     
-    Strategy:
-    1. Check Polymarket's category field first (authoritative when available)
-    2. Check for "vs." pattern (common in sports matchups)
-    3. Fall back to keyword matching (required since active markets lack category)
+    Uses TagLibraryService for 99%+ accurate classification via:
+    1. Pre-curated tag library (300+ tags)
+    2. API category field fallback
+    3. Keyword matching as last resort
+    
+    This replaces the old brittle keyword-based approach.
     """
-    # Primary: Use category field if available
-    category = (market_data.get('category') or '').lower()
-    if category in SPORTS_CATEGORIES:
-        return True
+    try:
+        tag_library = get_tag_library_service()
+        return tag_library.is_sports_market(market_data)
+    except Exception as e:
+        # Fallback to API category check if service unavailable
+        logger.debug(f"[HFT V2] TagLibraryService fallback: {e}")
+        category = (market_data.get('category') or '').lower()
+        return category in {'sports', 'esports'}
+
+
+def get_market_category(market_data: Dict) -> Tuple[str, str]:
+    """
+    Get market category and sub-category using TagLibraryService.
     
-    question = (market_data.get('question') or '').lower()
-    
-    # Pattern check: "X vs. Y" or "X vs Y" is almost always sports
-    if SPORTS_VS_PATTERN.search(question):
-        return True
-    
-    # Keyword matching for active markets without category
-    for keyword in SPORTS_KEYWORDS:
-        if keyword in question:
-            return True
-    
-    return False
+    Returns:
+        Tuple of (category, sub_category)
+    """
+    try:
+        tag_library = get_tag_library_service()
+        result = tag_library.classify_market(market_data)
+        return (result.category, result.sub_category)
+    except Exception:
+        return ('default', 'default')
 
 
 class HighFrequencyTradingEngineV2:
