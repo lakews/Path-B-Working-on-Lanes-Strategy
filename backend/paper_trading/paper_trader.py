@@ -1183,6 +1183,103 @@ class PaperTrader:
         
         return (True, f"Extreme price validated (depth=${total_depth:.0f}, spread OK, volume=${volume_24h:.0f})")
     
+    def _update_sub_category_stats(self, category: str, sub_category: str, pnl: float, is_win: bool, hold_time_hours: float = 0.0):
+        """
+        Update sub-category stats for granular P&L tracking.
+        
+        This enables hierarchical P&L reporting like:
+        - sports: $500 total
+          - basketball: $300
+          - american-football: $150
+          - soccer: $50
+        
+        Args:
+            category: Main category (e.g., 'sports', 'crypto')
+            sub_category: Sub-category (e.g., 'basketball', 'btc')
+            pnl: P&L for this trade
+            is_win: Whether trade was profitable
+            hold_time_hours: Hold time for this trade
+        """
+        if not category or not sub_category:
+            return
+        
+        # Initialize category dict if needed
+        if category not in self.sub_category_stats:
+            self.sub_category_stats[category] = {}
+        
+        # Initialize sub-category stats if needed
+        if sub_category not in self.sub_category_stats[category]:
+            self.sub_category_stats[category][sub_category] = {
+                'trades': 0,
+                'wins': 0,
+                'pnl': 0.0,
+                'gross_profit': 0.0,
+                'gross_loss': 0.0,
+                'total_hold_time': 0.0,
+                'closed_trades': 0
+            }
+        
+        stats = self.sub_category_stats[category][sub_category]
+        stats['trades'] += 1
+        stats['pnl'] += pnl
+        stats['total_hold_time'] += hold_time_hours
+        stats['closed_trades'] += 1
+        
+        if is_win:
+            stats['wins'] += 1
+            stats['gross_profit'] += pnl
+        else:
+            stats['gross_loss'] += abs(pnl)
+    
+    def get_sub_category_stats_summary(self) -> Dict:
+        """
+        Get a summary of P&L by category and sub-category.
+        
+        Returns hierarchical structure for UI display:
+        {
+            'sports': {
+                'total_pnl': 500.0,
+                'sub_categories': {
+                    'basketball': {'pnl': 300.0, 'trades': 4, 'win_rate': 0.75},
+                    'soccer': {'pnl': 200.0, 'trades': 3, 'win_rate': 0.67}
+                }
+            },
+            ...
+        }
+        """
+        summary = {}
+        
+        for category, sub_cats in self.sub_category_stats.items():
+            category_total_pnl = 0.0
+            category_total_trades = 0
+            sub_category_summary = {}
+            
+            for sub_cat, stats in sub_cats.items():
+                win_rate = stats['wins'] / max(1, stats['closed_trades'])
+                avg_hold_time = stats['total_hold_time'] / max(1, stats['closed_trades'])
+                
+                sub_category_summary[sub_cat] = {
+                    'pnl': round(stats['pnl'], 2),
+                    'trades': stats['trades'],
+                    'closed_trades': stats['closed_trades'],
+                    'wins': stats['wins'],
+                    'win_rate': round(win_rate, 3),
+                    'gross_profit': round(stats['gross_profit'], 2),
+                    'gross_loss': round(stats['gross_loss'], 2),
+                    'avg_hold_time': round(avg_hold_time, 2),
+                }
+                
+                category_total_pnl += stats['pnl']
+                category_total_trades += stats['trades']
+            
+            summary[category] = {
+                'total_pnl': round(category_total_pnl, 2),
+                'total_trades': category_total_trades,
+                'sub_categories': sub_category_summary
+            }
+        
+        return summary
+    
     async def start(self):
         """Start paper trading session with FIVE-LANE ARCHITECTURE"""
         self.running = True
