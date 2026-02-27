@@ -81,8 +81,39 @@ def get_market_category_info(market_data: Dict) -> Tuple[str, str]:
         Tuple of (category, sub_category)
     """
     try:
+        # Ensure we have a question to classify
+        # Try multiple field names that might contain the market question
+        question = (
+            market_data.get('question') or 
+            market_data.get('title') or 
+            market_data.get('market_question') or 
+            market_data.get('description') or
+            ''
+        )
+        
+        # If market_data doesn't have question but might have market_id, try to fetch from cache
+        if not question and market_data.get('market_id'):
+            # Try to get from market cache
+            try:
+                from services.realtime_market_service import get_realtime_market_service
+                rtms = get_realtime_market_service()
+                if rtms and hasattr(rtms, '_market_cache'):
+                    cached = rtms._market_cache.get(market_data['market_id'], {})
+                    question = cached.get('question', cached.get('title', ''))
+            except:
+                pass
+        
+        # Add question to market_data for classification
+        if question and 'question' not in market_data:
+            market_data['question'] = question
+        
         tag_library = get_tag_library_service()
         result = tag_library.classify_market(market_data)
+        
+        # Log if falling back to default
+        if result.category == 'default' and question:
+            logger.debug(f"[PaperTrader] Market classified as default: '{question[:50]}...' (source: {result.source})")
+        
         return (result.category, result.sub_category)
     except Exception as e:
         # Fallback to legacy categorization
