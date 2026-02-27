@@ -132,20 +132,33 @@ class PolymarketAPI:
             return None
     
     def _categorize_market(self, question: str) -> str:
-        """Categorize market by question content"""
-        q = question.lower()
-        if any(w in q for w in ['bitcoin', 'crypto', 'ethereum', 'btc', 'eth', 'solana', 'doge']):
-            return 'crypto'
-        elif any(w in q for w in ['trump', 'biden', 'election', 'congress', 'senate', 'vote', 'president', 'governor', 'republican', 'democrat']):
-            return 'politics'
-        elif any(w in q for w in ['fed', 'rate', 'inflation', 'gdp', 'stock', 'market', 's&p', 'recession', 'tariff', 'interest']):
-            return 'finance'
-        elif any(w in q for w in ['nba', 'nfl', 'mlb', 'ncaa', 'game', 'match', 'championship', 'super bowl']):
-            return 'sports'
-        elif any(w in q for w in ['spacex', 'nasa', 'ai', 'openai', 'science', 'research', 'climate']):
-            return 'science'
-        else:
-            return 'entertainment'
+        """
+        Categorize market by question content using TagLibraryService.
+        
+        This method uses the centralized TagLibraryService for accurate
+        market classification, replacing the basic keyword matching.
+        """
+        try:
+            from services.tag_library_service import get_tag_library_service
+            tag_library = get_tag_library_service()
+            result = tag_library.classify_market({'question': question})
+            return result.category
+        except Exception as e:
+            # Fallback to basic keyword matching if TagLibraryService unavailable
+            logger.debug(f"TagLibraryService unavailable in API categorization: {e}")
+            q = question.lower()
+            if any(w in q for w in ['bitcoin', 'crypto', 'ethereum', 'btc', 'eth', 'solana', 'doge']):
+                return 'crypto'
+            elif any(w in q for w in ['trump', 'biden', 'election', 'congress', 'senate', 'vote', 'president', 'governor', 'republican', 'democrat']):
+                return 'politics'
+            elif any(w in q for w in ['fed', 'rate', 'inflation', 'gdp', 'stock', 'market', 's&p', 'recession', 'tariff', 'interest']):
+                return 'economics'
+            elif any(w in q for w in ['nba', 'nfl', 'mlb', 'ncaa', 'game', 'match', 'championship', 'super bowl', 'la liga', 'premier league', 'uefa', 'lebron', 'messi', 'ronaldo']):
+                return 'sports'
+            elif any(w in q for w in ['spacex', 'nasa', 'ai', 'openai', 'science', 'research', 'climate']):
+                return 'science-tech'
+            else:
+                return 'entertainment'
     
     async def get_market(self, condition_id: str) -> Optional[Dict[str, Any]]:
         """Fetch specific market details from Gamma"""
