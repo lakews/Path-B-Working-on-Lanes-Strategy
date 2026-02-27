@@ -544,10 +544,20 @@ class EnhancedSentimentAnalyzer:
                 sports_weight = 0.85  # Primary truth from bookmakers
                 orderflow_weight = 0.15  # Secondary truth from order book
                 
-                combined_sentiment = (
-                    sports_fair_value * sports_weight +
-                    result['polymarket_sentiment'] * orderflow_weight
-                )
+                # Handle case where order flow is None (use 0.5 only for TIER 1 since we have real odds)
+                orderflow_value = result['polymarket_sentiment']
+                if orderflow_value is None:
+                    # No order flow data, use 100% real odds
+                    combined_sentiment = sports_fair_value
+                    orderflow_weight = 0.0
+                    sports_weight = 1.0
+                    result['tier1_orderflow_unavailable'] = True
+                else:
+                    combined_sentiment = (
+                        sports_fair_value * sports_weight +
+                        orderflow_value * orderflow_weight
+                    )
+                
                 combined_confidence = min(0.95, sports_confidence * 0.85 + result['polymarket_confidence'] * 0.15)
                 
                 weight_breakdown = {
@@ -558,7 +568,7 @@ class EnhancedSentimentAnalyzer:
                     'social': 0.0,  # BANNED
                     'correlation': 0.0,
                 }
-                result['fusion_strategy'] = 'SPORTS TIER-1: 85% Real Odds + 15% Order Flow'
+                result['fusion_strategy'] = f'SPORTS TIER-1: {int(sports_weight*100)}% Real Odds + {int(orderflow_weight*100)}% Order Flow'
                 result['banned_sources'] = ['llm', 'github', 'social']
                 result['sports_data_tier'] = 1
                 
