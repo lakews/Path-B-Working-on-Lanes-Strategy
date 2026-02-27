@@ -2009,8 +2009,8 @@ class PaperTrader:
                     # TEMPORARY FIX: Only trade YES side until model is validated
                     # This prevents systematic losses from stale fair value predictions
                     market_category = (market_data.get('category') or '').lower()
-                    # Primary: Use category field; Fallback: pattern matching
-                    is_sports = market_category in {'sports', 'esports'} or is_sports_market(market_data.get('question', ''))
+                    # Use authoritative category field from Polymarket API
+                    is_sports = market_category in {'sports', 'esports'}
                     sports_config = get_sports_config()
                     
                     if side == 'NO':
@@ -2457,7 +2457,8 @@ class PaperTrader:
                 elif forced_direction == 'NO':
                     # Check if NO bets are allowed
                     market_category = (market_data.get('category') or '').lower()
-                    is_sports = market_category in {'sports', 'esports'} or is_sports_market(market_data.get('question', ''))
+                    # Use authoritative category field from Polymarket API
+                    is_sports = market_category in {'sports', 'esports'}
                     sports_config = get_sports_config()
                     if is_sports and sports_config.allow_no_bets:
                         target_price = 1 - best_bid  # Buy NO
@@ -3688,8 +3689,8 @@ class PaperTrader:
             question = market_data.get('question', '').lower()
             market_category = (market_data.get('category') or '').lower()
             
-            # Primary: Use category field; Fallback: pattern matching
-            if market_category in {'sports', 'esports'} or is_sports_market(question):
+            # Use authoritative category field from Polymarket API
+            if market_category in {'sports', 'esports'}:
                 logger.debug(f"[ALPHA] Sports market should use sports handler: {question[:40]}...")
                 return
             
@@ -8094,12 +8095,9 @@ class PaperTrader:
                 # ==========================================================
                 # SPORTS DETECTION (Feb 2026 - Symmetric with all lanes)
                 # ==========================================================
-                # Primary: Use category field from API (authoritative)
+                # Use category field from API (authoritative, no fallback)
                 market_category = (m.get('category') or '').lower()
                 is_sports = market_category in {'sports', 'esports'}
-                # Fallback: pattern matching if category not available
-                if not is_sports:
-                    is_sports = is_sports_market(question)
                 
                 # PRICE VALIDATION (First - cheapest check)
                 # Note: Expiration filtering is now done at the source (PolymarketAPI & RealtimeService)
