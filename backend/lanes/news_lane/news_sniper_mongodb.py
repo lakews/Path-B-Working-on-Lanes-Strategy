@@ -373,6 +373,7 @@ class NewsSniper:
             'trades_skipped_low_conviction': 0,
             'trades_skipped_no_edge': 0,
             'trades_skipped_position_exists': 0,
+            'trades_skipped_sports': 0,  # Sports markets routed to SPORTS lane
             'mongodb_reads': 0,
             'mongodb_errors': 0,
             'total_conviction_sum': 0.0,
@@ -383,6 +384,7 @@ class NewsSniper:
         logger.info("[NEWS SNIPER] Initialized with MongoDB integration")
         logger.info("  ├─ Signal Source: MongoDB signals collection (PATH A)")
         logger.info("  ├─ Conviction: 5-factor enhancement + TIME DECAY")
+        logger.info("  ├─ Sports Filter: Routes sports to SPORTS lane")
         logger.info("  └─ Kelly: Tiered (5%-50% based on decayed conviction)")
     
     async def start_news_loop(self):
