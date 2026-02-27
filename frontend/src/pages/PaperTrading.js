@@ -2579,12 +2579,22 @@ const CategoryDashboard = ({
     });
   }
 
-  // Filter out categories with no activity
+  // Filter out categories with no activity and apply hidden filter
   const activeCategories = Object.entries(mergedData)
+    .filter(([category, data]) => (data.totalTrades > 0 || data.totalPnl !== 0) && !hiddenCategories[category])
+    .sort((a, b) => b[1].totalPnl - a[1].totalPnl);
+
+  // All categories for filter display (including hidden)
+  const allCategoriesForFilter = Object.entries(mergedData)
     .filter(([_, data]) => data.totalTrades > 0 || data.totalPnl !== 0)
     .sort((a, b) => b[1].totalPnl - a[1].totalPnl);
 
-  // Calculate grand totals
+  // Check if any categories have sub-categories
+  const hasAnySubCategories = activeCategories.some(([_, data]) => 
+    data.subCategories && Object.keys(data.subCategories).length > 0
+  );
+
+  // Calculate grand totals (only from visible categories)
   const totals = activeCategories.reduce((acc, [_, d]) => ({
     livePnl: acc.livePnl + d.livePnl,
     closedPnl: acc.closedPnl + d.closedPnl,
