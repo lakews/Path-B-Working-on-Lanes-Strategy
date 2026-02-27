@@ -8092,9 +8092,14 @@ class PaperTrader:
                 question = m.get('question', '')
                 
                 # ==========================================================
-                # CATEGORY DETECTION (Sports Green Lane)
+                # SPORTS DETECTION (Feb 2026 - Symmetric with all lanes)
                 # ==========================================================
-                is_sports = is_sports_market(question)
+                # Primary: Use category field from API (authoritative)
+                market_category = (m.get('category') or '').lower()
+                is_sports = market_category in {'sports', 'esports'}
+                # Fallback: pattern matching if category not available
+                if not is_sports:
+                    is_sports = is_sports_market(question)
                 
                 # PRICE VALIDATION (First - cheapest check)
                 # Note: Expiration filtering is now done at the source (PolymarketAPI & RealtimeService)
