@@ -1,0 +1,58 @@
+{
+  "summary": "Sports Classification Fix Verified - All 18 pytest tests passed. The P0 bug fix correctly routes sports markets to the SPORTS lane instead of HFT lane by passing the full market object to TagLibraryService.classify_market().",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_sports_classification_fix_pytest.py",
+    "/app/backend/tests/test_sports_classification_fix.py",
+    "/app/test_reports/pytest/pytest_results_iteration49.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED FIX: polymarket_scanner.py line 302 now passes full market object 'm' to classify_market() instead of just {'question': m.get('question', '')}",
+    "VERIFIED FIX: polymarket_scanner.py line 496 now passes full market object 'market' to classify_market()",
+    "VERIFIED FIX: polymarket_api.py line 146 now passes full 'market_data' dict to classify_market()",
+    "VERIFIED: TagLibraryService.classify_market() correctly uses layered approach: 1) Cache, 2) Tags, 3) API category field, 4) Keyword fallback",
+    "VERIFIED: is_sports_market() in hft_engine_v2.py correctly uses TagLibraryService with full market data",
+    "VERIFIED: Markets with category='Sports' (capital S) are correctly identified as sports",
+    "VERIFIED: Markets with category='sports' (lowercase) are correctly identified as sports",
+    "VERIFIED: Markets with only question field (bug scenario) correctly return 'default' category",
+    "VERIFIED: Markets with sports tags (nba, nfl, premier-league) are correctly classified",
+    "VERIFIED: Esports markets are correctly classified under sports category",
+    "VERIFIED: Non-sports markets (crypto, politics, economics) are NOT classified as sports"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_sports_classification_fix_pytest.py"
+  ],
+  "success_rate": {
+    "backend": "100% (18/18 tests passed)",
+    "frontend": "N/A (backend only testing)"
+  },
+  "test_credentials": {},
+  "seed_data_creation": "None - unit tests with mock market data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Sports classification fix verified. The bug was that polymarket_scanner.py was passing only {'question': ...} to classify_market(), causing sports markets with generic questions but category='Sports' to be misclassified as 'default' and routed to HFT lane. The fix passes the full market object so TagLibraryService can use all available data (tags, category field, question). All 18 tests pass covering: category field detection (capital/lowercase), tag-based detection (nba, nfl, premier-league), HFT engine filtering, esports classification, and non-sports market verification.",
+  "bug_rca": {
+    "root_cause": "polymarket_scanner.py lines 300 and 492 were calling tag_library.classify_market({'question': m.get('question', '')}) - passing ONLY the question field",
+    "impact": "Sports markets with category='Sports' in API response but generic questions (e.g., 'Will X happen?') were misclassified as 'default' and routed to HFT lane instead of SPORTS lane",
+    "fix_applied": "Changed to pass full market object: tag_library.classify_market(m) and tag_library.classify_market(market)",
+    "verification": "18 pytest tests verify the fix works for all scenarios: category field, tags, HFT filtering, esports, and non-sports markets"
+  },
+  "test_coverage": {
+    "TestSportsClassificationWithCategoryField": "2 tests - category='Sports' (capital S) and category='sports' (lowercase)",
+    "TestSportsClassificationBugScenario": "2 tests - question-only fails, full market object succeeds",
+    "TestSportsClassificationWithTags": "3 tests - nba, nfl, premier-league tags",
+    "TestHFTEngineSportsFilter": "3 tests - sports, crypto, politics market filtering",
+    "TestEsportsClassification": "2 tests - esports classified as sports",
+    "TestNonSportsClassification": "3 tests - crypto, politics, economics NOT sports",
+    "TestEdgeCases": "3 tests - empty market, None category, mixed case SPORTS"
+  }
+}
