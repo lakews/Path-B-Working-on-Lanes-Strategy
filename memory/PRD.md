@@ -241,6 +241,16 @@ NEWS EVENT ARRIVES
   - **Fix**: Added LAYER 3.5 in `TagLibraryService.classify_market()` to check `asset_class` field
   - **Verified**: 9 tests pass including new asset_class fallback tests
   - Files modified: `services/market_data_service.py`, `services/realtime_market_service.py`, `services/tag_library_service.py`
+- [x] **Sports Classification Final Fix (Feb 27, 2026)** - Fixed entertainment category bypass:
+  - **Root cause**: Polymarket API returns `category: entertainment` for many sports markets (Real Madrid, West Ham, esports, etc.)
+  - **Bug**: TagLibraryService LAYER 3 was accepting `entertainment` as valid and NOT falling through to keyword detection
+  - **Fix**: Modified LAYER 3 to NOT trust `entertainment` category - it now falls through to keyword detection just like `other`
+  - **Result**: All sports markets now correctly blocked by HFT and routed to SPORTS lane:
+    - "Will Real Madrid CF win..." ✅
+    - "Will West Ham win..." ✅  
+    - "Counter-Strike: MOUZ vs PARIVISION..." ✅
+    - "LoL: T1 vs BNK FEARX..." ✅
+  - Files modified: `services/tag_library_service.py`, `trading/hft_engine_v2.py` (added debug logging)
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
