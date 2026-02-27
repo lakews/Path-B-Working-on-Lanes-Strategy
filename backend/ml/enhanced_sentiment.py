@@ -341,19 +341,19 @@ class EnhancedSentimentAnalyzer:
         detected_category = self._detect_category(market_data)
         
         result = {
-            'llm_sentiment': 0.5,
+            'llm_sentiment': None,  # None = no data, don't default to 0.5
             'llm_confidence': 0.0,
             'llm_reasoning': '',
-            'correlation_sentiment': 0.5,
+            'correlation_sentiment': None,
             'correlation_strength': 0.0,
-            'polymarket_sentiment': 0.5,
+            'polymarket_sentiment': None,  # None = no valid order flow
             'polymarket_confidence': 0.0,
             'polymarket_momentum': {},
-            'sports_sentiment': 0.5,
+            'sports_sentiment': None,
             'sports_confidence': 0.0,
-            'github_sentiment': 0.5,
+            'github_sentiment': None,
             'github_confidence': 0.0,
-            'combined_sentiment': 0.5,
+            'combined_sentiment': None,  # None = skip trade
             'combined_confidence': 0.0,
             'analysis_source': 'none',
             'detected_category': detected_category,
