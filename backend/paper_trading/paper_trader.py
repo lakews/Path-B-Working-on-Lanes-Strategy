@@ -2454,10 +2454,8 @@ class PaperTrader:
                     edge = 0.05  # Assumed edge from news signal
                 elif forced_direction == 'NO':
                     # Check if NO bets are allowed
-                    market_category = (market_data.get('category') or '').lower()
-                    question_lower = market_data.get('question', '').lower()
-                    SPORTS_KW = {'nba', 'nfl', 'mlb', 'nhl', 'ncaa', 'ufc', 'championship', 'playoff', 'finals', 'mvp'}
-                    is_sports = market_category in {'sports', 'esports'} or any(kw in question_lower for kw in SPORTS_KW)
+                    from utils.sports_detection import is_sports_market
+                    is_sports = is_sports_market(market_data)
                     sports_config = get_sports_config()
                     if is_sports and sports_config.allow_no_bets:
                         target_price = 1 - best_bid  # Buy NO
