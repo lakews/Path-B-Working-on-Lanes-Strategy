@@ -6062,6 +6062,7 @@ class PaperTrader:
                 "market_id": market_id,
                 "market_question": market_data.get('question', '')[:100],
                 "asset_class": asset_class,
+                "sub_category": sub_category,  # Added for granular P&L tracking
                 "side": side,
                 "size": size,
                 "entry_price": display_entry_price,  # Display price for the side traded
