@@ -41,7 +41,7 @@ const AUTH_CONFIG = {
 };
 
 const STRATEGY_INFO = {
-  // Lane-Based Strategies (Three-Speed Architecture)
+  // Lane-Based Strategies (Five Lane Architecture)
   hft_scalp: { name: 'HFT Scalp', color: '#06b6d4', icon: Zap },
   hft_maker: { name: 'HFT Market Making', color: '#0ea5e9', icon: Activity },
   delta_neutral: { name: 'HFT Delta-Neutral', color: '#38bdf8', icon: Scale },
@@ -3435,15 +3435,12 @@ const PaperTrading = () => {
     return equityCurve.map(point => ({
       ...point,
       total_equity: initialCapital + (point.pnl || 0),
-      // Three-Speed Lane P&L
+      // Five Lane P&L
       hft_pnl: point.hft_pnl || 0,
       alpha_lane_pnl: point.alpha_lane_pnl || 0,
       gamma_pnl: point.gamma_pnl || 0,
-      // Legacy strategy breakdown (kept for backward compat)
-      delta_neutral_pnl: point.delta_neutral_pnl || 0,
-      volatility_pnl: point.volatility_pnl || 0,
-      alpha_pnl: point.alpha_pnl || 0,
-      arbitrage_pnl: point.arbitrage_pnl || 0
+      sports_pnl: point.sports_pnl || 0,
+      news_pnl: point.news_pnl || 0
     }));
   };
 
@@ -3905,12 +3902,12 @@ const PaperTrading = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-white/60">Equity by Lane (HFT/Alpha/Gamma)</span>
+                <span className="text-sm text-white/60">Equity by Lane (HFT/Alpha/Gamma/Sports Arb/News Sniper)</span>
                 <ResetButton onClick={handleResetLiveSession} label="Reset" />
               </div>
               <div className="rounded-xl bg-white/5 border border-white/10 p-6">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <LineChartIcon className="w-5 h-5 text-cyan-400" />Equity Curve by Lane
+                  <LineChartIcon className="w-5 h-5 text-cyan-400" />Equity by Lane
                   <span className="text-xs text-white/40">(Total starts at ${initialCapital.toLocaleString()})</span>
                 </h3>
                 <div className="h-64">
@@ -3927,9 +3924,11 @@ const PaperTrading = () => {
                       />
                       <Legend wrapperStyle={{ fontSize: '10px' }} />
                       <Line type="monotone" dataKey="total_equity" name="Total Equity" stroke="#ffffff" strokeWidth={3} dot={false} />
-                      <Line type="monotone" dataKey="hft_pnl" name="HFT (35%)" stroke="#06b6d4" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="alpha_lane_pnl" name="Alpha (55%)" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="gamma_pnl" name="Gamma (10%)" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="hft_pnl" name="HFT" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="alpha_lane_pnl" name="Alpha" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="gamma_pnl" name="Gamma" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="sports_pnl" name="Sports Arb" stroke="#ec4899" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="news_pnl" name="News Sniper" stroke="#22c55e" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
