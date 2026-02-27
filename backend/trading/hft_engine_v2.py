@@ -242,8 +242,8 @@ class HighFrequencyTradingEngineV2:
         Enhanced Flow (Strategy-Specific Direction Logic):
         1. Check if we already have a position (skip)
         2. Get Alpha target from strategy_context (smart mode)
-        3. Check PATH B for fresh news broadcast (speed)
-        4. Get PATH A analysis for bayes_factor (intelligence)
+        3. Get PATH A signal from in-memory cache O(1) (intelligence)
+        4. Check PATH B for fresh news trigger (optional urgency)
         5. Classify news strength and get multipliers
         6. If PAUSE mode, skip cycle
         7. Apply HFT Math Engine (skew, smoothing, cliff protection)
