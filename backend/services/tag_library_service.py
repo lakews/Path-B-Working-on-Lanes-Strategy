@@ -1135,6 +1135,6 @@ def get_tag_library_service() -> TagLibraryService:
 async def init_tag_library_service(db=None) -> TagLibraryService:
     """Initialize TagLibraryService with MongoDB"""
     service = get_tag_library_service()
-    if db:
+    if db is not None:
         await service.initialize_db(db)
     return service
