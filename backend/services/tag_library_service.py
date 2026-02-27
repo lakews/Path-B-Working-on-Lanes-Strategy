@@ -806,9 +806,10 @@ class TagLibraryService:
             
             if api_category in category_mapping:
                 cat, sub = category_mapping[api_category]
-                # CRITICAL: Don't accept 'other' -> 'default' mapping here
-                # Fall through to check asset_class instead
-                if cat != 'default':
+                # CRITICAL: Don't blindly trust 'other', 'default', or 'entertainment' categories
+                # These are often misclassified - fall through to keyword detection
+                # Sports markets are frequently mislabeled as 'entertainment' by Polymarket API
+                if cat not in ('default', 'entertainment'):
                     result = CategoryResult(
                         category=cat,
                         sub_category=sub,
