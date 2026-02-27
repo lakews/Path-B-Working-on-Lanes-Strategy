@@ -116,15 +116,18 @@ class PolymarketSentimentExtractor:
                 'price_momentum': 0.15,
             }
             
-            combined_score = 0.5  # Default neutral
+            # Track valid signals - if none are valid, return None (skip trade)
+            valid_signals = []
             total_weight = 0
+            weighted_sum = 0
             signal_details = {}
             
             for signal_name, weight in weights.items():
                 signal_data = signals.get(signal_name, {})
                 if signal_data and signal_data.get('valid', False):
                     score = signal_data.get('score', 0.5)
-                    combined_score += (score - 0.5) * weight
+                    valid_signals.append(signal_name)
+                    weighted_sum += score * weight
                     total_weight += weight
                     signal_details[signal_name] = {
                         'score': round(score, 4),
@@ -133,7 +136,25 @@ class PolymarketSentimentExtractor:
                         'details': signal_data.get('details', {})
                     }
             
-            # Normalize combined score
+            # If no valid signals, return None to signal "skip trade"
+            if total_weight == 0 or not valid_signals:
+                return {
+                    'market_id': market_id,
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                    'combined_score': None,  # None = skip trade, don't default to 0.5
+                    'valid': False,
+                    'reason': 'no_valid_signals',
+                    'signals': {},
+                    'data_quality': {
+                        'has_trades': bool(trades),
+                        'has_order_book': bool(order_book),
+                        'price_history_points': len(self._price_history.get(market_id, [])),
+                        'trade_history_points': len(self._trade_history.get(market_id, [])),
+                    }
+                }
+            
+            # Calculate actual weighted average (not defaulting to 0.5)
+            combined_score = weighted_sum / total_weight
             combined_score = max(0.01, min(0.99, combined_score))
             
             # Store sentiment history for momentum tracking
