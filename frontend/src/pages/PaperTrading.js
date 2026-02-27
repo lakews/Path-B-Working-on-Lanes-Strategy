@@ -3648,20 +3648,20 @@ const PaperTrading = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 p-1.5 rounded-xl bg-slate-900/50 border border-white/10">
+      <div className="flex gap-1 p-1.5 rounded-2xl bg-[#111111] border border-white/[0.06]">
         {TAB_CONFIG.map(tab => {
           const isActive = activeTab === tab.id;
           const colorClasses = {
-            cyan: isActive ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40' : '',
-            emerald: isActive ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : '',
-            blue: isActive ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' : '',
-            amber: isActive ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : '',
-            purple: isActive ? 'bg-purple-500/20 text-purple-400 border-purple-500/40' : ''
+            cyan: isActive ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' : '',
+            emerald: isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : '',
+            blue: isActive ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : '',
+            amber: isActive ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : '',
+            purple: isActive ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : ''
           };
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} data-testid={`tab-${tab.id}`}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all border ${isActive ? colorClasses[tab.color] : 'text-white/50 hover:text-white hover:bg-white/5 border-transparent'}`}>
-              <tab.icon className={`w-4 h-4 ${isActive ? '' : 'opacity-60'}`} />
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all border ${isActive ? colorClasses[tab.color] : 'text-white/40 hover:text-white/70 hover:bg-white/[0.03] border-transparent'}`}>
+              <tab.icon className={`w-4 h-4 ${isActive ? '' : 'opacity-50'}`} />
               <span className="text-sm">{tab.label}</span>
             </button>
           );
