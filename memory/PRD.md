@@ -201,6 +201,11 @@ NEWS EVENT ARRIVES
   - Updated "Equity by Lane" chart to include Sports and News Sniper lanes
   - Chart legend now shows: HFT, Alpha, Gamma, Sports Arb, News Sniper, Total Equity
   - Updated `prepareEquityCurveData` function to include `sports_pnl` and `news_pnl`
+- [x] **Sports Arbitrage 0.49 Exit Price Bug Fix (Feb 27, 2026)** - Fixed critical issue where all sports trades were exiting at ~$0.49:
+  - **Root cause**: When The Odds API fails (401 auth error), fair_value defaults to 0.5 (meaningless)
+  - **Fix 1**: Block sports trade entries when `fair_value = 0.5` exactly (indicates no real odds data)
+  - **Fix 2**: For sports position exits, fetch fresh market prices directly from Polymarket Gamma API
+  - Files modified: `strategies/sports_strategy.py`, `paper_trading/paper_trader.py`
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
@@ -210,6 +215,7 @@ NEWS EVENT ARRIVES
 - [ ] Clean up orphaned config variable (`sharp_alignment_threshold` in paper_trader.py)
 - [ ] Live trading validation
 - [ ] Reset cumulative stats button (to clear historical "Other" category trades)
+- [ ] **FIX The Odds API authentication** (401 error) - Currently sports arbitrage is disabled when API fails
 
 ### P2 - Future
 - [ ] Reactivate CryptoPanic with premium API key
