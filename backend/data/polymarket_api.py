@@ -120,7 +120,7 @@ class PolymarketAPI:
                 'active': not m.get('closed', False),
                 # Use Polymarket's authoritative category field (lowercase for consistency)
                 'category': (m.get('category') or 'Other').lower(),
-                'asset_class': self._categorize_market(m.get('question', '')),
+                'asset_class': self._categorize_market(m),
                 'tokens': token_ids,
                 'clobTokenIds': token_ids,
                 'outcomes': m.get('outcomes', ['Yes', 'No']),
@@ -131,21 +131,24 @@ class PolymarketAPI:
             logger.debug(f"Error normalizing market: {e}")
             return None
     
-    def _categorize_market(self, question: str) -> str:
+    def _categorize_market(self, market_data: dict) -> str:
         """
-        Categorize market by question content using TagLibraryService.
+        Categorize market using TagLibraryService with full market data.
         
         This method uses the centralized TagLibraryService for accurate
-        market classification, replacing the basic keyword matching.
+        market classification. It passes the FULL market dict so TagLibraryService
+        can use all available data (tags, category field, question).
         """
         try:
             from services.tag_library_service import get_tag_library_service
             tag_library = get_tag_library_service()
-            result = tag_library.classify_market({'question': question})
+            # CRITICAL: Pass the FULL market object for accurate classification
+            result = tag_library.classify_market(market_data)
             return result.category
         except Exception as e:
             # Fallback to basic keyword matching if TagLibraryService unavailable
             logger.debug(f"TagLibraryService unavailable in API categorization: {e}")
+            question = market_data.get('question', '') if isinstance(market_data, dict) else str(market_data)
             q = question.lower()
             if any(w in q for w in ['bitcoin', 'crypto', 'ethereum', 'btc', 'eth', 'solana', 'doge']):
                 return 'crypto'
