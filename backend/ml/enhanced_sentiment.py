@@ -505,14 +505,29 @@ class EnhancedSentimentAnalyzer:
         
         if detected_category == 'sports':
             # ============================================================
-            # SPORTS: 85% Real Odds + 15% Order Flow (STRICT ISOLATION)
+            # SPORTS INTELLIGENT FALLBACK SYSTEM (Option B)
+            # ============================================================
+            # PRIORITY ORDER:
+            # 1. Odds API available → 85% devigged odds + 15% order flow
+            # 2. Sufficient Polymarket liquidity → 100% market-implied price
+            # 3. Insufficient data → BLOCK (fair_value = None signals block)
             # ============================================================
             # BANNED SOURCES: LLM = 0%, GitHub = 0%, Social = 0%
-            # RATIONALE: GitHub activity does NOT influence sports outcomes.
-            #            LLM cannot predict live scores.
+            # RATIONALE: Cannot predict live scores with AI/code metrics
             # ============================================================
+            
+            # Extract market liquidity metrics for fallback decision
+            volume_24h = float(market_data.get('volume_24h', 0) or 0)
+            liquidity = float(market_data.get('liquidity', 0) or market_data.get('volume', 0) or 0)
+            
+            # Thresholds for intelligent fallback
+            FALLBACK_MIN_VOLUME = 5000.0   # $5k 24h volume required for market-implied fallback
+            FALLBACK_MIN_LIQUIDITY = 2000.0  # $2k liquidity required
+            
             if sports_confidence > 0:
-                # Real odds available - PRIMARY TRUTH SOURCE
+                # ============================================================
+                # TIER 1: Real odds available - PRIMARY TRUTH SOURCE
+                # ============================================================
                 sports_weight = 0.85  # Primary truth from bookmakers
                 orderflow_weight = 0.15  # Secondary truth from order book
                 
@@ -530,27 +545,81 @@ class EnhancedSentimentAnalyzer:
                     'social': 0.0,  # BANNED
                     'correlation': 0.0,
                 }
-                result['fusion_strategy'] = 'SPORTS: 85% Real Odds + 15% Order Flow (LLM/GitHub BANNED)'
+                result['fusion_strategy'] = 'SPORTS TIER-1: 85% Real Odds + 15% Order Flow'
                 result['banned_sources'] = ['llm', 'github', 'social']
+                result['sports_data_tier'] = 1
+                
+            elif volume_24h >= FALLBACK_MIN_VOLUME and liquidity >= FALLBACK_MIN_LIQUIDITY:
+                # ============================================================
+                # TIER 2: Odds API failed but market has sufficient liquidity
+                # Use Polymarket implied price as fair value (market is truth)
+                # ============================================================
+                # Polymarket price IS the market-implied probability
+                # With deep liquidity, this is a reasonable proxy for fair value
+                # ============================================================
+                polymarket_implied = result['polymarket_sentiment']
+                
+                # Sanity check: reject if price is exactly 0.5 (likely no real data)
+                if abs(polymarket_implied - 0.5) < 0.01:
+                    # Price too close to 0.5 - likely default, not real market
+                    combined_sentiment = None  # Signal to BLOCK
+                    combined_confidence = 0.0
+                    weight_breakdown = {
+                        'sports_odds': 0.0,
+                        'orderflow': 0.0,
+                        'llm': 0.0,
+                        'github': 0.0,
+                        'social': 0.0,
+                        'correlation': 0.0,
+                    }
+                    result['fusion_strategy'] = 'SPORTS BLOCKED: Price=0.5 indicates no real market data'
+                    result['sports_data_tier'] = 0
+                    result['block_reason'] = 'polymarket_price_is_default'
+                else:
+                    # Use market-implied price as fair value
+                    combined_sentiment = polymarket_implied
+                    # Lower confidence since no external odds validation
+                    combined_confidence = min(0.60, result['polymarket_confidence'] * 0.75)
+                    
+                    weight_breakdown = {
+                        'sports_odds': 0.0,  # API unavailable
+                        'orderflow': 1.0,  # 100% market-implied (with liquidity validation)
+                        'llm': 0.0,  # STILL BANNED
+                        'github': 0.0,
+                        'social': 0.0,
+                        'correlation': 0.0,
+                    }
+                    result['fusion_strategy'] = f'SPORTS TIER-2: 100% Market-Implied (Vol=${volume_24h:.0f}, Liq=${liquidity:.0f})'
+                    result['sports_data_tier'] = 2
+                    result['fallback_reason'] = 'odds_api_unavailable_using_market_implied'
+                    logger.info(f"[SPORTS TIER-2] Using market-implied FV={polymarket_implied:.4f} "
+                               f"(Vol=${volume_24h:.0f}, Liq=${liquidity:.0f})")
+                
             else:
                 # ============================================================
-                # FAIL-SAFE: API failed/timeout/quota exceeded
-                # Fallback to 100% Order Flow - NEVER fallback to LLM for sports
+                # TIER 0: BLOCK - Insufficient data for safe trading
                 # ============================================================
-                combined_sentiment = result['polymarket_sentiment']
-                combined_confidence = result['polymarket_confidence']
+                # Odds API failed AND market lacks sufficient liquidity
+                # Trading here is gambling, not arbitrage
+                # ============================================================
+                combined_sentiment = None  # Signal to BLOCK trade
+                combined_confidence = 0.0
                 
                 weight_breakdown = {
-                    'sports_odds': 0.0,  # API failed
-                    'orderflow': 1.0,  # 100% fallback - NOT LLM
-                    'llm': 0.0,  # STILL BANNED
+                    'sports_odds': 0.0,
+                    'orderflow': 0.0,
+                    'llm': 0.0,
                     'github': 0.0,
                     'social': 0.0,
                     'correlation': 0.0,
                 }
-                result['fusion_strategy'] = 'SPORTS FALLBACK: 100% Order Flow (Odds API unavailable - LLM STILL BANNED)'
+                result['fusion_strategy'] = f'SPORTS BLOCKED: Odds API down + Low liquidity (Vol=${volume_24h:.0f}<${FALLBACK_MIN_VOLUME:.0f})'
+                result['sports_data_tier'] = 0
+                result['block_reason'] = 'insufficient_data'
                 result['api_fallback_reason'] = result.get('sports_error', 'API unavailable')
-                logger.warning(f"Sports API fallback triggered: {result.get('sports_error')}")
+                logger.warning(f"[SPORTS BLOCKED] Odds API failed, insufficient liquidity: "
+                              f"Vol=${volume_24h:.0f}<${FALLBACK_MIN_VOLUME:.0f}, "
+                              f"Liq=${liquidity:.0f}<${FALLBACK_MIN_LIQUIDITY:.0f}")
                 
         elif detected_category == 'politics':
             # ============================================================
