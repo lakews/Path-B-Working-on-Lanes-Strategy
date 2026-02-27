@@ -520,6 +520,16 @@ class NewsSniper:
                 return
             
             # ============================================
+            # SPORTS FILTER: Route sports to SPORTS lane
+            # ============================================
+            # Use authoritative category field from Polymarket API
+            category = (market_data.get('category') or '').lower()
+            if category in {'sports', 'esports'}:
+                self.stats['trades_skipped_sports'] = self.stats.get('trades_skipped_sports', 0) + 1
+                logger.debug(f"[NEWS SNIPER] Sports market {market_id[:16]}... routed to SPORTS lane")
+                return
+            
+            # ============================================
             # TIME DECAY: Weight signal by freshness
             # ============================================
             time_decay = calculate_time_decay(signal)
