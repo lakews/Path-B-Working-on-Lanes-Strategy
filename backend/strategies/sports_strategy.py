@@ -127,6 +127,27 @@ class SportsArbitrageStrategy:
         no_price = 1 - yes_price
         volume_24h = float(market_data.get('volume_24h', 0) or 0)
         
+        # ==========================================================================
+        # CRITICAL: Reject trades when fair_value is 0.5 (fallback/no real odds)
+        # ==========================================================================
+        # When Odds API fails, the system falls back to fair_value = 0.5 which is
+        # meaningless for sports arbitrage. Trading on 0.5 leads to fake edge
+        # calculations and exits at ~0.49 regardless of actual market movement.
+        # Only trade when we have REAL odds data (fair_value != 0.5 exactly)
+        # ==========================================================================
+        if abs(fair_value - 0.5) < 0.001:  # fair_value is exactly 0.5 (fallback)
+            return SportsTradeSignal(
+                signal=SportsSignal.BLOCKED,
+                side=None,
+                fair_value=fair_value,
+                market_price=yes_price,
+                edge=0.0,
+                edge_pct=0.0,
+                suggested_size=0.0,
+                confidence=0.0,
+                reason="No real odds data (fair_value=0.5 fallback) - Odds API may be unavailable"
+            )
+        
         # Validate volume (from config, not hardcoded)
         if volume_24h < self.config.min_volume:
             return SportsTradeSignal(
