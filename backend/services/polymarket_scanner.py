@@ -283,9 +283,22 @@ class PolymarketScanner:
             # STEP 5: Store in MongoDB
             await self._store_in_mongodb(valid_markets, embeddings)
             
-            # STEP 6: Update in-memory caches
+            # STEP 6: Update in-memory caches with proper categorization
+            from services.tag_library_service import get_tag_library_service
+            try:
+                tag_library = get_tag_library_service()
+            except:
+                tag_library = None
+            
             for m in valid_markets:
                 market_id = m.get('market_id') or m.get('id')
+                # Ensure category is set using TagLibraryService
+                if tag_library and not m.get('category'):
+                    try:
+                        cat_result = tag_library.classify_market({'question': m.get('question', '')})
+                        m['category'] = cat_result.category
+                    except:
+                        m['category'] = 'other'
                 self.cached_markets[market_id] = m
             self.cached_embeddings.update(embeddings)
             self.last_updated = datetime.now(timezone.utc)
