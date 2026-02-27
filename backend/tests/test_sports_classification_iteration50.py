@@ -191,42 +191,52 @@ class TestMarketDataServiceCategoryClassification:
     
     def test_market_data_service_get_market_category(self):
         """Test _get_market_category method uses TagLibraryService"""
-        from services.market_data_service import MarketDataService
+        from unittest.mock import patch, MagicMock
         
-        service = MarketDataService()
-        
-        # Test with asset_class='sports'
-        market = {
-            'id': 'mds-test-001',
-            'category': 'other',
-            'asset_class': 'sports',
-            'question': 'Pelicans vs. Jazz',
-            'tags': []
-        }
-        
-        category = service._get_market_category(market)
-        assert category == 'sports', f"Expected 'sports', got '{category}'"
+        # Mock get_db to avoid database connection
+        with patch('services.market_data_service.get_db') as mock_get_db:
+            mock_get_db.return_value = MagicMock()
+            
+            from services.market_data_service import MarketDataService
+            service = MarketDataService()
+            
+            # Test with asset_class='sports'
+            market = {
+                'id': 'mds-test-001',
+                'category': 'other',
+                'asset_class': 'sports',
+                'question': 'Pelicans vs. Jazz',
+                'tags': []
+            }
+            
+            category = service._get_market_category(market)
+            assert category == 'sports', f"Expected 'sports', got '{category}'"
     
     def test_market_data_service_normalize_market_data(self):
         """Test normalize_market_data sets correct category"""
-        from services.market_data_service import MarketDataService
+        from unittest.mock import patch, MagicMock
         
-        service = MarketDataService()
-        
-        raw_data = {
-            'condition_id': 'test-condition-001',
-            'category': 'other',
-            'asset_class': 'sports',
-            'question': 'Pelicans vs. Jazz',
-            'yes_price': 0.5,
-            'no_price': 0.5,
-            'volume': 1000,
-            'liquidity': 500,
-            'tags': []
-        }
-        
-        normalized = service.normalize_market_data(raw_data)
-        assert normalized['category'] == 'sports', f"Expected 'sports', got '{normalized['category']}'"
+        # Mock get_db to avoid database connection
+        with patch('services.market_data_service.get_db') as mock_get_db:
+            mock_get_db.return_value = MagicMock()
+            
+            from services.market_data_service import MarketDataService
+            service = MarketDataService()
+            
+            raw_data = {
+                'condition_id': 'test-condition-001',
+                'category': 'other',
+                'asset_class': 'sports',
+                'question': 'Pelicans vs. Jazz',
+                'yes_price': 0.5,
+                'no_price': 0.5,
+                'volume': 1000,
+                'liquidity': 500,
+                'tags': []
+            }
+            
+            normalized = service.normalize_market_data(raw_data)
+            assert normalized['category'] == 'sports', f"Expected 'sports', got '{normalized['category']}'"
 
 
 class TestRealTimeMarketServiceCategoryClassification:
