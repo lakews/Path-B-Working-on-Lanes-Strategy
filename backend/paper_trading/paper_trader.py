@@ -2993,14 +2993,18 @@ class PaperTrader:
                     market_id = market_data.get('id')
                     
                     # ==========================================================
-                    # CATEGORY DETECTION (Task: Sports Strategy Injection)
+                    # SPORTS DETECTION (Feb 2026 - Symmetric with all lanes)
                     # ==========================================================
-                    # Detect if this is a sports market for category isolation
+                    # Use Polymarket's authoritative category field first
                     question = market_data.get('question', '').lower()
-                    raw_category = market_data.get('category', 'unknown').lower()
+                    raw_category = (market_data.get('category') or 'unknown').lower()
                     
-                    # Check if sports market using SSOT function
-                    is_sports = is_sports_market(question)
+                    # Primary: Use category field from API (authoritative)
+                    is_sports = raw_category in {'sports', 'esports'}
+                    
+                    # Fallback: Use pattern matching if category not available
+                    if not is_sports and raw_category == 'unknown':
+                        is_sports = is_sports_market(question)
                     
                     # ==========================================================
                     # SPORTS ROUTING (Green Lane)
