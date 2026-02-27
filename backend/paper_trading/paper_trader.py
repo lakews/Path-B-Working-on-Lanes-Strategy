@@ -3678,13 +3678,10 @@ class PaperTrader:
             # If this is a sports market, it should have been routed
             # to _process_sports_market already. Double-check here.
             question = market_data.get('question', '').lower()
-            market_category = (market_data.get('category') or '').lower()
             
-            # Sports detection (category + keyword fallback)
-            SPORTS_KW = {'nba', 'nfl', 'mlb', 'nhl', 'ncaa', 'ufc', 'championship', 'playoff', 'finals', 'mvp'}
-            is_sports = market_category in {'sports', 'esports'} or any(kw in question for kw in SPORTS_KW)
-            
-            if is_sports:
+            # Sports detection using shared module (SSOT)
+            from utils.sports_detection import is_sports_market
+            if is_sports_market(market_data):
                 logger.debug(f"[ALPHA] Sports market should use sports handler: {question[:40]}...")
                 return
             
