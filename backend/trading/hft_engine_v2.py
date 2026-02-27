@@ -133,6 +133,8 @@ class HighFrequencyTradingEngineV2:
             'trades_by_mode': {mode.value: 0 for mode in HFTMode},
             'paused_cycles': 0,
             'path_a_hits': 0,
+            'path_a_cache_hits': 0,
+            'path_a_cache_refreshes': 0,
             'path_b_hits': 0,
             'alpha_hits': 0,
             'alpha_misses': 0,
@@ -147,6 +149,7 @@ class HighFrequencyTradingEngineV2:
         logger.info("  ├─ HFT Math Engine: Cubic Skew + Jump Detection + Cliff Protection")
         logger.info("  ├─ Polymarket Compliance: Tick Grid + Hysteresis + Kill Zones")
         logger.info("  ├─ Alpha Integration: strategy_context bridge")
+        logger.info("  ├─ PATH A Cache: In-memory with 5s refresh (HFT-grade latency)")
         logger.info("  └─ Signal Sources: MongoDB PATH A + PATH B")
     
     async def start_hft_loop(self):
