@@ -2983,7 +2983,7 @@ const CategoryDashboard = ({
                             {subData.closed_trades > 0 ? `${(subData.win_rate * 100).toFixed(0)}%` : '-'}
                           </td>
                           <td className="py-2 px-2 text-right text-[11px] text-white/50">
-                            {subData.gross_loss > 0 ? (subData.gross_profit / subData.gross_loss).toFixed(2) : (subData.gross_profit > 0 ? '2.00' : '-')}
+                            {subData.gross_loss > 1e-6 ? (subData.gross_profit / subData.gross_loss).toFixed(2) : (subData.gross_profit > 1e-6 ? '2.00' : '-')}
                           </td>
                           <td className="py-2 px-2 text-right text-[11px] text-white/60">
                             {formatHoldTime(subData.avg_hold_time)}
