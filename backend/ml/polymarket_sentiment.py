@@ -369,6 +369,29 @@ class PolymarketSentimentExtractor:
             asks = order_book.get('asks', [])
             
             if not bids or not asks:
+                # One side is empty - extreme sentiment, still useful info
+                if asks and not bids:
+                    # All sellers, no buyers = extremely bearish
+                    return {
+                        'valid': True, 
+                        'score': 0.2,  # Bearish
+                        'details': {
+                            'reason': 'no_bids_all_sellers',
+                            'interpretation': 'extremely_bearish',
+                            'ask_depth': sum(float(a.get('size', 0)) for a in asks[:5])
+                        }
+                    }
+                elif bids and not asks:
+                    # All buyers, no sellers = extremely bullish
+                    return {
+                        'valid': True, 
+                        'score': 0.8,  # Bullish
+                        'details': {
+                            'reason': 'no_asks_all_buyers',
+                            'interpretation': 'extremely_bullish',
+                            'bid_depth': sum(float(b.get('size', 0)) for b in bids[:5])
+                        }
+                    }
                 return {'valid': False, 'score': 0.5, 'details': {'reason': 'empty_order_book'}}
             
             # Get best bid and ask
