@@ -190,7 +190,8 @@ class PolymarketSentimentExtractor:
             logger.error(f"Error analyzing market sentiment: {e}")
             return {
                 'market_id': market_id,
-                'combined_score': 0.5,
+                'combined_score': None,  # None = skip trade, don't default to 0.5
+                'valid': False,
                 'error': str(e)
             }
     
