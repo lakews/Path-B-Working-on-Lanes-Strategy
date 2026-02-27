@@ -8666,10 +8666,11 @@ class PaperTrader:
                     'total_pnl': round(pnl + unrealized, 2),  # Total P&L
                     # Win rate should be based on CLOSED trades only
                     'win_rate': wins / closed_trades if closed_trades > 0 else 0,
-                    'profit_factor': round(gross_profit / gross_loss, 2) if gross_loss > 0 else (2.0 if gross_profit > 0 else 0),
+                    # Fix: Use tolerance for floating point comparison (1e-6 threshold)
+                    'profit_factor': round(gross_profit / gross_loss, 2) if gross_loss > 1e-6 else (2.0 if gross_profit > 1e-6 else 0),
                     'avg_hold_time': round(avg_hold_time, 2),  # Average hold time in hours
-                    'gross_profit': gross_profit,
-                    'gross_loss': gross_loss
+                    'gross_profit': round(gross_profit, 2),
+                    'gross_loss': round(gross_loss, 2) if gross_loss > 1e-6 else 0.0
                 }
         
         # ==============================================================
