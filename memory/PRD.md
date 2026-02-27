@@ -190,6 +190,7 @@ NEWS EVENT ARRIVES
 - [x] **PATH A Engine Ultimate (Feb 26, 2026)** - Full refactor from "Architecture C" to PATH A, hybrid scoring, two-tier LLM, MongoDB fallback for scanner
 - [x] **HFT V2 Optimal Sports Filter (Feb 27, 2026)** - Replaced regex-based filter with authoritative `category` field check; 798+ sports markets filtered
 - [x] **Frontend Data Inconsistency Fix (Feb 27, 2026)** - Added `closed_trades` field to cumulative-stats API for consistent display in Asset Class Performance table
+- [x] **Complete Sports Filter Architecture (Feb 27, 2026)** - Sports filtering now applied to ALL lanes (HFT V2, News Sniper, Legacy HFT, Alpha); Sports exclusively traded in SPORTS lane
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
