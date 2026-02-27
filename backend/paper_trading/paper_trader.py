@@ -6334,6 +6334,10 @@ class PaperTrader:
                 self.asset_class_equity[asset_class] = 0.0
             self.asset_class_equity[asset_class] += pnl
             
+            # Update sub-category stats for granular P&L tracking
+            sub_category = position.get('sub_category', 'default')
+            self._update_sub_category_stats(asset_class, sub_category, pnl, is_win, hold_time_hours)
+            
             # Store closed trade with hold time calculation
             
             # Calculate RISK-ADJUSTED reward for RL
