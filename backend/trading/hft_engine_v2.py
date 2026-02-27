@@ -327,6 +327,7 @@ class HighFrequencyTradingEngineV2:
             
             # STEP 0: Skip sports markets (route to SPORTS lane, not HFT)
             if is_sports_market(market_data):
+                self.stats['sports_filtered'] += 1
                 return None
             
             # STEP 1: Skip if we already have a position
