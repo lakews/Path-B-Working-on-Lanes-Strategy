@@ -23,10 +23,12 @@ CRITICAL CONSTRAINTS (MUST RESPECT):
 - Polymarket tick grid ($0.01)
 - Kill zone bounds ($0.05 - $0.95)
 - Never bypass existing capital management
+- Sports markets routed to SPORTS lane only (not HFT)
 """
 
 import asyncio
 import logging
+import re
 import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple, Any
