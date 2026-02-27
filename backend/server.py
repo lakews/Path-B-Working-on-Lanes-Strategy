@@ -5209,13 +5209,16 @@ async def get_cumulative_stats():
             for asset_class, data in asset_stats.items():
                 if asset_class not in cumulative_asset_class:
                     cumulative_asset_class[asset_class] = {
-                        'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0
+                        'total_trades': 0, 'total_wins': 0, 'total_pnl': 0.0, 'sessions': 0,
+                        'closed_trades': 0  # Add closed_trades for frontend consistency
                     }
                 if data.get('trades', 0) > 0:
                     cumulative_asset_class[asset_class]['total_trades'] += data.get('trades', 0)
                     cumulative_asset_class[asset_class]['total_wins'] += data.get('wins', 0)
                     cumulative_asset_class[asset_class]['total_pnl'] += data.get('pnl', 0)
                     cumulative_asset_class[asset_class]['sessions'] += 1
+                    # closed_trades equals total_trades for cumulative (all historical trades are closed)
+                    cumulative_asset_class[asset_class]['closed_trades'] += data.get('trades', 0)
         
         # Add current session if running
         if paper_trader and paper_trader.running:
