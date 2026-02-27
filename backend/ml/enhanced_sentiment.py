@@ -552,17 +552,22 @@ class EnhancedSentimentAnalyzer:
             elif volume_24h >= FALLBACK_MIN_VOLUME and liquidity >= FALLBACK_MIN_LIQUIDITY:
                 # ============================================================
                 # TIER 2: Odds API failed but market has sufficient liquidity
-                # Use Polymarket YES price as fair value (market is truth)
+                # Use Polymarket implied price (70%) + Order Flow sentiment (30%)
                 # ============================================================
                 # Polymarket price IS the market-implied probability
-                # With deep liquidity, this is a reasonable proxy for fair value
+                # Order flow adds validation via bid/ask imbalance, trade momentum
+                # With deep liquidity, this combination is a reasonable proxy
                 # ============================================================
-                # Use yes_price directly from market data (most reliable)
-                # Fall back to orderflow sentiment only if yes_price unavailable
-                polymarket_implied = float(market_data.get('yes_price') or result['polymarket_sentiment'] or 0.5)
                 
-                # Sanity check: reject if price is exactly 0.5 (likely no real data)
-                if abs(polymarket_implied - 0.5) < 0.01:
+                # Get market-implied price (primary signal)
+                market_price = float(market_data.get('yes_price') or 0.5)
+                
+                # Get order flow sentiment (validation signal)
+                orderflow_sentiment = result['polymarket_sentiment']  # From orderbook/trade analysis
+                orderflow_confidence = result['polymarket_confidence']
+                
+                # Sanity check: reject if market price is exactly 0.5 (likely no real data)
+                if abs(market_price - 0.5) < 0.01:
                     # Price too close to 0.5 - likely default, not real market
                     combined_sentiment = None  # Signal to BLOCK
                     combined_confidence = 0.0
@@ -578,24 +583,42 @@ class EnhancedSentimentAnalyzer:
                     result['sports_data_tier'] = 0
                     result['block_reason'] = 'polymarket_price_is_default'
                 else:
-                    # Use market-implied price as fair value
-                    combined_sentiment = polymarket_implied
+                    # Combine: 70% market price + 30% order flow
+                    market_weight = 0.70
+                    orderflow_weight = 0.30
+                    
+                    # If order flow has low confidence, rely more on market price
+                    if orderflow_confidence < 0.4:
+                        # Order flow data is weak - increase market weight
+                        market_weight = 0.85
+                        orderflow_weight = 0.15
+                        logger.debug(f"[SPORTS TIER-2] Low orderflow confidence ({orderflow_confidence:.2f}), using 85/15 split")
+                    
+                    combined_sentiment = (
+                        market_price * market_weight +
+                        orderflow_sentiment * orderflow_weight
+                    )
+                    
                     # Lower confidence since no external odds validation
-                    combined_confidence = min(0.60, result['polymarket_confidence'] * 0.75)
+                    combined_confidence = min(0.60, orderflow_confidence * 0.5 + 0.3)
                     
                     weight_breakdown = {
                         'sports_odds': 0.0,  # API unavailable
-                        'orderflow': 1.0,  # 100% market-implied (with liquidity validation)
+                        'market_implied': market_weight,  # Primary signal
+                        'orderflow': orderflow_weight,  # Validation signal
                         'llm': 0.0,  # STILL BANNED
                         'github': 0.0,
                         'social': 0.0,
                         'correlation': 0.0,
                     }
-                    result['fusion_strategy'] = f'SPORTS TIER-2: 100% Market-Implied (Vol=${volume_24h:.0f}, Liq=${liquidity:.0f})'
+                    result['fusion_strategy'] = f'SPORTS TIER-2: {int(market_weight*100)}% Market + {int(orderflow_weight*100)}% OrderFlow (Vol=${volume_24h:.0f})'
                     result['sports_data_tier'] = 2
-                    result['fallback_reason'] = 'odds_api_unavailable_using_market_implied'
-                    logger.info(f"[SPORTS TIER-2] Using market-implied FV={polymarket_implied:.4f} "
-                               f"(Vol=${volume_24h:.0f}, Liq=${liquidity:.0f})")
+                    result['tier2_market_price'] = market_price
+                    result['tier2_orderflow'] = orderflow_sentiment
+                    result['tier2_orderflow_confidence'] = orderflow_confidence
+                    result['fallback_reason'] = 'odds_api_unavailable_using_market_plus_orderflow'
+                    logger.info(f"[SPORTS TIER-2] Market={market_price:.4f}*{market_weight:.0%} + "
+                               f"OrderFlow={orderflow_sentiment:.4f}*{orderflow_weight:.0%} = {combined_sentiment:.4f}")
                 
             else:
                 # ============================================================
