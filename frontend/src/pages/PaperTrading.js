@@ -3466,7 +3466,7 @@ const PaperTrading = () => {
   ];
 
   return (
-    <div className="space-y-6" data-testid="paper-trading-page">
+    <div className="min-h-screen bg-[#0a0a0a] space-y-6 p-6" data-testid="paper-trading-page">
       {/* Confirmation Modal */}
       <ConfirmModal 
         isOpen={confirmModal.isOpen}
@@ -3506,45 +3506,45 @@ const PaperTrading = () => {
       />
 
       {/* Header */}
-      <div className="rounded-xl bg-slate-900/50 border border-white/10 overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                <FileText className="w-5 h-5 text-white" />
+      <div className="rounded-2xl bg-[#111111] border border-white/[0.06] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.04]">
+          <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <FileText className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Paper Trading</h1>
-                <p className="text-xs text-white/50">Simulate live trading with RL learning</p>
+                <h1 className="text-2xl font-bold text-white tracking-tight">Paper Trading</h1>
+                <p className="text-xs text-white/40 mt-0.5">Simulate live trading with RL learning</p>
               </div>
             </div>
             
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
+            <div className={`flex items-center gap-2.5 px-4 py-2 rounded-xl ${
               status?.circuit_breaker_triggered 
-                ? 'bg-red-500/30 border-2 border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.3)]' 
+                ? 'bg-rose-500/10 border border-rose-500/30' 
                 : running 
                   ? status?.graceful_stop 
-                    ? 'bg-amber-500/20 border border-amber-500/40' 
-                    : 'bg-emerald-500/20 border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
-                  : 'bg-slate-800/50 border border-white/10'
+                    ? 'bg-amber-500/10 border border-amber-500/30' 
+                    : 'bg-emerald-500/10 border border-emerald-500/30' 
+                  : 'bg-white/[0.03] border border-white/[0.06]'
             }`}>
               <div className={`w-2 h-2 rounded-full ${
                 status?.circuit_breaker_triggered 
-                  ? 'bg-red-500 animate-pulse' 
+                  ? 'bg-rose-500 animate-pulse' 
                   : running 
                     ? status?.graceful_stop 
                       ? 'bg-amber-400 animate-pulse' 
                       : 'bg-emerald-400 animate-pulse' 
-                    : 'bg-slate-500'
+                    : 'bg-white/30'
               }`}></div>
               <span className={`text-xs font-mono uppercase tracking-wider ${
                 status?.circuit_breaker_triggered 
-                  ? 'text-red-400 font-bold' 
+                  ? 'text-rose-400 font-semibold' 
                   : running 
                     ? status?.graceful_stop 
                       ? 'text-amber-400' 
                       : 'text-emerald-400' 
-                    : 'text-slate-400'
+                    : 'text-white/40'
               }`}>
                 {status?.circuit_breaker_triggered 
                   ? '🚨 CIRCUIT BREAKER' 
