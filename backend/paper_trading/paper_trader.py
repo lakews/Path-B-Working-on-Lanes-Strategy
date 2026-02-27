@@ -3686,8 +3686,10 @@ class PaperTrader:
             # If this is a sports market, it should have been routed
             # to _process_sports_market already. Double-check here.
             question = market_data.get('question', '').lower()
+            market_category = (market_data.get('category') or '').lower()
             
-            if is_sports_market(question):
+            # Primary: Use category field; Fallback: pattern matching
+            if market_category in {'sports', 'esports'} or is_sports_market(question):
                 logger.debug(f"[ALPHA] Sports market should use sports handler: {question[:40]}...")
                 return
             
