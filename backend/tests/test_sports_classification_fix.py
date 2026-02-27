@@ -134,6 +134,40 @@ def test_esports_classification():
     print("✓ Test 7 PASSED: Esports market correctly classified as sports")
 
 
+def test_asset_class_fallback():
+    """Test that asset_class field is used when API category is 'other'."""
+    tag_lib = TagLibraryService()
+    
+    # Test 8: Market with category='other' but asset_class='sports'
+    market_with_asset_class = {
+        'id': 'test-008',
+        'category': 'other',  # Unhelpful API category
+        'asset_class': 'sports',  # Set by polymarket_api.py using TagLibraryService
+        'question': 'Pelicans vs. Jazz',  # Sports matchup
+        'tags': []
+    }
+    
+    result = tag_lib.classify_market(market_with_asset_class)
+    assert result.category == 'sports', f"Expected 'sports', got '{result.category}'"
+    assert result.source == 'asset_class', f"Expected 'asset_class', got '{result.source}'"
+    assert tag_lib.is_sports_market(market_with_asset_class) == True, "Should be sports market"
+    print("✓ Test 8 PASSED: Market with asset_class='sports' correctly identified")
+    
+    # Test 9: Market with category='other' and asset_class='crypto'
+    crypto_market = {
+        'id': 'test-009',
+        'category': 'other',
+        'asset_class': 'crypto',
+        'question': 'Will X happen?',
+        'tags': []
+    }
+    
+    result2 = tag_lib.classify_market(crypto_market)
+    assert result2.category == 'crypto', f"Expected 'crypto', got '{result2.category}'"
+    assert tag_lib.is_sports_market(crypto_market) == False, "Crypto should NOT be sports"
+    print("✓ Test 9 PASSED: Market with asset_class='crypto' correctly identified (not sports)")
+
+
 def run_all_tests():
     """Run all tests."""
     print("\n" + "="*60)
