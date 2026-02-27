@@ -710,7 +710,7 @@ class EnhancedSentimentAnalyzer:
         # Log the fusion decision for debugging
         logger.info(f"[FUSION] {question[:30]}... | "
                    f"Category={detected_category} | "
-                   f"Combined={combined_sentiment:.3f} | "
+                   f"Combined={sentiment_str} | "
                    f"Strategy={result['fusion_strategy'][:50]}")
         
         return result
