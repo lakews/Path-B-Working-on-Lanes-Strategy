@@ -4384,6 +4384,12 @@ class PaperTrader:
             
             asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
             
+            # Use TagLibraryService for accurate categorization
+            category, sub_category = get_market_category_info(market_data)
+            asset_class = category
+            market_data['_category'] = category
+            market_data['_sub_category'] = sub_category
+            
             # LIQUIDITY CHECK: Use user-configured thresholds from Configuration page
             volume_24h = float(market_data.get('volume_24h', 0) or 0)
             volume = float(market_data.get('volume', 0) or 0)
