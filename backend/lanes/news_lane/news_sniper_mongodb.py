@@ -522,15 +522,29 @@ class NewsSniper:
                 return
             
             # ============================================
-            # SPORTS FILTER: Route sports to SPORTS lane
+            # CATEGORY FILTER: Route sports to SPORTS lane
             # ============================================
-            # Use shared sports detection module (SSOT)
-            from utils.sports_detection import is_sports_market
+            # Use TagLibraryService for accurate category classification
+            from services.tag_library_service import get_tag_library_service
             
-            if is_sports_market(market_data):
-                self.stats['trades_skipped_sports'] = self.stats.get('trades_skipped_sports', 0) + 1
-                logger.debug(f"[NEWS SNIPER] Sports market {market_id[:16]}... routed to SPORTS lane")
-                return
+            try:
+                tag_library = get_tag_library_service()
+                if tag_library.is_sports_market(market_data):
+                    self.stats['trades_skipped_sports'] = self.stats.get('trades_skipped_sports', 0) + 1
+                    logger.debug(f"[NEWS SNIPER] Sports market {market_id[:16]}... routed to SPORTS lane")
+                    return
+                
+                # Store category info for P&L tracking
+                category_result = tag_library.classify_market(market_data)
+                market_data['_category'] = category_result.category
+                market_data['_sub_category'] = category_result.sub_category
+            except Exception as e:
+                # Fallback to API category check
+                logger.debug(f"[NEWS SNIPER] TagLibraryService fallback: {e}")
+                category = (market_data.get('category') or '').lower()
+                if category in {'sports', 'esports'}:
+                    self.stats['trades_skipped_sports'] = self.stats.get('trades_skipped_sports', 0) + 1
+                    return
             
             # ============================================
             # TIME DECAY: Weight signal by freshness
