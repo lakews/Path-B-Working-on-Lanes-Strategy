@@ -3665,13 +3665,21 @@ class PaperTrader:
             sentiment_analyzer = get_enhanced_sentiment_analyzer()
             
             # The enhanced sentiment analyzer handles sports routing internally
-            # It will use 85% sports odds + 15% order flow for sports markets
+            # It implements the INTELLIGENT FALLBACK SYSTEM:
+            # - TIER 1: 85% sports odds + 15% order flow (Odds API available)
+            # - TIER 2: 100% market-implied price (high liquidity fallback)
+            # - TIER 0: BLOCKED (insufficient data)
             analysis = await sentiment_analyzer.analyze(market_data)
             
-            # Extract fair value (from sports odds or fallback)
-            fair_value = analysis.get('combined_sentiment', 0.5)
+            # Extract fair value - may be None if BLOCKED by sentiment analyzer
+            fair_value = analysis.get('combined_sentiment')  # None = blocked
             sports_confidence = analysis.get('sports_confidence', 0)
             sports_matched_event = analysis.get('sports_matched_event')
+            data_tier = analysis.get('sports_data_tier', 0)
+            
+            # Log the data tier for debugging
+            fusion_strategy = analysis.get('fusion_strategy', 'Unknown')
+            logger.info(f"[SPORTS] Data Tier {data_tier} for {question[:40]}... | Strategy: {fusion_strategy}")
             
             # ==========================================================
             # STEP 2: Generate signal using Sports Strategy
@@ -3680,12 +3688,14 @@ class PaperTrader:
             
             signal = sports_strategy.generate_signal(
                 market_data=market_data,
-                fair_value=fair_value,
+                fair_value=fair_value,  # May be None (blocked)
                 sports_analysis=analysis
             )
             
             # Debug logging for signal generation
-            logger.info(f"[SPORTS] Signal for {question[:30]}...: {signal.signal.value} | Reason: {signal.reason} | Edge: {signal.edge:.2%}")
+            edge_str = f"{signal.edge:.2%}" if signal.edge else "N/A"
+            logger.info(f"[SPORTS] Signal for {question[:30]}...: {signal.signal.value} | "
+                       f"Tier={data_tier} | Reason: {signal.reason} | Edge: {edge_str}")
             
             # ==========================================================
             # STEP 3: Execute if signal is valid
