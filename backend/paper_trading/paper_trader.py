@@ -2008,10 +2008,8 @@ class PaperTrader:
                     #
                     # TEMPORARY FIX: Only trade YES side until model is validated
                     # This prevents systematic losses from stale fair value predictions
-                    market_category = (market_data.get('category') or '').lower()
-                    question_lower = market_data.get('question', '').lower()
-                    SPORTS_KW = {'nba', 'nfl', 'mlb', 'nhl', 'ncaa', 'ufc', 'championship', 'playoff', 'finals', 'mvp'}
-                    is_sports = market_category in {'sports', 'esports'} or any(kw in question_lower for kw in SPORTS_KW)
+                    from utils.sports_detection import is_sports_market
+                    is_sports = is_sports_market(market_data)
                     sports_config = get_sports_config()
                     
                     if side == 'NO':
