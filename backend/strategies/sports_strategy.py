@@ -102,6 +102,7 @@ class SportsArbitrageStrategy:
         Args:
             market_data: Polymarket market data
             fair_value: Devigged probability from sports_odds.py (0.0-1.0)
+                       None = BLOCKED by sentiment analyzer (insufficient data)
             sports_analysis: Full analysis from sports_odds.py (optional)
             
         Returns:
@@ -112,7 +113,7 @@ class SportsArbitrageStrategy:
             return SportsTradeSignal(
                 signal=SportsSignal.BLOCKED,
                 side=None,
-                fair_value=fair_value,
+                fair_value=fair_value or 0.0,
                 market_price=0.0,
                 edge=0.0,
                 edge_pct=0.0,
@@ -128,14 +129,40 @@ class SportsArbitrageStrategy:
         volume_24h = float(market_data.get('volume_24h', 0) or 0)
         
         # ==========================================================================
-        # CRITICAL: Reject trades when fair_value is 0.5 (fallback/no real odds)
+        # INTELLIGENT FALLBACK: Handle None fair_value (BLOCKED by sentiment)
         # ==========================================================================
-        # When Odds API fails, the system falls back to fair_value = 0.5 which is
-        # meaningless for sports arbitrage. Trading on 0.5 leads to fake edge
-        # calculations and exits at ~0.49 regardless of actual market movement.
-        # Only trade when we have REAL odds data (fair_value != 0.5 exactly)
+        # The enhanced_sentiment analyzer returns None when:
+        # - Odds API failed AND insufficient market liquidity
+        # - Market price is exactly 0.5 (no real data)
+        # This is the TIER-0 block from the intelligent fallback system
         # ==========================================================================
-        if abs(fair_value - 0.5) < 0.001:  # fair_value is exactly 0.5 (fallback)
+        if fair_value is None:
+            block_reason = "Insufficient data (Odds API down + low liquidity)"
+            if sports_analysis:
+                block_reason = sports_analysis.get('block_reason', block_reason)
+                fusion_strategy = sports_analysis.get('fusion_strategy', '')
+                if fusion_strategy:
+                    block_reason = fusion_strategy
+            
+            return SportsTradeSignal(
+                signal=SportsSignal.BLOCKED,
+                side=None,
+                fair_value=0.0,
+                market_price=yes_price,
+                edge=0.0,
+                edge_pct=0.0,
+                suggested_size=0.0,
+                confidence=0.0,
+                reason=block_reason
+            )
+        
+        # ==========================================================================
+        # SAFETY NET: Reject trades when fair_value is exactly 0.5
+        # ==========================================================================
+        # Even if sentiment analyzer didn't block, 0.5 is never a real fair value
+        # for sports (would imply perfectly 50/50 odds, extremely rare)
+        # ==========================================================================
+        if abs(fair_value - 0.5) < 0.005:  # Within 0.5% of 0.5
             return SportsTradeSignal(
                 signal=SportsSignal.BLOCKED,
                 side=None,
@@ -145,8 +172,11 @@ class SportsArbitrageStrategy:
                 edge_pct=0.0,
                 suggested_size=0.0,
                 confidence=0.0,
-                reason="No real odds data (fair_value=0.5 fallback) - Odds API may be unavailable"
+                reason=f"Fair value {fair_value:.4f} too close to 0.5 (no real edge detectable)"
             )
+        
+        # Get data tier from analysis (for logging)
+        data_tier = sports_analysis.get('sports_data_tier', 1) if sports_analysis else 1
         
         # Validate volume (from config, not hardcoded)
         if volume_24h < self.config.min_volume:
