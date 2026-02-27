@@ -762,12 +762,6 @@ const FiveLaneArchitectureCard = ({ executionPathStats, laneEquity, showLive = f
                   <p className="text-white font-mono">{stats.closed || 0}</p>
                 </div>
               </div>
-                  <p className="text-white/40">Win%</p>
-                  <p className={`font-mono ${winRate >= 50 ? 'text-emerald-400' : winRate > 0 ? 'text-amber-400' : 'text-white/50'}`}>
-                    {winRate.toFixed(0)}%
-                  </p>
-                </div>
-              </div>
             </div>
           );
         })}
