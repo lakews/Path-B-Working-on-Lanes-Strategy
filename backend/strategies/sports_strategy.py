@@ -281,7 +281,7 @@ class SportsArbitrageStrategy:
         signal = SportsSignal.BUY_YES if side == 'YES' else SportsSignal.BUY_NO
         
         logger.info(
-            f"[SPORTS SIGNAL] {market_id[:16]}... "
+            f"[SPORTS SIGNAL] {market_id[:16]}... Tier={data_tier} | "
             f"FV={fair_value:.4f} vs Price={market_price:.4f} | "
             f"Side={side} Edge={edge:.4f} ({edge_pct:.2%}) | "
             f"Size=${suggested_size:.2f}"
