@@ -2489,7 +2489,8 @@ const PerformanceTable = ({ title, icon: Icon, iconColor, data, dataType, showLi
   }), { closed_pnl: 0, unrealized_pnl: 0, total_pnl: 0, closed_trades: 0, open_positions: 0, total_wins: 0, gross_profit: 0, gross_loss: 0, total_hold_time: 0, sessions: 0 });
   
   totals.win_rate = totals.closed_trades > 0 ? totals.total_wins / totals.closed_trades : 0;
-  totals.profit_factor = totals.gross_loss > 0 ? (totals.gross_profit / totals.gross_loss) : (totals.gross_profit > 0 ? 2.0 : 0);
+  // Fix: Use tolerance (1e-6) for floating point comparison to avoid huge PF from tiny loss values
+  totals.profit_factor = totals.gross_loss > 1e-6 ? (totals.gross_profit / totals.gross_loss) : (totals.gross_profit > 1e-6 ? 2.0 : 0);
   totals.avg_hold_time = totals.closed_trades > 0 ? totals.total_hold_time / totals.closed_trades : 0;
   const totalReturnPct = (totals.total_pnl / initialCapital) * 100;
   
