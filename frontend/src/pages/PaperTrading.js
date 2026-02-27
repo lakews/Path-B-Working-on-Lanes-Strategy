@@ -3647,9 +3647,15 @@ const PaperTrading = () => {
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-white/60">Asset Class Performance (Live)</span>
+                <span className="text-sm text-white/60">Category P&L Dashboard (Live)</span>
               </div>
-              <PerformanceTable title="Asset Class Performance" icon={Layers} iconColor="orange" data={status?.asset_class_results} dataType="asset_class" showLiveBadge={running} initialCapital={initialCapital} />
+              <CategoryDashboard 
+                title="Category P&L Dashboard" 
+                assetClassData={status?.asset_class_results}
+                subCategoryData={null}
+                showLiveBadge={running}
+                initialCapital={initialCapital}
+              />
             </div>
           </div>
 
