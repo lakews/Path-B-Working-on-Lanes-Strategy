@@ -754,10 +754,14 @@ const FiveLaneArchitectureCard = ({ executionPathStats, laneEquity, showLive = f
               {/* Stats */}
               <div className="mt-2 pt-2 border-t border-white/5 grid grid-cols-2 gap-1 text-[9px]">
                 <div>
-                  <p className="text-white/40">Trades</p>
-                  <p className="text-white font-mono">{trades}</p>
+                  <p className="text-white/40">Open</p>
+                  <p className="text-white font-mono">{trades - (stats.closed || 0)}</p>
                 </div>
                 <div>
+                  <p className="text-white/40">Closed</p>
+                  <p className="text-white font-mono">{stats.closed || 0}</p>
+                </div>
+              </div>
                   <p className="text-white/40">Win%</p>
                   <p className={`font-mono ${winRate >= 50 ? 'text-emerald-400' : winRate > 0 ? 'text-amber-400' : 'text-white/50'}`}>
                     {winRate.toFixed(0)}%
