@@ -2066,8 +2066,8 @@ class PaperTrader:
                 # TEMPORARY FIX: Only trade YES side until model is validated
                 # This prevents systematic losses from stale fair value predictions
                 market_category = (market_data.get('category') or '').lower()
-                # Primary: Use category field; Fallback: pattern matching
-                is_sports = market_category in {'sports', 'esports'} or is_sports_market(market_data.get('question', ''))
+                # Use authoritative category field from Polymarket API
+                is_sports = market_category in {'sports', 'esports'}
                 sports_config = get_sports_config()
                 
                 if side == 'NO':
