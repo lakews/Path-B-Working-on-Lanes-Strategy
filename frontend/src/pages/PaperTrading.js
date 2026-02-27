@@ -151,191 +151,190 @@ const TradeDetailsModal = ({ isOpen, trade, onClose }) => {
   const isProfit = pnl > 0;
   const returnPct = isComplete && trade.size > 0 ? (pnl / trade.size * 100) : 0;
   
-  // Detail row component
-  const DetailRow = ({ label, value, valueClass = "text-white" }) => (
-    <div className="flex justify-between items-center py-2 border-b border-white/5">
-      <span className="text-white/60 text-sm">{label}</span>
-      <span className={`text-sm font-medium ${valueClass}`}>{value}</span>
-    </div>
-  );
-  
-  // Section header component
-  const SectionHeader = ({ icon: Icon, title, color = "cyan" }) => (
-    <div className={`flex items-center gap-2 mb-3 text-${color}-400`}>
-      <Icon className="w-4 h-4" />
-      <h4 className="font-semibold">{title}</h4>
+  // Modern detail item component
+  const DetailItem = ({ label, value, highlight = false, positive = null }) => (
+    <div className="space-y-1">
+      <span className="text-[10px] font-medium text-white/40 uppercase tracking-wider block">{label}</span>
+      <span className={`text-sm font-mono font-medium block ${
+        positive === true ? 'text-emerald-400' : 
+        positive === false ? 'text-rose-400' : 
+        highlight ? 'text-cyan-400' : 'text-white'
+      }`}>{value}</span>
     </div>
   );
   
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
+    <div 
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
+      onClick={onClose}
+      data-testid="trade-details-modal-overlay"
+    >
       <div 
-        className="bg-slate-900 border border-white/20 rounded-xl max-w-3xl w-full mx-4 shadow-2xl max-h-[85vh] flex flex-col"
+        className="bg-[#0a0a0a]/95 border border-white/10 rounded-2xl max-w-4xl w-full shadow-[0_0_60px_-12px_rgba(6,182,212,0.2)] max-h-[90vh] flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
+        data-testid="trade-details-modal"
       >
         {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isProfit ? 'bg-green-500/20' : pnl < 0 ? 'bg-red-500/20' : 'bg-white/10'}`}>
-              {isProfit ? <TrendingUp className="w-5 h-5 text-green-400" /> : pnl < 0 ? <TrendingDown className="w-5 h-5 text-red-400" /> : <Activity className="w-5 h-5 text-white/60" />}
+        <div className="px-6 py-5 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-xl ${
+              isProfit ? 'bg-emerald-500/10 border border-emerald-500/20' : 
+              pnl < 0 ? 'bg-rose-500/10 border border-rose-500/20' : 
+              'bg-white/5 border border-white/10'
+            }`}>
+              {isProfit ? <TrendingUp className="w-5 h-5 text-emerald-400" /> : 
+               pnl < 0 ? <TrendingDown className="w-5 h-5 text-rose-400" /> : 
+               <Activity className="w-5 h-5 text-white/50" />}
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Trade Details</h3>
-              <p className="text-xs text-white/40">{isEntry ? 'Open Position' : 'Closed Trade'}</p>
+              <h3 className="text-xl font-semibold text-white tracking-tight">Trade Details</h3>
+              <p className="text-xs text-white/40 mt-0.5">{isEntry ? 'Open Position' : 'Closed Trade'} • {trade.strategy}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition">
+          <button 
+            onClick={onClose} 
+            className="p-2.5 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-all"
+            data-testid="close-trade-modal"
+          >
             <XCircle className="w-5 h-5" />
           </button>
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-auto p-4 space-y-6">
-          {/* Market Info */}
-          <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-lg p-4">
-            <SectionHeader icon={FileText} title="Market" color="cyan" />
-            <p className="text-white font-medium mb-2">{trade.market_question || trade.question || 'N/A'}</p>
-            <p className="text-xs text-white/40 font-mono break-all">{trade.market_id}</p>
+        <div className="flex-1 overflow-auto p-6 space-y-5">
+          {/* Market Question - Hero Section */}
+          <div className="bg-gradient-to-br from-cyan-500/[0.08] to-violet-500/[0.08] border border-cyan-500/10 rounded-xl p-5">
+            <div className="flex items-start gap-3 mb-3">
+              <FileText className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-medium leading-relaxed">{trade.market_question || trade.question || 'N/A'}</p>
+              </div>
+            </div>
+            <p className="text-[10px] text-white/30 font-mono break-all pl-7">{trade.market_id}</p>
           </div>
           
-          {/* Trade Summary */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Left Column - Position Info */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <SectionHeader icon={Target} title="Position" color="purple" />
-              <DetailRow label="Side" value={
-                <span className={`px-2 py-0.5 rounded text-xs ${trade.side === 'YES' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                  {trade.side}
-                </span>
-              } />
-              <DetailRow label="Strategy" value={STRATEGY_INFO[trade.strategy]?.name || trade.strategy} />
-              <DetailRow label="Size" value={`$${(trade.size || 0).toFixed(2)}`} valueClass="text-cyan-400" />
-              <DetailRow label="Shares" value={(trade.shares || (trade.size / (trade.price || 1))).toFixed(2)} />
+          {/* Main Grid - 3 columns on large, 2 on medium, 1 on small */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            
+            {/* Position Card */}
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 hover:border-white/10 transition-all">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/[0.04]">
+                <Target className="w-4 h-4 text-violet-400" />
+                <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">Position</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <DetailItem 
+                  label="Side" 
+                  value={
+                    <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                      trade.side === 'YES' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 
+                      'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                    }`}>
+                      {trade.side}
+                    </span>
+                  } 
+                />
+                <DetailItem label="Strategy" value={STRATEGY_INFO[trade.strategy]?.name || trade.strategy} />
+                <DetailItem label="Size" value={`$${(trade.size || 0).toFixed(2)}`} highlight />
+                <DetailItem label="Shares" value={(trade.shares || (trade.size / (trade.price || 1))).toFixed(2)} />
+              </div>
             </div>
             
-            {/* Right Column - P&L Info */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <SectionHeader icon={DollarSign} title="P&L" color={isProfit ? 'green' : pnl < 0 ? 'red' : 'white'} />
-              <DetailRow 
-                label="P&L ($)" 
-                value={isEntry ? '-' : `${isProfit ? '+' : ''}$${pnl.toFixed(2)}`}
-                valueClass={isProfit ? 'text-green-400' : pnl < 0 ? 'text-red-400' : 'text-white/60'}
-              />
-              <DetailRow 
-                label="Return (%)" 
-                value={isEntry ? '-' : `${returnPct > 0 ? '+' : ''}${returnPct.toFixed(2)}%`}
-                valueClass={returnPct > 0 ? 'text-green-400' : returnPct < 0 ? 'text-red-400' : 'text-white/60'}
-              />
-              <DetailRow 
-                label="Unrealized P&L" 
-                value={trade.unrealized_pnl != null ? `$${trade.unrealized_pnl.toFixed(2)}` : '-'}
-                valueClass={trade.unrealized_pnl > 0 ? 'text-green-400' : trade.unrealized_pnl < 0 ? 'text-red-400' : 'text-white/60'}
-              />
-            </div>
-          </div>
-          
-          {/* Price Info */}
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <SectionHeader icon={BarChart3} title="Prices" color="amber" />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                {/* Show the entry price for the side traded */}
-                <DetailRow 
-                  label={`${trade.side || 'YES'} Entry Price`} 
-                  value={`$${(trade.entry_price || trade.price || 0).toFixed(4)}`} 
-                  valueClass="text-cyan-400" 
+            {/* P&L Card */}
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 hover:border-white/10 transition-all">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/[0.04]">
+                <DollarSign className={`w-4 h-4 ${isProfit ? 'text-emerald-400' : pnl < 0 ? 'text-rose-400' : 'text-white/50'}`} />
+                <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">Profit & Loss</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <DetailItem 
+                  label="P&L ($)" 
+                  value={isEntry ? '—' : `${isProfit ? '+' : ''}$${pnl.toFixed(2)}`}
+                  positive={isEntry ? null : isProfit ? true : pnl < 0 ? false : null}
                 />
-                {/* For NO trades, show the market price (YES side) for context */}
+                <DetailItem 
+                  label="Return (%)" 
+                  value={isEntry ? '—' : `${returnPct > 0 ? '+' : ''}${returnPct.toFixed(2)}%`}
+                  positive={isEntry ? null : returnPct > 0 ? true : returnPct < 0 ? false : null}
+                />
+                <DetailItem 
+                  label="Unrealized" 
+                  value={trade.unrealized_pnl != null ? `$${trade.unrealized_pnl.toFixed(2)}` : '—'}
+                  positive={trade.unrealized_pnl > 0 ? true : trade.unrealized_pnl < 0 ? false : null}
+                />
+                <DetailItem label="Exit Reason" value={trade.exit_reason || '—'} />
+              </div>
+            </div>
+            
+            {/* Prices Card */}
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 hover:border-white/10 transition-all">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/[0.04]">
+                <BarChart3 className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">Prices</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <DetailItem 
+                  label={`Entry (${trade.side || 'YES'})`} 
+                  value={`$${(trade.entry_price || trade.price || 0).toFixed(4)}`}
+                  highlight
+                />
+                <DetailItem 
+                  label="Exit" 
+                  value={isComplete ? `$${(trade.exit_price || 0).toFixed(4)}` : '—'}
+                />
+                <DetailItem 
+                  label="Current" 
+                  value={trade.current_price != null ? `$${trade.current_price.toFixed(4)}` : '—'}
+                />
                 {trade.side === 'NO' && trade.yes_entry_price != null && (
-                  <DetailRow 
-                    label="Market Price (YES)" 
-                    value={`$${trade.yes_entry_price.toFixed(4)}`} 
-                    valueClass="text-white/60"
-                  />
+                  <DetailItem label="Mkt (YES)" value={`$${trade.yes_entry_price.toFixed(4)}`} />
                 )}
               </div>
-              <div>
-                <DetailRow label="Exit Price" value={isComplete ? `$${(trade.exit_price || 0).toFixed(4)}` : '-'} valueClass="text-amber-400" />
-                <DetailRow label="Current Price" value={trade.current_price != null ? `$${trade.current_price.toFixed(4)}` : '-'} />
-              </div>
-            </div>
-            {/* Explanation for NO trades */}
-            {trade.side === 'NO' && (
-              <p className="text-xs text-white/40 mt-3 pt-3 border-t border-white/10">
-                Note: For NO positions, Entry Price is $1 - YES price. If YES was $0.265, NO entry = $0.735.
-              </p>
-            )}
-          </div>
-          
-          {/* Time Info */}
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <SectionHeader icon={Clock} title="Timing" color="blue" />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <DetailRow label="Entry Time" value={trade.entry_time ? new Date(trade.entry_time).toLocaleString() : new Date(trade.timestamp).toLocaleString()} />
-                <DetailRow label="Exit Time" value={trade.exit_time ? new Date(trade.exit_time).toLocaleString() : (isComplete ? new Date(trade.timestamp).toLocaleString() : '-')} />
-              </div>
-              <div>
-                <DetailRow label="Hold Duration" value={trade.hold_time_seconds ? formatDuration(trade.hold_time_seconds) : (trade.hold_duration_seconds ? formatDuration(Math.floor(trade.hold_duration_seconds)) : '-')} />
-                <DetailRow label="Exit Reason" value={trade.exit_reason || '-'} />
-              </div>
             </div>
           </div>
           
-          {/* Expiry Info */}
-          {trade.expiry_info && (
-            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <SectionHeader icon={Timer} title="Expiry" color="orange" />
-              <DetailRow label="End Date" value={trade.expiry_info.end_date ? new Date(trade.expiry_info.end_date).toLocaleString() : '-'} />
-              <DetailRow label="Hours to Expiry" value={trade.expiry_info.hours_to_expiry != null ? `${trade.expiry_info.hours_to_expiry.toFixed(1)}h` : '-'} />
-              <DetailRow label="Is Near Expiry" value={trade.expiry_info.is_near_expiry ? 'Yes' : 'No'} valueClass={trade.expiry_info.is_near_expiry ? 'text-orange-400' : 'text-white'} />
+          {/* Timing Row */}
+          <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-5 hover:border-white/10 transition-all">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/[0.04]">
+              <Clock className="w-4 h-4 text-blue-400" />
+              <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">Timing</span>
             </div>
-          )}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <DetailItem label="Entry Time" value={trade.entry_time ? new Date(trade.entry_time).toLocaleString() : new Date(trade.timestamp).toLocaleString()} />
+              <DetailItem label="Exit Time" value={trade.exit_time ? new Date(trade.exit_time).toLocaleString() : (isComplete ? new Date(trade.timestamp).toLocaleString() : '—')} />
+              <DetailItem label="Duration" value={trade.hold_time_seconds ? formatDuration(trade.hold_time_seconds) : (trade.hold_duration_seconds ? formatDuration(Math.floor(trade.hold_duration_seconds)) : '—')} />
+              <DetailItem label="Lane" value={trade.lane || trade.asset_class || '—'} highlight />
+            </div>
+          </div>
           
-          {/* AI/ML Signals */}
-          {(trade.rl_confidence != null || trade.signals) && (
-            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-4">
-              <SectionHeader icon={Brain} title="AI Signals" color="purple" />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <DetailRow label="RL Confidence" value={trade.rl_confidence != null ? `${(trade.rl_confidence * 100).toFixed(1)}%` : '-'} valueClass="text-purple-400" />
-                  <DetailRow label="RL Action" value={trade.rl_action || trade.signals?.rl_action || '-'} />
-                </div>
-                <div>
-                  {trade.signals && (
-                    <>
-                      <DetailRow label="Volatility Signal" value={trade.signals.volatility?.toFixed(3) || '-'} />
-                      <DetailRow label="Volume Signal" value={trade.signals.volume_signal?.toFixed(3) || '-'} />
-                    </>
-                  )}
+          {/* AI/ML Signals - Collapsed by default */}
+          {(trade.rl_confidence != null || trade.signals || trade.sizing_breakdown) && (
+            <details className="bg-gradient-to-br from-violet-500/[0.05] to-fuchsia-500/[0.05] border border-violet-500/10 rounded-xl group">
+              <summary className="px-5 py-4 cursor-pointer flex items-center gap-3 text-white/70 hover:text-white transition-colors">
+                <Brain className="w-4 h-4 text-violet-400" />
+                <span className="text-xs font-semibold uppercase tracking-wider">AI Signals & Sizing</span>
+                <ChevronRight className="w-4 h-4 ml-auto transition-transform group-open:rotate-90" />
+              </summary>
+              <div className="px-5 pb-5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-2">
+                  {trade.rl_confidence != null && <DetailItem label="RL Confidence" value={`${(trade.rl_confidence * 100).toFixed(1)}%`} highlight />}
+                  {(trade.rl_action || trade.signals?.rl_action) && <DetailItem label="RL Action" value={trade.rl_action || trade.signals?.rl_action} />}
+                  {trade.sizing_breakdown?.kelly_fraction != null && <DetailItem label="Kelly" value={trade.sizing_breakdown.kelly_fraction.toFixed(3)} />}
+                  {trade.sizing_breakdown?.final_size != null && <DetailItem label="Final Size" value={`$${trade.sizing_breakdown.final_size.toFixed(2)}`} highlight />}
                 </div>
               </div>
-            </div>
+            </details>
           )}
           
-          {/* Sizing Breakdown */}
-          {trade.sizing_breakdown && (
-            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <SectionHeader icon={Scale} title="Sizing Breakdown" color="cyan" />
-              <div className="grid grid-cols-3 gap-4 text-xs">
-                <DetailRow label="Kelly Fraction" value={trade.sizing_breakdown.kelly_fraction?.toFixed(3) || '-'} />
-                <DetailRow label="Oracle Risk" value={trade.sizing_breakdown.oracle_risk?.toFixed(2) || '-'} />
-                <DetailRow label="Utilization" value={trade.sizing_breakdown.utilization_factor?.toFixed(2) || '-'} />
-                <DetailRow label="Time Penalty" value={trade.sizing_breakdown.time_penalty?.toFixed(2) || '-'} />
-                <DetailRow label="Correlation Dampener" value={trade.sizing_breakdown.correlation_dampener?.toFixed(2) || '-'} />
-                <DetailRow label="Final Size" value={`$${trade.sizing_breakdown.final_size?.toFixed(2) || trade.size?.toFixed(2) || '-'}`} valueClass="text-cyan-400" />
-              </div>
-            </div>
-          )}
-          
-          {/* Raw Data (Expandable) */}
-          <details className="bg-white/5 border border-white/10 rounded-lg">
-            <summary className="p-4 cursor-pointer text-white/60 hover:text-white transition flex items-center gap-2">
+          {/* Raw Data - Collapsed by default */}
+          <details className="bg-white/[0.02] border border-white/[0.06] rounded-xl group">
+            <summary className="px-5 py-4 cursor-pointer flex items-center gap-3 text-white/50 hover:text-white/70 transition-colors">
               <Database className="w-4 h-4" />
-              <span className="text-sm">Raw Trade Data (JSON)</span>
+              <span className="text-xs font-medium">Raw Trade Data</span>
+              <ChevronRight className="w-4 h-4 ml-auto transition-transform group-open:rotate-90" />
             </summary>
-            <div className="p-4 pt-0">
-              <pre className="text-xs text-white/60 bg-black/30 rounded-lg p-3 overflow-auto max-h-48 font-mono">
+            <div className="px-5 pb-5">
+              <pre className="text-[11px] text-white/50 bg-black/40 rounded-lg p-4 overflow-auto max-h-48 font-mono border border-white/[0.04]">
                 {JSON.stringify(trade, null, 2)}
               </pre>
             </div>
@@ -343,10 +342,11 @@ const TradeDetailsModal = ({ isOpen, trade, onClose }) => {
         </div>
         
         {/* Footer */}
-        <div className="p-4 border-t border-white/10 flex justify-end">
+        <div className="px-6 py-4 border-t border-white/[0.06] flex justify-end bg-white/[0.01]">
           <button 
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition"
+            className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all text-sm font-medium"
+            data-testid="close-trade-modal-btn"
           >
             Close
           </button>
