@@ -3787,9 +3787,13 @@ const PaperTrading = () => {
             </div>
           )}
 
-          {/* HFT vs Alpha vs Gamma Performance - Three-Speed Architecture Breakdown */}
+          {/* Five Lane Architecture - Shows all 5 trading lanes with percentages */}
           {status && (
-            <HftAlphaPerformanceCard executionPathStats={status?.execution_path_stats} showLive={running} />
+            <FiveLaneArchitectureCard 
+              executionPathStats={status?.execution_path_stats} 
+              laneEquity={status?.lane_equity}
+              showLive={running} 
+            />
           )}
 
           {/* Lane Performance Cards - Five-Lane Analytics */}
