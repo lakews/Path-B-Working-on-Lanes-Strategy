@@ -2954,7 +2954,13 @@ class PaperTrader:
             # ==========================================================
             # STEP 2: ENFORCEMENT (RiskManager) - Validate and trim/block
             # ==========================================================
-            asset_class = market_data.get('asset_class', market_data.get('category', 'unknown'))
+            # Use TagLibraryService for accurate categorization
+            category, sub_category = get_market_category_info(market_data)
+            asset_class = category
+            
+            # Store sub_category in market_data for later use
+            market_data['_category'] = category
+            market_data['_sub_category'] = sub_category
             
             check_result: OrderCheckResult = self.risk_manager.check_order(
                 lane=lane,
