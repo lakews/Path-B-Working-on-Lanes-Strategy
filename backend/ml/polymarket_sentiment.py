@@ -188,18 +188,36 @@ class PolymarketSentimentExtractor:
                 bids = order_book.get('bids', [])
                 asks = order_book.get('asks', [])
                 
-                if bids and asks:
+                # Handle cases where one side is empty (extreme sentiment)
+                if bids or asks:
                     # Calculate depth at multiple price levels
-                    bid_depth = sum(float(b.get('size', 0)) for b in bids[:10])
-                    ask_depth = sum(float(a.get('size', 0)) for a in asks[:10])
+                    bid_depth = sum(float(b.get('size', 0)) for b in bids[:10]) if bids else 0
+                    ask_depth = sum(float(a.get('size', 0)) for a in asks[:10]) if asks else 0
                     total_depth = bid_depth + ask_depth
                     
                     if total_depth > 0:
                         # More bids = buying pressure = bullish
+                        # 0 bids = all sellers = extremely bearish (0.0)
+                        # 0 asks = all buyers = extremely bullish (1.0)
                         depth_imbalance = bid_depth / total_depth
                         
-                        # Map to score (0.3-0.7 range)
-                        score = 0.3 + (depth_imbalance * 0.4)
+                        # Map to score (0.2-0.8 range for more sensitivity)
+                        # 0.0 imbalance -> 0.2 score (very bearish)
+                        # 0.5 imbalance -> 0.5 score (neutral)
+                        # 1.0 imbalance -> 0.8 score (very bullish)
+                        score = 0.2 + (depth_imbalance * 0.6)
+                        
+                        # Determine interpretation
+                        if depth_imbalance < 0.1:
+                            interpretation = 'extremely_bearish'
+                        elif depth_imbalance < 0.4:
+                            interpretation = 'bearish'
+                        elif depth_imbalance > 0.9:
+                            interpretation = 'extremely_bullish'
+                        elif depth_imbalance > 0.6:
+                            interpretation = 'bullish'
+                        else:
+                            interpretation = 'neutral'
                         
                         return {
                             'valid': True,
@@ -209,7 +227,7 @@ class PolymarketSentimentExtractor:
                                 'bid_depth': round(bid_depth, 2),
                                 'ask_depth': round(ask_depth, 2),
                                 'depth_imbalance': round(depth_imbalance, 4),
-                                'interpretation': 'bullish' if depth_imbalance > 0.55 else ('bearish' if depth_imbalance < 0.45 else 'neutral')
+                                'interpretation': interpretation
                             }
                         }
             except Exception as e:
