@@ -524,19 +524,10 @@ class NewsSniper:
             # ============================================
             # SPORTS FILTER: Route sports to SPORTS lane
             # ============================================
-            # Use category field if available, fallback to keyword matching
-            category = (market_data.get('category') or '').lower()
-            question = (market_data.get('question') or '').lower()
+            # Use shared sports detection module (SSOT)
+            from utils.sports_detection import is_sports_market
             
-            # Sports detection keywords (same as HFT V2)
-            SPORTS_KEYWORDS = {'nba', 'nfl', 'mlb', 'nhl', 'mls', 'ncaa', 'uefa', 'fifa', 'pga',
-                              'ufc', 'championship', 'playoff', 'finals', 'super bowl', 'world series',
-                              'mvp', 'lakers', 'celtics', 'warriors', 'cowboys', 'patriots', 'chiefs',
-                              'yankees', 'dodgers', 'real madrid', 'barcelona', 'manchester', 'liverpool'}
-            
-            is_sports = category in {'sports', 'esports'} or any(kw in question for kw in SPORTS_KEYWORDS)
-            
-            if is_sports:
+            if is_sports_market(market_data):
                 self.stats['trades_skipped_sports'] = self.stats.get('trades_skipped_sports', 0) + 1
                 logger.debug(f"[NEWS SNIPER] Sports market {market_id[:16]}... routed to SPORTS lane")
                 return
