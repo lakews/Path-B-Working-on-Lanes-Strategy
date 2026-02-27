@@ -708,6 +708,7 @@ class EnhancedSentimentAnalyzer:
         result['analysis_source'] = '+'.join(sources_used) if sources_used else 'fallback'
         
         # Log the fusion decision for debugging
+        sentiment_str = f"{combined_sentiment:.3f}" if combined_sentiment is not None else "BLOCKED"
         logger.info(f"[FUSION] {question[:30]}... | "
                    f"Category={detected_category} | "
                    f"Combined={sentiment_str} | "
