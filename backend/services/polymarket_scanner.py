@@ -467,11 +467,20 @@ class PolymarketScanner:
                     logger.debug(f"[SCANNER] Skipping {market_id[:16]} - no valid yes_price")
                     continue
                 
+                # Use TagLibraryService for accurate categorization
+                try:
+                    from services.tag_library_service import get_tag_library_service
+                    tag_library = get_tag_library_service()
+                    cat_result = tag_library.classify_market({'question': market.get('question', '')})
+                    category = cat_result.category
+                except Exception:
+                    category = market.get('category', 'other')
+                
                 doc = {
                     'market_id': market_id,
                     'question': market.get('question', ''),
                     'description': market.get('description', ''),  # Rich context for news queries
-                    'category': market.get('category', 'Other'),
+                    'category': category,  # Use TagLibraryService category
                     'end_date': market.get('end_date'),  # For time-aware queries
                     'price': yes_price,  # No default - skip if missing
                     'yes_price': yes_price,  # Explicit yes_price for trade execution
