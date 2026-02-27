@@ -648,6 +648,132 @@ const AssetClassEquityCard = ({ equityData, initialCapital = 10000 }) => {
   );
 };
 
+// Five Lane Architecture Performance Card - Shows all 5 trading lanes with percentages
+const FiveLaneArchitectureCard = ({ executionPathStats, laneEquity, showLive = false }) => {
+  // Define all 5 lanes with their configurations
+  const lanes = [
+    { key: 'hft', name: 'HFT', icon: Zap, color: 'cyan', strategies: ['Liquidity Provision', 'Scalping'] },
+    { key: 'alpha', name: 'Alpha', icon: Brain, color: 'violet', strategies: ['News Trading', 'Sentiment'] },
+    { key: 'gamma', name: 'Gamma', icon: Target, color: 'indigo', strategies: ['Whale Zone', 'Gap Trading'] },
+    { key: 'sports', name: 'Sports Arb', icon: Award, color: 'pink', strategies: ['Sports Arbitrage'] },
+    { key: 'news', name: 'News Sniper', icon: Activity, color: 'amber', strategies: ['News Signals'] },
+  ];
+
+  // Calculate total P&L for percentage calculation
+  const totalPnl = lanes.reduce((sum, lane) => {
+    const pnl = laneEquity?.[lane.name.toUpperCase()] || laneEquity?.[lane.key.toUpperCase()] || 
+                executionPathStats?.[lane.key]?.total_pnl || 0;
+    return sum + Math.abs(pnl);
+  }, 0);
+
+  const totalTrades = lanes.reduce((sum, lane) => {
+    return sum + (executionPathStats?.[lane.key]?.trades || 0);
+  }, 0);
+
+  if (!executionPathStats && !laneEquity) {
+    return (
+      <div className="rounded-xl bg-gradient-to-br from-slate-900/50 to-slate-800/30 border border-white/10 p-5">
+        <h4 className="text-sm font-semibold text-white/60 mb-3 flex items-center gap-2">
+          <GitBranch className="w-4 h-4 text-amber-400" />
+          Five Lane Architecture
+        </h4>
+        <p className="text-xs text-white/40">Start trading to see lane breakdown</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-gradient-to-br from-slate-900/50 to-slate-800/30 border border-white/10 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+          <GitBranch className="w-4 h-4 text-amber-400" />
+          Five Lane Architecture
+        </h4>
+        {showLive && totalTrades > 0 && (
+          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />LIVE
+          </span>
+        )}
+      </div>
+
+      {/* Lane Grid */}
+      <div className="grid grid-cols-5 gap-2">
+        {lanes.map(lane => {
+          const stats = executionPathStats?.[lane.key] || {};
+          const pnl = laneEquity?.[lane.name.toUpperCase()] || laneEquity?.[lane.key.toUpperCase()] || stats.total_pnl || 0;
+          const trades = stats.trades || 0;
+          const wins = stats.wins || 0;
+          const winRate = trades > 0 ? (wins / trades * 100) : 0;
+          const pnlPct = totalPnl > 0 ? (Math.abs(pnl) / totalPnl * 100) : 0;
+          const isPositive = pnl >= 0;
+          const Icon = lane.icon;
+
+          return (
+            <div 
+              key={lane.key}
+              className={`rounded-lg bg-black/30 border border-${lane.color}-500/20 p-3 text-center`}
+            >
+              {/* Icon and Name */}
+              <div className={`w-8 h-8 mx-auto mb-2 rounded-lg bg-${lane.color}-500/20 flex items-center justify-center`}>
+                <Icon className={`w-4 h-4 text-${lane.color}-400`} />
+              </div>
+              <p className="text-xs font-semibold text-white mb-0.5">{lane.name}</p>
+              
+              {/* P&L */}
+              <p className={`text-sm font-bold font-mono ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {isPositive ? '+' : ''}{pnl.toFixed(2)}
+              </p>
+              
+              {/* Percentage Bar */}
+              <div className="mt-2 h-1 bg-white/10 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full bg-${lane.color}-500 rounded-full transition-all duration-500`}
+                  style={{ width: `${Math.min(100, pnlPct)}%` }}
+                />
+              </div>
+              <p className="text-[9px] text-white/40 mt-1">{pnlPct.toFixed(1)}%</p>
+              
+              {/* Stats */}
+              <div className="mt-2 pt-2 border-t border-white/5 grid grid-cols-2 gap-1 text-[9px]">
+                <div>
+                  <p className="text-white/40">Trades</p>
+                  <p className="text-white font-mono">{trades}</p>
+                </div>
+                <div>
+                  <p className="text-white/40">Win%</p>
+                  <p className={`font-mono ${winRate >= 50 ? 'text-emerald-400' : winRate > 0 ? 'text-amber-400' : 'text-white/50'}`}>
+                    {winRate.toFixed(0)}%
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Total Summary */}
+      <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div>
+            <p className="text-[10px] text-white/40">Total Trades</p>
+            <p className="text-lg font-bold font-mono text-white">{totalTrades}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-white/40">Total P&L</p>
+            <p className={`text-lg font-bold font-mono ${(laneEquity?.HFT || 0) + (laneEquity?.ALPHA || 0) + (laneEquity?.GAMMA || 0) + (laneEquity?.SPORTS || 0) + (laneEquity?.NEWS || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {((laneEquity?.HFT || 0) + (laneEquity?.ALPHA || 0) + (laneEquity?.GAMMA || 0) + (laneEquity?.SPORTS || 0) + (laneEquity?.NEWS || 0)).toFixed(2)}
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] text-white/40">Active Lanes</p>
+          <p className="text-lg font-bold text-white">{lanes.filter(l => (executionPathStats?.[l.key]?.trades || 0) > 0).length}/5</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // HFT vs Alpha vs Gamma Performance Card - Three-Speed Architecture Breakdown (Redesigned)
 const HftAlphaPerformanceCard = ({ executionPathStats, showLive = false }) => {
   if (!executionPathStats) {
