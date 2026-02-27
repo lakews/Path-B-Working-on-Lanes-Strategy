@@ -938,7 +938,7 @@ class TagLibraryService:
     
     async def _load_from_db(self):
         """Load any new tags from DB into memory"""
-        if not self.db:
+        if self.db is None:
             return
         
         cursor = self.db.tag_library.find({"active": True}, {"_id": 0})
