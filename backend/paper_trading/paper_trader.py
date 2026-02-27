@@ -5432,6 +5432,32 @@ class PaperTrader:
             
             # Get current price - REJECT EXIT if no valid price
             current_price = market_data.get('yes_price')
+            strategy = position.get('strategy', 'arbitrage')
+            asset_class = position.get('asset_class', 'unknown')
+            
+            # ==========================================================================
+            # SPORTS ARBITRAGE: Fetch FRESH prices from Polymarket API
+            # ==========================================================================
+            # Sports markets often have stale cached data. For accurate exit pricing,
+            # always fetch fresh market data directly from Polymarket for sports positions.
+            # This prevents the 0.49/0.50 exit price bug caused by fallback values.
+            # ==========================================================================
+            if strategy == 'sports_arbitrage' or asset_class == 'sports':
+                try:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        fresh_market = await api.get_market(market_id)
+                        if fresh_market:
+                            fresh_yes_price = fresh_market.get('yes_price') or fresh_market.get('outcomePrices', [None])[0]
+                            if fresh_yes_price and float(fresh_yes_price) > 0:
+                                current_price = float(fresh_yes_price)
+                                # Update market_data for downstream orderbook fetch
+                                market_data['yes_price'] = current_price
+                                market_data['token_ids'] = fresh_market.get('clobTokenIds', [])
+                                logger.info(f"[SPORTS-EXIT] Fresh price for {market_id[:16]}: ${current_price:.4f}")
+                except Exception as e:
+                    logger.warning(f"[SPORTS-EXIT] Could not fetch fresh market data: {e}")
+            
             if current_price is None or current_price == 0:
                 logger.warning(f"[EXIT-SKIP] No valid price for {market_id[:16]} - cannot exit safely")
                 return
@@ -5442,8 +5468,6 @@ class PaperTrader:
             yes_entry_price = position.get('yes_entry_price', position['entry_price'])
             side = position['side']
             size = position.get('size', 0)
-            strategy = position.get('strategy', 'arbitrage')
-            asset_class = position.get('asset_class', 'unknown')
             trade_status = position.get('trade_status', 'ACTIVE')  # ACTIVE or FREE_RIDE
             peak_price = position.get('peak_price', yes_entry_price)  # Track peak for trailing stops
             
