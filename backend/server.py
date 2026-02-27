@@ -5302,10 +5302,16 @@ async def get_cumulative_stats():
                     "kurtosis": 0
                 }
         
+        # Build sub-category stats from current session
+        sub_category_stats = {}
+        if paper_trader and paper_trader.running and hasattr(paper_trader, 'get_sub_category_stats_summary'):
+            sub_category_stats = paper_trader.get_sub_category_stats_summary()
+        
         return {
             "overall": overall,
             "by_strategy": cumulative_strategy,
             "by_asset_class": cumulative_asset_class,
+            "by_sub_category": sub_category_stats,  # NEW: Hierarchical sub-category P&L
             "returns_distribution": returns_distribution,
             "current_session_included": paper_trader.running if paper_trader else False
         }
