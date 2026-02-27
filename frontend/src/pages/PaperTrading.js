@@ -3661,11 +3661,6 @@ const PaperTrading = () => {
             </div>
           )}
 
-          {/* Asset Class Equity Breakdown (starts at $0 per session) */}
-          {status && (
-            <AssetClassEquityCard equityData={status?.asset_class_equity} initialCapital={initialCapital} />
-          )}
-
           {/* HFT vs Alpha vs Gamma Performance - Three-Speed Architecture Breakdown */}
           {status && (
             <HftAlphaPerformanceCard executionPathStats={status?.execution_path_stats} showLive={running} />
