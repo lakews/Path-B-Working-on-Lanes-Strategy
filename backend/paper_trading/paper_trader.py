@@ -2491,8 +2491,9 @@ class PaperTrader:
                 # Safety: Only YES unless sports
                 if side == 'NO':
                     market_category = (market_data.get('category') or '').lower()
-                    # Use authoritative category field from Polymarket API
-                    is_sports = market_category in {'sports', 'esports'}
+                    question_lower = market_data.get('question', '').lower()
+                    SPORTS_KW = {'nba', 'nfl', 'mlb', 'nhl', 'ncaa', 'ufc', 'championship', 'playoff', 'finals', 'mvp'}
+                    is_sports = market_category in {'sports', 'esports'} or any(kw in question_lower for kw in SPORTS_KW)
                     sports_config = get_sports_config()
                     if not (is_sports and sports_config.allow_no_bets):
                         return None
