@@ -3002,12 +3002,18 @@ class PaperTrader:
                     # ==========================================================
                     # SPORTS DETECTION (Feb 2026 - Symmetric with all lanes)
                     # ==========================================================
-                    # Use Polymarket's authoritative category field (no fallback)
+                    # Use category field if available, fallback to keyword matching
+                    # (Polymarket doesn't provide category for active markets)
                     question = market_data.get('question', '').lower()
                     raw_category = (market_data.get('category') or '').lower()
                     
-                    # Use category field from API (authoritative)
-                    is_sports = raw_category in {'sports', 'esports'}
+                    # Sports detection keywords
+                    SPORTS_KW = {'nba', 'nfl', 'mlb', 'nhl', 'ncaa', 'uefa', 'fifa', 'ufc',
+                                'championship', 'playoff', 'finals', 'super bowl', 'mvp',
+                                'lakers', 'celtics', 'warriors', 'cowboys', 'patriots',
+                                'yankees', 'real madrid', 'barcelona', 'manchester'}
+                    
+                    is_sports = raw_category in {'sports', 'esports'} or any(kw in question for kw in SPORTS_KW)
                     
                     # ==========================================================
                     # SPORTS ROUTING (Green Lane)
