@@ -3771,15 +3771,15 @@ const PaperTrading = () => {
               />
               <MetricCard 
                 title="Closed Trades" 
-                value={status.total_trades || 0} 
-                subtitle={`${status.winning_trades || 0}W / ${(status.total_trades || 0) - (status.winning_trades || 0)}L`} 
+                value={(status.total_trades || 0) - (status.open_positions ?? positions.length ?? 0)} 
+                subtitle={`${status.winning_trades || 0}W / ${Math.max(0, ((status.total_trades || 0) - (status.open_positions ?? positions.length ?? 0)) - (status.winning_trades || 0))}L`} 
                 icon={CheckCircle} 
                 color="cyan" 
               />
               <MetricCard 
-                title="Total Trades" 
-                value={(status.total_trades || 0) + (status.open_positions ?? positions.length ?? 0)} 
-                subtitle="Open + Closed"
+                title="Total Entries" 
+                value={status.total_trades || 0} 
+                subtitle={`${status.open_positions ?? positions.length ?? 0} Open`}
                 icon={Activity} 
                 color="violet" 
               />
