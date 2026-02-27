@@ -34,7 +34,7 @@ import numpy as np
 from threading import Lock
 
 # Sports Strategy imports
-from risk_config import get_sports_config, is_sports_market, SportsConfig
+from risk_config import get_sports_config, SportsConfig
 from strategies.sports_strategy import get_sports_strategy, SportsArbitrageStrategy, SportsSignal, SportsTradeSignal
 
 # HFT Engine V2 imports (5 Sub-Strategy Architecture - ENHANCED)
