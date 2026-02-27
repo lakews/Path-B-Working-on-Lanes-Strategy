@@ -5203,6 +5203,8 @@ async def get_cumulative_stats():
                         cumulative_strategy[strategy]['total_wins'] += data.get('wins', 0)
                         cumulative_strategy[strategy]['total_pnl'] += data.get('pnl', 0)
                         cumulative_strategy[strategy]['sessions'] += 1
+                        # closed_trades equals total_trades for cumulative (all historical trades are closed)
+                        cumulative_strategy[strategy]['closed_trades'] += data.get('trades', 0)
             
             # Asset class stats
             asset_stats = session.get('asset_class_stats', {})
