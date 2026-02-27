@@ -180,6 +180,7 @@ def run_all_tests():
     test_classify_market_with_sports_tags()
     test_hft_sports_filter()
     test_esports_classification()
+    test_asset_class_fallback()
     
     print("\n" + "="*60)
     print("ALL TESTS PASSED!")
