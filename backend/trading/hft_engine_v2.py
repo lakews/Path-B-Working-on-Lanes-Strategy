@@ -67,21 +67,41 @@ SPORTS_KEYWORDS = {
     # Leagues/Organizations
     'nba', 'nfl', 'mlb', 'nhl', 'mls', 'ncaa', 'uefa', 'fifa', 'pga', 'atp', 'wta',
     'ufc', 'boxing', 'f1', 'nascar', 'premier league', 'la liga', 'bundesliga',
-    'serie a', 'ligue 1', 'champions league', 'world cup', 'olympics',
-    # Teams/Sports terms
-    'win the', 'championship', 'playoff', 'finals', 'super bowl', 'world series',
+    'serie a', 'ligue 1', 'champions league', 'world cup', 'olympics', 'euroleague',
+    # Sports terms
+    'championship', 'playoff', 'finals', 'super bowl', 'world series',
     'stanley cup', 'mvp', 'scoring title', 'batting average', 'home runs',
-    # Team patterns (common in sports questions)
-    'lakers', 'celtics', 'warriors', 'bulls', 'heat', 'knicks', 'nets',
-    'cowboys', 'patriots', 'chiefs', 'eagles', '49ers', 'packers',
-    'yankees', 'dodgers', 'red sox', 'cubs', 'mets',
-    'real madrid', 'barcelona', 'manchester', 'liverpool', 'chelsea', 'arsenal',
-    'bayern', 'juventus', 'psg', 'inter milan', 'ac milan',
-    # Player name patterns (matches "Will X win" for athletes)
-    'doncic', 'lebron', 'curry', 'giannis', 'jokic', 'embiid', 'tatum',
-    'mahomes', 'allen', 'burrow', 'jackson', 'hurts',
-    'ohtani', 'judge', 'trout', 'betts', 'soto',
+    # NBA Teams (all 30)
+    'lakers', 'celtics', 'warriors', 'bulls', 'heat', 'knicks', 'nets', 'sixers',
+    'suns', 'bucks', 'cavaliers', 'mavericks', 'nuggets', 'clippers', 'timberwolves',
+    'grizzlies', 'pelicans', 'thunder', 'blazers', 'kings', 'spurs', 'raptors',
+    'wizards', 'hawks', 'hornets', 'pacers', 'pistons', 'magic', 'rockets', 'jazz',
+    # NFL Teams
+    'cowboys', 'patriots', 'chiefs', 'eagles', '49ers', 'packers', 'steelers',
+    'broncos', 'raiders', 'chargers', 'ravens', 'bills', 'dolphins', 'jets',
+    'bengals', 'browns', 'titans', 'colts', 'texans', 'jaguars', 'commanders',
+    'giants', 'saints', 'falcons', 'panthers', 'buccaneers', 'cardinals', 'rams',
+    'seahawks', 'vikings', 'bears', 'lions',
+    # MLB Teams
+    'yankees', 'dodgers', 'red sox', 'cubs', 'mets', 'astros', 'braves', 'phillies',
+    'padres', 'rangers', 'orioles', 'twins', 'mariners', 'guardians', 'royals',
+    'tigers', 'white sox', 'athletics', 'angels', 'marlins', 'nationals', 'pirates',
+    'reds', 'brewers', 'cardinals', 'rockies', 'diamondbacks', 'rays', 'blue jays',
+    # Soccer Teams (Major European)
+    'real madrid', 'barcelona', 'manchester united', 'manchester city', 'liverpool',
+    'chelsea', 'arsenal', 'tottenham', 'bayern', 'dortmund', 'juventus', 'inter',
+    'ac milan', 'roma', 'napoli', 'psg', 'marseille', 'lyon', 'atletico', 'sevilla',
+    'valencia', 'villarreal', 'ajax', 'benfica', 'porto', 'sporting',
+    # Player names (star athletes)
+    'doncic', 'lebron', 'curry', 'giannis', 'jokic', 'embiid', 'tatum', 'durant',
+    'mahomes', 'allen', 'burrow', 'jackson', 'hurts', 'kelce',
+    'ohtani', 'judge', 'trout', 'betts', 'soto', 'acuna',
+    'messi', 'ronaldo', 'mbappe', 'haaland', 'bellingham',
 }
+
+# Pattern-based detection (catches "Team A vs. Team B" format)
+import re
+SPORTS_VS_PATTERN = re.compile(r'\bvs\.?\s', re.IGNORECASE)
 
 
 def is_sports_market(market_data: Dict) -> bool:
@@ -90,17 +110,21 @@ def is_sports_market(market_data: Dict) -> bool:
     
     Strategy:
     1. Check Polymarket's category field first (authoritative when available)
-    2. Fall back to keyword matching (required since active markets lack category)
+    2. Check for "vs." pattern (common in sports matchups)
+    3. Fall back to keyword matching (required since active markets lack category)
     """
     # Primary: Use category field if available
     category = (market_data.get('category') or '').lower()
     if category in SPORTS_CATEGORIES:
         return True
     
-    # Fallback: Keyword matching for active markets without category
     question = (market_data.get('question') or '').lower()
     
-    # Check for sports keywords
+    # Pattern check: "X vs. Y" or "X vs Y" is almost always sports
+    if SPORTS_VS_PATTERN.search(question):
+        return True
+    
+    # Keyword matching for active markets without category
     for keyword in SPORTS_KEYWORDS:
         if keyword in question:
             return True
