@@ -3830,7 +3830,13 @@ const PaperTrading = () => {
           {/* Strategy & Asset Class Tables with Totals */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <PerformanceTable title="Cumulative Strategy Performance" icon={BarChart3} iconColor="purple" data={cumulativeStats?.by_strategy} dataType="strategy" showLiveBadge={false} initialCapital={cumulativeStats?.overall?.total_initial_capital || initialCapital} />
-            <PerformanceTable title="Cumulative Asset Class Performance" icon={Layers} iconColor="orange" data={cumulativeStats?.by_asset_class} dataType="asset_class" showLiveBadge={false} initialCapital={cumulativeStats?.overall?.total_initial_capital || initialCapital} />
+            <CategoryDashboard 
+              title="Cumulative Category P&L Dashboard" 
+              assetClassData={cumulativeStats?.by_asset_class}
+              subCategoryData={cumulativeStats?.by_sub_category}
+              showLiveBadge={false}
+              initialCapital={cumulativeStats?.overall?.total_initial_capital || initialCapital}
+            />
           </div>
 
           {/* Cumulative P&L Distribution */}
