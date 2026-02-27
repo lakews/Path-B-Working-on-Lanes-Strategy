@@ -58,6 +58,68 @@ MIN_SPREAD_TICKS = 2       # Minimum 2 cents spread
 ORDER_STALE_SECONDS = 120  # Refresh orders after 2 minutes
 HYSTERESIS_THRESHOLD = 0.01  # 1 cent drift tolerance (anti-churn)
 
+# =============================================================================
+# SPORTS MARKET DETECTION (Route to SPORTS Lane, not HFT)
+# =============================================================================
+SPORTS_CATEGORIES = {'sports', 'esports', 'gaming'}
+
+# Pattern to detect sports matchups (NBA, NFL, etc.)
+SPORTS_MATCHUP_PATTERN = re.compile(
+    r'\b(vs\.?|versus|beat|defeat|win against|lose to)\b',
+    re.IGNORECASE
+)
+
+# Sports team/league indicators
+SPORTS_INDICATORS = [
+    # NBA
+    'lakers', 'celtics', 'warriors', 'bulls', 'heat', 'knicks', 'nets', 'suns',
+    'bucks', 'clippers', 'mavericks', 'nuggets', 'timberwolves', 'grizzlies',
+    'cavaliers', 'sixers', '76ers', 'raptors', 'pacers', 'hawks', 'hornets',
+    'wizards', 'pistons', 'magic', 'spurs', 'rockets', 'pelicans', 'thunder',
+    'trail blazers', 'blazers', 'kings', 'jazz',
+    # NFL
+    'patriots', 'chiefs', 'cowboys', 'eagles', 'bills', 'dolphins', 'jets',
+    'ravens', 'steelers', 'bengals', 'browns', 'titans', 'colts', 'texans',
+    'jaguars', 'broncos', 'raiders', 'chargers', 'vikings', 'packers', 'bears',
+    'lions', 'commanders', 'giants', 'saints', 'falcons', 'panthers', 'buccaneers',
+    'cardinals', 'rams', '49ers', 'seahawks',
+    # MLB, NHL, Soccer, etc.
+    'yankees', 'red sox', 'dodgers', 'cubs', 'mets', 'astros', 'braves',
+    'premier league', 'la liga', 'champions league', 'world cup', 'euro 2024',
+    'nba', 'nfl', 'mlb', 'nhl', 'mls', 'ufc', 'wwe', 'aew',
+]
+
+
+def is_sports_market(market_data: Dict) -> bool:
+    """
+    Detect if a market is sports-related (should go to SPORTS lane, not HFT).
+    
+    Returns True if:
+    1. Category is sports/esports/gaming, OR
+    2. Question contains sports matchup patterns (vs, beat, etc.), OR
+    3. Question contains known sports team/league names
+    """
+    # Check category
+    category = (market_data.get('category') or market_data.get('asset_class') or '').lower()
+    if category in SPORTS_CATEGORIES:
+        return True
+    
+    # Check question for sports patterns
+    question = (market_data.get('question') or '').lower()
+    
+    # Check for matchup pattern (vs, beat, etc.)
+    if SPORTS_MATCHUP_PATTERN.search(question):
+        # Additional check: make sure it's not political "beat in election"
+        if 'election' not in question and 'vote' not in question:
+            return True
+    
+    # Check for sports team/league indicators
+    for indicator in SPORTS_INDICATORS:
+        if indicator in question:
+            return True
+    
+    return False
+
 
 class HighFrequencyTradingEngineV2:
     """
