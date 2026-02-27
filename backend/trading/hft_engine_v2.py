@@ -62,14 +62,50 @@ HYSTERESIS_THRESHOLD = 0.01  # 1 cent drift tolerance (anti-churn)
 # =============================================================================
 SPORTS_CATEGORIES = {'sports', 'esports'}
 
+# Sports detection patterns (Polymarket doesn't provide category for active markets)
+SPORTS_KEYWORDS = {
+    # Leagues/Organizations
+    'nba', 'nfl', 'mlb', 'nhl', 'mls', 'ncaa', 'uefa', 'fifa', 'pga', 'atp', 'wta',
+    'ufc', 'boxing', 'f1', 'nascar', 'premier league', 'la liga', 'bundesliga',
+    'serie a', 'ligue 1', 'champions league', 'world cup', 'olympics',
+    # Teams/Sports terms
+    'win the', 'championship', 'playoff', 'finals', 'super bowl', 'world series',
+    'stanley cup', 'mvp', 'scoring title', 'batting average', 'home runs',
+    # Team patterns (common in sports questions)
+    'lakers', 'celtics', 'warriors', 'bulls', 'heat', 'knicks', 'nets',
+    'cowboys', 'patriots', 'chiefs', 'eagles', '49ers', 'packers',
+    'yankees', 'dodgers', 'red sox', 'cubs', 'mets',
+    'real madrid', 'barcelona', 'manchester', 'liverpool', 'chelsea', 'arsenal',
+    'bayern', 'juventus', 'psg', 'inter milan', 'ac milan',
+    # Player name patterns (matches "Will X win" for athletes)
+    'doncic', 'lebron', 'curry', 'giannis', 'jokic', 'embiid', 'tatum',
+    'mahomes', 'allen', 'burrow', 'jackson', 'hurts',
+    'ohtani', 'judge', 'trout', 'betts', 'soto',
+}
+
 
 def is_sports_market(market_data: Dict) -> bool:
     """
     Detect if a market is sports-related (should go to SPORTS lane, not HFT).
-    Uses Polymarket's authoritative category field.
+    
+    Strategy:
+    1. Check Polymarket's category field first (authoritative when available)
+    2. Fall back to keyword matching (required since active markets lack category)
     """
+    # Primary: Use category field if available
     category = (market_data.get('category') or '').lower()
-    return category in SPORTS_CATEGORIES
+    if category in SPORTS_CATEGORIES:
+        return True
+    
+    # Fallback: Keyword matching for active markets without category
+    question = (market_data.get('question') or '').lower()
+    
+    # Check for sports keywords
+    for keyword in SPORTS_KEYWORDS:
+        if keyword in question:
+            return True
+    
+    return False
 
 
 class HighFrequencyTradingEngineV2:
