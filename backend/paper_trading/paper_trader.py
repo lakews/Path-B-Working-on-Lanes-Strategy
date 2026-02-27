@@ -4267,6 +4267,13 @@ class PaperTrader:
                     
                     # Filter by asset class
                     asset_class = market_data.get('asset_class', market_data.get('category', 'unknown')).lower()
+                    
+                    # Use TagLibraryService for accurate categorization
+                    category, sub_category = get_market_category_info(market_data)
+                    asset_class = category.lower()
+                    market_data['_category'] = category
+                    market_data['_sub_category'] = sub_category
+                    
                     if asset_class not in [ac.lower() for ac in self.enabled_asset_classes]:
                         skipped_asset_class += 1
                         continue
