@@ -196,7 +196,18 @@ NEWS EVENT ARRIVES
   - Legacy HFT: `category` + regex fallback (line 2604)
   - Alpha Lane: `category` primary + `is_sports_market()` fallback (lines 3005-3012, 3689-3692, 8098-8102)
   - All NO-side bet checks: `category` primary (lines 2011-2013, 2068-2070, 2459-2460, 2489-2490)
-- [x] **Five Lane Architecture UI (Feb 27, 2026)** - Refactored UI from "Three-Speed Architecture" to "Five Lane Architecture":
+- [x] **Paper Trading Page UI Redesign (Feb 27, 2026)** - Comprehensive visual overhaul:
+  - **Page Layout**: New dark background (#0a0a0a), consistent card styling with subtle borders
+  - **Header**: Larger icon, cleaner status indicator badges with rounded corners
+  - **Tab Navigation**: Rounded pills with color-coded active states
+  - **Metric Cards**: Gradient backgrounds with hover effects, better typography hierarchy
+  - **Trade Details Modal**: Complete redesign with:
+    - Modern dark background (#0a0a0a/95) with cyan glow shadow
+    - Gradient hero section for market question
+    - 3-column card layout for Position/P&L/Prices
+    - Collapsible AI Signals section
+    - Better fonts (uppercase labels, mono values)
+    - Subtle borders and hover states
   - Created `FiveLaneArchitectureCard` component displaying all 5 lanes (HFT, Alpha, Gamma, Sports Arb, News Sniper)
   - Updated "Equity by Lane" chart to include Sports and News Sniper lanes
   - Chart legend now shows: HFT, Alpha, Gamma, Sports Arb, News Sniper, Total Equity
