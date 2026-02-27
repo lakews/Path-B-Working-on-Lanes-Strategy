@@ -2456,7 +2456,8 @@ class PaperTrader:
                     edge = 0.05  # Assumed edge from news signal
                 elif forced_direction == 'NO':
                     # Check if NO bets are allowed
-                    is_sports = is_sports_market(market_data.get('question', ''))
+                    market_category = (market_data.get('category') or '').lower()
+                    is_sports = market_category in {'sports', 'esports'} or is_sports_market(market_data.get('question', ''))
                     sports_config = get_sports_config()
                     if is_sports and sports_config.allow_no_bets:
                         target_price = 1 - best_bid  # Buy NO
@@ -2485,7 +2486,8 @@ class PaperTrader:
                 
                 # Safety: Only YES unless sports
                 if side == 'NO':
-                    is_sports = is_sports_market(market_data.get('question', ''))
+                    market_category = (market_data.get('category') or '').lower()
+                    is_sports = market_category in {'sports', 'esports'} or is_sports_market(market_data.get('question', ''))
                     sports_config = get_sports_config()
                     if not (is_sports and sports_config.allow_no_bets):
                         return None
