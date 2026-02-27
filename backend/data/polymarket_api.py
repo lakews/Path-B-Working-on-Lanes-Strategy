@@ -118,7 +118,8 @@ class PolymarketAPI:
                 'liquidity': liquidity,
                 'end_date': m.get('endDate'),
                 'active': not m.get('closed', False),
-                'category': self._categorize_market(m.get('question', '')),
+                # Use Polymarket's authoritative category field (lowercase for consistency)
+                'category': (m.get('category') or 'Other').lower(),
                 'asset_class': self._categorize_market(m.get('question', '')),
                 'tokens': token_ids,
                 'clobTokenIds': token_ids,
