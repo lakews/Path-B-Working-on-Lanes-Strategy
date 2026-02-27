@@ -891,7 +891,7 @@ class TagLibraryService:
         """Initialize with MongoDB connection"""
         self.db = db
         
-        if self.db:
+        if self.db is not None:
             # Create indexes
             await self.db.tag_library.create_index("slug", unique=True)
             await self.db.tag_library.create_index([("category", 1), ("sub_category", 1)])
