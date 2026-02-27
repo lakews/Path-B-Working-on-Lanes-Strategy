@@ -3116,7 +3116,11 @@ class PaperTrader:
                 filtered_markets = []
                 asset_class_counts = {}
                 for m in markets:
-                    asset_class = m.get('asset_class', m.get('category', 'unknown')).lower()
+                    # Use TagLibraryService for accurate categorization
+                    category, sub_cat = get_market_category_info(m)
+                    m['_category'] = category
+                    m['_sub_category'] = sub_cat
+                    asset_class = category
                     asset_class_counts[asset_class] = asset_class_counts.get(asset_class, 0) + 1
                     if asset_class in [ac.lower() for ac in self.enabled_asset_classes]:
                         filtered_markets.append(m)
