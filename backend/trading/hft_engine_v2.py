@@ -1218,6 +1218,8 @@ class HighFrequencyTradingEngineV2:
             'last_cycle_time_ms': self._last_cycle_time,
             'cycle_count': self._cycle_count,
             'active_orders': len(self.active_orders),
+            'path_a_cache_size': len(self._path_a_cache),
+            'path_a_cache_last_refresh': self._path_a_cache_last_refresh.isoformat() if self._path_a_cache_last_refresh else None,
         }
     
     def get_hft_metrics(self) -> Dict:
