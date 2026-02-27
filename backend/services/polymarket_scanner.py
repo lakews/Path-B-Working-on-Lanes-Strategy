@@ -483,12 +483,17 @@ class PolymarketScanner:
                     continue
                 
                 # Use TagLibraryService for accurate categorization
-                try:
-                    from services.tag_library_service import get_tag_library_service
-                    tag_library = get_tag_library_service()
-                    cat_result = tag_library.classify_market({'question': market.get('question', '')})
-                    category = cat_result.category
-                except Exception:
+                # Always re-classify if category is missing, empty, or 'other'
+                current_cat = (market.get('category') or '').lower()
+                if current_cat in ('', 'other'):
+                    try:
+                        from services.tag_library_service import get_tag_library_service
+                        tag_library = get_tag_library_service()
+                        cat_result = tag_library.classify_market({'question': market.get('question', '')})
+                        category = cat_result.category
+                    except Exception:
+                        category = 'other'
+                else:
                     category = market.get('category', 'other')
                 
                 doc = {
