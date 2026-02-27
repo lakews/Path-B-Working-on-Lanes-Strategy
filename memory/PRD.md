@@ -188,6 +188,8 @@ NEWS EVENT ARRIVES
 - [x] **Markets-First News Query Optimization (Feb 15, 2026)** - Optimized query generation using market description, category, and time-awareness; Fixed API key encryption issue
 - [x] **Market Quality Score Optimization (Feb 26, 2026)** - Optimized for prediction markets: `spread*5` penalty (less aggressive), weights `0.4/0.6` (prioritize spread), threshold `0.5`
 - [x] **PATH A Engine Ultimate (Feb 26, 2026)** - Full refactor from "Architecture C" to PATH A, hybrid scoring, two-tier LLM, MongoDB fallback for scanner
+- [x] **HFT V2 Optimal Sports Filter (Feb 27, 2026)** - Replaced regex-based filter with authoritative `category` field check; 798+ sports markets filtered
+- [x] **Frontend Data Inconsistency Fix (Feb 27, 2026)** - Added `closed_trades` field to cumulative-stats API for consistent display in Asset Class Performance table
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
