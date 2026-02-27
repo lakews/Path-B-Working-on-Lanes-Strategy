@@ -206,6 +206,12 @@ NEWS EVENT ARRIVES
   - **Fix 1**: Block sports trade entries when `fair_value = 0.5` exactly (indicates no real odds data)
   - **Fix 2**: For sports position exits, fetch fresh market prices directly from Polymarket Gamma API
   - Files modified: `strategies/sports_strategy.py`, `paper_trading/paper_trader.py`
+- [x] **Sports Lane Intelligent Fallback System (Feb 27, 2026)** - Implemented 3-tier data quality system for sports trading:
+  - **TIER 1**: 85% Odds API (devigged) + 15% Order Flow (when real odds available)
+  - **TIER 2**: 100% Market-Implied Price (when Odds API fails but market has $5k+ volume & $2k+ liquidity)
+  - **TIER 0**: BLOCKED (when Odds API fails AND insufficient liquidity OR price=0.5)
+  - Tracks `data_tier` and `fusion_strategy` in trade records for analysis
+  - Files modified: `ml/enhanced_sentiment.py`, `strategies/sports_strategy.py`, `paper_trading/paper_trader.py`
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
