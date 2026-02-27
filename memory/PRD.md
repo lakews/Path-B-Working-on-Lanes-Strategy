@@ -226,6 +226,13 @@ NEWS EVENT ARRIVES
   - Tracks `data_tier`, `fusion_strategy`, `tier2_orderflow` in trade records for analysis
   - **Fixed order flow edge cases**: Empty bids (0.2 score = extremely bearish), empty asks (0.8 score = extremely bullish)
   - Files modified: `ml/enhanced_sentiment.py`, `ml/polymarket_sentiment.py`, `strategies/sports_strategy.py`, `paper_trading/paper_trader.py`
+- [x] **Sports Market Classification Bug Fix (Feb 27, 2026)** - Fixed P0 bug where sports markets leaked into HFT lane:
+  - **Root cause**: `polymarket_scanner.py` lines 300 and 492 were calling `tag_library.classify_market({'question': m.get('question', '')})` - passing ONLY the question field, stripping the `category` and `tags` fields
+  - **Impact**: Markets with `category='Sports'` from Polymarket API but generic questions (e.g., "Will X happen?") were misclassified as 'default' and incorrectly routed to HFT lane
+  - **Fix**: Now passes full market object to `classify_market()` so TagLibraryService can use all available data (tags, category field, question)
+  - **Verified**: 18 pytest tests pass covering category field detection, tag-based detection, HFT filtering, esports, and non-sports markets
+  - Files modified: `services/polymarket_scanner.py`, `data/polymarket_api.py`
+  - Test file: `/app/backend/tests/test_sports_classification_fix.py`
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
