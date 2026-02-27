@@ -552,12 +552,14 @@ class EnhancedSentimentAnalyzer:
             elif volume_24h >= FALLBACK_MIN_VOLUME and liquidity >= FALLBACK_MIN_LIQUIDITY:
                 # ============================================================
                 # TIER 2: Odds API failed but market has sufficient liquidity
-                # Use Polymarket implied price as fair value (market is truth)
+                # Use Polymarket YES price as fair value (market is truth)
                 # ============================================================
                 # Polymarket price IS the market-implied probability
                 # With deep liquidity, this is a reasonable proxy for fair value
                 # ============================================================
-                polymarket_implied = result['polymarket_sentiment']
+                # Use yes_price directly from market data (most reliable)
+                # Fall back to orderflow sentiment only if yes_price unavailable
+                polymarket_implied = float(market_data.get('yes_price') or result['polymarket_sentiment'] or 0.5)
                 
                 # Sanity check: reject if price is exactly 0.5 (likely no real data)
                 if abs(polymarket_implied - 0.5) < 0.01:
