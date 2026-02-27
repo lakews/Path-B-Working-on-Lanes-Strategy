@@ -8101,13 +8101,15 @@ class PaperTrader:
             for m in live_markets:
                 market_id = m.get('id', 'unknown')[:16]
                 question = m.get('question', '')
+                question_lower = question.lower()
                 
                 # ==========================================================
                 # SPORTS DETECTION (Feb 2026 - Symmetric with all lanes)
                 # ==========================================================
-                # Use category field from API (authoritative, no fallback)
+                # Use category field if available, fallback to keyword matching
                 market_category = (m.get('category') or '').lower()
-                is_sports = market_category in {'sports', 'esports'}
+                SPORTS_KW = {'nba', 'nfl', 'mlb', 'nhl', 'ncaa', 'ufc', 'championship', 'playoff', 'finals', 'mvp'}
+                is_sports = market_category in {'sports', 'esports'} or any(kw in question_lower for kw in SPORTS_KW)
                 
                 # PRICE VALIDATION (First - cheapest check)
                 # Note: Expiration filtering is now done at the source (PolymarketAPI & RealtimeService)
