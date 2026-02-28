@@ -60,6 +60,10 @@ Polymarket API → WebSocket/REST → RealTimeMarketService → PaperTrader
 - ✅ Added REST API retry logic (2 attempts, 500ms delay)
 - ✅ Changed exit behavior: QUEUE for retry instead of using stale data
 - ✅ Updated frontend Exit Data Source widget
+- ✅ Redesigned Lane Performance cards with premium glass-morphism styling
+- ✅ Added GAMMA strategy card (was missing from display)
+- ✅ All 5 lanes now displayed: HFT, ALPHA, GAMMA, SPORTS, NEWS
+- ✅ Added empty state design for inactive lanes
 
 ### Session 51 (continued)
 - ✅ Added WebSocket Health Dashboard widget to Paper Trading page
