@@ -6461,93 +6461,126 @@ class PaperTrader:
             # ALL STRATEGIES: REQUIRE REAL MARKET PRICES - NO DEFAULTS ALLOWED
             # ==========================================================================
             # Real trading requires actual market prices to exit. For ALL strategies:
-            # 1. MUST fetch fresh orderbook from Polymarket API
-            # 2. MUST have real bids to sell into
-            # 3. Exit price = best bid (what we'd actually get in real trading)
-            # 4. Block exit if no real market data (mimics real trading)
+            # 1. Try WebSocket orderbook cache first (sub-1ms latency)
+            # 2. Fallback to REST API if WebSocket cache empty (~100ms latency)
+            # 3. MUST have real bids to sell into
+            # 4. Exit price = best bid (what we'd actually get in real trading)
+            # 5. Block exit if no real market data (mimics real trading)
             # 
             # This completely eliminates default/fallback price problems.
             # ==========================================================================
             
             orderbook_verified = False
             current_yes_price = None
+            orderbook_source = 'none'
+            best_bid = 0
+            bid_size = 0
             
-            try:
-                from data.polymarket_api import PolymarketAPI
-                async with PolymarketAPI() as api:
-                    fresh_market = await api.get_market(market_id)
-                    if not fresh_market:
-                        logger.warning(f"[EXIT-BLOCK] {strategy}: Market {market_id[:16]} not found - cannot exit")
-                        return
-                    
-                    token_ids = fresh_market.get('clobTokenIds', [])
-                    if not token_ids:
-                        logger.warning(f"[EXIT-BLOCK] {strategy}: No token IDs for {market_id[:16]}")
-                        return
-                    
-                    # Fetch orderbook for the correct side
-                    token_index = 0 if side == 'YES' else 1
-                    if len(token_ids) <= token_index:
-                        logger.warning(f"[EXIT-BLOCK] {strategy}: Invalid token index for {market_id[:16]}")
-                        return
-                    
-                    fresh_ob = await api.get_order_book(token_ids[token_index])
-                    bids = fresh_ob.get('bids', [])
-                    
-                    if not bids:
-                        logger.warning(f"[EXIT-BLOCK] {strategy}: No bids for {market_id[:16]} - cannot sell without buyers")
-                        return
-                    
-                    # Use REAL bid price - this is what we'd get in actual trading
-                    best_bid = float(bids[0].get('price', 0))
-                    bid_size = float(bids[0].get('size', 0))
-                    
-                    if best_bid <= 0:
-                        logger.warning(f"[EXIT-BLOCK] {strategy}: Invalid bid price for {market_id[:16]}")
-                        return
-                    
-                    # Sanity check: if entry was extreme and current is ~0.5, verify carefully
-                    entry_is_extreme = yes_entry_price < 0.15 or yes_entry_price > 0.85
-                    price_is_suspicious = abs(best_bid - 0.5) < 0.05
-                    
-                    if entry_is_extreme and price_is_suspicious:
-                        # This is suspicious - verify there's real liquidity
-                        if bid_size < 10:  # Less than $10 liquidity
-                            logger.warning(f"[EXIT-BLOCK] {strategy}: Suspicious price ${best_bid:.4f} with low liquidity (${bid_size:.2f})")
-                            logger.warning(f"   Entry was ${yes_entry_price:.4f} - blocking potential fake exit")
-                            return
-                    
-                    # Set the verified real price
-                    current_yes_price = best_bid if side == 'YES' else (1 - best_bid)
-                    market_data['yes_price'] = current_yes_price
-                    market_data['order_book'] = fresh_ob
+            # Get token_ids from market_data or cache
+            token_ids = market_data.get('token_ids', [])
+            if not token_ids and self.realtime_market_service:
+                token_ids = self.realtime_market_service._market_tokens.get(market_id, [])
+                if token_ids:
                     market_data['token_ids'] = token_ids
-                    orderbook_verified = True
-                    
-                    logger.info(f"[EXIT] {strategy}: Real price for {market_id[:16]}: ${best_bid:.4f} (bid size: ${bid_size:.2f})")
-                    
-            except Exception as e:
-                logger.warning(f"[EXIT-BLOCK] {strategy}: Could not fetch real market data: {e}")
-                logger.warning(f"   Real trading requires verified prices - blocking exit")
-                return
             
-            if not orderbook_verified or current_yes_price is None:
-                logger.warning(f"[EXIT-BLOCK] {strategy}: No verified price for {market_id[:16]}")
+            token_index = 0 if side == 'YES' else 1
+            
+            # ==========================================================================
+            # LAYER 1: WebSocket Orderbook Cache (PRIMARY - sub-1ms latency)
+            # ==========================================================================
+            if self.realtime_market_service and self.realtime_market_service.ws_manager:
+                try:
+                    if token_ids and len(token_ids) > token_index:
+                        token_id = token_ids[token_index]
+                        ws_orderbook = self.realtime_market_service.ws_manager.get_latest_order_book(token_id)
+                        
+                        if ws_orderbook:
+                            ws_bids = ws_orderbook.get('bids', [])
+                            
+                            if ws_bids and len(ws_bids) > 0:
+                                best_bid = float(ws_bids[0].get('price', 0))
+                                bid_size = float(ws_bids[0].get('size', 0))
+                                
+                                if best_bid > 0 and bid_size > 0:
+                                    orderbook_verified = True
+                                    orderbook_source = 'websocket'
+                                    market_data['order_book'] = ws_orderbook
+                                    logger.debug(f"[EXIT-EXEC] WebSocket {side} orderbook: bid=${best_bid:.4f} (size={bid_size:.2f})")
+                except Exception as e:
+                    logger.debug(f"[EXIT-EXEC] WebSocket orderbook unavailable: {e}")
+            
+            # ==========================================================================
+            # LAYER 2: REST API Fallback (~100ms latency)
+            # ==========================================================================
+            if not orderbook_verified:
+                try:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        # Fetch market if we don't have token_ids
+                        if not token_ids:
+                            fresh_market = await api.get_market(market_id)
+                            if not fresh_market:
+                                logger.warning(f"[EXIT-BLOCK] {strategy}: Market {market_id[:16]} not found")
+                                return
+                            token_ids = fresh_market.get('clobTokenIds', [])
+                            market_data['token_ids'] = token_ids
+                        
+                        if not token_ids or len(token_ids) <= token_index:
+                            logger.warning(f"[EXIT-BLOCK] {strategy}: No token IDs for {market_id[:16]}")
+                            return
+                        
+                        fresh_ob = await api.get_order_book(token_ids[token_index])
+                        rest_bids = fresh_ob.get('bids', [])
+                        
+                        if rest_bids and len(rest_bids) > 0:
+                            best_bid = float(rest_bids[0].get('price', 0))
+                            bid_size = float(rest_bids[0].get('size', 0))
+                            
+                            if best_bid > 0 and bid_size > 0:
+                                orderbook_verified = True
+                                orderbook_source = 'rest_api'
+                                market_data['order_book'] = fresh_ob
+                                logger.debug(f"[EXIT-EXEC] REST API {side} orderbook: bid=${best_bid:.4f} (size={bid_size:.2f})")
+                                
+                except Exception as e:
+                    logger.warning(f"[EXIT-BLOCK] {strategy}: REST API fetch failed: {e}")
+            
+            # ==========================================================================
+            # BLOCK EXIT IF NO VERIFIED ORDERBOOK
+            # ==========================================================================
+            if not orderbook_verified or best_bid <= 0:
+                logger.warning(f"[EXIT-BLOCK] {strategy}: No verified orderbook for {market_id[:16]}")
+                logger.warning(f"   Tried: WebSocket -> REST API. Real trading requires buyers.")
                 return
             
             # ==========================================================================
-            # EXIT PRICE ALREADY DETERMINED FROM VERIFIED ORDERBOOK
+            # SANITY CHECK: Reject suspicious ~0.5 prices with extreme entry
             # ==========================================================================
-            # We already have current_yes_price from the verified orderbook fetch above.
-            # Now use it for P&L calculation.
+            entry_is_extreme = yes_entry_price < 0.15 or yes_entry_price > 0.85
+            price_is_suspicious = abs(best_bid - 0.5) < 0.05
+            
+            if entry_is_extreme and price_is_suspicious:
+                if bid_size < 10:  # Less than $10 liquidity
+                    logger.warning(f"[EXIT-BLOCK] {strategy}: Suspicious price ${best_bid:.4f} with low liquidity (${bid_size:.2f})")
+                    logger.warning(f"   Entry was ${yes_entry_price:.4f} - blocking potential fake exit")
+                    return
+            
+            # Set the verified real price
+            current_yes_price = best_bid if side == 'YES' else (1 - best_bid)
+            market_data['yes_price'] = current_yes_price
+            
+            logger.info(f"[EXIT] {strategy}: Real price via {orderbook_source} for {market_id[:16]}: ${best_bid:.4f} (size: ${bid_size:.2f})")
+            
+            # ==========================================================================
+            # EXIT PRICE DETERMINED FROM VERIFIED ORDERBOOK
             # ==========================================================================
             
             exit_yes_price = current_yes_price
             
-            logger.debug(f"[EXIT] {strategy} {side}: exit_yes_price={exit_yes_price:.4f}")
+            logger.debug(f"[EXIT] {strategy} {side}: exit_yes_price={exit_yes_price:.4f} (source={orderbook_source})")
             
             # Price already verified from orderbook - set source
-            exit_price_source = 'orderbook_verified'
+            exit_price_source = f'orderbook_{orderbook_source}'
             
             # Retrieve size from position
             size = position['size']  # USD invested
