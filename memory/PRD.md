@@ -63,6 +63,15 @@ Polymarket API → WebSocket/REST → RealTimeMarketService → PaperTrader
 - ✅ Added dual CB fields to `TradingConfig` model in `server.py`
 - ✅ Updated `/api/config` GET and `/api/config/update` POST endpoints for new fields
 - ✅ Fixed Risk Monitor showing wrong limits (was 3%/$300, now 10%/$1000)
+- ✅ Redesigned 5-Lane Architecture component with compact horizontal chips
+- ✅ Added Reset button to Lane Performance component
+- ✅ **MAJOR FIX: Entry Validation (Phantom Order Protection)**
+  - Fixed news_sniper calling non-existent `_execute_paper_trade` → now uses `_execute_paper_entry`
+  - Added configurable price floor ($0.02) and ceiling ($0.98) to reject dust orders
+  - Added spread check (max 15%) to reject illiquid orderbooks
+  - Added liquidity coverage check (100%) to ensure order fillability
+  - Added market impact cap (25% consumption) to reduce size if needed
+  - All settings configurable in SSOT: `risk_config.json` + UI Settings page
 
 ### Session 52
 - ✅ Removed Layer 3 (stale cached orderbook fallback) from exit logic
