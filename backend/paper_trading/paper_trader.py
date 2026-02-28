@@ -5616,75 +5616,66 @@ class PaperTrader:
                     logger.debug(f"[EXIT-OB] WebSocket orderbook unavailable: {e}")
             
             # ==========================================================================
-            # LAYER 2: REST API Fallback (~100ms latency)
+            # LAYER 2: REST API Fallback (~100ms latency) - WITH RETRY
+            # Real trading requires verified prices. No stale cache fallback.
             # ==========================================================================
             if not orderbook_verified:
-                try:
-                    # If no token_ids yet, fetch market from API
-                    if not token_ids:
+                # If no token_ids yet, fetch market from API
+                if not token_ids:
+                    try:
                         from data.polymarket_api import PolymarketAPI
                         async with PolymarketAPI() as api:
                             fresh_market = await api.get_market(market_id)
                             if fresh_market:
                                 token_ids = fresh_market.get('clobTokenIds', [])
                                 market_data['token_ids'] = token_ids
-                    
-                    if token_ids and len(token_ids) > token_index:
-                        from data.polymarket_api import PolymarketAPI
-                        async with PolymarketAPI() as api:
-                            fresh_orderbook = await api.get_order_book(token_ids[token_index])
-                            rest_bids = fresh_orderbook.get('bids', [])
-                            rest_asks = fresh_orderbook.get('asks', [])
-                            
-                            if rest_bids and len(rest_bids) > 0:
-                                best_bid = float(rest_bids[0].get('price', 0))
-                                bid_size = float(rest_bids[0].get('size', 0))
-                                
-                                if best_bid > 0 and bid_size > 0:
-                                    bids = rest_bids
-                                    asks = rest_asks
-                                    orderbook_verified = True
-                                    orderbook_source = 'rest_api'
-                                    best_ask = float(rest_asks[0].get('price', best_bid + 0.02)) if rest_asks else best_bid + 0.02
-                                    mid_price = (best_bid + best_ask) / 2
-                                    current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.02
-                                    logger.debug(f"[EXIT-OB] REST API {side} orderbook: bid=${best_bid:.4f} (size={bid_size:.2f}), spread={current_spread_pct:.2%}")
-                except Exception as e:
-                    logger.debug(f"[EXIT-OB] REST API orderbook fetch failed: {e}")
-            
-            # ==========================================================================
-            # LAYER 3: Cached Orderbook (Last Resort)
-            # ==========================================================================
-            if not orderbook_verified:
-                order_book = market_data.get('order_book', {})
-                cached_bids = order_book.get('bids', [])
-                cached_asks = order_book.get('asks', [])
+                    except Exception as e:
+                        logger.debug(f"[EXIT-OB] Failed to fetch token_ids: {e}")
                 
-                if cached_bids and len(cached_bids) > 0:
-                    best_bid = float(cached_bids[0].get('price', 0))
-                    if best_bid > 0:
-                        # Verify cached price is not a default ~0.5
-                        entry_is_extreme = yes_entry_price < 0.15 or yes_entry_price > 0.85
-                        price_is_suspicious = abs(best_bid - 0.5) < 0.05
+                # Attempt REST API with retry logic
+                max_retries = 2
+                retry_delay = 0.5  # 500ms between retries
+                
+                for attempt in range(max_retries):
+                    if orderbook_verified:
+                        break
                         
-                        if entry_is_extreme and price_is_suspicious:
-                            logger.warning(f"[EXIT-BLOCK] {strategy}: Cached price ${best_bid:.4f} suspicious (entry was ${yes_entry_price:.4f})")
-                            logger.warning("   Cannot verify real market price - blocking exit")
-                            return
+                    try:
+                        if token_ids and len(token_ids) > token_index:
+                            from data.polymarket_api import PolymarketAPI
+                            async with PolymarketAPI() as api:
+                                fresh_orderbook = await api.get_order_book(token_ids[token_index])
+                                rest_bids = fresh_orderbook.get('bids', [])
+                                rest_asks = fresh_orderbook.get('asks', [])
+                                
+                                if rest_bids and len(rest_bids) > 0:
+                                    best_bid = float(rest_bids[0].get('price', 0))
+                                    bid_size = float(rest_bids[0].get('size', 0))
+                                    
+                                    if best_bid > 0 and bid_size > 0:
+                                        bids = rest_bids
+                                        asks = rest_asks
+                                        orderbook_verified = True
+                                        orderbook_source = f'rest_api{"_retry" if attempt > 0 else ""}'
+                                        best_ask = float(rest_asks[0].get('price', best_bid + 0.02)) if rest_asks else best_bid + 0.02
+                                        mid_price = (best_bid + best_ask) / 2
+                                        current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.02
+                                        logger.debug(f"[EXIT-OB] REST API {side} orderbook (attempt {attempt+1}): bid=${best_bid:.4f} (size={bid_size:.2f}), spread={current_spread_pct:.2%}")
+                    except Exception as e:
+                        logger.debug(f"[EXIT-OB] REST API attempt {attempt+1}/{max_retries} failed: {e}")
                         
-                        # Cached price seems reasonable
-                        bids = cached_bids
-                        asks = cached_asks
-                        orderbook_verified = True
-                        orderbook_source = 'market_data_cache'
-                        logger.debug(f"[EXIT-OB] Using cached orderbook: bid=${best_bid:.4f}")
+                        # Wait before retry (except on last attempt)
+                        if attempt < max_retries - 1:
+                            import asyncio
+                            await asyncio.sleep(retry_delay)
             
             # ==========================================================================
-            # BLOCK EXIT IF NO VERIFIED ORDERBOOK
+            # BLOCK EXIT IF NO VERIFIED ORDERBOOK - NO STALE CACHE FALLBACK
+            # Real trading: no buyer = no sale. Queue for retry on next cycle.
             # ==========================================================================
             if not orderbook_verified:
-                logger.warning(f"[EXIT-BLOCK] {strategy}: No verified orderbook for {market_id[:16]}")
-                logger.warning("   Tried: WebSocket -> REST API -> Cache. Real trading requires buyers.")
+                logger.warning(f"[EXIT-QUEUED] {strategy}: No verified orderbook for {market_id[:16]} - will retry next cycle")
+                logger.warning("   Tried: WebSocket -> REST API (x2). Real trading requires buyers.")
                 return
             
             # Now we have verified orderbook - proceed with exit evaluation
