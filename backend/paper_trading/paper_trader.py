@@ -6491,73 +6491,15 @@ class PaperTrader:
                 return
             
             # ==========================================================================
-            # EXIT PRICE DETERMINATION
+            # EXIT PRICE ALREADY DETERMINED FROM VERIFIED ORDERBOOK
             # ==========================================================================
-            # BOTH MODES: Use orderbook for realistic exit pricing
-            # - Sell YES = hit the bid
-            # - Sell NO = hit the ask (equivalent to buying YES)
+            # We already have current_yes_price from the verified orderbook fetch above.
+            # Now use it for P&L calculation.
             # ==========================================================================
             
-            # Fetch correct orderbook based on position side
-            # YES position -> fetch YES token orderbook (token_ids[0])
-            # NO position -> fetch NO token orderbook (token_ids[1])
-            bids = []
-            asks = []
-            try:
-                token_ids = market_data.get('token_ids', [])
-                token_index = 0 if side == 'YES' else 1
-                if token_ids and len(token_ids) > token_index:
-                    from data.polymarket_api import PolymarketAPI
-                    async with PolymarketAPI() as api:
-                        fresh_orderbook = await api.get_order_book(token_ids[token_index])
-                        bids = fresh_orderbook.get('bids', [])
-                        asks = fresh_orderbook.get('asks', [])
-                        if bids and asks:
-                            logger.debug(f"[EXIT-EXEC-OB] Fresh {side} orderbook: bid={bids[0]['price']}, ask={asks[0]['price']}")
-            except Exception as e:
-                logger.debug(f"[EXIT-EXEC-OB] Could not fetch fresh orderbook: {e}")
+            exit_yes_price = current_yes_price
             
-            # Fallback to cached orderbook if fresh fetch failed
-            if not bids or not asks:
-                order_book = market_data.get('order_book', {})
-                bids = order_book.get('bids', [])
-                asks = order_book.get('asks', [])
-            
-            if bids:
-                # Use orderbook prices - more accurate than midpoint
-                best_bid = float(bids[0]['price'])
-                best_ask = float(asks[0]['price']) if asks else best_bid + 0.02
-                
-                # SANITY CHECK: Verify orderbook makes sense
-                spread = best_ask - best_bid
-                if spread < 0 or spread > 0.20:
-                    logger.warning(f"[EXIT-WARN] Suspicious orderbook: bid={best_bid}, ask={best_ask}, spread={spread}")
-                    # Fall back to midpoint
-                    exit_yes_price = current_yes_price
-                else:
-                    # Exiting is always SELLING tokens - hit the bid
-                    exit_price = best_bid
-                    
-                    # Convert to YES-equivalent price for P&L calculation
-                    if side == 'YES':
-                        exit_yes_price = exit_price
-                    else:
-                        # NO token price -> YES equivalent: YES_price = 1 - NO_price
-                        exit_yes_price = 1 - exit_price
-                
-                # Additional sanity check: exit price should be close to current price
-                price_diff = abs(exit_yes_price - current_yes_price)
-                if price_diff > 0.10:  # More than 10% difference is suspicious
-                    logger.warning(f"[EXIT-WARN] Exit price {exit_yes_price:.4f} differs significantly from current {current_yes_price:.4f}")
-                    # Use current price as fallback for safety
-                    if side == 'YES':
-                        exit_yes_price = current_yes_price - 0.01  # Conservative sell
-                    else:
-                        exit_yes_price = current_yes_price + 0.01  # Conservative buy YES
-                    exit_yes_price = max(0.001, min(0.999, exit_yes_price))
-                    logger.info(f"[EXIT] Using conservative exit price: {exit_yes_price:.4f}")
-                
-                logger.debug(f"[EXIT] {side} orderbook exit: bid={best_bid:.4f}, exit_yes={exit_yes_price:.4f}")
+            logger.debug(f"[EXIT] {strategy} {side}: exit_yes_price={exit_yes_price:.4f}")
             else:
                 # No orderbook - use midpoint with conservative spread estimate
                 spread_estimate = 0.02
