@@ -251,15 +251,17 @@ NEWS EVENT ARRIVES
     - "Counter-Strike: MOUZ vs PARIVISION..." ✅
     - "LoL: T1 vs BNK FEARX..." ✅
   - Files modified: `services/tag_library_service.py`, `trading/hft_engine_v2.py` (added debug logging)
-- [x] **Sports Exit 0.49 Default Price Fix (Feb 28, 2026)** - Fixed suspicious exits at default 0.5 prices:
-  - **Root cause**: Sports markets with extreme entry prices (e.g., $0.0025) were exiting at ~$0.49 when API returned default/fallback prices
-  - **Bug impact**: Fake P&L of +19000% when real price hadn't moved significantly  
-  - **Fixes implemented**:
-    1. Enhanced `_evaluate_exit()` for sports: Detects suspicious price jumps from extreme to ~0.5, fetches fresh orderbook data, blocks exit if unverified
-    2. Enhanced `_execute_paper_exit()` for sports: Same sanity check before calculating P&L
-    3. Sports fair_value in `enhanced_sentiment.py`: Now uses `None` instead of `0.5` default, blocks trades if API returns ~0.5
-  - **Validation logic**: Block sports exit if (entry extreme) AND (current ~0.5) AND (no orderbook verification)
-  - Files modified: `paper_trading/paper_trader.py`, `ml/enhanced_sentiment.py`
+- [x] **Sports Exit - Real Market Prices Only (Feb 28, 2026)** - Completely eliminated default prices:
+  - **Approach**: Sports exits now require REAL orderbook data - just like actual trading
+  - **Logic**: 
+    1. MUST fetch fresh orderbook from Polymarket API
+    2. MUST have real bids to sell into
+    3. Exit price = best bid (what you'd actually get in real trading)
+    4. NO exit possible without buyers (mimics real market)
+  - **Why this works**: You can't sell in real markets without a buyer. By requiring actual orderbook bids, we eliminate ALL default/fallback prices
+  - **Result**: Exit prices are always real market prices, never 0.49/0.5 defaults
+  - Files modified: `paper_trading/paper_trader.py` (_evaluate_exit, _execute_paper_exit)
+  - Also fixed: `ml/enhanced_sentiment.py` - sports fair_value rejects ~0.5 values
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
