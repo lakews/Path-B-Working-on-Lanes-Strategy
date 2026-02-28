@@ -1157,6 +1157,9 @@ async def get_config():
             "kelly_fraction": saved_config.get("kelly_fraction", config.KELLY_FRACTION) if saved_config else config.KELLY_FRACTION,
             "kelly_enabled": saved_config.get("kelly_enabled", True) if saved_config else True,  # Default: Kelly enabled
             "max_drawdown_pct": saved_config.get("max_drawdown_pct", config.MAX_DRAWDOWN_PCT) if saved_config else config.MAX_DRAWDOWN_PCT,
+            # Dual Circuit Breaker Configuration
+            "max_account_drawdown_pct": saved_config.get("max_account_drawdown_pct", 10.0) if saved_config else 10.0,
+            "max_realized_drawdown_pct": saved_config.get("max_realized_drawdown_pct", 15.0) if saved_config else 15.0,
             "trades_per_10min": saved_config.get("trades_per_10min", config.TRADES_PER_10MIN) if saved_config else config.TRADES_PER_10MIN,
             # Market selection filters
             "min_liquidity": saved_config.get("min_liquidity", config.MIN_LIQUIDITY) if saved_config else config.MIN_LIQUIDITY,
