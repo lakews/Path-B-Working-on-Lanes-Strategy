@@ -3613,15 +3613,26 @@ class PaperTrader:
                 logger.debug(f"[NEWS SNIPER] {market_id_short} | Size too small: ${position_size:.2f}")
                 return
             
-            # Execute the trade
-            await self._execute_paper_trade(
+            # Execute the trade via standard entry (with full validation)
+            await self._execute_paper_entry(
+                market_id=market_id,
                 market_data=market_data,
                 side=side,
                 size=position_size,
                 strategy='news_sniper',
-                confidence=confidence,
-                sentiment_score=posterior,
-                signal_source='emergent_news'
+                signals={
+                    'bayes_factor': bayes_factor,
+                    'posterior': posterior,
+                    'confidence': confidence,
+                    'news_headline': news_headline,
+                    'signal_source': 'emergent_news'
+                },
+                rl_action='NEWS_BUY' if direction == 'YES' else 'NEWS_SELL',
+                rl_confidence=confidence,
+                sizing_breakdown={
+                    'edge': edge,
+                    'model_probability': posterior
+                }
             )
             
             logger.info(
