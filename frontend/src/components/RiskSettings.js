@@ -5,7 +5,7 @@ import {
   Shield, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, 
   Zap, Target, TrendingUp, Crosshair, Newspaper, Trophy, 
   DollarSign, Percent, Clock, Activity, Settings, Layers,
-  ChevronDown, ChevronUp, Info
+  ChevronDown, ChevronUp, Info, RotateCcw
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
