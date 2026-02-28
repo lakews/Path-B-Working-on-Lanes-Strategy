@@ -6363,6 +6363,53 @@ class PaperTrader:
             
             current_yes_price = float(current_yes_price)
             side = position['side']
+            yes_entry_price = position.get('yes_entry_price', position['entry_price'])
+            
+            # ==========================================================================
+            # CRITICAL: SANITY CHECK FOR DEFAULT/FALLBACK PRICES
+            # ==========================================================================
+            # Block exit if:
+            # 1. Current price is ~0.5 (likely default) AND
+            # 2. Entry price was NOT ~0.5 (price shouldn't jump to 0.5)
+            # 3. No orderbook data to verify
+            # ==========================================================================
+            price_near_half = abs(current_yes_price - 0.5) < 0.03
+            entry_not_near_half = abs(yes_entry_price - 0.5) >= 0.1
+            
+            if price_near_half and entry_not_near_half:
+                # This is HIGHLY suspicious - price jumped from extreme to 0.5
+                # Try to get fresh price
+                try:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        fresh_market = await api.get_market(market_id)
+                        if fresh_market:
+                            fresh_yes = fresh_market.get('yes_price') or fresh_market.get('outcomePrices', [None])[0]
+                            if fresh_yes and float(fresh_yes) > 0:
+                                real_price = float(fresh_yes)
+                                if abs(real_price - 0.5) >= 0.03:
+                                    # Real price is NOT 0.5, use it
+                                    current_yes_price = real_price
+                                    market_data['yes_price'] = current_yes_price
+                                    logger.info(f"[EXIT-PRICE-CORRECT] Using fresh price ${real_price:.4f} instead of suspicious ${current_yes_price:.4f}")
+                                else:
+                                    # Fresh price is also ~0.5, check orderbook
+                                    token_ids = fresh_market.get('clobTokenIds', [])
+                                    if token_ids:
+                                        market_data['token_ids'] = token_ids
+                except Exception as e:
+                    logger.debug(f"[EXIT-VERIFY] Could not fetch fresh price: {e}")
+                
+                # Re-check after potential correction
+                if abs(current_yes_price - 0.5) < 0.03 and entry_not_near_half:
+                    order_book = market_data.get('order_book', {})
+                    cached_bids = order_book.get('bids', [])
+                    cached_asks = order_book.get('asks', [])
+                    if not cached_bids or not cached_asks:
+                        logger.warning(f"[EXIT-BLOCK] Suspicious price jump: entry=${yes_entry_price:.4f} -> exit=${current_yes_price:.4f}")
+                        logger.warning(f"   Blocking exit - price ${current_yes_price:.4f} near 0.5 without orderbook")
+                        logger.warning(f"   This prevents fake P&L calculations from default prices")
+                        return
             
             # ==========================================================================
             # EXIT PRICE DETERMINATION
