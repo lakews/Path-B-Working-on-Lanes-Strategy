@@ -427,7 +427,7 @@ class EnhancedSentimentAnalyzer:
         # ================================================================
         # Returns None if module is disabled (no API key)
         # In that case, we fallback gracefully to Order Flow
-        sports_fair_value = 0.5
+        sports_fair_value = None  # CRITICAL: None, not 0.5 - no default values
         sports_confidence = 0.0
         
         if detected_category == 'sports' and self.sports_odds:
@@ -444,19 +444,25 @@ class EnhancedSentimentAnalyzer:
                     result['sports_fallback_reason'] = 'API key not configured or module inactive'
                 
                 elif sports_result.get('is_sports_market'):
-                    sports_fair_value = sports_result.get('sports_fair_value', 0.5)
-                    sports_confidence = sports_result.get('sports_confidence', 0.0)
-                    
-                    result['sports_sentiment'] = sports_fair_value
-                    result['sports_confidence'] = sports_confidence
-                    result['sports_matched_event'] = sports_result.get('matched_event')
-                    result['sports_all_fair_values'] = sports_result.get('all_fair_values', {})
-                    result['sports_bookmakers_used'] = sports_result.get('bookmakers_used', 0)
-                    
-                    if sports_confidence > 0:
-                        sources_used.append('sports_odds')
-                        logger.info(f"[SPORTS] Real odds for {question[:40]}: "
-                                   f"fair_value={sports_fair_value:.3f}")
+                    raw_fair_value = sports_result.get('sports_fair_value')
+                    # CRITICAL: Only use fair_value if it's a real value, not 0.5 default
+                    if raw_fair_value is not None and abs(raw_fair_value - 0.5) >= 0.01:
+                        sports_fair_value = raw_fair_value
+                        sports_confidence = sports_result.get('sports_confidence', 0.0)
+                        
+                        result['sports_sentiment'] = sports_fair_value
+                        result['sports_confidence'] = sports_confidence
+                        result['sports_matched_event'] = sports_result.get('matched_event')
+                        result['sports_all_fair_values'] = sports_result.get('all_fair_values', {})
+                        result['sports_bookmakers_used'] = sports_result.get('bookmakers_used', 0)
+                        
+                        if sports_confidence > 0:
+                            sources_used.append('sports_odds')
+                            logger.info(f"[SPORTS] Real odds for {question[:40]}: "
+                                       f"fair_value={sports_fair_value:.3f}")
+                    else:
+                        result['sports_error'] = 'fair_value_is_default_0.5'
+                        result['sports_fallback_reason'] = 'Odds API returned default or neutral value'
                 else:
                     result['sports_error'] = sports_result.get('error', 'not_sports_market')
                     
