@@ -64,6 +64,18 @@ Polymarket API → WebSocket/REST → RealTimeMarketService → PaperTrader
 - ✅ Added GAMMA strategy card (was missing from display)
 - ✅ All 5 lanes now displayed: HFT, ALPHA, GAMMA, SPORTS, NEWS
 - ✅ Added empty state design for inactive lanes
+- ✅ Removed Gamma Strategy (Whale Zone) table
+- ✅ Moved WebSocket Health widget to bottom of page
+- ✅ Moved Strategy Performance & Category P&L tables above Lane Performance
+- ✅ Lightened page background
+- ✅ Removed Max Drawdown card
+- ✅ **Implemented Four-Metric Drawdown System:**
+  - Position DD: Open position losses vs deployed capital
+  - Account DD: Account vs initial (PRIMARY CB @ 10%)
+  - Realized DD: Locked-in P&L drawdown (SECONDARY CB @ 15%)
+  - Total DD: Industry standard HWM (informational)
+- ✅ Peaks updated ONLY on profitable trade close (no phantom triggers)
+- ✅ Updated Configuration page with dual circuit breaker controls
 
 ### Session 51 (continued)
 - ✅ Added WebSocket Health Dashboard widget to Paper Trading page
