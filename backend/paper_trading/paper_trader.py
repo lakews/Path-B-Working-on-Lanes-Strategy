@@ -5565,10 +5565,11 @@ class PaperTrader:
             # ==========================================================================
             # Real trading requires actual market prices to exit. You can't sell if 
             # there's no buyer. For ALL strategies, we:
-            # 1. Fetch fresh orderbook from Polymarket API
-            # 2. Require real bids to sell into
-            # 3. Exit price = best bid (what we'd actually get in real trading)
-            # 4. Block exit if no real market data (mimics real trading)
+            # 1. Try WebSocket orderbook cache first (sub-1ms latency)
+            # 2. Fallback to REST API if WebSocket cache empty (~100ms latency)
+            # 3. Require real bids to sell into
+            # 4. Exit price = best bid (what we'd actually get in real trading)
+            # 5. Block exit if no real market data (mimics real trading)
             # 
             # This completely eliminates default/fallback price problems.
             # ==========================================================================
@@ -5577,49 +5578,89 @@ class PaperTrader:
             asks = []
             current_spread_pct = 0.02
             orderbook_verified = False
+            orderbook_source = 'none'
             
-            # Fetch fresh orderbook for exit evaluation
-            try:
-                token_ids = market_data.get('token_ids', [])
-                
-                # If no token_ids in market_data, fetch from API
-                if not token_ids:
-                    from data.polymarket_api import PolymarketAPI
-                    async with PolymarketAPI() as api:
-                        fresh_market = await api.get_market(market_id)
-                        if fresh_market:
-                            token_ids = fresh_market.get('clobTokenIds', [])
-                            market_data['token_ids'] = token_ids
-                
-                token_index = 0 if side == 'YES' else 1
-                if token_ids and len(token_ids) > token_index:
-                    from data.polymarket_api import PolymarketAPI
-                    async with PolymarketAPI() as api:
-                        fresh_orderbook = await api.get_order_book(token_ids[token_index])
-                        bids = fresh_orderbook.get('bids', [])
-                        asks = fresh_orderbook.get('asks', [])
+            # Get token_ids from market_data or cache
+            token_ids = market_data.get('token_ids', [])
+            if not token_ids and self.realtime_market_service:
+                # Try to get from RealTimeMarketService cache
+                token_ids = self.realtime_market_service._market_tokens.get(market_id, [])
+                if token_ids:
+                    market_data['token_ids'] = token_ids
+            
+            token_index = 0 if side == 'YES' else 1
+            
+            # ==========================================================================
+            # LAYER 1: WebSocket Orderbook Cache (PRIMARY - sub-1ms latency)
+            # ==========================================================================
+            if self.realtime_market_service and self.realtime_market_service.ws_manager:
+                try:
+                    # Get the correct token for this side
+                    if token_ids and len(token_ids) > token_index:
+                        token_id = token_ids[token_index]
+                        ws_orderbook = self.realtime_market_service.ws_manager.get_latest_order_book(token_id)
                         
-                        if bids:
-                            best_bid = float(bids[0].get('price', 0))
-                            bid_size = float(bids[0].get('size', 0))
+                        if ws_orderbook:
+                            ws_bids = ws_orderbook.get('bids', [])
+                            ws_asks = ws_orderbook.get('asks', [])
                             
-                            if best_bid > 0 and bid_size > 0:
-                                orderbook_verified = True
-                                best_ask = float(asks[0].get('price', best_bid + 0.02)) if asks else best_bid + 0.02
-                                mid_price = (best_bid + best_ask) / 2
-                                current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.02
-                                logger.debug(f"[EXIT-OB] Fresh {side} orderbook verified: bid=${best_bid:.4f} (size={bid_size:.2f}), ask=${best_ask:.4f}")
-            except Exception as e:
-                logger.debug(f"[EXIT-OB] Could not fetch fresh orderbook: {e}")
+                            if ws_bids and len(ws_bids) > 0:
+                                best_bid = float(ws_bids[0].get('price', 0))
+                                bid_size = float(ws_bids[0].get('size', 0))
+                                
+                                if best_bid > 0 and bid_size > 0:
+                                    bids = ws_bids
+                                    asks = ws_asks
+                                    orderbook_verified = True
+                                    orderbook_source = 'websocket'
+                                    best_ask = float(ws_asks[0].get('price', best_bid + 0.02)) if ws_asks else best_bid + 0.02
+                                    mid_price = (best_bid + best_ask) / 2
+                                    current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.02
+                                    logger.debug(f"[EXIT-OB] WebSocket {side} orderbook: bid=${best_bid:.4f} (size={bid_size:.2f}), spread={current_spread_pct:.2%}")
+                except Exception as e:
+                    logger.debug(f"[EXIT-OB] WebSocket orderbook unavailable: {e}")
             
             # ==========================================================================
-            # BLOCK EXIT IF NO VERIFIED ORDERBOOK
-            # ==========================================================================
-            # Real trading requires buyers. If we can't verify the orderbook, we cannot
-            # determine a real exit price, so we block the exit.
+            # LAYER 2: REST API Fallback (~100ms latency)
             # ==========================================================================
             if not orderbook_verified:
-                # Check cached orderbook as last resort
+                try:
+                    # If no token_ids yet, fetch market from API
+                    if not token_ids:
+                        from data.polymarket_api import PolymarketAPI
+                        async with PolymarketAPI() as api:
+                            fresh_market = await api.get_market(market_id)
+                            if fresh_market:
+                                token_ids = fresh_market.get('clobTokenIds', [])
+                                market_data['token_ids'] = token_ids
+                    
+                    if token_ids and len(token_ids) > token_index:
+                        from data.polymarket_api import PolymarketAPI
+                        async with PolymarketAPI() as api:
+                            fresh_orderbook = await api.get_order_book(token_ids[token_index])
+                            rest_bids = fresh_orderbook.get('bids', [])
+                            rest_asks = fresh_orderbook.get('asks', [])
+                            
+                            if rest_bids and len(rest_bids) > 0:
+                                best_bid = float(rest_bids[0].get('price', 0))
+                                bid_size = float(rest_bids[0].get('size', 0))
+                                
+                                if best_bid > 0 and bid_size > 0:
+                                    bids = rest_bids
+                                    asks = rest_asks
+                                    orderbook_verified = True
+                                    orderbook_source = 'rest_api'
+                                    best_ask = float(rest_asks[0].get('price', best_bid + 0.02)) if rest_asks else best_bid + 0.02
+                                    mid_price = (best_bid + best_ask) / 2
+                                    current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.02
+                                    logger.debug(f"[EXIT-OB] REST API {side} orderbook: bid=${best_bid:.4f} (size={bid_size:.2f}), spread={current_spread_pct:.2%}")
+                except Exception as e:
+                    logger.debug(f"[EXIT-OB] REST API orderbook fetch failed: {e}")
+            
+            # ==========================================================================
+            # LAYER 3: Cached Orderbook (Last Resort)
+            # ==========================================================================
+            if not orderbook_verified:
                 order_book = market_data.get('order_book', {})
                 cached_bids = order_book.get('bids', [])
                 cached_asks = order_book.get('asks', [])
@@ -5640,12 +5681,16 @@ class PaperTrader:
                         bids = cached_bids
                         asks = cached_asks
                         orderbook_verified = True
+                        orderbook_source = 'market_data_cache'
                         logger.debug(f"[EXIT-OB] Using cached orderbook: bid=${best_bid:.4f}")
-                
-                if not orderbook_verified:
-                    logger.warning(f"[EXIT-BLOCK] {strategy}: No verified orderbook for {market_id[:16]}")
-                    logger.warning(f"   Real trading requires buyers - cannot exit without orderbook")
-                    return
+            
+            # ==========================================================================
+            # BLOCK EXIT IF NO VERIFIED ORDERBOOK
+            # ==========================================================================
+            if not orderbook_verified:
+                logger.warning(f"[EXIT-BLOCK] {strategy}: No verified orderbook for {market_id[:16]}")
+                logger.warning(f"   Tried: WebSocket -> REST API -> Cache. Real trading requires buyers.")
+                return
             
             # Now we have verified orderbook - proceed with exit evaluation
             if bids:
