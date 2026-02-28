@@ -55,6 +55,11 @@ Polymarket API → WebSocket/REST → RealTimeMarketService → PaperTrader
 
 ## Completed Work (Feb 2026)
 
+### Session 51 (continued)
+- ✅ Added WebSocket Health Dashboard widget to Paper Trading page
+- ✅ Added Exit Data Source info panel showing WebSocket-primary architecture
+- ✅ Widget shows: connection status, updates/sec, total updates, token mapping, subscribed markets
+
 ### Session 51
 - ✅ Verified WebSocket-primary exit logic (81/82 tests passed)
 - ✅ Confirmed real-time orderbook prices for all exits
