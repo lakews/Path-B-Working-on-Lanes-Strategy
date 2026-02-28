@@ -33,7 +33,7 @@ from typing import Dict, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
-from risk_config import RISK, MarketRegime
+from risk_config import RISK
 
 logger = logging.getLogger(__name__)
 

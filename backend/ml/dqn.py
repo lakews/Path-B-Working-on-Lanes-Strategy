@@ -10,7 +10,6 @@ import torch.optim as optim
 import logging
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
-from collections import deque
 import random
 
 logger = logging.getLogger(__name__)

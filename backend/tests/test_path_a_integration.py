@@ -1,5 +1,4 @@
 """ Integration test for Architecture C Ultimate """
-import asyncio
 import sys
 from pathlib import Path
 

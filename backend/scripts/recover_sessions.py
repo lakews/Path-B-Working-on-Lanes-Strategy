@@ -143,7 +143,7 @@ async def recover_sessions():
         print(f"  ✓ Session {session_id[:8]}...: {total_trades} trades, ${total_pnl:.2f} P&L, {win_rate:.1%} WR")
     
     print(f"\n{'=' * 60}")
-    print(f"Recovery Complete!")
+    print("Recovery Complete!")
     print(f"  Sessions recovered: {recovered_count}")
     print(f"  Total trades recovered: {total_trades_recovered}")
     print(f"{'=' * 60}")

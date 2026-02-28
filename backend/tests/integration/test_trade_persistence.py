@@ -15,7 +15,7 @@ Date: January 2026
 import pytest
 import sys
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, AsyncMock
 
 sys.path.insert(0, '/app/backend')
 

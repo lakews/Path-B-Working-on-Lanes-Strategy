@@ -20,7 +20,7 @@ import sys
 
 sys.path.insert(0, '/app/backend')
 
-from risk_config import RISK, RiskConfig
+from risk_config import RISK
 
 
 class MockStrategy:

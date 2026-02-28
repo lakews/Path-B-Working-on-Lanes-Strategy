@@ -23,7 +23,6 @@ import pytest
 import requests
 import os
 import time
-from datetime import datetime, timezone
 
 # Get BASE_URL from environment
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
@@ -204,7 +203,7 @@ class TestNewsInjectorStatus:
         # Should return 200/400 if authenticated, or 401 if auth required
         assert response.status_code in [200, 400, 401]
         if response.status_code == 401:
-            print(f"✅ NewsInjector start requires authentication (expected)")
+            print("✅ NewsInjector start requires authentication (expected)")
         else:
             data = response.json()
             print(f"✅ NewsInjector start response: {data}")
@@ -219,7 +218,7 @@ class TestNewsInjectorStatus:
         # Should return 200/400 if authenticated, or 401 if auth required
         assert response.status_code in [200, 400, 401]
         if response.status_code == 401:
-            print(f"✅ NewsInjector stop requires authentication (expected)")
+            print("✅ NewsInjector stop requires authentication (expected)")
         else:
             data = response.json()
             print(f"✅ NewsInjector stop response: {data}")
@@ -380,7 +379,7 @@ class TestEndToEndNewsPipeline:
         )
         assert news_response.status_code == 200
         assert news_response.json().get('status') == 'accepted'
-        print(f"Step 3: ✅ News submitted and accepted")
+        print("Step 3: ✅ News submitted and accepted")
         
         # Step 4: Wait briefly for processing
         time.sleep(2)

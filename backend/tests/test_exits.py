@@ -18,7 +18,7 @@ Test Cases from the Task 24 Prompt:
 """
 
 import pytest
-from trading.exit_engine import ExitEngine, ExitAction, ExitReason, ExitDecision
+from trading.exit_engine import ExitEngine, ExitAction, ExitReason
 
 
 class TestExitEngineBasics:

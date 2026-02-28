@@ -15,7 +15,7 @@ Architecture Position: Step 1 (Data Collection)
 import asyncio
 import logging
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Dict, Tuple, Optional
 from config import config
 

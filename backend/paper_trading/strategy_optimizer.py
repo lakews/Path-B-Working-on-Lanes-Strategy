@@ -4,7 +4,7 @@ Refines trade detection, execution timing, position sizing, and strategy selecti
 """
 import logging
 import numpy as np
-from typing import Dict, List, Optional
+from typing import Dict, List
 from datetime import datetime, timezone
 from database import get_db
 import uuid
@@ -386,7 +386,7 @@ class StrategyOptimizer:
                     changes['max_hold_hours'] = {
                         "old": old_hours,
                         "new": self.params['max_hold_hours'],
-                        "reason": f"Time exits profitable, extending hold time"
+                        "reason": "Time exits profitable, extending hold time"
                     }
             
             return changes if changes else {"no_change": "Timing optimal"}

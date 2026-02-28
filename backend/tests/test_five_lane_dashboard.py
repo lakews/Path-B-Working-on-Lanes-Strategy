@@ -36,7 +36,7 @@ class TestAnalyticsEndpoint:
         data = response.json()
         
         assert 'lane_performance' in data, "lane_performance key missing from analytics response"
-        print(f"✅ lane_performance found in response")
+        print("✅ lane_performance found in response")
         print(f"   Lanes present: {list(data['lane_performance'].keys())}")
     
     def test_lane_performance_has_hft_data(self):
@@ -159,7 +159,6 @@ class TestLanePerformanceCalculation:
     def test_lane_metrics_calculation_logic(self):
         """Test the lane metrics calculation logic directly"""
         # Import the calculation logic without instantiating the class
-        from collections import defaultdict
         
         # Replicate the _calculate_lane_metrics logic
         def calculate_lane_metrics(trades):

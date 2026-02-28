@@ -25,11 +25,10 @@ Date: January 2026
 
 import sys
 import time
-import asyncio
 import logging
 from datetime import datetime, timezone
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 # Add backend to path
 sys.path.insert(0, '/app/backend')
@@ -37,14 +36,10 @@ sys.path.insert(0, '/app/backend')
 from services.hft_context import (
     get_hft_context, 
     get_volatility_calculator, 
-    HFTContext, 
-    VolatilityCalculator,
     ContextStatus,
-    MarketParams,
-    MAX_CONTEXT_AGE_SECONDS
+    MarketParams
 )
 from services.telemetry import get_telemetry_service, create_decision_snapshot
-from risk_config import RISK
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

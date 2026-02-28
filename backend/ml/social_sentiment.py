@@ -4,10 +4,9 @@ Uses Finnhub for stock/crypto sentiment and news, plus LLM analysis
 """
 import logging
 import aiohttp
-import asyncio
 import os
-from typing import Dict, Tuple, List, Optional
-from datetime import datetime, timezone, timedelta
+from typing import Dict, List, Optional
+from datetime import datetime, timezone
 import uuid
 import re
 

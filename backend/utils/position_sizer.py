@@ -18,7 +18,7 @@ Usage:
 
 import math
 import logging
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)

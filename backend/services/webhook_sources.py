@@ -22,9 +22,7 @@ import asyncio
 import aiohttp
 import logging
 import os
-import feedparser
-from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, List, Optional, Callable, Any, Set
+from typing import Dict, List, Optional, Callable, Any
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from enum import Enum
@@ -313,7 +311,7 @@ class ApifyTwitterSource:
                 extracted = self._extract_tweet_data(tweet)
                 
                 if not extracted:
-                    logger.debug(f"[APIFY] Could not extract data from tweet structure")
+                    logger.debug("[APIFY] Could not extract data from tweet structure")
                     continue
                 
                 tweet_text = extracted['text']
@@ -877,11 +875,11 @@ class WebhookSourcesManager:
             'errors': 0,
         }
         
-        logger.info(f"[WEBHOOK SOURCES] Manager initialized")
+        logger.info("[WEBHOOK SOURCES] Manager initialized")
         logger.info(f"  - Apify Twitter: {'✅ Enabled' if self.apify.is_enabled() else '❌ Disabled'} ({len(self.apify.TARGET_ACCOUNTS)} accounts)")
         logger.info(f"  - Whale Alerts: {'✅ Enabled' if self.whale.is_enabled() else '❌ Disabled'}")
         logger.info(f"  - CryptoPanic API: {'⏸️ PAUSED' if not self.cryptopanic_api.is_enabled() else '✅ Enabled (⚠️ 24h delay)'}")
-        logger.info(f"  - CryptoPanic RSS: ❌ Deprecated (returns HTML)")
+        logger.info("  - CryptoPanic RSS: ❌ Deprecated (returns HTML)")
         logger.info(f"  - Whale Direct Injection: {'✅ Enabled (skip LLM)' if signal_cache else '❌ Disabled (using LLM path)'}")
     
     async def _handle_whale_alert(self, news: WebhookNews):
@@ -1020,7 +1018,7 @@ class WebhookSourcesManager:
     async def _poll_cryptopanic_api(self, interval_seconds: int = 300):
         """Poll CryptoPanic API (default every 5 minutes)"""
         logger.info(f"[WEBHOOK SOURCES] CryptoPanic API poll loop started ({interval_seconds}s interval)")
-        logger.info(f"  ⚠️ Note: Free tier has 24h delay - useful for research, not real-time trading")
+        logger.info("  ⚠️ Note: Free tier has 24h delay - useful for research, not real-time trading")
         
         while self.is_running:
             try:
@@ -1062,11 +1060,11 @@ class WebhookSourcesManager:
         
         logger.info("[WEBHOOK SOURCES] Polling loops started:")
         logger.info(f"  📰 Apify Twitter: every 5 min ({len(self.apify.TARGET_ACCOUNTS)} accounts)")
-        logger.info(f"  🐋 Whale Alerts: real-time via WebSocket")
+        logger.info("  🐋 Whale Alerts: real-time via WebSocket")
         if self.cryptopanic_api.is_enabled():
-            logger.info(f"  📰 CryptoPanic API: every 5 min (⚠️ 24h delayed)")
+            logger.info("  📰 CryptoPanic API: every 5 min (⚠️ 24h delayed)")
         else:
-            logger.info(f"  ⏸️ CryptoPanic: PAUSED (set CRYPTOPANIC_ENABLED=true to activate)")
+            logger.info("  ⏸️ CryptoPanic: PAUSED (set CRYPTOPANIC_ENABLED=true to activate)")
     
     async def stop(self):
         """Stop all polling loops"""

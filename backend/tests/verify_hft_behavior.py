@@ -18,10 +18,8 @@ Date: January 2026
 """
 
 import sys
-import os
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Optional
-from unittest.mock import Mock, patch, MagicMock
+from typing import Dict
 
 # Add backend to path
 sys.path.insert(0, '/app/backend')
@@ -249,7 +247,7 @@ def test_scenario_2_nerves_of_steel():
     raw_drift = abs(0.50 - new_ai_price)
     clean_drift = round(raw_drift, 4)
     
-    print(f"Order at $0.50, AI moves to $0.505")
+    print("Order at $0.50, AI moves to $0.505")
     print(f"Raw drift: {raw_drift}, Clean drift: {clean_drift}")
     
     stats_a = trader._prune_stale_orders(market_id_a, new_ai_price)
@@ -265,7 +263,7 @@ def test_scenario_2_nerves_of_steel():
     raw_drift = abs(0.50 - new_ai_price)
     clean_drift = round(raw_drift, 4)
     
-    print(f"Order at $0.50, AI moves to $0.51")
+    print("Order at $0.50, AI moves to $0.51")
     print(f"Raw drift: {raw_drift}, Clean drift: {clean_drift}")
     print(f"Threshold: {trader.HYSTERESIS_THRESHOLD}")
     print(f"clean_drift <= threshold: {clean_drift} <= {trader.HYSTERESIS_THRESHOLD} = {clean_drift <= trader.HYSTERESIS_THRESHOLD}")
@@ -335,9 +333,9 @@ def test_scenario_3_mind_change():
     
     # Assertions
     old_order_cancelled = market_id not in trader.active_orders
-    assert old_order_cancelled, f"FAILED: Old order should be cancelled"
-    assert stats['orders_cancelled_drift'] == 1, f"FAILED: Should have cancelled due to drift"
-    assert stats['total_cancelled'] == 1, f"FAILED: Total cancelled should be 1"
+    assert old_order_cancelled, "FAILED: Old order should be cancelled"
+    assert stats['orders_cancelled_drift'] == 1, "FAILED: Should have cancelled due to drift"
+    assert stats['total_cancelled'] == 1, "FAILED: Total cancelled should be 1"
     
     print("✅ PASSED: Order cancelled due to large drift")
     return True
@@ -416,8 +414,8 @@ def test_scenario_5_bounds_violation():
     print(f"Prune result: {stats}")
     
     # Assertions
-    assert stats['orders_cancelled_bounds'] == 1, f"FAILED: Should cancel due to bounds"
-    assert market_id not in trader.active_orders, f"FAILED: Order should be removed"
+    assert stats['orders_cancelled_bounds'] == 1, "FAILED: Should cancel due to bounds"
+    assert market_id not in trader.active_orders, "FAILED: Order should be removed"
     
     # Test upper bound too
     trader.active_orders[market_id] = {
@@ -428,7 +426,7 @@ def test_scenario_5_bounds_violation():
     }
     
     stats2 = trader._prune_stale_orders(market_id, 0.50)
-    assert stats2['orders_cancelled_bounds'] == 1, f"FAILED: Should cancel due to upper bounds"
+    assert stats2['orders_cancelled_bounds'] == 1, "FAILED: Should cancel due to upper bounds"
     
     print("✅ PASSED: Bounds violation correctly triggers cancellation")
     return True
@@ -465,8 +463,8 @@ def test_scenario_6_stale_order():
     print(f"Prune result: {stats}")
     
     # Assertions
-    assert stats['orders_cancelled_stale'] == 1, f"FAILED: Should cancel due to staleness"
-    assert market_id not in trader.active_orders, f"FAILED: Order should be removed"
+    assert stats['orders_cancelled_stale'] == 1, "FAILED: Should cancel due to staleness"
+    assert market_id not in trader.active_orders, "FAILED: Order should be removed"
     
     print("✅ PASSED: Stale orders correctly refreshed")
     return True

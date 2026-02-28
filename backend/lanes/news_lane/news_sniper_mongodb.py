@@ -21,8 +21,8 @@ This module REPLACES the legacy news_sniper in paper_trader.py
 import asyncio
 import logging
 import math
-from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Optional, Any, Tuple
+from datetime import datetime, timezone
+from typing import Dict, List, Optional, Tuple
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -784,7 +784,7 @@ class NewsSniper:
                 else:
                     logger.debug(f"[NEWS SNIPER] Not found in polymarket_cache: {market_id[:16]}...")
             else:
-                logger.warning(f"[NEWS SNIPER] self.db is None!")
+                logger.warning("[NEWS SNIPER] self.db is None!")
             
             return None
             

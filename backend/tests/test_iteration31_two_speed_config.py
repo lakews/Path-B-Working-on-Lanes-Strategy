@@ -10,7 +10,6 @@ Tests for HFT/Alpha risk parameters configurable from UI Settings page:
 """
 import pytest
 import requests
-import os
 
 from tests.conftest import API_BASE_URL as BASE_URL
 AUTH = ('admin', 'apex2026!')
@@ -35,7 +34,7 @@ class TestTwoSpeedArchitectureConfig:
         assert 'spread_policy' in data, "Missing spread_policy"
         assert 'variance_sizing' in data, "Missing variance_sizing"
         
-        print(f"✓ All Two-Speed Architecture fields present in GET /api/config")
+        print("✓ All Two-Speed Architecture fields present in GET /api/config")
 
     def test_strategy_risk_multipliers_structure(self):
         """Verify strategy_risk_multipliers has correct structure"""
@@ -306,7 +305,7 @@ class TestConfigPersistence:
         assert data['hft_execution']['max_inventory_usd'] == 2000
         assert data['hft_execution']['skew_factor'] == 0.08
         
-        print(f"✓ Multiple updates persisted correctly")
+        print("✓ Multiple updates persisted correctly")
 
     def test_hft_alpha_allocation_sum(self):
         """HFT and Alpha allocation should sum to 100%"""
@@ -334,7 +333,7 @@ class TestHealthAndAuth:
         data = response.json()
         assert data.get('status') == 'healthy'
         
-        print(f"✓ Health endpoint returns healthy")
+        print("✓ Health endpoint returns healthy")
 
     def test_config_requires_auth(self):
         """Config update should require authentication"""

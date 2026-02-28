@@ -23,7 +23,7 @@ Usage:
 import os
 import logging
 from typing import Tuple, Dict, Optional, List
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 

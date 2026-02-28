@@ -15,7 +15,7 @@ Date: January 2026
 
 import pytest
 import sys
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock
 
 sys.path.insert(0, '/app/backend')
 

@@ -30,15 +30,15 @@ import aiohttp
 import logging
 import os
 import re
-from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timezone
+from typing import Dict, List, Optional
 from cachetools import TTLCache
-from rapidfuzz import fuzz, process
+from rapidfuzz import fuzz
 
 # Import the new robust matching utilities
 from utils.sports_constants import (
-    SPORT_KEYS, TEAM_DATABASE, 
-    match_sport_and_teams, detect_sport, extract_teams, is_sports_market
+    TEAM_DATABASE, 
+    detect_sport, extract_teams
 )
 
 logger = logging.getLogger(__name__)

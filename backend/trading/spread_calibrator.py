@@ -1,11 +1,10 @@
 import logging
 from typing import Dict, Tuple
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from database import get_db
-import numpy as np
 
 # Import centralized spread constants
-from execution.spread_policy import MAX_SPREAD_HFT, MIN_SPREAD_MAKER, SPREAD_GRID_VALUES
+from execution.spread_policy import MAX_SPREAD_HFT, MIN_SPREAD_MAKER
 
 logger = logging.getLogger(__name__)
 

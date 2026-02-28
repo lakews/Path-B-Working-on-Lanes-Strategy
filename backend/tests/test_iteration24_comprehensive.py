@@ -9,7 +9,6 @@ Tests:
 """
 import pytest
 import requests
-import os
 import time
 
 from tests.conftest import API_BASE_URL as BASE_URL

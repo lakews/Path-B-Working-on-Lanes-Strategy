@@ -4,10 +4,10 @@ Sends alerts for trading events: whale activity, sentiment shifts, drawdowns, tr
 """
 import os
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List
 from datetime import datetime, timezone
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Content
+from sendgrid.helpers.mail import Mail
 from database import get_db
 
 logger = logging.getLogger(__name__)

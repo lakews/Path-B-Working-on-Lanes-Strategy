@@ -15,7 +15,7 @@ import sys
 import pytest
 sys.path.insert(0, '/app/backend')
 
-from services.tag_library_service import TagLibraryService, get_tag_library_service
+from services.tag_library_service import TagLibraryService
 
 
 class TestLayer35AssetClassFallback:

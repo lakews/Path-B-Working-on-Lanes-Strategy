@@ -13,7 +13,6 @@ import asyncio
 import logging
 from typing import Dict, List, Optional, Set
 from datetime import datetime, timezone, timedelta
-from collections import defaultdict
 
 from data.polymarket_websocket import get_websocket_manager, PolymarketWebSocketManager
 from data.polymarket_api import PolymarketAPI

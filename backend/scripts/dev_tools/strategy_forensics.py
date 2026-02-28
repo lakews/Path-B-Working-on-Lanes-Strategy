@@ -24,7 +24,6 @@ Date: January 2026
 """
 
 import sys
-import os
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
@@ -380,7 +379,7 @@ def print_verdicts(metrics: Dict[str, Dict]):
         print(f"\n  {lane} LANE:")
         print(f"    Status: {verdict}")
         print(f"    Reason: {reason}")
-        print(f"    Profit Factor: {m['profit_factor']:.2f}" if m['profit_factor'] != float('inf') else f"    Profit Factor: ∞ (no losses)")
+        print(f"    Profit Factor: {m['profit_factor']:.2f}" if m['profit_factor'] != float('inf') else "    Profit Factor: ∞ (no losses)")
         
         # Additional diagnostics
         if m['profit_factor'] < 1.0:

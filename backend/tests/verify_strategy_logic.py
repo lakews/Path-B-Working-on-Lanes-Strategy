@@ -122,9 +122,8 @@ SUMMARY: CRITICAL GAPS
 """
 
 import sys
-import os
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Tuple
 from dataclasses import dataclass
 
 # Add backend to path
@@ -405,7 +404,7 @@ def test_scenario_c_panic():
     
     # Assertions
     assert crash_spread > base_spread, \
-        f"FAILED: Spread should widen on volatility"
+        "FAILED: Spread should widen on volatility"
     
     assert crash_spread >= 0.05, \
         f"FAILED: 20% crash should widen spread to at least $0.05, got ${crash_spread}"
@@ -440,7 +439,7 @@ def test_scenario_d_zombie():
     fresh_time = datetime.now(timezone.utc) - timedelta(minutes=1)
     is_fresh, action = engine.check_data_freshness(fresh_time)
     
-    print(f"Test 1: Data age = 1 minute")
+    print("Test 1: Data age = 1 minute")
     print(f"  Result: is_fresh={is_fresh}, action={action}")
     
     assert is_fresh == True, "FAILED: 1-minute old data should be fresh"
@@ -450,7 +449,7 @@ def test_scenario_d_zombie():
     stale_time = datetime.now(timezone.utc) - timedelta(minutes=10)
     is_fresh, action = engine.check_data_freshness(stale_time)
     
-    print(f"\nTest 2: Data age = 10 minutes")
+    print("\nTest 2: Data age = 10 minutes")
     print(f"  Result: is_fresh={is_fresh}, action={action}")
     
     assert is_fresh == False, "FAILED: 10-minute old data should be stale"
@@ -544,7 +543,7 @@ def test_scenario_f_cubic_skew():
     print("\n--- Test 1: Small Position (10% inventory) ---")
     adj_10, skew_10, debug_10 = skewer.calculate_skew(100, raw_fair)
     
-    print(f"Position: 100 / 1000 = 10%")
+    print("Position: 100 / 1000 = 10%")
     print(f"Pos Ratio Cubed: {debug_10['pos_ratio_cubed']:.6f}")
     print(f"Skew: ${skew_10:.6f}")
     print(f"Adjusted Fair: ${adj_10:.4f}")
@@ -555,7 +554,7 @@ def test_scenario_f_cubic_skew():
     print("\n--- Test 2: Medium Position (50% inventory) ---")
     adj_50, skew_50, debug_50 = skewer.calculate_skew(500, raw_fair)
     
-    print(f"Position: 500 / 1000 = 50%")
+    print("Position: 500 / 1000 = 50%")
     print(f"Pos Ratio Cubed: {debug_50['pos_ratio_cubed']:.6f}")
     print(f"Skew: ${skew_50:.6f}")
     print(f"Adjusted Fair: ${adj_50:.4f}")
@@ -566,7 +565,7 @@ def test_scenario_f_cubic_skew():
     print("\n--- Test 3: Large Position (90% inventory) ---")
     adj_90, skew_90, debug_90 = skewer.calculate_skew(900, raw_fair)
     
-    print(f"Position: 900 / 1000 = 90%")
+    print("Position: 900 / 1000 = 90%")
     print(f"Pos Ratio Cubed: {debug_90['pos_ratio_cubed']:.6f}")
     print(f"Skew: ${skew_90:.6f}")
     print(f"Adjusted Fair: ${adj_90:.4f}")
@@ -578,7 +577,7 @@ def test_scenario_f_cubic_skew():
     ratio = abs(skew_90) / abs(skew_10) if skew_10 != 0 else float('inf')
     print(f"Skew ratio (90% / 10%): {ratio:.0f}x")
     
-    assert ratio > 50, f"FAILED: 90% skew should be >>50x larger than 10% skew"
+    assert ratio > 50, "FAILED: 90% skew should be >>50x larger than 10% skew"
     
     # Print full curve
     print("\n--- Full Skew Curve ---")
@@ -701,23 +700,23 @@ def test_scenario_h_cliff_protection():
     
     # Safe zone test
     mult_50, zone_50, _ = cliff.calculate_spread_multiplier(0.50)
-    assert zone_50 == "SAFE" and mult_50 == 1.0, f"$0.50 should be SAFE zone"
-    print(f"✓ $0.50 -> SAFE zone (1x)")
+    assert zone_50 == "SAFE" and mult_50 == 1.0, "$0.50 should be SAFE zone"
+    print("✓ $0.50 -> SAFE zone (1x)")
     
     # Cliff zone test
     mult_10, zone_10, _ = cliff.calculate_spread_multiplier(0.10)
-    assert zone_10 == "CLIFF" and mult_10 == 2.0, f"$0.10 should be CLIFF zone"
-    print(f"✓ $0.10 -> CLIFF zone (2x)")
+    assert zone_10 == "CLIFF" and mult_10 == 2.0, "$0.10 should be CLIFF zone"
+    print("✓ $0.10 -> CLIFF zone (2x)")
     
     # Extreme zone test
     mult_03, zone_03, _ = cliff.calculate_spread_multiplier(0.03)
-    assert zone_03 == "EXTREME" and mult_03 == 3.0, f"$0.03 should be EXTREME zone"
-    print(f"✓ $0.03 -> EXTREME zone (3x)")
+    assert zone_03 == "EXTREME" and mult_03 == 3.0, "$0.03 should be EXTREME zone"
+    print("✓ $0.03 -> EXTREME zone (3x)")
     
     # Upper extreme test
     mult_97, zone_97, _ = cliff.calculate_spread_multiplier(0.97)
-    assert zone_97 == "EXTREME" and mult_97 == 3.0, f"$0.97 should be EXTREME zone"
-    print(f"✓ $0.97 -> EXTREME zone (3x)")
+    assert zone_97 == "EXTREME" and mult_97 == 3.0, "$0.97 should be EXTREME zone"
+    print("✓ $0.97 -> EXTREME zone (3x)")
     
     print("\n✅ PASSED: Cliff protection widens spreads at extremes")
     return True
@@ -928,7 +927,7 @@ def test_scenario_k_paper_trader_memory_dicts():
     smoothing_memory[market_id] = new_smoothed
     volatility_memory[market_id].append(0.52)
     
-    print(f"After new tick (0.52):")
+    print("After new tick (0.52):")
     print(f"  smoothing_memory: {smoothing_memory[market_id]:.4f}")
     print(f"  volatility_memory: {volatility_memory[market_id]}")
     
@@ -939,7 +938,7 @@ def test_scenario_k_paper_trader_memory_dicts():
         max_position=1000
     )
     
-    print(f"\nUsing stored smoothed price for skew:")
+    print("\nUsing stored smoothed price for skew:")
     print(f"  Raw (from memory): {smoothing_memory[market_id]:.4f}")
     print(f"  Skew amount: {skew:.4f}")
     print(f"  Skewed FV: {skewed_fv:.4f}")

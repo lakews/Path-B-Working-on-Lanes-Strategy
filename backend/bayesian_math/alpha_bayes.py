@@ -13,7 +13,7 @@ Math: Log-Bayesian fusion with configurable priors.
 
 import logging
 import math
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)

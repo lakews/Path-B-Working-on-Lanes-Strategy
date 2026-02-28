@@ -12,7 +12,6 @@ Tests for:
 import pytest
 import requests
 import os
-import time
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 AUTH = ('admin', 'apex2026!')
@@ -129,7 +128,7 @@ class TestTradesClosingWithProperReasons:
             assert 'trades' in stats, f"Strategy {strategy} should have trades"
             print(f"  - {strategy}: trades={stats.get('trades')}, pnl=${stats.get('pnl', 0):.2f}")
         
-        print(f"✅ Strategy results have P&L tracking")
+        print("✅ Strategy results have P&L tracking")
     
     def test_exit_reasons_in_logs(self):
         """Verify exit reasons are being logged (check via trade returns)"""
@@ -173,7 +172,7 @@ class TestCapitalAccounting:
         difference = abs(calculated_equity - total_equity)
         assert difference < 1.0, f"Capital accounting mismatch: calculated={calculated_equity:.2f}, reported={total_equity:.2f}, diff={difference:.2f}"
         
-        print(f"✅ Capital accounting verified:")
+        print("✅ Capital accounting verified:")
         print(f"  - current_capital: ${current_capital:.2f}")
         print(f"  - deployed_capital: ${deployed_capital:.2f}")
         print(f"  - unrealized_pnl: ${unrealized_pnl:.2f}")
@@ -203,7 +202,7 @@ class TestCapitalAccounting:
         
         assert peak_capital > 0, "Peak capital should be tracked"
         
-        print(f"✅ Drawdown tracking:")
+        print("✅ Drawdown tracking:")
         print(f"  - Peak capital: ${peak_capital:.2f}")
         print(f"  - Max drawdown: {max_drawdown*100:.2f}%")
         print(f"  - Current drawdown: {current_drawdown:.2f}%")
@@ -232,7 +231,7 @@ class TestSportsTradesEntry:
         positions = data.get('positions', [])
         sports_positions = [p for p in positions if p.get('asset_class') == 'sports' or 'sports' in p.get('strategy', '').lower()]
         
-        print(f"✅ Positions check:")
+        print("✅ Positions check:")
         print(f"  - Total positions: {len(positions)}")
         print(f"  - Sports positions: {len(sports_positions)}")
         
@@ -251,7 +250,7 @@ class TestSportsTradesEntry:
         # Check if sports_arbitrage exists in results
         if 'sports_arbitrage' in strategy_results:
             sports_stats = strategy_results['sports_arbitrage']
-            print(f"✅ Sports arbitrage strategy tracked:")
+            print("✅ Sports arbitrage strategy tracked:")
             print(f"  - Trades: {sports_stats.get('trades', 0)}")
             print(f"  - Open positions: {sports_stats.get('open_positions', 0)}")
             print(f"  - P&L: ${sports_stats.get('pnl', 0):.2f}")
@@ -268,7 +267,7 @@ class TestSportsTradesEntry:
         lane_equity = data.get('lane_equity', {})
         assert 'SPORTS' in lane_equity, "SPORTS lane should exist"
         
-        print(f"✅ Lane equity:")
+        print("✅ Lane equity:")
         for lane, equity in lane_equity.items():
             print(f"  - {lane}: ${equity:.2f}")
 
@@ -282,7 +281,7 @@ class TestExitEngineIntegration:
         
         if response.status_code == 200:
             data = response.json()
-            print(f"✅ Exit engine stats:")
+            print("✅ Exit engine stats:")
             print(f"  - Total checks: {data.get('total_checks', 0)}")
             print(f"  - Holds: {data.get('holds', 0)}")
             print(f"  - Close all: {data.get('close_all', 0)}")

@@ -41,12 +41,11 @@ from trading.hft_config import (
 
 # Import HFT Math Engine components
 from strategies.hft_math import (
-    HFTMathEngine, HFTMathConfig,
-    CubicInventorySkew, AdaptiveSignalSmoother, CliffProtection
+    HFTMathEngine, HFTMathConfig
 )
 
 # Import TagLibraryService for accurate category classification
-from services.tag_library_service import get_tag_library_service, TagLibraryService
+from services.tag_library_service import get_tag_library_service
 
 logger = logging.getLogger(__name__)
 

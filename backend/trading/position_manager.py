@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 from datetime import datetime, timezone
 from database import get_db
 from config import config
-from models import Position, OrderSide, StrategyType
+from models import OrderSide, StrategyType
 import uuid
 
 logger = logging.getLogger(__name__)

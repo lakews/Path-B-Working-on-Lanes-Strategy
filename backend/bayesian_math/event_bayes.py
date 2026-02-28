@@ -17,7 +17,6 @@ Math: Classic Bayesian inference with news-specific likelihood models.
 """
 
 import logging
-import math
 from typing import Dict, Optional, List
 from dataclasses import dataclass
 from datetime import datetime, timezone

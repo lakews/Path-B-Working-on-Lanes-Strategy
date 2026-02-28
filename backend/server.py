@@ -16,7 +16,7 @@ from database import connect_db, close_db, get_db
 from config import config
 from trading_bot import ApexTrader
 from services.performance_analytics import PerformanceAnalytics
-from schemas.analytics import ComprehensiveMetricsResponse, LaneMetric
+from schemas.analytics import ComprehensiveMetricsResponse
 from backtest.backtest_engine import BacktestEngine
 from data.historical_collector import HistoricalDataCollector
 from ml.rl_engine import RLAdaptiveEngine
@@ -24,19 +24,19 @@ from ml.social_sentiment import social_sentiment_analyzer
 from ml.whale_tracker import whale_tracker
 from ml.strategy_tuner import strategy_tuner
 from ml.market_classifier import (
-    get_ambiguity_matrix, get_default_ambiguity_matrix, update_ambiguity_matrix
+    get_default_ambiguity_matrix, update_ambiguity_matrix
 )
 from auth import (
     create_access_token, authenticate_user, get_current_user, get_current_user_optional,
     create_user, init_default_admin, Token, UserCreate, UserLogin, UserResponse,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
-from services.market_alerts import get_market_alerts_service, MarketAlertsService
+from services.market_alerts import get_market_alerts_service
 from services.news_injector import get_news_injector, NewsInjector
-from services.signal_cache import get_signal_cache, EmergentSignalCache
-from services.webhook_sources import get_webhook_sources_manager, WebhookSourcesManager
+from services.signal_cache import get_signal_cache
+from services.webhook_sources import get_webhook_sources_manager
 from services.polymarket_scanner import (
-    init_polymarket_scanner, get_polymarket_scanner, PolymarketScanner
+    init_polymarket_scanner, PolymarketScanner
 )
 from services.news_injector_dual_path import (
     init_dual_path_news_injector, get_dual_path_news_injector, DualPathNewsInjector
@@ -2822,7 +2822,7 @@ async def stop_tuning():
 # ALERTS SYSTEM ENDPOINTS
 # =============================================
 
-from services.alert_service import alert_service, AlertType
+from services.alert_service import alert_service
 
 class AlertConfigUpdate(BaseModel):
     whale_activity_min: Optional[float] = None
@@ -3744,7 +3744,7 @@ async def stop_paper_trading(
         try:
             logger.info(f"Saving session analytics for session {status.get('session_id')}")
             await save_session_analytics(positions_before_stop, status)
-            logger.info(f"Successfully saved session analytics")
+            logger.info("Successfully saved session analytics")
         except Exception as analytics_err:
             logger.error(f"Error saving session analytics: {analytics_err}", exc_info=True)
         
@@ -4320,10 +4320,6 @@ async def get_exit_engine_config():
     Get Exit Engine configuration - Global Settings, Strategy Config, Asset Modifiers, Whale Zone.
     """
     from risk_config import (
-        EXIT_GLOBAL_SETTINGS,
-        EXIT_STRATEGY_CONFIG,
-        EXIT_ALPHA_ASSET_MODIFIERS,
-        EXIT_WHALE_ZONE,
         get_exit_config,
     )
     
@@ -4420,7 +4416,7 @@ async def update_exit_engine_config(config: dict):
             upsert=True
         )
         
-        logger.info(f"[EXIT-CONFIG] Updated exit engine configuration")
+        logger.info("[EXIT-CONFIG] Updated exit engine configuration")
         
         return {
             "success": True,
@@ -4649,7 +4645,7 @@ async def update_risk_config(config_data: Dict[str, Any]):
         success, message = risk_manager.update_config(config_data)
         
         if success:
-            logger.info(f"[RISK-CONFIG] Configuration updated via API")
+            logger.info("[RISK-CONFIG] Configuration updated via API")
             return {
                 "success": True,
                 "message": message,
@@ -6230,7 +6226,7 @@ async def startup_event():
         logger.info("[TAG LIBRARY] ✓ TagLibraryService initialized with MongoDB")
         
         # Get and START realtime market service for WebSocket data (PRIMARY)
-        from services.realtime_market_service import get_realtime_market_service, init_realtime_market_service
+        from services.realtime_market_service import init_realtime_market_service
         rtm_service = await init_realtime_market_service()  # Start WebSocket connection
         logger.info("[MARKETS-FIRST] ✓ RealTimeMarketService started (WebSocket PRIMARY)")
         

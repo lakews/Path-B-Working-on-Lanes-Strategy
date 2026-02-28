@@ -17,7 +17,6 @@ import pytest
 import requests
 import os
 import time
-from datetime import datetime, timezone
 
 # Get BASE_URL from environment
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
@@ -71,7 +70,7 @@ class TestScannerHealth:
                 assert markets_cached > 0, "Scanner running but no markets cached"
         else:
             assert data.get('status') == 'not_initialized'
-            print(f"✓ Scanner not initialized (expected when paper trading not started)")
+            print("✓ Scanner not initialized (expected when paper trading not started)")
 
 
 class TestAPIKeyPersistence:
@@ -137,7 +136,7 @@ class TestAPIKeyPersistence:
         assert response.status_code == 400
         data = response.json()
         assert 'error' in data
-        print(f"✓ Invalid key name rejected correctly")
+        print("✓ Invalid key name rejected correctly")
     
     def test_api_keys_reload(self):
         """Test POST /api/api-keys/reload"""
@@ -219,7 +218,7 @@ class TestWebhookNewsInjection:
             print(f"✓ Reuters news processed: path_a_signals={data.get('path_a_signals')}, path_b_opportunities={data.get('path_b_opportunities')}")
         else:
             assert data.get('status') == 'not_initialized'
-            print(f"✓ DualPathNewsInjector not initialized (expected when paper trading not started)")
+            print("✓ DualPathNewsInjector not initialized (expected when paper trading not started)")
     
     def test_webhook_news_bloomberg(self):
         """Test POST /api/webhooks/news with Bloomberg source"""
@@ -237,7 +236,7 @@ class TestWebhookNewsInjection:
         if response.status_code == 200:
             print(f"✓ Bloomberg news processed: path_a_signals={data.get('path_a_signals')}")
         else:
-            print(f"✓ DualPathNewsInjector not initialized")
+            print("✓ DualPathNewsInjector not initialized")
     
     def test_webhook_news_coindesk(self):
         """Test POST /api/webhooks/news with CoinDesk source"""
@@ -290,7 +289,7 @@ class TestNewsSniperStatus:
         assert 'status' in data
         
         if data.get('status') == 'not_initialized':
-            print(f"✓ NEWS Sniper not initialized (expected when paper trading not started)")
+            print("✓ NEWS Sniper not initialized (expected when paper trading not started)")
             assert 'message' in data
         else:
             assert 'stats' in data
@@ -321,7 +320,7 @@ class TestHFTV2Status:
         assert 'status' in data
         
         if data.get('status') == 'not_initialized':
-            print(f"✓ HFT V2 not initialized (expected when paper trading not started)")
+            print("✓ HFT V2 not initialized (expected when paper trading not started)")
             assert 'message' in data
         else:
             assert 'metrics' in data
@@ -380,7 +379,7 @@ class TestPaperTradingFlow:
         assert response.status_code == 200
         data = response.json()
         
-        print(f"✓ Paper status after start:")
+        print("✓ Paper status after start:")
         print(f"  - running: {data.get('running')}")
         print(f"  - open_positions: {data.get('open_positions')}")
         print(f"  - total_trades: {data.get('total_trades')}")
@@ -426,7 +425,7 @@ class TestPaperTradingFlow:
             
             # Verify markets_cached > 400 if running
             if scanner.get('running') and markets_cached > 0:
-                print(f"  - Scanner is caching markets successfully")
+                print("  - Scanner is caching markets successfully")
         else:
             print(f"✓ Scanner status: {data.get('status')}")
     
@@ -444,7 +443,7 @@ class TestPaperTradingFlow:
         data = response.json()
         
         if response.status_code == 200:
-            print(f"✓ Webhook news after paper start:")
+            print("✓ Webhook news after paper start:")
             print(f"  - path_a_signals: {data.get('path_a_signals')}")
             print(f"  - path_b_opportunities: {data.get('path_b_opportunities')}")
         else:
@@ -501,7 +500,7 @@ class TestLaneInitialization:
         assert response.status_code == 200
         data = response.json()
         
-        print(f"✓ Lane status via paper/status:")
+        print("✓ Lane status via paper/status:")
         print(f"  - running: {data.get('running')}")
         print(f"  - open_positions: {data.get('open_positions')}")
         
@@ -545,7 +544,7 @@ class TestCleanup:
                 
         except requests.exceptions.Timeout:
             # Timeout is acceptable for stop operation
-            print(f"✓ Paper stop request timed out (operation may still be processing)")
+            print("✓ Paper stop request timed out (operation may still be processing)")
 
 
 # Run order configuration

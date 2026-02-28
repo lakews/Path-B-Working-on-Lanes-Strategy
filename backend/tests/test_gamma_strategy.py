@@ -27,7 +27,7 @@ from trading.gamma_strategy import (
     GammaOrderReason,
     get_gamma_trader
 )
-from risk_config import RISK, RiskConfig
+from risk_config import RISK
 
 
 class TestSideSelection:

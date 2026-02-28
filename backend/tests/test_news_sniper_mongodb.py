@@ -14,7 +14,6 @@ Tests for NEWS Lane Phase 2 implementation:
 import pytest
 import requests
 import os
-import sys
 import importlib.util
 
 # Get BASE_URL from environment

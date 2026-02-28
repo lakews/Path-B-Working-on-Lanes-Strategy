@@ -15,7 +15,6 @@ Usage:
 """
 
 import sys
-import os
 
 # Add backend to path
 sys.path.insert(0, '/app/backend')
@@ -23,7 +22,7 @@ sys.path.insert(0, '/app/backend')
 from dotenv import load_dotenv
 load_dotenv('/app/backend/.env')
 
-from utils.sports_constants import match_sport_and_teams, is_sports_market, SPORT_KEYS
+from utils.sports_constants import match_sport_and_teams, is_sports_market
 from strategies.sports_strategy import SportsArbitrageStrategy, SportsSignal
 from risk_config import get_sports_config
 
@@ -71,7 +70,7 @@ def test_a_collision_check() -> bool:
     
     print_result(sport_correct, f"Sport is NFL (not NBA): {detected_sport}")
     print_result(seahawks_found, f"Seattle Seahawks detected (not Hawks): {detected_teams}")
-    print_result(not hawks_nba_found, f"Atlanta Hawks NOT detected (collision avoided)")
+    print_result(not hawks_nba_found, "Atlanta Hawks NOT detected (collision avoided)")
     
     overall = passed
     print(f"\n  TEST A RESULT: {'✅ PASSED' if overall else '❌ FAILED'}")

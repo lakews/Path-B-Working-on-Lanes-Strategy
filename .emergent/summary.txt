@@ -1,64 +1,46 @@
 <analysis>**original_problem_statement:**
-The user initiated a major architectural overhaul, requesting a new engine (Architecture C Ultimate) to replace the old PATH A. This was completed. The core focus then shifted to fixing a critical issue where sports markets were being incorrectly traded by the  strategy instead of the dedicated  lane.
+The user's primary goal was to fix a critical bug where sports markets were incorrectly traded by the  strategy instead of the dedicated  lane. This involved multiple debugging attempts, revealing and fixing issues in , , and finally the  to handle markets miscategorized as 'entertainment'.
 
-This led to a series of tasks:
-1.  **UI Enhancements (COMPLETED):** Update the Paper Trading page to a Five Lane Architecture, including a new  and updating the equity chart.
-2.  **Bug Fix - /bin/bash.49 Exits (COMPLETED):** A user-reported bug where all sports trades exited at a fixed price of /bin/bash.49. The root cause was a failing Odds API, causing the system to use a default  of 0.5.
-3.  **Implement Intelligent Fallback (COMPLETED):** The initial fix was deemed suboptimal. A more robust, tiered system for sports market analysis was implemented:
-    *   **TIER 1:** Uses the Odds API for high-quality, devigged fair value (85%) combined with order flow (15%).
-    *   **TIER 2:** If Odds API fails, falls back to using Polymarket's implied price (70%) combined with real-time order flow analysis (30%) for liquid markets.
-    *   **TIER 0:** Blocks trades if neither tier has sufficient data, preventing trades on unreliable prices.
-4.  **Fix Order Flow Analysis (COMPLETED):** The agent fixed a critical bug in the order flow sentiment analyzer where it failed to process extremely bullish/bearish signals when one side of the order book (bids or asks) was empty. It also removed all  default values, forcing the system to block trades when data is insufficient.
-5.  **Update Odds API Key (COMPLETED):** The user provided a new, working API key for The Odds API, successfully enabling TIER 1 functionality.
-6.  **Paper Trading UI Redesign (COMPLETED):** The agent, guided by the design subagent, performed a significant visual overhaul of the Paper Trading page for improved aesthetics and readability, including a redesigned .
-7.  **UI Bug Fixes (COMPLETED):** The agent fixed bugs related to a massive Profit Factor (PF) number caused by floating-point precision errors and resolved data inconsistencies between different UI components showing open vs. closed trades.
-8.  **Bug Fix - Sports in HFT Lane (IN PROGRESS):** The user reported that sports markets are still being traded in the HFT lane. The agent is currently debugging this.
+Following this, a new P0 issue was reported: a trade showing massive, unrealistic P&L due to an exit at a default price of /bin/bash.49. The investigation confirmed the use of a default fallback price. The user then requested a major architectural change: eliminate all default prices (like 0.5) from exit logic across ALL strategies and ensure exits only happen with verified, real market prices.
+
+Finally, the user prompted a review of the data source architecture for exits, which led to an optimization where the exit logic was refactored to prioritize the high-speed WebSocket for orderbook data, using the slower REST API only as a fallback.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application features a significantly improved and more robust sports trading lane. It uses a tiered Intelligent Fallback system that prioritizes real bookmaker odds (TIER 1) and gracefully degrades to use market-implied prices and real-time order flow (TIER 2) when the primary data source is unavailable. The order flow analysis is now more accurate, correctly interpreting imbalanced books. Trades are blocked when data is unreliable, preventing the previous issue of trading on default values. The Paper Trading UI has been completely redesigned for a cleaner, more modern aesthetic, and several data consistency bugs have been resolved.
+The application's trading architecture is now significantly more robust and realistic. The sports market classification and routing to the correct  lane is fixed. More importantly, a real prices only exit principle has been enforced across the entire system. All trading strategies (, , HFT, Alpha, etc.) are now required to fetch and verify a real-time orderbook price before executing an exit, eliminating phantom profits/losses from default values. For performance, this exit logic has been optimized to use the high-speed WebSocket as the primary data source, with REST as a fallback.
 
 **Last working item**:
--   **Last item agent was working**: The agent is in the middle of a comprehensive audit to determine why sports markets are still being traded by the  strategy. The investigation has revealed that the  check is failing for some markets. The root cause has been narrowed down to the 's  method, which appears to not correctly use the market's  field (e.g., ) as a fallback when the  field is missing or unhelpful for keyword matching.
--   **Status**: IN PROGRESS
--   **Agent Testing Done**: N
--   **Which testing method agent to use?**: backend testing agent
+-   **Last item agent was working**: The agent implemented a major architectural optimization to the trade exit logic. Previously, all strategies used the slower REST API to fetch orderbook data for exits. This was refactored to a WebSocket-primary approach, where the system first tries to get data from the high-speed WebSocket cache, and only uses the REST API as a fallback. This change was applied globally to all strategies.
+-   **Status**: USER VERIFICATION PENDING
+-   **Agent Testing Done**: Y
+-   **Which testing method agent to use?**: both
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Sports markets are being traded in the HFT lane (Priority: P0)**
--   **Issue 2: Cumulative stats include historical trades miscategorized as Other (Priority: P1)**
--   **Issue 3: Apify Integration Unstable (Priority: P2 - External Blocker)**
--   **Issue 4: Exa.ai API Credits Exhausted (Priority: P2 - External Blocker)**
--   **Issue 5: Recurring Capital Discrepancy (Priority: P2 - Monitoring)**
+-   **Issue 1: Cumulative stats include historical trades miscategorized as Other (Priority: P1)**
+-   **Issue 2: Apify Integration Unstable (Priority: P2 - External Blocker)**
+-   **Issue 3: Exa.ai API Credits Exhausted (Priority: P2 - External Blocker)**
+-   **Issue 4: Recurring Capital Discrepancy (Priority: P2 - Monitoring)**
 
 **Issues Detail:**
--   **Issue 1: Sports markets are being traded in the HFT lane**
-    -   **Attempted fixes**: The agent has traced the program flow and determined the sports filter in  is being bypassed. The  correctly identifies sports markets when a  with keywords is present, but fails when it's not.
-    -   **Next debug checklist**:
-        1.  Examine the  method in .
-        2.  Specifically, investigate why the check for  is failing or being bypassed.
-        3.  Modify the logic to ensure that if , the market is always classified as sports, regardless of the  field.
-        4.  Create a test case with a market object that has  but no  to verify the fix.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical architectural issue. Fixing it will ensure that sports markets are exclusively handled by the specialized SPORTS lane and its unique logic (e.g., Kelly Criterion sizing, TIER 1/2 analysis), preventing them from being incorrectly traded with HFT strategies.
-    -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Backend
+-   **Issue 1: Cumulative stats include historical trades miscategorized as Other**
+    -   **Attempted fixes**: None.
+    -   **Next debug checklist**: Propose a solution to the user, such as a Reset Cumulative Stats button in the UI, before implementing a fix. This would clear the historical data and start fresh with the new, correct classification logic.
+    -   **Why fix this issue and what will be achieved with the fix?**: This will provide the user with accurate, trustworthy P&L and performance metrics for each trading lane, removing noise from old, misclassified trades.
+    -   **Status**: NOT STARTED
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Both
     -   **Blocked on other issue**: None
 
--   **Issue 2: Cumulative stats include historical trades miscategorized as Other**
-    -   **Status**: NOT STARTED
-    -   **Next debug checklist**: Propose a solution to the user, such as a Reset Cumulative Stats button, before implementing a fix.
-
--   **Issue 3 & 4 (Apify/Exa.ai)**:
+-   **Issue 2 & 3 (Apify/Exa.ai)**:
     -   **Status**: BLOCKED (User account/billing issue).
 
--   **Issue 5: Recurring Capital Discrepancy**
+-   **Issue 4: Recurring Capital Discrepancy**
     -   **Status**: USER VERIFICATION PENDING (Monitoring).
 
 **In progress Task List**:
--   None. The current focus is entirely on fixing the P0 bug.
+-   None.
 
 **Upcoming and Future Tasks**
 
@@ -72,68 +54,1887 @@ The application features a significantly improved and more robust sports trading
 -   **Add LLM Result Caching (P2):** Consider adding a MongoDB cache for LLM results to reduce costs.
 
 **Completed work in this session**
--   **UI Refactor:** Completed the Five Lane Architecture UI update in .
--   **Sports Exit Bug Fixed:** Resolved the issue causing all sports trades to exit at /bin/bash.49 by preventing trades based on default fallback prices.
--   **Intelligent Fallback Implemented:** Deployed a robust, tiered fair value system (TIER 1/2/0) for the sports lane in .
--   **Order Flow Analysis Fixed:** Corrected a major bug in  to accurately process order books with zero bids or asks, and removed  default values.
--   **Odds API Key Updated:** Successfully integrated the user's new API key for The Odds API, enabling TIER 1 sports analysis.
--   **UI Redesign:** Executed a complete visual redesign of the Paper Trading page, including the main layout, metric cards, and a new glassmorphism-style Trade Details modal.
--   **UI Bugs Fixed:** Corrected a floating-point error causing huge Profit Factor values and resolved data inconsistencies in how open/closed trades were displayed across the UI.
+-   **Bug Fix - Sports Market Routing (P0):** Fixed a multi-layered bug causing sports markets to be traded in the HFT lane. The final root cause was in , which was incorrectly trusting the 'entertainment' API category.
+-   **Architectural Refactor - Real Prices Only Exits:** Overhauled the exit logic for ALL trading strategies to require verified, real-time market prices from a live orderbook, completely eliminating the use of default/fallback prices (like 0.5) for exits.
+-   **Architectural Refactor - WebSocket-Primary Exits:** Optimized the exit logic for all strategies to use the high-speed WebSocket as the primary source for orderbook data, with the REST API as a fallback, improving performance and data consistency.
+
+**Earlier issues found/mentioned but not fixed**
+-   **Issue 1: Pre-existing Lint Errors**
+    -   **Debug checklist**: Run E722 Do not use bare `except`
+   --> backend/backtest/backtest_engine.py:387:29
+    |
+385 |                                 import json as json_module
+386 |                                 outcome_prices = json_module.loads(outcome_prices)
+387 |                             except:
+    |                             ^^^^^^
+388 |                                 outcome_prices = [0.5, 0.5]
+389 |                         elif not isinstance(outcome_prices, list):
+    |
+
+E722 Do not use bare `except`
+  --> backend/data/polymarket_api.py:82:17
+   |
+80 |                 try:
+81 |                     token_ids = json.loads(token_ids)
+82 |                 except:
+   |                 ^^^^^^
+83 |                     token_ids = []
+   |
+
+E722 Do not use bare `except`
+  --> backend/data/polymarket_api.py:90:17
+   |
+88 |                 try:
+89 |                     outcome_prices = json.loads(outcome_prices)
+90 |                 except:
+   |                 ^^^^^^
+91 |                     outcome_prices = []
+   |
+
+E722 Do not use bare `except`
+   --> backend/data/polymarket_websocket.py:261:21
+    |
+259 |                         pong = await self.ws.ping()
+260 |                         await asyncio.wait_for(pong, timeout=10)
+261 |                     except:
+    |                     ^^^^^^
+262 |                         logger.warning("WebSocket ping failed, reconnecting...")
+263 |                         self.connected = False
+    |
+
+F841 Local variable `is_anomaly` is assigned to but never used
+   --> backend/ml/bayesian_outlier.py:213:13
+    |
+211 |             # Isolation Forest anomaly score
+212 |             anomaly_score = -self.isolation_forest.decision_function(features_scaled)[0]
+213 |             is_anomaly = anomaly_score > 0.5
+    |             ^^^^^^^^^^
+214 |             
+215 |             # GB classifier probability
+    |
+help: Remove assignment to unused variable `is_anomaly`
+
+F401 `ml.sentiment_llm.get_llm_sentiment` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> backend/ml/enhanced_sentiment.py:26:58
+   |
+24 | # Import the new Smart LLM module
+25 | try:
+26 |     from ml.sentiment_llm import get_smart_llm_analyzer, get_llm_sentiment
+   |                                                          ^^^^^^^^^^^^^^^^^
+27 |     SMART_LLM_AVAILABLE = True
+28 |     logger.info("Smart LLM module loaded successfully")
+   |
+help: Remove unused import: `ml.sentiment_llm.get_llm_sentiment`
+
+E722 Do not use bare `except`
+   --> backend/ml/github_sentiment.py:255:9
+    |
+253 |                     }
+254 |                 return None
+255 |         except:
+    |         ^^^^^^
+256 |             return None
+    |
+
+E722 Do not use bare `except`
+   --> backend/ml/github_sentiment.py:278:9
+    |
+276 |                     ]
+277 |                 return []
+278 |         except:
+    |         ^^^^^^
+279 |             return []
+    |
+
+E722 Do not use bare `except`
+   --> backend/ml/github_sentiment.py:300:9
+    |
+298 |                     ]
+299 |                 return []
+300 |         except:
+    |         ^^^^^^
+301 |             return []
+    |
+
+E741 Ambiguous variable name: `l`
+   --> backend/ml/github_sentiment.py:325:65
+    |
+323 |                             continue  # Skip PRs
+324 |                         
+325 |                         labels = [l.get('name', '').lower() for l in issue.get('labels', [])]
+    |                                                                 ^
+326 |                         title = issue.get('title', '').lower()
+    |
+
+E722 Do not use bare `except`
+   --> backend/ml/github_sentiment.py:346:9
+    |
+344 |                     }
+345 |                 return {}
+346 |         except:
+    |         ^^^^^^
+347 |             return {}
+    |
+
+E722 Do not use bare `except`
+   --> backend/ml/github_sentiment.py:440:13
+    |
+438 |                 else:
+439 |                     recency_score = 0.35
+440 |             except:
+    |             ^^^^^^
+441 |                 recency_score = 0.50
+442 |         else:
+    |
+
+F841 Local variable `now` is assigned to but never used
+   --> backend/ml/sentiment_llm.py:185:9
+    |
+183 |     def clear_expired(self, default_volume: float = 0):
+184 |         """Remove all expired entries"""
+185 |         now = datetime.now(timezone.utc)
+    |         ^^^
+186 |         expired = []
+187 |         for market_id, entry in self._cache.items():
+    |
+help: Remove assignment to unused variable `now`
+
+F841 Local variable `spread_threshold` is assigned to but never used
+   --> backend/ml/strategy_tuner.py:346:13
+    |
+345 |         if strategy == 'delta_neutral':
+346 |             spread_threshold = params.get('spread_threshold', 0.05)  # Default 5% for real-world spreads
+    |             ^^^^^^^^^^^^^^^^
+347 |             return volatility < 0.04 and 0.25 < current < 0.75
+    |
+help: Remove assignment to unused variable `spread_threshold`
+
+F841 Local variable `min_spread` is assigned to but never used
+   --> backend/ml/strategy_tuner.py:360:13
+    |
+359 |         elif strategy == 'arbitrage':
+360 |             min_spread = params.get('min_spread', 0.05)  # Default 5% for real-world spreads
+    |             ^^^^^^^^^^
+361 |             return volatility < 0.05
+    |
+help: Remove assignment to unused variable `min_spread`
+
+E722 Do not use bare `except`
+   --> backend/paper_trading/paper_trader.py:100:13
+    |
+ 98 |                     cached = rtms._market_cache.get(market_data['market_id'], {})
+ 99 |                     question = cached.get('question', cached.get('title', ''))
+100 |             except:
+    |             ^^^^^^
+101 |                 pass
+    |
+
+F811 Redefinition of unused `MarketRegime` from line 46
+   --> backend/paper_trading/paper_trader.py:250:7
+    |
+248 | # Categorize markets by liquidity profile to apply appropriate trading strategies
+249 |
+250 | class MarketRegime:
+    |       ^^^^^^^^^^^^ `MarketRegime` redefined here
+251 |     """Market regime enumeration for dual-zone trading (Task 21)."""
+252 |     # Zone 1: Convexity (Whale Zone - prices < $0.10)
+    |
+   ::: backend/paper_trading/paper_trader.py:46:35
+    |
+ 44 | # NEWS Lane imports (MongoDB-integrated NEWS Sniper)
+ 45 | from lanes.news_lane.news_sniper_mongodb import (
+ 46 |     NewsSniper, init_news_sniper, MarketRegime
+    |                                   ------------ previous definition of `MarketRegime` here
+ 47 | )
+    |
+help: Remove definition: `MarketRegime`
+
+E402 Module level import not at top of file
+   --> backend/paper_trading/paper_trader.py:263:1
+    |
+262 |   # Import from Single Source of Truth (Task 21: Dual-Zone Risk Architecture)
+263 | / from risk_config import (
+264 | |     RISK, 
+265 | |     classify_market_regime,
+266 | |     get_zone_parameters
+267 | | )
+    | |_^
+268 |
+269 |   # Re-export for backwards compatibility
+    |
+
+E722 Do not use bare `except`
+    --> backend/paper_trading/paper_trader.py:1207:13
+     |
+1205 |                 if hours_to_expiry < min_hours:
+1206 |                     return (False, f"Time to expiry {hours_to_expiry:.1f}h < {min_hours}h required for extreme price")
+1207 |             except:
+     |             ^^^^^^
+1208 |                 pass  # If parsing fails, allow
+     |
+
+F841 Local variable `spread` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:2095:13
+     |
+2093 |             best_bid = market_data.get('best_bid', 0)
+2094 |             best_ask = market_data.get('best_ask', 0)
+2095 |             spread = best_ask - best_bid if (best_bid > 0 and best_ask > 0) else 0
+     |             ^^^^^^
+2096 |             
+2097 |             # =================================================================
+     |
+help: Remove assignment to unused variable `spread`
+
+F841 Local variable `market_spread` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:2595:13
+     |
+2594 |             book_mid = (best_bid + best_ask) / 2
+2595 |             market_spread = best_ask - best_bid
+     |             ^^^^^^^^^^^^^
+2596 |             
+2597 |             # Basic filters
+     |
+help: Remove assignment to unused variable `market_spread`
+
+F841 Local variable `regime_diagnostics` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:3426:17
+     |
+3424 |             else:
+3425 |                 regime = MarketRegime.TAKER_TIGHT
+3426 |                 regime_diagnostics = {}
+     |                 ^^^^^^^^^^^^^^^^^^
+3427 |                 logger.debug(f"[ALPHA-REGIME] {market_id[:16]}... NO ORDERBOOK → defaulting to {regime}")
+     |
+help: Remove assignment to unused variable `regime_diagnostics`
+
+F841 Local variable `question` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:3547:13
+     |
+3545 |             market_id = market_data.get('id', '')
+3546 |             market_id_short = market_id[:16]
+3547 |             question = market_data.get('question', '')
+     |             ^^^^^^^^
+3548 |             
+3549 |             direction = news_signal.get('direction', 'NEUTRAL')
+     |
+help: Remove assignment to unused variable `question`
+
+F841 Local variable `yes_price` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:3649:13
+     |
+3647 |                 logger.debug(f"[SPORTS] Skipping {market_id[:16]} - no valid yes_price")
+3648 |                 return
+3649 |             yes_price = float(yes_price_raw)
+     |             ^^^^^^^^^
+3650 |             
+3651 |             # Skip if already have position
+     |
+help: Remove assignment to unused variable `yes_price`
+
+F841 Local variable `sports_confidence` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:3686:13
+     |
+3684 |             # Extract fair value - may be None if BLOCKED by sentiment analyzer
+3685 |             fair_value = analysis.get('combined_sentiment')  # None = blocked
+3686 |             sports_confidence = analysis.get('sports_confidence', 0)
+     |             ^^^^^^^^^^^^^^^^^
+3687 |             sports_matched_event = analysis.get('sports_matched_event')
+3688 |             data_tier = analysis.get('sports_data_tier', 0)
+     |
+help: Remove assignment to unused variable `sports_confidence`
+
+F841 Local variable `sports_matched_event` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:3687:13
+     |
+3685 |             fair_value = analysis.get('combined_sentiment')  # None = blocked
+3686 |             sports_confidence = analysis.get('sports_confidence', 0)
+3687 |             sports_matched_event = analysis.get('sports_matched_event')
+     |             ^^^^^^^^^^^^^^^^^^^^
+3688 |             data_tier = analysis.get('sports_data_tier', 0)
+     |
+help: Remove assignment to unused variable `sports_matched_event`
+
+F841 Local variable `size` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:4266:21
+     |
+4265 |                     side = position.get('side', 'NO')
+4266 |                     size = position.get('size', 0)
+     |                     ^^^^
+4267 |                     
+4268 |                     # Calculate P&L % using YES prices for both sides
+     |
+help: Remove assignment to unused variable `size`
+
+F841 Local variable `question` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:4333:21
+     |
+4332 |                     market_id = market_data.get('id')
+4333 |                     question = market_data.get('question', '')
+     |                     ^^^^^^^^
+4334 |                     
+4335 |                     # Filter by asset class
+     |
+help: Remove assignment to unused variable `question`
+
+F841 Local variable `current_year` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:4529:17
+     |
+4527 |                 import re
+4528 |                 now = datetime.now(timezone.utc)
+4529 |                 current_year = now.year
+     |                 ^^^^^^^^^^^^
+4530 |                 
+4531 |                 # Pattern: "by/before/on January 15, 2026" or "January 15th, 2026"
+     |
+help: Remove assignment to unused variable `current_year`
+
+F841 Local variable `month_name` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:4547:29
+     |
+4545 |                     if match:
+4546 |                         try:
+4547 |                             month_name = match.group(1) if 'by' not in pattern.lower() else match.group(1)
+     |                             ^^^^^^^^^^
+4548 |                             # Handle different group positions based on pattern
+4549 |                             groups = match.groups()
+     |
+help: Remove assignment to unused variable `month_name`
+
+F841 Local variable `sharp_alignment` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:4663:13
+     |
+4662 |             sentiment = signals.get('sentiment', 0.5)
+4663 |             sharp_alignment = signals.get('sharp_alignment', 0.5)
+     |             ^^^^^^^^^^^^^^^
+4664 |             
+4665 |             # Quick fair value estimate based on sentiment and price
+     |
+help: Remove assignment to unused variable `sharp_alignment`
+
+F841 Local variable `edge` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:4682:17
+     |
+4680 |             if yes_edge > no_edge and yes_edge > 0.005:
+4681 |                 side = 'YES'
+4682 |                 edge = yes_edge
+     |                 ^^^^
+4683 |             elif no_edge > yes_edge and no_edge > 0.005:
+4684 |                 # TEMPORARILY SKIP NO trades - model bias issue
+     |
+help: Remove assignment to unused variable `edge`
+
+F841 Local variable `orderbook_source` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:5679:25
+     |
+5677 |                         asks = cached_asks
+5678 |                         orderbook_verified = True
+5679 |                         orderbook_source = 'market_data_cache'
+     |                         ^^^^^^^^^^^^^^^^
+5680 |                         logger.debug(f"[EXIT-OB] Using cached orderbook: bid=${best_bid:.4f}")
+     |
+help: Remove assignment to unused variable `orderbook_source`
+
+F841 Local variable `price_source` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:6173:17
+     |
+6171 |                 # No orderbook, use mid-price as fallback
+6172 |                 actual_entry_price = current_price
+6173 |                 price_source = 'mid_price_no_orderbook'
+     |                 ^^^^^^^^^^^^
+6174 |                 logger.debug(f"[ENTRY] No orderbook available, using mid-price ${current_price:.4f}")
+     |
+help: Remove assignment to unused variable `price_source`
+
+F841 Local variable `pre_positions` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:6355:17
+     |
+6353 |                 # Store pre-state for debugging
+6354 |                 pre_capital = self.current_capital
+6355 |                 pre_positions = len(self.paper_positions)
+     |                 ^^^^^^^^^^^^^
+6356 |                 pre_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+     |
+help: Remove assignment to unused variable `pre_positions`
+
+F841 Local variable `pre_deployed` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:6356:17
+     |
+6354 |                 pre_capital = self.current_capital
+6355 |                 pre_positions = len(self.paper_positions)
+6356 |                 pre_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+     |                 ^^^^^^^^^^^^
+6357 |                 
+6358 |                 self.paper_positions[market_id] = position
+     |
+help: Remove assignment to unused variable `pre_deployed`
+
+F841 Local variable `post_deployed` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:6372:17
+     |
+6371 |                 # Validate accounting after entry
+6372 |                 post_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
+     |                 ^^^^^^^^^^^^^
+6373 |                 expected_capital = pre_capital - size
+6374 |                 if abs(self.current_capital - expected_capital) > 0.01:
+     |
+help: Remove assignment to unused variable `post_deployed`
+
+F841 Local variable `exit_price_source` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:6578:13
+     |
+6577 |             # Price already verified from orderbook - set source
+6578 |             exit_price_source = f'orderbook_{orderbook_source}'
+     |             ^^^^^^^^^^^^^^^^^
+6579 |             
+6580 |             # Retrieve size from position
+     |
+help: Remove assignment to unused variable `exit_price_source`
+
+F841 Local variable `regime_diagnostics` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:6998:17
+     |
+6996 |                 # - ZOMBIE: Already filtered out above
+6997 |                 regime = market_data.get('regime', MarketRegime.TAKER_TIGHT)
+6998 |                 regime_diagnostics = market_data.get('regime_diagnostics', {})
+     |                 ^^^^^^^^^^^^^^^^^^
+6999 |                 
+7000 |                 if regime == MarketRegime.MAKER_WIDE:
+     |
+help: Remove assignment to unused variable `regime_diagnostics`
+
+F841 Local variable `outstanding` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:7536:13
+     |
+7534 |             liquidity = float(market_data.get('liquidity', 0) or 0)
+7535 |             spread = float(market_data.get('spread', 0.02) or 0.02)
+7536 |             outstanding = float(market_data.get('outstanding_contracts', liquidity) or liquidity)
+     |             ^^^^^^^^^^^
+7537 |             
+7538 |             # ================================================================
+     |
+help: Remove assignment to unused variable `outstanding`
+
+F841 Local variable `external_confidence` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:7692:21
+     |
+7690 |                     news_sentiment = social_result.get('news_sentiment', 0.5)
+7691 |                     social_sentiment = social_result.get('social_sentiment', 0.5)
+7692 |                     external_confidence = social_result.get('confidence', 0.0)
+     |                     ^^^^^^^^^^^^^^^^^^^
+7693 |                     news_data = {
+7694 |                         'news_count': social_result.get('news_count', 0),
+     |
+help: Remove assignment to unused variable `external_confidence`
+
+F841 Local variable `external_sentiment` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:7704:13
+     |
+7702 |                     logger.debug(f"External sentiment error: {e}")
+7703 |             
+7704 |             external_sentiment = (news_sentiment * 0.6 + social_sentiment * 0.4)
+     |             ^^^^^^^^^^^^^^^^^^
+7705 |             
+7706 |             # ================================================================
+     |
+help: Remove assignment to unused variable `external_sentiment`
+
+F841 Local variable `price_source` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8038:41
+     |
+8036 | …                     if m.get('id') == market_id:
+8037 | …                         current_yes_price = m.get('yes_price')
+8038 | …                         price_source = "markets_list"
+     |                           ^^^^^^^^^^^^
+8039 | …                         logger.warning(f"[PRICE-FALLBACK] {market_id[:16]} - found in markets: {current_yes_price}")
+8040 | …                         break
+     |
+help: Remove assignment to unused variable `price_source`
+
+E722 Do not use bare `except`
+    --> backend/paper_trading/paper_trader.py:8063:33
+     |
+8061 | …                             entry_time = datetime.fromisoformat(entry_time_str.replace('Z', '+00:00'))
+8062 | …                             duration_hours = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
+8063 | …                         except:
+     |                           ^^^^^^
+8064 | …                             duration_hours = 0
+8065 | …                     else:
+     |
+
+F841 Local variable `market_id` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8513:17
+     |
+8512 |             for m in live_markets:
+8513 |                 market_id = m.get('id', 'unknown')[:16]
+     |                 ^^^^^^^^^
+8514 |                 question = m.get('question', '')
+     |
+help: Remove assignment to unused variable `market_id`
+
+F841 Local variable `question` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8514:17
+     |
+8512 |             for m in live_markets:
+8513 |                 market_id = m.get('id', 'unknown')[:16]
+8514 |                 question = m.get('question', '')
+     |                 ^^^^^^^^
+8515 |                 
+8516 |                 # ==========================================================
+     |
+help: Remove assignment to unused variable `question`
+
+F841 Local variable `hft_stats` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8945:9
+     |
+8944 |         # Keep legacy hft/alpha keys for backward compatibility
+8945 |         hft_stats = lane_stats['HFT']
+     |         ^^^^^^^^^
+8946 |         alpha_stats = lane_stats['ALPHA']
+8947 |         hft_capital = self.deployed_capital * lane_allocation['HFT']
+     |
+help: Remove assignment to unused variable `hft_stats`
+
+F841 Local variable `alpha_stats` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8946:9
+     |
+8944 |         # Keep legacy hft/alpha keys for backward compatibility
+8945 |         hft_stats = lane_stats['HFT']
+8946 |         alpha_stats = lane_stats['ALPHA']
+     |         ^^^^^^^^^^^
+8947 |         hft_capital = self.deployed_capital * lane_allocation['HFT']
+8948 |         alpha_capital = self.deployed_capital * lane_allocation['ALPHA']
+     |
+help: Remove assignment to unused variable `alpha_stats`
+
+F841 Local variable `hft_capital` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8947:9
+     |
+8945 |         hft_stats = lane_stats['HFT']
+8946 |         alpha_stats = lane_stats['ALPHA']
+8947 |         hft_capital = self.deployed_capital * lane_allocation['HFT']
+     |         ^^^^^^^^^^^
+8948 |         alpha_capital = self.deployed_capital * lane_allocation['ALPHA']
+8949 |         hft_deployed = lane_deployed['HFT']
+     |
+help: Remove assignment to unused variable `hft_capital`
+
+F841 Local variable `alpha_capital` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8948:9
+     |
+8946 |         alpha_stats = lane_stats['ALPHA']
+8947 |         hft_capital = self.deployed_capital * lane_allocation['HFT']
+8948 |         alpha_capital = self.deployed_capital * lane_allocation['ALPHA']
+     |         ^^^^^^^^^^^^^
+8949 |         hft_deployed = lane_deployed['HFT']
+8950 |         alpha_deployed = lane_deployed['ALPHA']
+     |
+help: Remove assignment to unused variable `alpha_capital`
+
+F841 Local variable `hft_deployed` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8949:9
+     |
+8947 |         hft_capital = self.deployed_capital * lane_allocation['HFT']
+8948 |         alpha_capital = self.deployed_capital * lane_allocation['ALPHA']
+8949 |         hft_deployed = lane_deployed['HFT']
+     |         ^^^^^^^^^^^^
+8950 |         alpha_deployed = lane_deployed['ALPHA']
+8951 |         hft_unrealized = lane_unrealized['HFT']
+     |
+help: Remove assignment to unused variable `hft_deployed`
+
+F841 Local variable `alpha_deployed` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8950:9
+     |
+8948 |         alpha_capital = self.deployed_capital * lane_allocation['ALPHA']
+8949 |         hft_deployed = lane_deployed['HFT']
+8950 |         alpha_deployed = lane_deployed['ALPHA']
+     |         ^^^^^^^^^^^^^^
+8951 |         hft_unrealized = lane_unrealized['HFT']
+8952 |         alpha_unrealized = lane_unrealized['ALPHA']
+     |
+help: Remove assignment to unused variable `alpha_deployed`
+
+F841 Local variable `hft_unrealized` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8951:9
+     |
+8949 |         hft_deployed = lane_deployed['HFT']
+8950 |         alpha_deployed = lane_deployed['ALPHA']
+8951 |         hft_unrealized = lane_unrealized['HFT']
+     |         ^^^^^^^^^^^^^^
+8952 |         alpha_unrealized = lane_unrealized['ALPHA']
+     |
+help: Remove assignment to unused variable `hft_unrealized`
+
+F841 Local variable `alpha_unrealized` is assigned to but never used
+    --> backend/paper_trading/paper_trader.py:8952:9
+     |
+8950 |         alpha_deployed = lane_deployed['ALPHA']
+8951 |         hft_unrealized = lane_unrealized['HFT']
+8952 |         alpha_unrealized = lane_unrealized['ALPHA']
+     |         ^^^^^^^^^^^^^^^^
+8953 |         
+8954 |         # Calculate asset class results with profit factors
+     |
+help: Remove assignment to unused variable `alpha_unrealized`
+
+E722 Do not use bare `except`
+  --> backend/scripts/dev_tools/strategy_forensics.py:82:5
+   |
+80 |             dt_str = dt_str[:-1] + '+00:00'
+81 |         return datetime.fromisoformat(dt_str)
+82 |     except:
+   |     ^^^^^^
+83 |         return None
+   |
+
+E722 Do not use bare `except`
+   --> backend/scripts/recover_sessions.py:111:17
+    |
+109 |                         last_dt = last_trade
+110 |                     duration_seconds = int((last_dt - first_dt).total_seconds())
+111 |                 except:
+    |                 ^^^^^^
+112 |                     duration_seconds = 0
+113 |             else:
+    |
+
+F841 Local variable `news` is assigned to but never used
+   --> backend/scripts/test_latency_benchmark.py:416:13
+    |
+415 |             start = time.perf_counter()
+416 |             news = await manager.whale.process_trade(trade_data)
+    |             ^^^^
+417 |             end = time.perf_counter()
+    |
+help: Remove assignment to unused variable `news`
+
+E722 Do not use bare `except`
+    --> backend/server.py:2318:17
+     |
+2316 |                 try:
+2317 |                     trades = await api.get_trades(token_ids[0], limit=50)
+2318 |                 except:
+     |                 ^^^^^^
+2319 |                     pass
+2320 |                 try:
+     |
+
+E722 Do not use bare `except`
+    --> backend/server.py:2322:17
+     |
+2320 |                 try:
+2321 |                     order_book = await api.get_order_book(token_ids[0])
+2322 |                 except:
+     |                 ^^^^^^
+2323 |                     pass
+     |
+
+E402 Module level import not at top of file
+    --> backend/server.py:2825:1
+     |
+2823 | # =============================================
+2824 |
+2825 | from services.alert_service import alert_service
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2826 |
+2827 | class AlertConfigUpdate(BaseModel):
+     |
+
+E402 Module level import not at top of file
+    --> backend/server.py:2891:1
+     |
+2889 | # =============================================
+2890 |
+2891 | from paper_trading.paper_trader import PaperTrader
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2892 | from paper_trading.strategy_optimizer import StrategyOptimizer
+     |
+
+E402 Module level import not at top of file
+    --> backend/server.py:2892:1
+     |
+2891 | from paper_trading.paper_trader import PaperTrader
+2892 | from paper_trading.strategy_optimizer import StrategyOptimizer
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2893 |
+2894 | paper_trader: Optional[PaperTrader] = None
+     |
+
+F821 Undefined name `key_terms`
+    --> backend/server.py:6533:73
+     |
+6532 |                         except Exception as query_err:
+6533 |                             logger.debug(f"[NEWS/EXA] Query error for '{key_terms}': {query_err}")
+     |                                                                         ^^^^^^^^^
+6534 |                         
+6535 |                         await asyncio.sleep(1)  # Rate limit between queries
+     |
+
+E722 Do not use bare `except`
+   --> backend/services/polymarket_scanner.py:290:13
+    |
+288 |             try:
+289 |                 tag_library = get_tag_library_service()
+290 |             except:
+    |             ^^^^^^
+291 |                 tag_library = None
+    |
+
+E722 Do not use bare `except`
+   --> backend/services/polymarket_scanner.py:304:21
+    |
+302 |                         cat_result = tag_library.classify_market(m)
+303 |                         m['category'] = cat_result.category
+304 |                     except:
+    |                     ^^^^^^
+305 |                         m['category'] = 'other'
+306 |                 self.cached_markets[market_id] = m
+    |
+
+E722 Do not use bare `except`
+   --> backend/services/realtime_market_service.py:200:13
+    |
+198 |                     logger.debug(f"[WS-UPDATE] Ignoring and evicting expired market {market_id[:16]}")
+199 |                     return
+200 |             except:
+    |             ^^^^^^
+201 |                 pass
+    |
+
+E722 Do not use bare `except`
+   --> backend/services/realtime_market_service.py:275:25
+    |
+273 |                                     logger.debug(f"[WS-CACHE] Evicted expired market {market_id[:16]}")
+274 |                                 continue
+275 |                         except:
+    |                         ^^^^^^
+276 |                             pass
+    |
+
+F841 Local variable `outcome_name` is assigned to but never used
+   --> backend/services/realtime_market_service.py:319:33
+    |
+318 | …                     if i < len(outcomes):
+319 | …                         outcome_name = outcomes[i]
+    |                           ^^^^^^^^^^^^
+320 | …                         
+321 | …                         # Normalize: index 0 is always treated as "Yes" for price calculations
+    |
+help: Remove assignment to unused variable `outcome_name`
+
+F841 Local variable `now` is assigned to but never used
+   --> backend/services/signal_cache.py:145:13
+    |
+143 |         async with self._lock:
+144 |             result = {}
+145 |             now = datetime.now(timezone.utc)
+    |             ^^^
+146 |             
+147 |             for key, entry in self._cache.items():
+    |
+help: Remove assignment to unused variable `now`
+
+E722 Do not use bare `except`
+   --> backend/services/webhook_sources.py:489:9
+    |
+487 |         try:
+488 |             return datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
+489 |         except:
+    |         ^^^^^^
+490 |             pass
+    |
+
+E722 Do not use bare `except`
+   --> backend/services/webhook_sources.py:496:9
+    |
+494 |             from email.utils import parsedate_to_datetime
+495 |             return parsedate_to_datetime(ts_str)
+496 |         except:
+    |         ^^^^^^
+497 |             pass
+    |
+
+E722 Do not use bare `except`
+   --> backend/services/webhook_sources.py:511:13
+    |
+509 |                     dt = dt.replace(tzinfo=timezone.utc)
+510 |                 return dt
+511 |             except:
+    |             ^^^^^^
+512 |                 continue
+    |
+
+E722 Do not use bare `except`
+  --> backend/tests/conftest.py:29:5
+   |
+27 |                 if line.startswith('REACT_APP_BACKEND_URL='):
+28 |                     return line.split('=', 1)[1].strip().rstrip('/')
+29 |     except:
+   |     ^^^^^^
+30 |         pass
+   |
+
+F841 Local variable `tuner` is assigned to but never used
+   --> backend/tests/test_deployed_capital.py:247:9
+    |
+245 |         from ml.strategy_tuner import StrategyTuner
+246 |         
+247 |         tuner = StrategyTuner()
+    |         ^^^^^
+248 |         
+249 |         # The tuner should use config.DEPLOYED_CAPITAL for simulations
+    |
+help: Remove assignment to unused variable `tuner`
+
+F841 Local variable `decision` is assigned to but never used
+   --> backend/tests/test_exits.py:408:9
+    |
+406 |         Ensure it returns CLOSE_ALL (Principal sell too small).
+407 |         """
+408 |         decision = self.engine.check_exit(
+    |         ^^^^^^^^
+409 |             strategy='alpha_directional',
+410 |             asset_class='politics',
+    |
+help: Remove assignment to unused variable `decision`
+
+E712 Avoid equality comparisons to `False`; use `not engine._running:` for false checks
+   --> backend/tests/test_hft_v2_engine.py:204:16
+    |
+203 |         assert engine is not None
+204 |         assert engine._running == False
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+205 |         assert engine.stats['cycles_executed'] == 0
+206 |         assert engine.stats['trades_executed'] == 0
+    |
+help: Replace with `not engine._running`
+
+F841 Local variable `running_status` is assigned to but never used
+   --> backend/tests/test_iteration24_comprehensive.py:276:13
+    |
+274 |             status_response = requests.get(f"{BASE_URL}/api/paper/status", auth=AUTH)
+275 |             assert status_response.status_code == 200
+276 |             running_status = status_response.json()
+    |             ^^^^^^^^^^^^^^
+277 |             
+278 |             # Stop paper trading
+    |
+help: Remove assignment to unused variable `running_status`
+
+E712 Avoid equality comparisons to `False`; use `not data["running"]:` for false checks
+  --> backend/tests/test_iteration25_session_timer.py:30:16
+   |
+28 |         # When stopped, these fields should exist but may be null/0
+29 |         assert "running" in data
+30 |         assert data["running"] == False or data["running"] == True
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+31 |     
+32 |     def test_status_endpoint_structure(self):
+   |
+help: Replace with `not data["running"]`
+
+E712 Avoid equality comparisons to `True`; use `data["running"]:` for truth checks
+  --> backend/tests/test_iteration25_session_timer.py:30:44
+   |
+28 |         # When stopped, these fields should exist but may be null/0
+29 |         assert "running" in data
+30 |         assert data["running"] == False or data["running"] == True
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^
+31 |     
+32 |     def test_status_endpoint_structure(self):
+   |
+help: Replace with `data["running"]`
+
+E712 Avoid equality comparisons to `True`; use `ws.connected:` for truth checks
+   --> backend/tests/test_iteration27_websocket_verification.py:539:24
+    |
+537 |             if connected:
+538 |                 print("✅ WebSocket connected successfully")
+539 |                 assert ws.connected == True
+    |                        ^^^^^^^^^^^^^^^^^^^^
+540 |                 
+541 |                 # Get stats
+    |
+help: Replace with `ws.connected`
+
+E712 Avoid equality comparisons to `False`; use `not ws.connected:` for false checks
+   --> backend/tests/test_iteration27_websocket_verification.py:547:24
+    |
+545 |                 # Disconnect
+546 |                 await ws.disconnect()
+547 |                 assert ws.connected == False
+    |                        ^^^^^^^^^^^^^^^^^^^^^
+548 |                 print("✅ WebSocket disconnected cleanly")
+549 |             else:
+    |
+help: Replace with `not ws.connected`
+
+F841 Local variable `pnl` is assigned to but never used
+   --> backend/tests/test_iteration28_pnl_validation.py:228:13
+    |
+227 |         for trade in list(trades)[:20]:  # Check first 20 trades
+228 |             pnl = trade.get('pnl', 0)
+    |             ^^^
+229 |             pnl_pct = trade.get('pnl_pct', 0)
+230 |             entry_price = trade.get('entry_price', 0)
+    |
+help: Remove assignment to unused variable `pnl`
+
+F841 Local variable `unrealized_pnl` is assigned to but never used
+   --> backend/tests/test_iteration28_pnl_validation.py:348:13
+    |
+346 |             entry_price = pos.get('entry_price', 0)
+347 |             current_price = pos.get('current_price', 0)
+348 |             unrealized_pnl = pos.get('unrealized_pnl', 0)
+    |             ^^^^^^^^^^^^^^
+349 |             unrealized_pnl_pct = pos.get('unrealized_pnl_pct', 0)
+350 |             market_id = pos.get('market_id', '')[:16]
+    |
+help: Remove assignment to unused variable `unrealized_pnl`
+
+E712 Avoid equality comparisons to `True`; use `data.get('token_mapping_ready'):` for truth checks
+   --> backend/tests/test_iteration28_pnl_validation.py:401:16
+    |
+400 |         # Verify token mapping is ready
+401 |         assert data.get('token_mapping_ready') == True, "Token mapping should be ready"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+402 |         
+403 |         # Verify no dropped updates (race condition fix)
+    |
+help: Replace with `data.get('token_mapping_ready')`
+
+F841 Local variable `present_fields` is assigned to but never used
+   --> backend/tests/test_iteration44_hft_trading_bot.py:478:13
+    |
+476 | …     # Check optional but expected fields
+477 | …     optional_fields = ['bayes_factor', 'direction', 'news_source']
+478 | …     present_fields = [f for f in optional_fields if f in signal]
+    |       ^^^^^^^^^^^^^^
+479 | …     
+480 | …     print(f"  - Signal: market={signal.get('market_id', '')[:16]}..., direction={signal.get('direction')}, bayes_factor={signal.get…
+    |
+help: Remove assignment to unused variable `present_fields`
+
+F841 Local variable `opportunities` is assigned to but never used
+   --> backend/tests/test_iteration44_hft_trading_bot.py:488:9
+    |
+486 |         data = response.json()
+487 |         
+488 |         opportunities = data.get('opportunities', [])
+    |         ^^^^^^^^^^^^^
+489 |         count = data.get('count', 0)
+    |
+help: Remove assignment to unused variable `opportunities`
+
+E712 Avoid equality comparisons to `True`; use `exa_key.get('is_set'):` for truth checks
+  --> backend/tests/test_iteration45_deep_testing.py:62:16
+   |
+60 |         exa_key = next((k for k in keys if k['key_name'] == 'EXA_API_KEY'), None)
+61 |         assert exa_key is not None
+62 |         assert exa_key.get('is_set') == True
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+63 |         assert exa_key.get('in_database') == True
+64 |         print("✓ Encryption roundtrip: key saved and loaded successfully")
+   |
+help: Replace with `exa_key.get('is_set')`
+
+E712 Avoid equality comparisons to `True`; use `exa_key.get('in_database'):` for truth checks
+  --> backend/tests/test_iteration45_deep_testing.py:63:16
+   |
+61 |         assert exa_key is not None
+62 |         assert exa_key.get('is_set') == True
+63 |         assert exa_key.get('in_database') == True
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+64 |         print("✓ Encryption roundtrip: key saved and loaded successfully")
+   |
+help: Replace with `exa_key.get('in_database')`
+
+E712 Avoid equality comparisons to `True`; use `apify_key.get('is_placeholder'):` for truth checks
+   --> backend/tests/test_iteration45_deep_testing.py:113:20
+    |
+112 |             # Placeholder should be detected
+113 |             assert apify_key.get('is_placeholder') == True or apify_key.get('is_set') == False
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+114 |             print(f"✓ Placeholder '{placeholder[:20]}...' detected correctly")
+    |
+help: Replace with `apify_key.get('is_placeholder')`
+
+E712 Avoid equality comparisons to `False`; use `not apify_key.get('is_set'):` for false checks
+   --> backend/tests/test_iteration45_deep_testing.py:113:63
+    |
+112 |             # Placeholder should be detected
+113 |             assert apify_key.get('is_placeholder') == True or apify_key.get('is_set') == False
+    |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+114 |             print(f"✓ Placeholder '{placeholder[:20]}...' detected correctly")
+    |
+help: Replace with `not apify_key.get('is_set')`
+
+E712 Avoid equality comparisons to `True`; use `llm_key.get('in_database'):` for truth checks
+   --> backend/tests/test_iteration45_deep_testing.py:137:20
+    |
+135 |             llm_key = next((k for k in keys if k['key_name'] == 'EMERGENT_LLM_KEY'), None)
+136 |             
+137 |             assert llm_key.get('in_database') == True
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+138 |             print(f"✓ Key survived reload #{i+1}")
+    |
+help: Replace with `llm_key.get('in_database')`
+
+F841 Local variable `metrics` is assigned to but never used
+   --> backend/tests/test_iteration45_deep_testing.py:493:13
+    |
+491 |         if data.get('status') == 'operational':
+492 |             stats = data.get('stats', {})
+493 |             metrics = data.get('metrics', {})
+    |             ^^^^^^^
+494 |             
+495 |             path_a_hits = stats.get('path_a_hits', 0)
+    |
+help: Remove assignment to unused variable `metrics`
+
+E712 Avoid equality comparisons to `True`; use `ws_data.get('connected'):` for truth checks
+  --> backend/tests/test_iteration48_markets_first_path_a.py:42:16
+   |
+40 |         # Verify WebSocket is connected (PRIMARY)
+41 |         ws_data = data['websocket']
+42 |         assert ws_data.get('connected') == True, "WebSocket should be connected"
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+43 |         assert ws_data.get('running') == True, "WebSocket should be running"
+   |
+help: Replace with `ws_data.get('connected')`
+
+E712 Avoid equality comparisons to `True`; use `ws_data.get('running'):` for truth checks
+  --> backend/tests/test_iteration48_markets_first_path_a.py:43:16
+   |
+41 |         ws_data = data['websocket']
+42 |         assert ws_data.get('connected') == True, "WebSocket should be connected"
+43 |         assert ws_data.get('running') == True, "WebSocket should be running"
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+44 |         
+45 |         # Verify market service is running
+   |
+help: Replace with `ws_data.get('running')`
+
+E712 Avoid equality comparisons to `True`; use `ms_data.get('running'):` for truth checks
+  --> backend/tests/test_iteration48_markets_first_path_a.py:47:16
+   |
+45 |         # Verify market service is running
+46 |         ms_data = data['market_service']
+47 |         assert ms_data.get('running') == True, "Market service should be running"
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+48 |         assert ms_data.get('token_mapping_ready') == True, "Token mapping should be ready"
+   |
+help: Replace with `ms_data.get('running')`
+
+E712 Avoid equality comparisons to `True`; use `ms_data.get('token_mapping_ready'):` for truth checks
+  --> backend/tests/test_iteration48_markets_first_path_a.py:48:16
+   |
+46 |         ms_data = data['market_service']
+47 |         assert ms_data.get('running') == True, "Market service should be running"
+48 |         assert ms_data.get('token_mapping_ready') == True, "Token mapping should be ready"
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+49 |         
+50 |         print(f"✓ WebSocket connected: {ws_data.get('connected')}")
+   |
+help: Replace with `ms_data.get('token_mapping_ready')`
+
+E712 Avoid equality comparisons to `True`; use `is_fresh:` for truth checks
+  --> backend/tests/test_iteration48_markets_first_path_a.py:95:16
+   |
+93 |         # Verify scanner is fresh
+94 |         is_fresh = scanner.get('is_fresh', False)
+95 |         assert is_fresh == True, "Scanner should be fresh"
+   |                ^^^^^^^^^^^^^^^^
+96 |         
+97 |         print(f"✓ Markets cached: {markets_cached}")
+   |
+help: Replace with `is_fresh`
+
+E712 Avoid equality comparisons to `True`; use `scanner.get('running'):` for truth checks
+   --> backend/tests/test_iteration48_markets_first_path_a.py:114:16
+    |
+113 |         scanner = data.get('scanner', {})
+114 |         assert scanner.get('running') == True, "Scanner should be running"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+115 |         
+116 |         stats = scanner.get('stats', {})
+    |
+help: Replace with `scanner.get('running')`
+
+E712 Avoid equality comparisons to `True`; use `stats.get('running'):` for truth checks
+   --> backend/tests/test_iteration48_markets_first_path_a.py:235:16
+    |
+234 |         stats = data.get('stats', {})
+235 |         assert stats.get('running') == True, "NewsSniper should be running"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+236 |         
+237 |         print(f"✓ NewsSniper status: {data.get('status')}")
+    |
+help: Replace with `stats.get('running')`
+
+E712 Avoid equality comparisons to `True`; use `data.get('exa_enabled'):` for truth checks
+   --> backend/tests/test_news_pipeline_endpoints.py:242:16
+    |
+240 |         # Verify we get status info - actual field is 'exa_enabled'
+241 |         assert 'exa_enabled' in data or 'exa_sdk_initialized' in data
+242 |         assert data.get('exa_enabled') == True, "Exa.ai should be enabled"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+243 |         print(f"✅ Exa.ai status: exa_enabled={data.get('exa_enabled')}, sdk_initialized={data.get('exa_sdk_initialized')}")
+    |
+help: Replace with `data.get('exa_enabled')`
+
+E722 Do not use bare `except`
+   --> backend/tests/test_orderbook_diagnostic.py:116:17
+    |
+114 |                 try:
+115 |                     token_ids = json.loads(token_ids_raw)
+116 |                 except:
+    |                 ^^^^^^
+117 |                     token_ids = []
+118 |             else:
+    |
+
+E722 Do not use bare `except`
+   --> backend/tests/test_orderbook_diagnostic.py:126:17
+    |
+124 |                 try:
+125 |                     outcomes = json.loads(outcomes_raw)
+126 |                 except:
+    |                 ^^^^^^
+127 |                     outcomes = ["Unknown", "Unknown"]
+128 |             else:
+    |
+
+E722 Do not use bare `except`
+   --> backend/tests/test_orderbook_diagnostic.py:136:17
+    |
+134 |                 try:
+135 |                     outcome_prices = json.loads(outcome_prices_raw)
+136 |                 except:
+    |                 ^^^^^^
+137 |                     outcome_prices = []
+138 |             else:
+    |
+
+E712 Avoid equality comparisons to `False`; use `not result['should_trade']:` for false checks
+   --> backend/tests/test_position_sizer.py:186:16
+    |
+184 |         """No-trade result has should_trade = False."""
+185 |         result = sizer._no_trade_result("test_reason", "test_detail")
+186 |         assert result['should_trade'] == False
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+187 |     
+188 |     def test_no_trade_has_breakdown(self, sizer):
+    |
+help: Replace with `not result['should_trade']`
+
+E712 Avoid equality comparisons to `True`; use `result['should_trade']:` for truth checks
+   --> backend/tests/test_position_sizer.py:213:16
+    |
+211 |         )
+212 |         
+213 |         assert result['should_trade'] == True
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+214 |         assert result['position_size'] > 0
+215 |         assert 'breakdown' in result
+    |
+help: Replace with `result['should_trade']`
+
+E712 Avoid equality comparisons to `False`; use `not result['should_trade']:` for false checks
+   --> backend/tests/test_position_sizer.py:232:16
+    |
+230 |         )
+231 |         
+232 |         assert result['should_trade'] == False
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+233 |     
+234 |     def test_high_utilization_reduces_size(self, sizer, sample_order_book):
+    |
+help: Replace with `not result['should_trade']`
+
+E722 Do not use bare `except`
+   --> backend/tests/test_price_rejection.py:185:13
+    |
+183 |             try:
+184 |                 outcome_prices = json.loads(outcome_prices)
+185 |             except:
+    |             ^^^^^^
+186 |                 outcome_prices = []
+    |
+
+E712 Avoid equality comparisons to `True`; use `rl_stats.get('prioritized_replay'):` for truth checks
+  --> backend/tests/test_rl_engine_integration.py:64:20
+   |
+62 |         model_type = rl_stats.get('model_type') or rl_stats.get('type')
+63 |         if model_type == 'DQN':
+64 |             assert rl_stats.get('prioritized_replay') == True, "DQN should have prioritized_replay=True"
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+65 |             assert 'device' in rl_stats, "device field missing"
+   |
+help: Replace with `rl_stats.get('prioritized_replay')`
+
+E712 Avoid equality comparisons to `True`; use `rl_stats.get('prioritized_replay'):` for truth checks
+   --> backend/tests/test_rl_engine_integration.py:353:16
+    |
+351 |         model_type = rl_stats.get('model_type') or rl_stats.get('type')
+352 |         assert model_type == 'DQN', f"RL Engine should be in DQN mode, got {model_type}"
+353 |         assert rl_stats.get('prioritized_replay') == True, "DQN should use prioritized replay"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+354 |         
+355 |         # Verify state features
+    |
+help: Replace with `rl_stats.get('prioritized_replay')`
+
+E712 Avoid equality comparisons to `True`; use `...:` for truth checks
+  --> backend/tests/test_sports_classification_fix.py:34:12
+   |
+32 |     assert result.category == 'sports', f"Expected 'sports', got '{result.category}'"
+33 |     assert result.source == 'api_category', f"Expected 'api_category', got '{result.source}'"
+34 |     assert tag_lib.is_sports_market(market_with_sports_category) == True, "Should be sports market"
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |     print("✓ Test 1 PASSED: Market with category='Sports' correctly identified")
+   |
+help: Replace comparison
+
+E712 Avoid equality comparisons to `True`; use `tag_lib.is_sports_market(market_with_lowercase):` for truth checks
+  --> backend/tests/test_sports_classification_fix.py:52:12
+   |
+50 |     result = tag_lib.classify_market(market_with_lowercase)
+51 |     assert result.category == 'sports', f"Expected 'sports', got '{result.category}'"
+52 |     assert tag_lib.is_sports_market(market_with_lowercase) == True, "Should be sports market"
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+53 |     print("✓ Test 2 PASSED: Market with category='sports' (lowercase) correctly identified")
+   |
+help: Replace with `tag_lib.is_sports_market(market_with_lowercase)`
+
+E712 Avoid equality comparisons to `False`; use `not tag_lib.is_sports_market(market_question_only):` for false checks
+  --> backend/tests/test_sports_classification_fix.py:69:12
+   |
+67 |     # This SHOULD return 'default' because there's no category info
+68 |     assert result.category == 'default', f"Expected 'default', got '{result.category}'"
+69 |     assert tag_lib.is_sports_market(market_question_only) == False, "Should NOT be sports market"
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+70 |     print("✓ Test 3 PASSED: Question-only market correctly returns 'default' (not sports)")
+   |
+help: Replace with `not tag_lib.is_sports_market(market_question_only)`
+
+E712 Avoid equality comparisons to `True`; use `is_sports_market(sports_market):` for truth checks
+   --> backend/tests/test_sports_classification_fix.py:104:12
+    |
+103 |     # This should return True (market IS sports, should be routed to SPORTS lane)
+104 |     assert is_sports_market(sports_market) == True, "HFT should identify this as sports market"
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+105 |     print("✓ Test 5 PASSED: HFT engine correctly identifies sports market")
+    |
+help: Replace with `is_sports_market(sports_market)`
+
+E712 Avoid equality comparisons to `False`; use `not is_sports_market(crypto_market):` for false checks
+   --> backend/tests/test_sports_classification_fix.py:115:12
+    |
+113 |     }
+114 |     
+115 |     assert is_sports_market(crypto_market) == False, "HFT should NOT identify crypto as sports"
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+116 |     print("✓ Test 6 PASSED: HFT engine correctly identifies non-sports market")
+    |
+help: Replace with `not is_sports_market(crypto_market)`
+
+E712 Avoid equality comparisons to `True`; use `tag_lib.is_sports_market(market_with_asset_class):` for truth checks
+   --> backend/tests/test_sports_classification_fix.py:153:12
+    |
+151 |     assert result.category == 'sports', f"Expected 'sports', got '{result.category}'"
+152 |     assert result.source == 'asset_class', f"Expected 'asset_class', got '{result.source}'"
+153 |     assert tag_lib.is_sports_market(market_with_asset_class) == True, "Should be sports market"
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+154 |     print("✓ Test 8 PASSED: Market with asset_class='sports' correctly identified")
+    |
+help: Replace with `tag_lib.is_sports_market(market_with_asset_class)`
+
+E712 Avoid equality comparisons to `False`; use `not tag_lib.is_sports_market(crypto_market):` for false checks
+   --> backend/tests/test_sports_classification_fix.py:167:12
+    |
+165 |     result2 = tag_lib.classify_market(crypto_market)
+166 |     assert result2.category == 'crypto', f"Expected 'crypto', got '{result2.category}'"
+167 |     assert tag_lib.is_sports_market(crypto_market) == False, "Crypto should NOT be sports"
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+168 |     print("✓ Test 9 PASSED: Market with asset_class='crypto' correctly identified (not sports)")
+    |
+help: Replace with `not tag_lib.is_sports_market(crypto_market)`
+
+E712 Avoid equality comparisons to `True`; use `tag_lib.is_sports_market(market):` for truth checks
+  --> backend/tests/test_sports_classification_fix_pytest.py:47:16
+   |
+45 |         assert result.category == 'sports', f"Expected 'sports', got '{result.category}'"
+46 |         assert result.source == 'api_category', f"Expected 'api_category', got '{result.source}'"
+47 |         assert tag_lib.is_sports_market(market) == True, "Should be sports market"
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+48 |     
+49 |     def test_market_with_sports_category_lowercase(self):
+   |
+help: Replace with `tag_lib.is_sports_market(market)`
+
+E712 Avoid equality comparisons to `True`; use `tag_lib.is_sports_market(market):` for truth checks
+  --> backend/tests/test_sports_classification_fix_pytest.py:63:16
+   |
+61 |         result = tag_lib.classify_market(market)
+62 |         assert result.category == 'sports', f"Expected 'sports', got '{result.category}'"
+63 |         assert tag_lib.is_sports_market(market) == True, "Should be sports market"
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: Replace with `tag_lib.is_sports_market(market)`
+
+E712 Avoid equality comparisons to `False`; use `not tag_lib.is_sports_market(market_question_only):` for false checks
+  --> backend/tests/test_sports_classification_fix_pytest.py:82:16
+   |
+80 |         # This SHOULD return 'default' because there's no category info
+81 |         assert result.category == 'default', f"Expected 'default', got '{result.category}'"
+82 |         assert tag_lib.is_sports_market(market_question_only) == False, "Should NOT be sports market"
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+83 |     
+84 |     def test_full_market_object_detects_sports(self):
+   |
+help: Replace with `not tag_lib.is_sports_market(market_question_only)`
+
+E712 Avoid equality comparisons to `True`; use `tag_lib.is_sports_market(full_market):` for truth checks
+   --> backend/tests/test_sports_classification_fix_pytest.py:100:16
+    |
+ 98 |         result = tag_lib.classify_market(full_market)
+ 99 |         assert result.category == 'sports', f"Expected 'sports', got '{result.category}'"
+100 |         assert tag_lib.is_sports_market(full_market) == True, "Should be sports market"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: Replace with `tag_lib.is_sports_market(full_market)`
+
+E712 Avoid equality comparisons to `True`; use `is_sports_market(sports_market):` for truth checks
+   --> backend/tests/test_sports_classification_fix_pytest.py:166:16
+    |
+165 |         # This should return True (market IS sports, should be routed to SPORTS lane)
+166 |         assert is_sports_market(sports_market) == True, "HFT should identify this as sports market"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+167 |     
+168 |     def test_hft_identifies_non_sports_market(self):
+    |
+help: Replace with `is_sports_market(sports_market)`
+
+E712 Avoid equality comparisons to `False`; use `not is_sports_market(crypto_market):` for false checks
+   --> backend/tests/test_sports_classification_fix_pytest.py:179:16
+    |
+177 |         }
+178 |         
+179 |         assert is_sports_market(crypto_market) == False, "HFT should NOT identify crypto as sports"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+180 |     
+181 |     def test_hft_identifies_politics_market(self):
+    |
+help: Replace with `not is_sports_market(crypto_market)`
+
+E712 Avoid equality comparisons to `False`; use `not is_sports_market(politics_market):` for false checks
+   --> backend/tests/test_sports_classification_fix_pytest.py:192:16
+    |
+190 |         }
+191 |         
+192 |         assert is_sports_market(politics_market) == False, "HFT should NOT identify politics as sports"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: Replace with `not is_sports_market(politics_market)`
+
+E712 Avoid equality comparisons to `True`; use `tag_lib.is_sports_market(esports_market):` for truth checks
+   --> backend/tests/test_sports_classification_fix_pytest.py:224:16
+    |
+222 |         }
+223 |         
+224 |         assert tag_lib.is_sports_market(esports_market) == True, "Esports should be identified as sports"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: Replace with `tag_lib.is_sports_market(esports_market)`
+
+E712 Avoid equality comparisons to `False`; use `not tag_lib.is_sports_market(crypto_market):` for false checks
+   --> backend/tests/test_sports_classification_fix_pytest.py:243:16
+    |
+241 |         result = tag_lib.classify_market(crypto_market)
+242 |         assert result.category == 'crypto', f"Expected 'crypto', got '{result.category}'"
+243 |         assert tag_lib.is_sports_market(crypto_market) == False, "Crypto should NOT be sports"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+244 |     
+245 |     def test_politics_market_not_sports(self):
+    |
+help: Replace with `not tag_lib.is_sports_market(crypto_market)`
+
+E712 Avoid equality comparisons to `False`; use `not tag_lib.is_sports_market(politics_market):` for false checks
+   --> backend/tests/test_sports_classification_fix_pytest.py:258:16
+    |
+256 |         result = tag_lib.classify_market(politics_market)
+257 |         assert result.category == 'politics', f"Expected 'politics', got '{result.category}'"
+258 |         assert tag_lib.is_sports_market(politics_market) == False, "Politics should NOT be sports"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+259 |     
+260 |     def test_economics_market_not_sports(self):
+    |
+help: Replace with `not tag_lib.is_sports_market(politics_market)`
+
+E712 Avoid equality comparisons to `False`; use `not tag_lib.is_sports_market(economics_market):` for false checks
+   --> backend/tests/test_sports_classification_fix_pytest.py:273:16
+    |
+271 |         result = tag_lib.classify_market(economics_market)
+272 |         assert result.category == 'economics', f"Expected 'economics', got '{result.category}'"
+273 |         assert tag_lib.is_sports_market(economics_market) == False, "Economics should NOT be sports"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: Replace with `not tag_lib.is_sports_market(economics_market)`
+
+E712 Avoid equality comparisons to `False`; use `not tag_lib.is_sports_market(empty_market):` for false checks
+   --> backend/tests/test_sports_classification_fix_pytest.py:287:16
+    |
+285 |         result = tag_lib.classify_market(empty_market)
+286 |         assert result.category == 'default', f"Expected 'default', got '{result.category}'"
+287 |         assert tag_lib.is_sports_market(empty_market) == False, "Empty market should NOT be sports"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+288 |     
+289 |     def test_none_category(self):
+    |
+help: Replace with `not tag_lib.is_sports_market(empty_market)`
+
+E712 Avoid equality comparisons to `True`; use `tag_lib.is_sports_market(market):` for truth checks
+   --> backend/tests/test_sports_classification_fix_pytest.py:316:16
+    |
+314 |         result = tag_lib.classify_market(market)
+315 |         assert result.category == 'sports', f"Expected 'sports', got '{result.category}'"
+316 |         assert tag_lib.is_sports_market(market) == True, "SPORTS (caps) should be sports market"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: Replace with `tag_lib.is_sports_market(market)`
+
+E712 Avoid equality comparisons to `True`; use `tag_lib.is_sports_market(market):` for truth checks
+  --> backend/tests/test_sports_classification_iteration50.py:42:16
+   |
+40 |         assert result.category == 'sports', f"Expected 'sports', got '{result.category}'"
+41 |         assert result.source == 'asset_class', f"Expected 'asset_class', got '{result.source}'"
+42 |         assert tag_lib.is_sports_market(market) == True, "Should be sports market"
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+43 |     
+44 |     def test_category_other_asset_class_sports_generic_question(self):
+   |
+help: Replace with `tag_lib.is_sports_market(market)`
+
+E712 Avoid equality comparisons to `False`; use `not tag_lib.is_sports_market(market):` for false checks
+  --> backend/tests/test_sports_classification_iteration50.py:75:16
+   |
+73 |         assert result.category == 'crypto', f"Expected 'crypto', got '{result.category}'"
+74 |         assert result.source == 'asset_class', f"Expected 'asset_class', got '{result.source}'"
+75 |         assert tag_lib.is_sports_market(market) == False, "Crypto should NOT be sports"
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+76 |     
+77 |     def test_category_other_asset_class_politics(self):
+   |
+help: Replace with `not tag_lib.is_sports_market(market)`
+
+E712 Avoid equality comparisons to `False`; use `not tag_lib.is_sports_market(market):` for false checks
+  --> backend/tests/test_sports_classification_iteration50.py:92:16
+   |
+90 |         assert result.category == 'politics', f"Expected 'politics', got '{result.category}'"
+91 |         assert result.source == 'asset_class', f"Expected 'asset_class', got '{result.source}'"
+92 |         assert tag_lib.is_sports_market(market) == False, "Politics should NOT be sports"
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+93 |     
+94 |     def test_category_other_no_asset_class_falls_to_keyword(self):
+   |
+help: Replace with `not tag_lib.is_sports_market(market)`
+
+E712 Avoid equality comparisons to `True`; use `is_sports_market(market):` for truth checks
+   --> backend/tests/test_sports_classification_iteration50.py:159:16
+    |
+157 |         }
+158 |         
+159 |         assert is_sports_market(market) == True, "HFT should identify this as sports market"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+160 |     
+161 |     def test_hft_does_not_filter_crypto_with_asset_class(self):
+    |
+help: Replace with `is_sports_market(market)`
+
+E712 Avoid equality comparisons to `False`; use `not is_sports_market(market):` for false checks
+   --> backend/tests/test_sports_classification_iteration50.py:173:16
+    |
+171 |         }
+172 |         
+173 |         assert is_sports_market(market) == False, "HFT should NOT identify crypto as sports"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+174 |     
+175 |     def test_hft_filters_sports_with_category_sports(self):
+    |
+help: Replace with `not is_sports_market(market)`
+
+E712 Avoid equality comparisons to `True`; use `is_sports_market(market):` for truth checks
+   --> backend/tests/test_sports_classification_iteration50.py:186:16
+    |
+184 |         }
+185 |         
+186 |         assert is_sports_market(market) == True, "HFT should identify this as sports market"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: Replace with `is_sports_market(market)`
+
+E712 Avoid equality comparisons to `True`; use `data["is_sports"]:` for truth checks
+   --> backend/tests/test_tag_library_service.py:103:16
+    |
+101 |         # Should be classified as sports
+102 |         assert classification["category"] == "sports", f"Expected category 'sports', got '{classification['category']}'"
+103 |         assert data["is_sports"] == True, "Expected is_sports to be True"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+104 |         
+105 |         # Should have sub_category
+    |
+help: Replace with `data["is_sports"]`
+
+E712 Avoid equality comparisons to `True`; use `data["is_sports"]:` for truth checks
+   --> backend/tests/test_tag_library_service.py:126:16
+    |
+124 |         assert classification["category"] == "sports"
+125 |         assert classification["sub_category"] == "basketball"
+126 |         assert data["is_sports"] == True
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+127 |     
+128 |     def test_classify_sports_market_soccer(self):
+    |
+help: Replace with `data["is_sports"]`
+
+E712 Avoid equality comparisons to `True`; use `data["is_sports"]:` for truth checks
+   --> backend/tests/test_tag_library_service.py:145:16
+    |
+143 |         assert classification["category"] == "sports"
+144 |         assert classification["sub_category"] == "soccer"
+145 |         assert data["is_sports"] == True
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+146 |     
+147 |     def test_classify_crypto_market_bitcoin(self):
+    |
+help: Replace with `data["is_sports"]`
+
+E712 Avoid equality comparisons to `False`; use `not data["is_sports"]:` for false checks
+   --> backend/tests/test_tag_library_service.py:164:16
+    |
+162 |         assert classification["category"] == "crypto", f"Expected category 'crypto', got '{classification['category']}'"
+163 |         assert classification["sub_category"] == "btc", f"Expected sub_category 'btc', got '{classification['sub_category']}'"
+164 |         assert data["is_sports"] == False, "Expected is_sports to be False for crypto"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+165 |     
+166 |     def test_classify_crypto_market_ethereum(self):
+    |
+help: Replace with `not data["is_sports"]`
+
+E712 Avoid equality comparisons to `False`; use `not data["is_sports"]:` for false checks
+   --> backend/tests/test_tag_library_service.py:183:16
+    |
+181 |         assert classification["category"] == "crypto"
+182 |         assert classification["sub_category"] == "eth"
+183 |         assert data["is_sports"] == False
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+184 |     
+185 |     def test_classify_politics_market_us(self):
+    |
+help: Replace with `not data["is_sports"]`
+
+E712 Avoid equality comparisons to `False`; use `not data["is_sports"]:` for false checks
+   --> backend/tests/test_tag_library_service.py:202:16
+    |
+200 |         assert classification["category"] == "politics", f"Expected category 'politics', got '{classification['category']}'"
+201 |         assert classification["sub_category"] == "us-politics", f"Expected sub_category 'us-politics', got '{classification['sub_cate…
+202 |         assert data["is_sports"] == False
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+203 |     
+204 |     def test_classify_market_with_confidence(self):
+    |
+help: Replace with `not data["is_sports"]`
+
+E712 Avoid equality comparisons to `True`; use `data["is_sports"]:` for truth checks
+   --> backend/tests/test_tag_library_service.py:457:20
+    |
+456 |             data = response.json()
+457 |             assert data["is_sports"] == True, f"Market {market['id']} should be classified as sports"
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+458 |             assert data["classification"]["category"] == "sports"
+    |
+help: Replace with `data["is_sports"]`
+
+E712 Avoid equality comparisons to `False`; use `not data["is_sports"]:` for false checks
+   --> backend/tests/test_tag_library_service.py:473:20
+    |
+472 |             data = response.json()
+473 |             assert data["is_sports"] == False, f"Market {market['id']} should NOT be classified as sports"
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: Replace with `not data["is_sports"]`
+
+E712 Avoid equality comparisons to `True`; use `data.get('success'):` for truth checks
+  --> backend/tests/test_three_speed_allocation.py:58:16
+   |
+57 |         data = response.json()
+58 |         assert data.get('success') == True
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+59 |         assert 'config' in data
+   |
+help: Replace with `data.get('success')`
+
+F841 Local variable `deployed_pct` is assigned to but never used
+   --> backend/tests/test_three_speed_allocation.py:186:9
+    |
+185 |         # Get deployed capital percentage
+186 |         deployed_pct = config.get('allocated_capital_pct', 80)
+    |         ^^^^^^^^^^^^
+187 |         
+188 |         # Allocations should sum to 100% of deployed capital
+    |
+help: Remove assignment to unused variable `deployed_pct`
+
+F841 Local variable `cancel_reason` is assigned to but never used
+   --> backend/tests/verify_hft_behavior.py:161:17
+    |
+159 |                 # Large drift - CANCEL
+160 |                 should_cancel = True
+161 |                 cancel_reason = f"DRIFT ({clean_drift:.4f} > {self.HYSTERESIS_THRESHOLD})"
+    |                 ^^^^^^^^^^^^^
+162 |                 stats['orders_cancelled_drift'] += 1
+    |
+help: Remove assignment to unused variable `cancel_reason`
+
+E402 Module level import not at top of file
+  --> backend/tests/verify_sports_patch.py:25:1
+   |
+23 | load_dotenv('/app/backend/.env')
+24 |
+25 | from utils.sports_constants import match_sport_and_teams, is_sports_market
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+26 | from strategies.sports_strategy import SportsArbitrageStrategy, SportsSignal
+27 | from risk_config import get_sports_config
+   |
+
+E402 Module level import not at top of file
+  --> backend/tests/verify_sports_patch.py:26:1
+   |
+25 | from utils.sports_constants import match_sport_and_teams, is_sports_market
+26 | from strategies.sports_strategy import SportsArbitrageStrategy, SportsSignal
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+27 | from risk_config import get_sports_config
+   |
+
+E402 Module level import not at top of file
+  --> backend/tests/verify_sports_patch.py:27:1
+   |
+25 | from utils.sports_constants import match_sport_and_teams, is_sports_market
+26 | from strategies.sports_strategy import SportsArbitrageStrategy, SportsSignal
+27 | from risk_config import get_sports_config
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F841 Local variable `patriots_found` is assigned to but never used
+  --> backend/tests/verify_sports_patch.py:66:5
+   |
+64 |     sport_correct = detected_sport == expected_sport
+65 |     seahawks_found = "Seattle Seahawks" in detected_teams
+66 |     patriots_found = "New England Patriots" in detected_teams
+   |     ^^^^^^^^^^^^^^
+67 |     hawks_nba_found = "Atlanta Hawks" in detected_teams  # This should NOT happen
+   |
+help: Remove assignment to unused variable `patriots_found`
+
+E402 Module level import not at top of file
+   --> backend/tests/verify_strategy_logic.py:124:1
+    |
+122 | """
+123 |
+124 | import sys
+    | ^^^^^^^^^^
+125 | from datetime import datetime, timezone, timedelta
+126 | from typing import Dict, Tuple
+    |
+
+E402 Module level import not at top of file
+   --> backend/tests/verify_strategy_logic.py:125:1
+    |
+124 | import sys
+125 | from datetime import datetime, timezone, timedelta
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+126 | from typing import Dict, Tuple
+127 | from dataclasses import dataclass
+    |
+
+E402 Module level import not at top of file
+   --> backend/tests/verify_strategy_logic.py:126:1
+    |
+124 | import sys
+125 | from datetime import datetime, timezone, timedelta
+126 | from typing import Dict, Tuple
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+127 | from dataclasses import dataclass
+    |
+
+E402 Module level import not at top of file
+   --> backend/tests/verify_strategy_logic.py:127:1
+    |
+125 | from datetime import datetime, timezone, timedelta
+126 | from typing import Dict, Tuple
+127 | from dataclasses import dataclass
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+128 |
+129 | # Add backend to path
+    |
+
+E712 Avoid equality comparisons to `True`; use `is_fresh:` for truth checks
+   --> backend/tests/verify_strategy_logic.py:445:12
+    |
+443 |     print(f"  Result: is_fresh={is_fresh}, action={action}")
+444 |     
+445 |     assert is_fresh == True, "FAILED: 1-minute old data should be fresh"
+    |            ^^^^^^^^^^^^^^^^
+446 |     assert action == "OK", "FAILED: Fresh data should return OK action"
+    |
+help: Replace with `is_fresh`
+
+E712 Avoid equality comparisons to `False`; use `not is_fresh:` for false checks
+   --> backend/tests/verify_strategy_logic.py:455:12
+    |
+453 |     print(f"  Result: is_fresh={is_fresh}, action={action}")
+454 |     
+455 |     assert is_fresh == False, "FAILED: 10-minute old data should be stale"
+    |            ^^^^^^^^^^^^^^^^^
+456 |     assert action == "CANCEL_ALL", "FAILED: Stale data should return CANCEL_ALL"
+    |
+help: Replace with `not is_fresh`
+
+E712 Avoid equality comparisons to `False`; use `not is_fresh:` for false checks
+   --> backend/tests/verify_strategy_logic.py:466:12
+    |
+465 |     # At exactly threshold, should be stale (> not >=)
+466 |     assert is_fresh == False, "FAILED: Data at threshold should be considered stale"
+    |            ^^^^^^^^^^^^^^^^^
+467 |     
+468 |     print("\n✅ PASSED: Stale data correctly triggers CANCEL_ALL")
+    |
+help: Replace with `not is_fresh`
+
+F401 `py_clob_client.clob_types.ApiCreds` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> backend/trading/clob_client.py:174:59
+    |
+172 |                 try:
+173 |                     from py_clob_client.client import ClobClient
+174 |                     from py_clob_client.clob_types import ApiCreds
+    |                                                           ^^^^^^^^
+175 |                     
+176 |                     # Initialize CLOB client
+    |
+help: Remove unused import: `py_clob_client.clob_types.ApiCreds`
+
+F841 Local variable `effective_peak` is assigned to but never used
+   --> backend/trading/exit_engine.py:214:17
+    |
+212 |                 effective_peak = 1 - no_peak  # Back to YES for internal logic
+213 |             else:
+214 |                 effective_peak = current_price
+    |                 ^^^^^^^^^^^^^^
+215 |         
+216 |         # Determine zone (based on YES entry price)
+    |
+help: Remove assignment to unused variable `effective_peak`
+
+E722 Do not use bare `except`
+   --> backend/trading_bot.py:269:13
+    |
+267 |                 conf = await self.rl_engine.get_strategy_confidence(strategy_name, market_data)
+268 |                 confidences[strategy_name] = conf
+269 |             except:
+    |             ^^^^^^
+270 |                 confidences[strategy_name] = 0.25  # Default equal weight
+    |
+
+Found 611 errors (451 fixed, 160 remaining).
+No fixes available (115 hidden fixes can be enabled with the `--unsafe-fixes` option). to auto-correct some of the errors, such as bare  clauses in .
+    -   **Why to solve this issue and what will be achieved with this?**: Improves code quality and maintainability.
+    -   **Should Test frontend/backend/both after fix?**: Backend
+    -   **Is recurring issue?**: Y
+
+**Known issue recurrence from previous fork**
+-   **Issue recurrence in previous fork**: Sports markets are being traded in the HFT lane.
+-   **Recurrence count**: 5+ (The agent had to peel back multiple layers of the bug across different services).
+-   **Status**: RESOLVED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Tiered Fallback System:** A defensive design pattern for consuming external APIs. TIER 1 uses the best data source (Odds API). TIER 2 uses a reliable fallback (market-implied price + order flow). TIER 0 blocks action if no reliable data is available.
--   **Robust Order Flow Analysis:** The system now correctly handles edge cases in order book data, such as when one side has zero liquidity, translating it into a strong bearish or bullish signal instead of ignoring it.
--   **Floating-Point Tolerance:** When comparing floating-point numbers for equality with zero (e.g., for division), it's crucial to check against a small tolerance (e.g., ) to avoid precision errors.
--   **UI/UX Modernization:** Applied modern design principles like glassmorphism (backdrop blur), gradients, and improved typography to create a more professional and readable user interface.
+-   **WebSocket-Primary Data Fetching:** Prioritizing WebSocket for real-time data (like orderbooks) for speed, with REST as a fallback for reliability. This is now used for all trade exits.
+-   **Defensive Coding Against Defaults:** A new, global architectural principle. The system explicitly blocks exits based on default or unverified prices (e.g., prices near 0.5) to prevent phantom profits/losses.
+-   **Singleton Service State:** Recognizing that singleton services () can hold stale cache state after code changes, necessitating a full service restart to ensure fixes are applied.
+-   **Multi-Layered Bug Investigation:** Tracing a single user-facing bug (sports in HFT lane) through multiple layers of the application stack to find and fix several distinct root causes.
+
+**key DB schema**
+-   **polymarket_cache** (MongoDB Collection): Caches market metadata from the Polymarket REST API, including , , and  used for classification.
+-   **paper_trading_sessions** (MongoDB Collection): Stores active and closed trade position data.
+
+**changes in tech stack**
+-   None.
 
 **All files of reference**
--   **/app/backend/paper_trading/paper_trader.py**: Heavily modified for sports logic, stat tracking, and bug fixes.
--   **/app/frontend/src/pages/PaperTrading.js**: Heavily modified for UI redesign and multiple bug fixes.
--   **/app/backend/ml/enhanced_sentiment.py**: Core of the new Intelligent Fallback system.
--   **/app/backend/ml/polymarket_sentiment.py**: Core of the order flow analysis; bug fixes for zero-bid/ask cases.
--   **/app/backend/strategies/sports_strategy.py**: Updated to consume the new tiered sentiment analysis.
--   **/app/backend/trading/hft_engine_v2.py**: The file where the sports leak is occurring.
--   **/app/backend/services/tag_library_service.py**: The file containing the root cause of the sports leak bug.
--   **/app/backend/.env**: Updated with the new Odds API key.
+-   **/app/backend/paper_trading/paper_trader.py**: Contains the new global exit logic for all strategies, which is WebSocket-primary and requires real prices.
+-   **/app/backend/services/tag_library_service.py**: Contains the final fix for the sports market classification bug (ignoring 'entertainment' category).
+-   **/app/backend/tests/test_all_exits_real_price.py**: New test file verifying the global real prices only exit logic.
+-   **/app/backend/tests/test_exit_data_source.py**: New test file verifying WebSocket is the primary exit data source.
+-   **/app/backend/tests/test_sports_classification_fix.py**: New test file created during the multi-step bug fix.
+
+**Areas that need refactoring**:
+-   The  file is now over 9,000 lines long. It should be broken down into smaller, more focused modules (e.g., an , , ) to improve maintainability.
+-   Numerous pre-existing lint errors (e.g., bare  clauses) exist throughout the codebase and should be addressed.
+
+**key api endpoints**
+-   : Starts a paper trading session.
+-   : Gets the current status, including equity and P&L.
+-   : Retrieves all open positions.
+-   : Retrieves the historical list of closed trades.
 
 **Critical Info for New Agent**
--   **Highest Priority (P0):** Fix the sports market leak into the HFT lane. The bug is in . The  method needs to be updated to reliably identify a market as sports if its  field is 'Sports', even if the  field is missing or unhelpful.
--   The Intelligent Fallback system is a core piece of new logic. TIER 1 (Odds API) is now active and should be the primary source for sports fair value.
--   The  module has been significantly improved to handle real order book data correctly. Do not reintroduce  defaults.
+-   **Real Prices Only is the Law:** A core architectural principle is now that all trade exits, regardless of strategy, MUST be based on a verified, real-time orderbook price. Do not re-introduce fallbacks to default prices (like 0.5).
+-   **Exit Logic is WebSocket-Primary:** For performance, all exit logic now attempts to fetch orderbook data from the fast WebSocket cache first, only using the slower REST API as a fallback. Maintain this pattern.
+-   **The  File:** This file is extremely large and contains the bulk of the recent critical changes. Be very careful when editing it. The main exit evaluation logic is in  and the execution/P&L calculation is in .
+
+**documents and test reports created in this job**
+-   /app/memory/PRD.md
+-   /app/backend/tests/test_sports_classification_fix.py
+-   /app/backend/tests/test_all_exits_real_price.py
+-   /app/backend/tests/test_exit_data_source.py
+-   /app/test_reports/iteration_49.json
+-   /app/test_reports/iteration_50.json
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Reports that the Profit Factor (PF) is a huge number and the Category P&L dashboard is missing trades. (FIXED)
-2.  **Agent**: Fixes the PF floating-point bug and the category stat tracking.
-3.  **User**: Reports an inconsistency where the UI shows trades as closed in one place and open in another. (FIXED)
-4.  **Agent**: Fixes the UI logic to consistently display open vs. closed trades across all components.
-5.  **User**: Points out that the agent removed the Win % column from a UI card without being asked. (FIXED)
-6.  **Agent**: Apologizes and immediately adds the Win % column back.
-7.  **User**: Reports the critical bug that sports trades are still appearing in the HFT  lane. (IN PROGRESS)
-8.  **Agent**: Starts a detailed audit to trace the cause of the leak.
-9.  **Agent**: Traces the logic through , , and inspects live position data.
-10. **Agent**: Pinpoints the root cause: the  fails to classify a market as sports when the  field is missing, even if  is present. The investigation is ongoing.
+1.  **User**: Reports Real Madrid trade is still in HFT lane. (BUG)
+2.  **Agent**: Investigates, finds the position was created with .
+3.  **Agent**: Traces the bug to  trusting the API's 'entertainment' category. Fixes it to force keyword check.
+4.  **Agent**: Confirms the fix works and all sports markets are now routed correctly.
+5.  **User**: Reports a suspicious trade with massive P&L and an exit at /bin/bash.49. Asks for an audit. (BUG)
+6.  **Agent**: Audits the trade, confirms the P&L is fake and caused by an exit on a .
+7.  **User**: Asks agent to make changes to mimic real markets and get rid of all defaults like 0.5.
+8.  **Agent**: Implements a real prices only exit logic for ALL strategies.
+9.  **User**: Asks if WebSocket is the primary data source for exits.
+10. **Agent**: Investigates, confirms exits use the slow REST API, and proposes a switch to WebSocket-primary.
+11. **User**: Asks if the change will affect classification.
+12. **Agent**: Does a full architecture review, confirms the change is safe, and explains why.
+13. **User**: Approves the optimal change.
+14. **Agent**: Implements the WebSocket-primary exit logic for all strategies.
 
 **Project Health Check:**
--   **Working**: The core sports trading logic (TIER 1/2), order flow analysis, and redesigned UI are working correctly.
--   **Broken**: The routing of sports markets is broken. Some sports markets are leaking past the filter and being incorrectly traded by the HFT engine.
--   **Needs Attention**: The historical data in cumulative stats still shows an Other category.
+-   **Working**: Core trading logic, sports market classification, system-wide exit price validation, and WebSocket-primary data fetching.
+-   **Broken**: None known.
+-   **Needs Attention**: Cumulative stats contain historical data errors. External integrations for Apify and Exa.ai are non-functional due to user account issues.
 
 **3rd Party Integrations**
--   **The Odds API**: Now working correctly with the new API key.
+-   **The Odds API**: Working correctly with the provided API key.
 -   **Polymarket CLOB API & Gamma API**: Core market data (✅ Working).
 -   **OpenAI/Gemini**: Used for LLM analysis (✅ Working).
 -   **Exa.ai**: PULL-based news (⚠️ Out of credits).
 -   **Apify ()**: Twitter scraping (⚠️ Unstable due to billing).
 
 **Testing status**
--   **Testing agent used after significant changes**: NO (Agent has been using manual test scripts and  for backend changes).
+-   **Testing agent used after significant changes**: YES (for the initial classification fix).
+-   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**:
-    -   
-    -   
-    -   
     -   
     -   
     -   
@@ -144,4 +1945,4 @@ The application features a significantly improved and more robust sports trading
 -   **password:** 
 
 **What agent forgot to execute**
--   The agent has been focused on fixing bugs as they arise. The Upcoming Tasks like deprecating the old news pipeline have not been started yet, which is appropriate given the P0 priority of the current bug.</analysis>
+-   The agent did not fix pre-existing lint errors (like ) as the focus was on resolving critical P0 bugs. This is an acceptable trade-off but should be noted as a future code quality task.</analysis>

@@ -14,7 +14,7 @@ import os
 # Add backend to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from trading.maker_executor import MakerOrderExecutor, ExecutionMode, DEFAULT_CONFIG
+from trading.maker_executor import MakerOrderExecutor, ExecutionMode
 from trading.clob_client import OrderBook
 from datetime import datetime, timezone
 
@@ -145,11 +145,11 @@ class TestInventorySkew:
         assert bid_long < bid_short, f"Error: Long bid ({bid_long:.4f}) should be < Short bid ({bid_short:.4f})"
         assert ask_long < ask_short, f"Error: Long ask ({ask_long:.4f}) should be < Short ask ({ask_short:.4f})"
         
-        print(f"\n=== INVENTORY SKEW VERIFICATION ===")
+        print("\n=== INVENTORY SKEW VERIFICATION ===")
         print(f"Long Position  (+1000): Bid={bid_long:.4f} Ask={ask_long:.4f}")
         print(f"Neutral Position (0):   Bid={bid_neutral:.4f} Ask={ask_neutral:.4f}")
         print(f"Short Position (-1000): Bid={bid_short:.4f} Ask={ask_short:.4f}")
-        print(f"✅ Skew Logic Verified: Long < Neutral < Short")
+        print("✅ Skew Logic Verified: Long < Neutral < Short")
     
     def test_inventory_skew_zero_inventory(self):
         """Test that zero inventory results in zero skew."""
@@ -287,14 +287,14 @@ class TestSafetyLeash:
         assert bid_improvement > 0.30, f"Bid should improve by >0.30, got {bid_improvement:.4f}"
         assert ask_improvement > 0.30, f"Ask should improve by >0.30, got {ask_improvement:.4f}"
         
-        print(f"\n=== HALLUCINATION PROTECTION TEST ===")
+        print("\n=== HALLUCINATION PROTECTION TEST ===")
         print(f"Alpha (hallucinated): {theoretical_price}")
         print(f"Market mid (reality): {market_mid}")
         print(f"Pre-clamp bid/ask:    {debug['pre_clamp_bid']:.4f} / {debug['pre_clamp_ask']:.4f}")
         print(f"Post-clamp bid/ask:   {bid:.4f} / {ask:.4f}")
         print(f"Bounds: [{lower_bound:.2f}, {upper_bound:.2f}]")
         print(f"Improvement: bid {bid_improvement:.4f}, ask {ask_improvement:.4f}")
-        print(f"✅ Hallucination protected!")
+        print("✅ Hallucination protected!")
     
     def test_safety_leash_edge_boundaries(self):
         """Test boundary conditions at 0 and 1."""
@@ -314,7 +314,7 @@ class TestSafetyLeash:
         )
         assert safe_ask <= 0.999, f"Ask should not exceed 0.999: {safe_ask}"
         
-        print(f"Edge boundary tests passed")
+        print("Edge boundary tests passed")
     
     def test_safety_leash_custom_deviation(self):
         """Test with custom deviation limit."""
@@ -387,14 +387,14 @@ class TestIntegration:
         
         # Even with safety leash, skew direction should be preserved
         # Long should have lower quotes than short
-        assert bid_long <= bid_short, f"Skew should preserve: Long bid <= Short bid"
-        assert ask_long <= ask_short, f"Skew should preserve: Long ask <= Short ask"
+        assert bid_long <= bid_short, "Skew should preserve: Long bid <= Short bid"
+        assert ask_long <= ask_short, "Skew should preserve: Long ask <= Short ask"
         
-        print(f"\n=== SKEW + SAFETY LEASH INTEGRATION ===")
+        print("\n=== SKEW + SAFETY LEASH INTEGRATION ===")
         print(f"Alpha: {theoretical_price} | Market: {market_mid}")
         print(f"Long (+500):  Bid={bid_long:.4f} Ask={ask_long:.4f}")
         print(f"Short (-500): Bid={bid_short:.4f} Ask={ask_short:.4f}")
-        print(f"✅ Skew direction preserved with safety leash")
+        print("✅ Skew direction preserved with safety leash")
 
 
 class TestHysteresis:
@@ -546,7 +546,7 @@ class TestHysteresis:
         active_after = self.executor.get_active_order(market_id, "YES")
         assert active_after is None, "Order should be cleared"
         
-        print(f"Active order tracking verified")
+        print("Active order tracking verified")
     
     def test_hysteresis_stats(self):
         """Test hysteresis statistics tracking."""

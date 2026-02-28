@@ -13,13 +13,10 @@ Updated: Category-Aware Fusion (Task: Stop LLM Hallucination)
 - Crypto: Maintain existing fusion weights
 - Fallback: 100% Order Flow if API fails
 """
-import asyncio
 import logging
-from typing import Dict, Tuple, List, Optional
-from datetime import datetime, timezone, timedelta
+from typing import Dict, List
 from collections import defaultdict
 import numpy as np
-from config import config
 
 logger = logging.getLogger(__name__)
 

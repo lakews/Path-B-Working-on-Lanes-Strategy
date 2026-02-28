@@ -12,11 +12,9 @@ Tests for verifying WebSocket functionality:
 
 import pytest
 import requests
-import os
 import asyncio
 import json
 import time
-from datetime import datetime, timezone
 
 from tests.conftest import API_BASE_URL as BASE_URL
 
@@ -38,7 +36,7 @@ class TestBackendHealth:
         assert response.status_code == 200
         data = response.json()
         assert 'paper_trading' in data or 'status' in data
-        print(f"✅ Status endpoint working")
+        print("✅ Status endpoint working")
 
 
 class TestWebSocketModuleStructure:
@@ -537,7 +535,7 @@ class TestWebSocketLiveConnection:
             connected = await ws.connect()
             
             if connected:
-                print(f"✅ WebSocket connected successfully")
+                print("✅ WebSocket connected successfully")
                 assert ws.connected == True
                 
                 # Get stats
@@ -547,9 +545,9 @@ class TestWebSocketLiveConnection:
                 # Disconnect
                 await ws.disconnect()
                 assert ws.connected == False
-                print(f"✅ WebSocket disconnected cleanly")
+                print("✅ WebSocket disconnected cleanly")
             else:
-                print(f"⚠️ WebSocket connection failed (may be network issue)")
+                print("⚠️ WebSocket connection failed (may be network issue)")
                 # Don't fail test - connection issues are expected in some environments
                 pytest.skip("WebSocket connection failed - may be network restriction")
                 
@@ -593,7 +591,7 @@ class TestWebSocketLiveConnection:
             
             # Subscribe to the market
             await ws.subscribe_market(token_id)
-            print(f"✅ Subscribed to market token")
+            print("✅ Subscribed to market token")
             
             # Wait for some messages (with timeout)
             start_time = time.time()
@@ -684,7 +682,7 @@ class TestWebSocketStatsAPI:
                     found_ws = any(f in str(data).lower() for f in ws_fields)
                     if found_ws:
                         print(f"  Found WebSocket-related data in {endpoint}")
-            except Exception as e:
+            except Exception:
                 pass  # Endpoint may not exist
         
         print("✅ Stats endpoint check complete")

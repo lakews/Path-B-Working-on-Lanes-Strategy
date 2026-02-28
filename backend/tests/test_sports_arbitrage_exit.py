@@ -19,7 +19,6 @@ Configuration from EXIT_STRATEGY_CONFIG['sports_arbitrage']:
 
 import pytest
 import sys
-import os
 
 # Add backend to path
 sys.path.insert(0, '/app/backend')
@@ -42,7 +41,7 @@ class TestSportsArbitrageExitConfig:
         config = EXIT_STRATEGY_CONFIG['sports_arbitrage']
         assert config['type'] == 'mechanical', \
             f"sports_arbitrage should be 'mechanical', got '{config['type']}'"
-        print(f"✅ sports_arbitrage type is 'mechanical'")
+        print("✅ sports_arbitrage type is 'mechanical'")
     
     def test_sports_arbitrage_tp_pct(self):
         """Verify sports_arbitrage take profit is 5%."""
@@ -465,7 +464,7 @@ class TestUniversalExitEngineIntegration:
         assert 'get_exit_engine()' in source, \
             "PaperTrader should use get_exit_engine() to initialize"
         
-        print(f"✅ PaperTrader.__init__ sets self.exit_engine via get_exit_engine()")
+        print("✅ PaperTrader.__init__ sets self.exit_engine via get_exit_engine()")
     
     def test_exit_engine_config_has_sports(self):
         """Verify ExitEngine loads sports_arbitrage config."""
@@ -504,7 +503,7 @@ class TestUniversalExitEngineIntegration:
         assert "strategy = position.get('strategy'" in content, \
             "Universal Exit Engine should get strategy from position"
         
-        print(f"✅ Universal Exit Engine code exists in paper_trader.py")
+        print("✅ Universal Exit Engine code exists in paper_trader.py")
     
     def test_exit_decision_logged_with_emoji(self):
         """Verify exit decisions are logged with correct emoji format."""
@@ -519,7 +518,7 @@ class TestUniversalExitEngineIntegration:
         assert "emoji = \"🏈\" if strategy == 'sports_arbitrage' else \"📊\"" in content, \
             "Exit logging should use 🏈 for sports_arbitrage, 📊 for others"
         
-        print(f"✅ Exit decision logging uses correct emoji format")
+        print("✅ Exit decision logging uses correct emoji format")
 
 
 if __name__ == '__main__':

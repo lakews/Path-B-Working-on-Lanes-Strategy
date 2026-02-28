@@ -12,9 +12,7 @@ Key Verification Points:
 """
 import pytest
 import requests
-import os
 import sys
-import time
 import numpy as np
 
 # Add backend to path for direct imports
@@ -213,7 +211,7 @@ class TestDQNAgentDirect:
         loss = agent.train_step()
         
         assert loss is None, f"Expected None loss with insufficient buffer, got {loss}"
-        print(f"✓ Train step with insufficient buffer: loss=None (correct)")
+        print("✓ Train step with insufficient buffer: loss=None (correct)")
     
     def test_dqn_agent_train_step_sufficient_buffer(self):
         """Verify train_step works when buffer has enough experiences"""

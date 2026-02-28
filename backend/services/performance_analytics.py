@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, List, Tuple
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from database import get_db
 import numpy as np
 from collections import defaultdict

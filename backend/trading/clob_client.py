@@ -11,7 +11,7 @@ Use environment variables: POLYMARKET_PRIVATE_KEY
 import os
 import logging
 import asyncio
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timezone

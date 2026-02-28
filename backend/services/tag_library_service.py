@@ -23,10 +23,9 @@ Architecture:
 └─────────────────────────────────────────────────────────────────────────┘
 """
 
-import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 from dataclasses import dataclass
 from threading import Lock
 from enum import Enum

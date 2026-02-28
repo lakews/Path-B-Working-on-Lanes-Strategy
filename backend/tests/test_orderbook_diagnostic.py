@@ -195,26 +195,26 @@ async def run_diagnostic():
                 # Determine which token is the "real" liquid one
                 if analysis0["has_liquidity"] and analysis1["has_liquidity"]:
                     if analysis0["spread_pct"] < analysis1["spread_pct"]:
-                        print(f"      Token[0] has tighter spread - likely the active YES token")
+                        print("      Token[0] has tighter spread - likely the active YES token")
                     else:
-                        print(f"      Token[1] has tighter spread - likely the active YES token")
+                        print("      Token[1] has tighter spread - likely the active YES token")
                 elif analysis0["has_liquidity"]:
-                    print(f"      Only Token[0] has liquidity")
+                    print("      Only Token[0] has liquidity")
                 elif analysis1["has_liquidity"]:
-                    print(f"      Only Token[1] has liquidity - WE MAY BE FETCHING WRONG TOKEN!")
+                    print("      Only Token[1] has liquidity - WE MAY BE FETCHING WRONG TOKEN!")
                 else:
-                    print(f"      ⚠️ NEITHER TOKEN HAS LIQUIDITY - Market is dead")
+                    print("      ⚠️ NEITHER TOKEN HAS LIQUIDITY - Market is dead")
                 
             elif len(token_ids) == 1:
-                print(f"  Only 1 token ID available - fetching...")
+                print("  Only 1 token ID available - fetching...")
                 book = await fetch_orderbook(session, token_ids[0])
                 analysis = analyze_orderbook(book, "Single Token")
                 if analysis["has_liquidity"]:
                     print(f"      Spread: {analysis['spread']:.4f} ({analysis['spread_pct']:.2%})")
                 else:
-                    print(f"      NO LIQUIDITY")
+                    print("      NO LIQUIDITY")
             else:
-                print(f"  ⚠️ NO TOKEN IDs FOUND!")
+                print("  ⚠️ NO TOKEN IDs FOUND!")
             
             print()
         

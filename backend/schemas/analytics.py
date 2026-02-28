@@ -18,7 +18,6 @@ Date: January 2026
 
 from pydantic import BaseModel, Field
 from typing import Dict, Optional
-from datetime import datetime
 
 
 # =============================================================================

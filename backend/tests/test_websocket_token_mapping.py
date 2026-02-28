@@ -11,13 +11,12 @@ This script:
 
 import asyncio
 import sys
-import os
 import pytest
 
 # Add backend to path
 sys.path.insert(0, '/app/backend')
 
-from services.realtime_market_service import get_realtime_market_service, RealTimeMarketService
+from services.realtime_market_service import RealTimeMarketService
 from data.polymarket_api import PolymarketAPI
 
 
@@ -42,7 +41,7 @@ async def test_token_mapping():
     
     # After start - mapping should be populated
     stats = service.get_stats()
-    print(f"\nService Stats:")
+    print("\nService Stats:")
     print(f"  - Token mapping ready: {stats['token_mapping_ready']}")
     print(f"  - Markets cached: {stats['markets_cached']}")
     print(f"  - Tokens mapped: {stats['tokens_mapped']}")
@@ -83,7 +82,7 @@ async def test_price_accuracy():
     await asyncio.sleep(10)
     
     stats = service.get_stats()
-    print(f"\nWebSocket Stats after 10s:")
+    print("\nWebSocket Stats after 10s:")
     print(f"  - WS updates received: {stats['ws_updates']}")
     print(f"  - YES prices cached: {stats['yes_prices_cached']}")
     
@@ -135,7 +134,7 @@ async def test_price_accuracy():
             print(f"{market_id[:18]:<20} {'N/A':>10} {'N/A':>10} {'N/A':>10} {ws_source:>15}")
     
     print("-" * 70)
-    print(f"\nPrice Comparison Results:")
+    print("\nPrice Comparison Results:")
     print(f"  - Matches (within 5%): {price_matches}")
     print(f"  - Mismatches: {price_mismatches}")
     

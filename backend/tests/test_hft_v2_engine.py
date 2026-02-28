@@ -34,7 +34,7 @@ def get_base_url():
             for line in f:
                 if line.startswith('REACT_APP_BACKEND_URL='):
                     return line.split('=', 1)[1].strip().rstrip('/')
-    return os.environ.get('REACT_APP_BACKEND_URL', 'https://sports-hft-router.preview.emergentagent.com').rstrip('/')
+    return os.environ.get('REACT_APP_BACKEND_URL', 'https://websocket-primary.preview.emergentagent.com').rstrip('/')
 
 BASE_URL = get_base_url()
 
@@ -244,7 +244,7 @@ class TestHFTEngineV2:
         for mode in expected_modes:
             assert mode in mode_dist, f"Missing mode in distribution: {mode}"
         
-        print(f"✅ HFT Engine metrics structure correct with all 5 sub-strategies")
+        print("✅ HFT Engine metrics structure correct with all 5 sub-strategies")
 
 
 class TestHFTV2StatusEndpoint:
@@ -254,7 +254,7 @@ class TestHFTV2StatusEndpoint:
         """Verify /api/hft-v2/status endpoint responds"""
         response = requests.get(f"{BASE_URL}/api/hft-v2/status", timeout=10)
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
-        print(f"✅ GET /api/hft-v2/status returns 200")
+        print("✅ GET /api/hft-v2/status returns 200")
     
     def test_hft_v2_status_not_initialized(self):
         """Verify status is 'not_initialized' when paper trading is stopped"""
@@ -285,7 +285,7 @@ class TestHFTV2StatusEndpoint:
         else:
             # If operational/stopped, should have metrics and config
             assert 'metrics' in data or 'config' in data
-            print(f"✅ Operational response with metrics/config")
+            print("✅ Operational response with metrics/config")
     
     def test_hft_v2_config_values_in_response(self):
         """Verify config values in response match expected values"""

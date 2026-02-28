@@ -11,7 +11,6 @@ Tests for the Exit Engine API endpoints:
 
 import pytest
 import requests
-import os
 
 from tests.conftest import API_BASE_URL as BASE_URL
 

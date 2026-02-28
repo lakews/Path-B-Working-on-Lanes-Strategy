@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional
 from database import get_db
 from data.polymarket_api import PolymarketAPI
-from models import Market, MarketCategory
+from models import MarketCategory
 import uuid
 
 logger = logging.getLogger(__name__)

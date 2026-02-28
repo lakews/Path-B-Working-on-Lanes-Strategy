@@ -12,10 +12,6 @@ Tests:
 
 import pytest
 import requests
-import os
-import json
-import inspect
-from datetime import datetime, timezone
 
 from tests.conftest import API_BASE_URL as BASE_URL
 
@@ -373,7 +369,7 @@ class TestPaperTradingAPIIntegration:
         assert response.status_code == 200
         
         data = response.json()
-        print(f"✅ Paper trading status:")
+        print("✅ Paper trading status:")
         print(f"   - running: {data.get('running')}")
         print(f"   - session_id: {data.get('session_id')}")
 
@@ -406,7 +402,7 @@ class TestBacktestEngineCodeChanges:
         import re
         match = re.search(r'async def _open_position\([^)]+side[^)]*\)', source)
         assert match is not None, "_open_position should have 'side' parameter"
-        print(f"✅ _open_position has 'side' parameter")
+        print("✅ _open_position has 'side' parameter")
     
     def test_backtest_engine_check_exit_has_side_logic(self):
         """Verify _check_exit_conditions handles YES/NO sides"""

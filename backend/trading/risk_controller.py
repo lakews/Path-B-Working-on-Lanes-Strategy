@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple
 from datetime import datetime, timezone, timedelta
 from database import get_db
 from config import config

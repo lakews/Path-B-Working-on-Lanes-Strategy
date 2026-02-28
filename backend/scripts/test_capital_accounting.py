@@ -4,7 +4,6 @@ Comprehensive Capital Accounting Test
 Tests all capital flows to ensure accounting integrity.
 """
 
-import asyncio
 import sys
 sys.path.insert(0, '/app/backend')
 

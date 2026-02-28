@@ -32,9 +32,7 @@ import pytest
 import os
 import sys
 import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Optional
+from datetime import datetime, timezone
 
 # Add backend to path for imports
 sys.path.insert(0, '/app/backend')
@@ -48,7 +46,7 @@ def get_base_url():
             for line in f:
                 if line.startswith('REACT_APP_BACKEND_URL='):
                     return line.split('=', 1)[1].strip().rstrip('/')
-    return os.environ.get('REACT_APP_BACKEND_URL', 'https://sports-hft-router.preview.emergentagent.com').rstrip('/')
+    return os.environ.get('REACT_APP_BACKEND_URL', 'https://websocket-primary.preview.emergentagent.com').rstrip('/')
 
 BASE_URL = get_base_url()
 
@@ -171,7 +169,7 @@ class TestDirectionDeterminationAudit:
     
     def test_delta_neutral_direction_yes_edge(self, mock_engine):
         """DELTA_NEUTRAL: Returns YES when fair > price + edge_threshold"""
-        from trading.hft_config import HFTConfig, HFTMode
+        from trading.hft_config import HFTMode
         
         # fair=0.55, price=0.50, edge=0.05 > 0.02 threshold → YES
         result = asyncio.get_event_loop().run_until_complete(
@@ -187,7 +185,7 @@ class TestDirectionDeterminationAudit:
     
     def test_delta_neutral_direction_no_edge(self, mock_engine):
         """DELTA_NEUTRAL: Returns NO when fair < price - edge_threshold"""
-        from trading.hft_config import HFTConfig, HFTMode
+        from trading.hft_config import HFTMode
         
         # fair=0.45, price=0.50, edge=0.05 > 0.02 threshold → NO
         result = asyncio.get_event_loop().run_until_complete(
@@ -203,7 +201,7 @@ class TestDirectionDeterminationAudit:
     
     def test_delta_neutral_direction_no_edge_skip(self, mock_engine):
         """DELTA_NEUTRAL: Returns None when no edge (skip trade)"""
-        from trading.hft_config import HFTConfig, HFTMode
+        from trading.hft_config import HFTMode
         
         # fair=0.51, price=0.50, edge=0.01 < 0.02 threshold → None
         result = asyncio.get_event_loop().run_until_complete(
@@ -663,7 +661,6 @@ class TestOrderHysteresisAudit:
     
     def test_hysteresis_keeps_order_within_tolerance(self, mock_engine):
         """Orders within 1 cent drift are kept (anti-churn)"""
-        from trading.hft_engine_v2 import HYSTERESIS_THRESHOLD
         
         market_id = "test_market_1"
         

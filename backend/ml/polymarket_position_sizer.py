@@ -35,8 +35,6 @@ from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timezone
 from database import get_db
 from ml.market_classifier import (
-    classify_market, 
-    get_oracle_risk_multiplier,
     get_detailed_classification
 )
 

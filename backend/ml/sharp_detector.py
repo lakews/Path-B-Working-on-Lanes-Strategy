@@ -17,10 +17,9 @@ import numpy as np
 import logging
 import asyncio
 import aiohttp
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from datetime import datetime, timezone, timedelta
 from database import get_db
-from models import MarketCategory
 import uuid
 
 logger = logging.getLogger(__name__)

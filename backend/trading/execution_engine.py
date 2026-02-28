@@ -1,10 +1,9 @@
 import logging
-from typing import Dict, Optional
+from typing import Dict
 from datetime import datetime, timezone
 import asyncio
 import uuid
 from database import get_db
-from config import config
 from models import OrderSide, OrderStatus
 
 logger = logging.getLogger(__name__)

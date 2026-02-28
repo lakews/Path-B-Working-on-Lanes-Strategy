@@ -1,7 +1,6 @@
 import logging
 from typing import Dict, Tuple
 from datetime import datetime, timezone
-import numpy as np
 from database import get_db
 from ml.volatility_predictor import VolatilityPredictor
 from ml.sentiment_analyzer import SentimentAnalyzer

@@ -69,8 +69,7 @@ async def test_live_news_injection():
     logger.info("=" * 60)
     
     try:
-        from services.news_injector import NewsInjector, NewsItem, get_news_injector
-        from services.signal_cache import get_signal_cache
+        from services.news_injector import NewsInjector, NewsItem
         from data.polymarket_api import PolymarketAPI
         
         # Create real market fetcher
@@ -180,7 +179,7 @@ async def test_via_api_endpoint():
                     logger.info("✅ TEST 3 PASSED: API endpoint accepted the news!")
                     return data
                 else:
-                    logger.warning(f"⚠️ TEST 3 WARNING: Unexpected response")
+                    logger.warning("⚠️ TEST 3 WARNING: Unexpected response")
                     return data
                     
     except Exception as e:

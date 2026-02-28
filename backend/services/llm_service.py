@@ -18,7 +18,7 @@ import logging
 import json
 import re
 import os
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -338,7 +338,7 @@ Respond with ONLY the JSON object as specified. No other text."""
                     return tier2_result
             
             # Both tiers returned not relevant
-            logger.debug(f"[LLM SERVICE] No signal: Both tiers returned is_relevant=False")
+            logger.debug("[LLM SERVICE] No signal: Both tiers returned is_relevant=False")
             return LLMAnalysisResult(
                 is_relevant=False,
                 is_bullish_for_yes=False,

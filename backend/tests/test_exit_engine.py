@@ -22,14 +22,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from trading.exit_engine import (
     ExitEngine,
     ExitAction,
-    ExitReason,
-    ExitDecision,
-    get_exit_engine
+    ExitReason
 )
 from risk_config import (
-    EXIT_GLOBAL_SETTINGS,
-    EXIT_STRATEGY_CONFIG,
-    EXIT_ALPHA_ASSET_MODIFIERS,
     get_alpha_asset_modifier
 )
 

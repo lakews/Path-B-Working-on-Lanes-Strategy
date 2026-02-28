@@ -13,7 +13,6 @@ Key test areas:
 
 import pytest
 import requests
-import os
 import sys
 
 # Add backend to path for direct imports

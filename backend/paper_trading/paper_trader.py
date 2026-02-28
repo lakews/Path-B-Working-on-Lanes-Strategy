@@ -10,7 +10,6 @@ Updated: Sports Strategy Injection (Task: Category Isolation)
 import asyncio
 import logging
 import os
-import re
 import uuid
 from typing import Dict, List, Optional, Callable, Tuple
 from datetime import datetime, timezone
@@ -25,28 +24,26 @@ from ml.signal_fusion import SignalFusionEngine
 from ml.social_sentiment import SocialSentimentAnalyzer
 from ml.enhanced_sentiment import get_enhanced_sentiment_analyzer
 from trading.maker_executor import get_maker_executor, MakerOrderExecutor
-from trading.gamma_strategy import get_gamma_trader, GammaTrader, GammaOrderType
-from trading.exit_engine import get_exit_engine, ExitEngine, ExitAction, ExitReason
-from services.hft_context import get_hft_context, get_volatility_calculator, HFTContext, VolatilityCalculator, ContextStatus
-from services.telemetry import get_telemetry_service, create_decision_snapshot
-from config import config, SPREAD_RULES, RISK_PARAMS
+from trading.gamma_strategy import get_gamma_trader, GammaTrader
+from trading.exit_engine import get_exit_engine, ExitEngine, ExitAction
+from services.hft_context import get_hft_context, ContextStatus
+from config import SPREAD_RULES, RISK_PARAMS
 import numpy as np
 from threading import Lock
 
 # Sports Strategy imports
 from risk_config import get_sports_config, SportsConfig
-from strategies.sports_strategy import get_sports_strategy, SportsArbitrageStrategy, SportsSignal, SportsTradeSignal
+from strategies.sports_strategy import get_sports_strategy, SportsSignal, SportsTradeSignal
 
 # HFT Engine V2 imports (5 Sub-Strategy Architecture - ENHANCED)
 from trading.hft_engine_v2 import (
-    HighFrequencyTradingEngineV2, init_hft_engine_v2, get_hft_engine_v2
+    HighFrequencyTradingEngineV2, init_hft_engine_v2
 )
-from trading.hft_config import HFTConfig, HFTMode, NewsStrength
+from trading.hft_config import HFTConfig
 
 # NEWS Lane imports (MongoDB-integrated NEWS Sniper)
 from lanes.news_lane.news_sniper_mongodb import (
-    NewsSniper, init_news_sniper, get_news_sniper,
-    ConvictionEnhancer, NewsImpactLevel, MarketRegime
+    NewsSniper, init_news_sniper, MarketRegime
 )
 
 # =============================================================================
@@ -54,11 +51,11 @@ from lanes.news_lane.news_sniper_mongodb import (
 # =============================================================================
 # Chain of Command: Strategy -> PositionSizer -> RiskManager -> Execution
 from services.risk_manager import get_risk_manager, RiskManager, OrderCheckResult
-from utils.position_sizer import PositionSizer, SizingResult
+from utils.position_sizer import PositionSizer
 from services.news_service import get_news_poller, NewsPoller
 
 # TagLibraryService for accurate market categorization
-from services.tag_library_service import get_tag_library_service, CategoryResult
+from services.tag_library_service import get_tag_library_service
 
 logger = logging.getLogger(__name__)
 
@@ -266,9 +263,7 @@ class MarketRegime:
 from risk_config import (
     RISK, 
     classify_market_regime,
-    get_zone_parameters,
-    is_spread_acceptable,
-    MarketRegime as RiskMarketRegime
+    get_zone_parameters
 )
 
 # Re-export for backwards compatibility
@@ -816,7 +811,7 @@ class PaperTrader:
         self.trade_interval = max(1, 600 / self.trades_per_10min)  # Seconds between trade evaluations
         
         logger.info(f"Paper Trader initialized - Session: {self.session_id}")
-        logger.info(f"  NOTE: Config will be loaded from DB when start() is called")
+        logger.info("  NOTE: Config will be loaded from DB when start() is called")
     
     async def _load_user_config(self):
         """Load ALL user trading configuration from database - DB IS THE SOURCE OF TRUTH"""
@@ -1350,11 +1345,11 @@ class PaperTrader:
                 await asyncio.sleep(2)  # Allow initial data to populate
                 ws_stats = self.realtime_market_service.get_stats()
                 
-                logger.info(f"✅ [PRIMARY] WebSocket Service ACTIVE")
+                logger.info("✅ [PRIMARY] WebSocket Service ACTIVE")
                 logger.info(f"   Markets cached: {ws_stats.get('markets_cached', 0)}")
                 logger.info(f"   Tokens subscribed: {ws_stats.get('tokens_subscribed', 0)}")
-                logger.info(f"   Latency: <0.1ms (in-memory)")
-                logger.info(f"   Fallback: REST API (~100ms)")
+                logger.info("   Latency: <0.1ms (in-memory)")
+                logger.info("   Fallback: REST API (~100ms)")
                 
                 # Register whale alert handler for large trades
                 try:
@@ -1372,17 +1367,17 @@ class PaperTrader:
                         
                         self.realtime_market_service.ws_manager.register_trade_handler(whale_trade_handler)
                         logger.info(f"🐋 Whale alert handler registered (threshold: ${webhook_manager.whale.threshold_usd:,.0f})")
-                        logger.info(f"   Direct injection: ENABLED (skip LLM, <0.1ms)")
+                        logger.info("   Direct injection: ENABLED (skip LLM, <0.1ms)")
                 except Exception as e:
                     logger.warning(f"Could not register whale handler: {e}")
                     
             except Exception as e:
                 logger.warning(f"⚠️ Could not start WebSocket service: {e}")
-                logger.warning(f"   Falling back to REST API polling (~100ms latency)")
+                logger.warning("   Falling back to REST API polling (~100ms latency)")
                 self.use_websocket_data = False
                 self.realtime_market_service = None
         else:
-            logger.info(f"ℹ️ WebSocket disabled - using REST API only (~100ms latency)")
+            logger.info("ℹ️ WebSocket disabled - using REST API only (~100ms latency)")
         
         logger.info("=" * 60)
         
@@ -2187,7 +2182,7 @@ class PaperTrader:
                             logger.debug(f"[HFT] Sports NO trade allowed: {market_id[:16]}...")
                             pass  # Allow the trade
                         else:
-                            logger.debug(f"[HFT-SKIP] Skipping NO maker trade")
+                            logger.debug("[HFT-SKIP] Skipping NO maker trade")
                             return None
                     
                     hft_size = min(
@@ -2240,10 +2235,10 @@ class PaperTrader:
                 if side == 'NO':
                     # Sports markets: Allow NO if enabled in config
                     if is_sports and sports_config.enabled and sports_config.allow_no_bets:
-                        logger.info(f"[HFT-SPORTS] Sports NO taker trade allowed")
+                        logger.info("[HFT-SPORTS] Sports NO taker trade allowed")
                         pass  # Allow the trade
                     else:
-                        logger.info(f"[HFT-SKIP] Skipping NO trade (edge flipped or FV < market)")
+                        logger.info("[HFT-SKIP] Skipping NO trade (edge flipped or FV < market)")
                         return None
                 
                 logger.info(f"[HFT-SIDE] edge={edge:.4f} > 0 is {edge > 0} → side={side}")
@@ -3456,7 +3451,7 @@ class PaperTrader:
                 # edge = no_edge
                 side = None  # Skip NO trades
                 edge = no_edge
-                logger.debug(f"[ALPHA] Skipping NO trade (model bias under review)")
+                logger.debug("[ALPHA] Skipping NO trade (model bias under review)")
             else:
                 side = None
                 edge = max(yes_edge, no_edge)
@@ -4563,7 +4558,7 @@ class PaperTrader:
                                     if question_date < now:
                                         track_skip("semantic_expiry")
                                         return
-                        except (ValueError, IndexError) as e:
+                        except (ValueError, IndexError):
                             pass  # Date parsing failed, continue
             
             # CHECK CLOSED/RESOLVED STATUS: Skip markets that are already resolved
@@ -4688,7 +4683,7 @@ class PaperTrader:
             elif no_edge > yes_edge and no_edge > 0.005:
                 # TEMPORARILY SKIP NO trades - model bias issue
                 track_skip("no_side_disabled")
-                logger.debug(f"[ENTRY] Skipping NO trade (model under review)")
+                logger.debug("[ENTRY] Skipping NO trade (model under review)")
                 return
             else:
                 # Both edges negative or too small - skip
@@ -5544,7 +5539,7 @@ class PaperTrader:
                             
                 except Exception as e:
                     logger.warning(f"[SPORTS-EXIT-BLOCK] Could not fetch real market data: {e}")
-                    logger.warning(f"   Blocking exit - real trading requires verified prices")
+                    logger.warning("   Blocking exit - real trading requires verified prices")
                     return
             
             if current_price is None or current_price == 0:
@@ -5674,7 +5669,7 @@ class PaperTrader:
                         
                         if entry_is_extreme and price_is_suspicious:
                             logger.warning(f"[EXIT-BLOCK] {strategy}: Cached price ${best_bid:.4f} suspicious (entry was ${yes_entry_price:.4f})")
-                            logger.warning(f"   Cannot verify real market price - blocking exit")
+                            logger.warning("   Cannot verify real market price - blocking exit")
                             return
                         
                         # Cached price seems reasonable
@@ -5689,7 +5684,7 @@ class PaperTrader:
             # ==========================================================================
             if not orderbook_verified:
                 logger.warning(f"[EXIT-BLOCK] {strategy}: No verified orderbook for {market_id[:16]}")
-                logger.warning(f"   Tried: WebSocket -> REST API -> Cache. Real trading requires buyers.")
+                logger.warning("   Tried: WebSocket -> REST API -> Cache. Real trading requires buyers.")
                 return
             
             # Now we have verified orderbook - proceed with exit evaluation
@@ -6115,7 +6110,7 @@ class PaperTrader:
             if theoretical_price is not None:
                 logger.info(f"[ALPHA] theoretical_price={theoretical_price:.4f}, market={current_price:.4f}, diff={theoretical_price - current_price:+.4f}")
             else:
-                logger.warning(f"[ALPHA] No theoretical_price available - maker will use market mid")
+                logger.warning("[ALPHA] No theoretical_price available - maker will use market mid")
             
             # ============================================
             # MAKER-FIRST EXECUTION STRATEGY
@@ -6550,7 +6545,7 @@ class PaperTrader:
             # ==========================================================================
             if not orderbook_verified or best_bid <= 0:
                 logger.warning(f"[EXIT-BLOCK] {strategy}: No verified orderbook for {market_id[:16]}")
-                logger.warning(f"   Tried: WebSocket -> REST API. Real trading requires buyers.")
+                logger.warning("   Tried: WebSocket -> REST API. Real trading requires buyers.")
                 return
             
             # ==========================================================================
@@ -6929,7 +6924,7 @@ class PaperTrader:
         # ====================================================================
         if self.use_polymarket_sizer and hasattr(self, 'polymarket_sizer'):
             try:
-                logger.info(f"[SIZER] Using Polymarket sizer for entry evaluation")
+                logger.info("[SIZER] Using Polymarket sizer for entry evaluation")
                 
                 # Calculate portfolio state
                 portfolio_state = self._get_portfolio_state()
@@ -6951,7 +6946,7 @@ class PaperTrader:
                 # Get ask price from market data - REQUIRE REAL DATA
                 yes_price = market_data.get('yes_price')
                 if yes_price is None or yes_price == 0:
-                    logger.warning(f"[SIZER] No valid yes_price - cannot calculate position size")
+                    logger.warning("[SIZER] No valid yes_price - cannot calculate position size")
                     return {'position_size': 0, 'rejection_reason': 'no_price_data'}
                 
                 yes_price = float(yes_price)
@@ -8492,8 +8487,8 @@ class PaperTrader:
                     # Warn if using fallback (indicates WebSocket issue)
                     if self.use_websocket_data:
                         logger.warning(
-                            f"⚠️ [FALLBACK] Using REST API (~100ms latency) - "
-                            f"WebSocket unavailable or returned no data"
+                            "⚠️ [FALLBACK] Using REST API (~100ms latency) - "
+                            "WebSocket unavailable or returned no data"
                         )
             
             if not live_markets:

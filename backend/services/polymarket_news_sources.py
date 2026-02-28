@@ -21,7 +21,7 @@ import aiohttp
 import feedparser
 import logging
 import os
-from typing import Dict, List, Optional, Callable, Any
+from typing import Dict, List, Optional, Callable
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor

@@ -15,7 +15,7 @@ import os
 import sys
 import statistics
 from datetime import datetime, timezone
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -492,16 +492,16 @@ async def main():
     cache_write = results.get('signal_cache', {}).get('write_avg_ms', 0)
     path_a_total = llm_latency + bayes_latency + cache_write
     
-    print(f"\nPATH A (News → LLM → Bayes → Cache):")
+    print("\nPATH A (News → LLM → Bayes → Cache):")
     print(f"  LLM Analysis:     {llm_latency:.0f}ms")
     print(f"  Bayes Update:     {bayes_latency:.2f}ms")
     print(f"  Cache Write:      {cache_write:.4f}ms")
-    print(f"  ─────────────────────────")
+    print("  ─────────────────────────")
     print(f"  TOTAL:            {path_a_total:.0f}ms")
     
     # Path A (Whale Direct)
     whale_latency = results.get('whale_direct', {}).get('avg_ms', 0)
-    print(f"\nPATH A (Whale Direct - skip LLM):")
+    print("\nPATH A (Whale Direct - skip LLM):")
     print(f"  Direct Injection: {whale_latency:.2f}ms")
     print(f"  SAVINGS:          {llm_latency - whale_latency:.0f}ms faster!")
     
@@ -514,11 +514,11 @@ async def main():
     path_b_ws = ws_latency + fusion_latency + cache_read
     path_b_rest = rest_latency + fusion_latency + cache_read
     
-    print(f"\nPATH B (Market → Fusion → Trade):")
+    print("\nPATH B (Market → Fusion → Trade):")
     print(f"  With WebSocket:   {ws_latency:.4f}ms (market data)")
     print(f"  Signal Fusion:    {fusion_latency:.2f}ms")
     print(f"  Cache Read:       {cache_read:.4f}ms")
-    print(f"  ─────────────────────────")
+    print("  ─────────────────────────")
     print(f"  TOTAL (WS):       {path_b_ws:.2f}ms")
     print(f"  TOTAL (REST):     {path_b_rest:.0f}ms")
     

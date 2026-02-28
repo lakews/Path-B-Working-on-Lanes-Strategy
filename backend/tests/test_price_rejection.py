@@ -5,7 +5,6 @@ instead of using fallback values like 0.5.
 """
 import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -16,7 +15,6 @@ class TestPriceRejection:
     
     def test_trading_bot_rejects_missing_price(self):
         """Test that _execute_with_rl rejects trades without valid yes_price"""
-        from trading_bot import ApexTrader
         
         # Market data with NO price
         market_data_no_price = {
@@ -44,7 +42,6 @@ class TestPriceRejection:
     
     def test_delta_neutral_rejects_missing_price(self):
         """Test that DeltaNeutralStrategy rejects without valid price"""
-        from strategies.delta_neutral import DeltaNeutralStrategy
         
         market_data = {
             'id': 'test_market_789',
@@ -62,7 +59,6 @@ class TestPriceRejection:
     
     def test_volatility_strategy_rejects_missing_price(self):
         """Test that VolatilityExploitationStrategy rejects without valid price"""
-        from strategies.volatility_exploitation import VolatilityExploitationStrategy
         
         market_data = {
             'id': 'test_market_abc',
@@ -76,7 +72,6 @@ class TestPriceRejection:
     
     def test_arbitrage_rejects_missing_price(self):
         """Test that ArbitrageStrategy rejects without valid price"""
-        from strategies.arbitrage import MultiMarketArbitrageStrategy
         
         market1 = {
             'id': 'market1',
@@ -94,7 +89,6 @@ class TestPriceRejection:
     
     def test_alpha_directional_rejects_missing_price(self):
         """Test that AlphaDirectionalStrategy rejects without valid price"""
-        from strategies.alpha_directional import AlphaDirectionalStrategy
         
         market_data = {
             'id': 'test_alpha_123',
@@ -111,7 +105,6 @@ class TestPriceRejection:
     
     def test_kelly_optimizer_rejects_missing_price(self):
         """Test that KellySharpeOptimizer rejects without valid price"""
-        from ml.kelly_sharpe_optimizer import KellySharpeOptimizer
         
         market_data = {
             'id': 'test_kelly',
@@ -125,7 +118,6 @@ class TestPriceRejection:
     
     def test_signal_fusion_rejects_missing_price(self):
         """Test that SignalFusion rejects without valid price"""
-        from ml.signal_fusion import SignalFusionEngine
         
         market_data = {
             'id': 'test_signal',
@@ -139,7 +131,6 @@ class TestPriceRejection:
     
     def test_rl_engine_handles_missing_price(self):
         """Test that RL engine returns zero state for missing price"""
-        import numpy as np
         
         # Test the price validation logic directly
         market_data = {

@@ -12,15 +12,13 @@ Date: January 2026
 
 import pytest
 import sys
-from unittest.mock import MagicMock, AsyncMock, patch
 
 sys.path.insert(0, '/app/backend')
 
 from schemas.analytics import (
     LaneMetric, 
     ComprehensiveMetricsResponse,
-    StrategyMetric,
-    AssetClassMetric
+    StrategyMetric
 )
 
 

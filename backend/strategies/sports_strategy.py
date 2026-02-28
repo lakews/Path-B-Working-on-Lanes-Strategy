@@ -24,7 +24,6 @@ import logging
 from typing import Dict, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
-from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 

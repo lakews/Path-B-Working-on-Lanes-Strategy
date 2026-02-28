@@ -19,7 +19,6 @@ Tests:
 import pytest
 import requests
 import os
-from datetime import datetime, timezone
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 AUTH = ('admin', 'apex2026!')
@@ -361,7 +360,7 @@ class TestAPIEndpoints:
         assert 'status' in data
         assert 'websocket' in data
         assert 'market_service' in data
-        print(f"✓ Realtime status endpoint working")
+        print("✓ Realtime status endpoint working")
     
     def test_scanner_health_endpoint_exists(self):
         """Verify /api/health/scanner endpoint exists and returns data"""
@@ -371,7 +370,7 @@ class TestAPIEndpoints:
         data = response.json()
         assert 'status' in data
         assert 'scanner' in data
-        print(f"✓ Scanner health endpoint working")
+        print("✓ Scanner health endpoint working")
     
     def test_path_a_health_endpoint_exists(self):
         """Verify /api/path-a/health endpoint exists and returns data"""
@@ -381,7 +380,7 @@ class TestAPIEndpoints:
         data = response.json()
         assert 'status' in data
         assert 'checks' in data
-        print(f"✓ PATH A health endpoint working")
+        print("✓ PATH A health endpoint working")
     
     def test_path_a_stats_endpoint_exists(self):
         """Verify /api/path-a/stats endpoint exists and returns data"""
@@ -391,7 +390,7 @@ class TestAPIEndpoints:
         data = response.json()
         assert 'total_processed' in data
         assert 'total_signals' in data
-        print(f"✓ PATH A stats endpoint working")
+        print("✓ PATH A stats endpoint working")
     
     def test_news_sniper_status_endpoint_exists(self):
         """Verify /api/news-sniper/status endpoint exists and returns data"""
@@ -401,7 +400,7 @@ class TestAPIEndpoints:
         data = response.json()
         assert 'status' in data
         assert 'stats' in data
-        print(f"✓ NewsSniper status endpoint working")
+        print("✓ NewsSniper status endpoint working")
 
 
 class TestPathASignalStructure:

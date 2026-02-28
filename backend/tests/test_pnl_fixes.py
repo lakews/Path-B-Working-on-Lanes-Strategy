@@ -9,7 +9,6 @@ Tests the bug fixes for:
 """
 import pytest
 import requests
-import os
 
 from tests.conftest import API_BASE_URL as BASE_URL
 AUTH = ('admin', 'apex2026!')

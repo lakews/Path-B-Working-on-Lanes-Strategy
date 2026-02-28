@@ -12,7 +12,6 @@ Tests to verify:
 
 import pytest
 import requests
-import os
 import time
 import json
 
@@ -57,7 +56,7 @@ class TestAuthentication:
         data = response.json()
         assert 'access_token' in data
         assert data.get('token_type') == 'bearer'
-        print(f"✅ Login successful, token received")
+        print("✅ Login successful, token received")
         return data['access_token']
 
 
@@ -106,7 +105,7 @@ class TestWebSocketTokenMapping:
         # Check for WebSocket-related fields
         if 'realtime_market_service' in data:
             rtm = data['realtime_market_service']
-            print(f"✅ RealTime Market Service stats:")
+            print("✅ RealTime Market Service stats:")
             print(f"   Running: {rtm.get('running')}")
             print(f"   Token mapping ready: {rtm.get('token_mapping_ready')}")
             print(f"   Tokens mapped: {rtm.get('tokens_mapped')}")
@@ -138,7 +137,7 @@ class TestPaperTradingSession:
         if status_response.status_code == 200:
             status_data = status_response.json()
             if status_data.get('running'):
-                print(f"⚠️ Paper trading already running, stopping first...")
+                print("⚠️ Paper trading already running, stopping first...")
                 stop_response = requests.post(f"{BASE_URL}/api/paper/stop", headers=headers, timeout=30)
                 print(f"   Stop response: {stop_response.status_code}")
                 time.sleep(3)
@@ -148,7 +147,7 @@ class TestPaperTradingSession:
         assert response.status_code == 200
         data = response.json()
         
-        print(f"✅ Paper trading started:")
+        print("✅ Paper trading started:")
         print(f"   Session ID: {data.get('session_id')}")
         print(f"   Status: {data.get('status')}")
         
@@ -160,7 +159,7 @@ class TestPaperTradingSession:
         assert status_response.status_code == 200
         status_data = status_response.json()
         
-        print(f"✅ Paper trading status:")
+        print("✅ Paper trading status:")
         print(f"   Running: {status_data.get('running')}")
         print(f"   Session ID: {status_data.get('session_id')}")
         
@@ -192,7 +191,7 @@ class TestPaperTradingSession:
         total_pnl = data.get('total_pnl', 0)
         open_positions = data.get('open_positions', 0)
         
-        print(f"✅ Paper trading stats after 30s:")
+        print("✅ Paper trading stats after 30s:")
         print(f"   Total trades: {total_trades}")
         print(f"   Total P&L: ${total_pnl:.2f}")
         print(f"   Open positions: {open_positions}")
@@ -291,7 +290,7 @@ class TestPaperTradingSession:
             print(f"   ❌ Invalid prices found: {invalid_prices[:5]}")
             assert False, f"Found {len(invalid_prices)} invalid prices"
         else:
-            print(f"   ✅ All prices are valid (between 0 and 1)")
+            print("   ✅ All prices are valid (between 0 and 1)")
     
     def test_paper_trading_stop(self, auth_token):
         """Test stopping paper trading session"""
@@ -302,7 +301,7 @@ class TestPaperTradingSession:
         assert response.status_code == 200
         data = response.json()
         
-        print(f"✅ Paper trading stopped:")
+        print("✅ Paper trading stopped:")
         print(f"   Status: {data.get('status')}")
         print(f"   Total trades: {data.get('total_trades')}")
         print(f"   Total P&L: ${data.get('total_pnl', 0):.2f}")
@@ -390,7 +389,7 @@ class TestWebSocketDataFlow:
         assert response.status_code == 200
         data = response.json()
         
-        print(f"\n✅ WebSocket stats during trading:")
+        print("\n✅ WebSocket stats during trading:")
         print(f"   Running: {data.get('running')}")
         print(f"   Token mapping ready: {data.get('token_mapping_ready')}")
         print(f"   Markets cached: {data.get('markets_cached')}")
@@ -406,7 +405,7 @@ class TestWebSocketDataFlow:
         if dropped > 0:
             print(f"   ⚠️ {dropped} updates were dropped before mapping was ready")
         else:
-            print(f"   ✅ No dropped updates - race condition fix working")
+            print("   ✅ No dropped updates - race condition fix working")
 
 
 class TestMarketDataPrices:

@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from database import get_db
 from config import config
 from emergentintegrations.llm.chat import LlmChat, UserMessage
-import asyncio
 import uuid
 
 logger = logging.getLogger(__name__)

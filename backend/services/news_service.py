@@ -152,7 +152,7 @@ class NewsPoller:
         if current_key and current_key != self.api_key:
             self.api_key = current_key
             self._client_initialized = False
-            logger.info(f"[NEWS POLLER] API key updated, will reinitialize client")
+            logger.info("[NEWS POLLER] API key updated, will reinitialize client")
         
         if self._client_initialized and self._exa_client:
             return True

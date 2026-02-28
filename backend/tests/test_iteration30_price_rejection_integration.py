@@ -5,10 +5,8 @@ Tests that the system properly rejects trades when price data is missing or inva
 import pytest
 import requests
 import os
-import json
-from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://sports-hft-router.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://websocket-primary.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 TEST_USERNAME = "admin"
@@ -91,7 +89,7 @@ class TestMarketsAPIValidPrices:
         
         # Allow some tolerance for edge cases
         assert len(out_of_range) <= 2, f"Too many markets with out-of-range prices: {out_of_range}"
-        print(f"PASS: Market prices are in valid range (0-1)")
+        print("PASS: Market prices are in valid range (0-1)")
     
     def test_no_default_05_prices(self):
         """Test that markets don't have suspicious 0.5 default prices"""
@@ -115,7 +113,7 @@ class TestMarketsAPIValidPrices:
         
         # Some markets legitimately have 0.5 prices, but not many
         assert len(suspicious_markets) <= 3, f"Too many markets with suspicious 0.5 prices: {suspicious_markets}"
-        print(f"PASS: No suspicious 0.5 default prices detected")
+        print("PASS: No suspicious 0.5 default prices detected")
 
 
 class TestPaperTradingPriceValidation:
@@ -143,7 +141,7 @@ class TestPaperTradingPriceValidation:
         assert response.status_code == 200
         data = response.json()
         assert data.get("mode") == "paper"
-        print(f"PASS: Paper trading mode enabled")
+        print("PASS: Paper trading mode enabled")
     
     def test_paper_trading_mode_stop(self):
         """Test stopping paper trading mode"""
@@ -151,7 +149,7 @@ class TestPaperTradingPriceValidation:
         assert response.status_code == 200
         data = response.json()
         assert data.get("mode") == "stopped"
-        print(f"PASS: Paper trading mode stopped")
+        print("PASS: Paper trading mode stopped")
 
 
 class TestConfigEndpoints:
@@ -174,7 +172,7 @@ class TestConfigEndpoints:
         for field in required_fields:
             assert field in data, f"Missing required field: {field}"
         
-        print(f"PASS: Config endpoint returns valid configuration")
+        print("PASS: Config endpoint returns valid configuration")
     
     def test_config_has_valid_kelly_bounds(self):
         """Test that Kelly fraction bounds are valid"""
@@ -187,7 +185,7 @@ class TestConfigEndpoints:
         kelly = data.get("kelly_fraction", 0.25)
         
         assert min_kelly <= kelly <= max_kelly, f"Kelly fraction {kelly} not in bounds [{min_kelly}, {max_kelly}]"
-        print(f"PASS: Kelly fraction bounds are valid")
+        print("PASS: Kelly fraction bounds are valid")
 
 
 class TestTradesAndPositions:
@@ -259,7 +257,7 @@ class TestPerformanceEndpoints:
         for field in required_fields:
             assert field in data, f"Missing field: {field}"
         
-        print(f"PASS: Performance endpoint returns valid metrics")
+        print("PASS: Performance endpoint returns valid metrics")
     
     def test_get_trade_stats(self):
         """Test /api/trades/stats returns statistics"""
@@ -269,7 +267,7 @@ class TestPerformanceEndpoints:
         
         assert "total_pnl" in data
         assert "trades_10min" in data
-        print(f"PASS: Trade stats endpoint returns valid data")
+        print("PASS: Trade stats endpoint returns valid data")
 
 
 class TestBacktestEndpoints:
@@ -297,7 +295,7 @@ class TestRealtimeEndpoints:
         
         # Check for expected fields
         assert "websocket" in data or "status" in data
-        print(f"PASS: Realtime status endpoint working")
+        print("PASS: Realtime status endpoint working")
 
 
 def run_all_tests():

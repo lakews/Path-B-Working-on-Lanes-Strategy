@@ -23,10 +23,9 @@ Usage:
 """
 
 import logging
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 from dataclasses import dataclass
 from enum import Enum
-from datetime import datetime, timezone
 
 from risk_config import (
     EXIT_GLOBAL_SETTINGS,

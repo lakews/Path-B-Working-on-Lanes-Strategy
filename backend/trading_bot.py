@@ -277,7 +277,7 @@ class ApexTrader:
             # STRICT PRICE VALIDATION - Cannot manage position without valid price
             current_price = market_data.get('yes_price')
             if current_price is None or current_price == 0:
-                logger.warning(f"[POSITION-SKIP] Missing price data for position management - skipping")
+                logger.warning("[POSITION-SKIP] Missing price data for position management - skipping")
                 return
             current_price = float(current_price)
             entry_price = position['avg_price']

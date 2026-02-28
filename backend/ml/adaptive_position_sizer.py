@@ -12,8 +12,7 @@ Key Features:
 - Tail Risk / Variance-based sizing: Reduces size at price extremes
 """
 import logging
-import numpy as np
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, Tuple
 from datetime import datetime, timezone
 from database import get_db
 
@@ -460,7 +459,6 @@ class AdaptivePositionSizer:
         signal_mult = 0.5 + (signal_strength * 0.7)  # Range: 0.5 to 1.2
         
         # ========== ADAPTIVE BASE POSITION (Kelly + ATR + Fallback) ==========
-        import math
         
         # Kelly gives us the edge-based fraction, ATR scales for risk
         kelly_atr_base = kelly_position * vol_mult

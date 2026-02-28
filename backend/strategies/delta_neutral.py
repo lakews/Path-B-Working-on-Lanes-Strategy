@@ -16,7 +16,6 @@ which is populated asynchronously by the Alpha Loop.
 
 import logging
 from typing import Dict, Optional
-from datetime import datetime, timezone
 from database import get_db
 from ml.kelly_sharpe_optimizer import KellySharpeOptimizer
 from trading.execution_engine import ExecutionEngine

@@ -8,10 +8,7 @@ import logging
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime, timezone
 from database import get_db
-from config import config
 import uuid
-import json
-import os
 
 # Import DQN components
 from ml.dqn import DQNAgent, device

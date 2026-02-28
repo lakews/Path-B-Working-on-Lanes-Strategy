@@ -83,7 +83,7 @@ async def test_llm_service_directly():
     logger.info("=" * 60)
     
     try:
-        from services.llm_service import get_llm_service, EmergentLLMService
+        from services.llm_service import get_llm_service
         
         llm_service = get_llm_service()
         logger.info(f"LLM Service initialized: model={llm_service.model}")
@@ -141,7 +141,7 @@ async def test_event_bayes():
     logger.info("=" * 60)
     
     try:
-        from bayesian_math.event_bayes import get_event_bayes, EventBayesianUpdater
+        from bayesian_math.event_bayes import get_event_bayes
         
         event_bayes = get_event_bayes()
         logger.info("EventBayes initialized")
@@ -199,7 +199,7 @@ async def test_full_pipeline():
     logger.info("=" * 60)
     
     try:
-        from services.news_injector import NewsInjector, NewsItem, get_news_injector
+        from services.news_injector import NewsInjector, NewsItem
         
         # Create a mock market fetcher that returns our test market
         async def mock_market_fetcher() -> List[Dict]:
@@ -217,7 +217,7 @@ async def test_full_pipeline():
                     "ttl": ttl,
                     "timestamp": datetime.now(timezone.utc).isoformat()
                 })
-                logger.info(f"📥 SIGNAL INJECTED TO CACHE:")
+                logger.info("📥 SIGNAL INJECTED TO CACHE:")
                 logger.info(f"  key: {key}")
                 logger.info(f"  direction: {value.get('direction')}")
                 logger.info(f"  bayes_factor: {value.get('bayes_factor')}")

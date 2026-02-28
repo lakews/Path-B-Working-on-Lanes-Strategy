@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Callable, Set
 from collections import defaultdict
 import websockets
-from websockets.exceptions import ConnectionClosed, ConnectionClosedError
+from websockets.exceptions import ConnectionClosed
 
 logger = logging.getLogger(__name__)
 

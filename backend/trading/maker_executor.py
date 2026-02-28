@@ -33,13 +33,13 @@ import logging
 import asyncio
 import random
 from typing import Dict, Optional, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timezone
 
 from trading.clob_client import (
     PolymarketCLOBClient, get_clob_client,
-    OrderSide, OrderStatus, OrderBook, CLOBOrder
+    OrderSide, OrderBook
 )
 
 logger = logging.getLogger(__name__)

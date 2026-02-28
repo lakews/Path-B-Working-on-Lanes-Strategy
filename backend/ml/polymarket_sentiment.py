@@ -11,10 +11,9 @@ Extracts sentiment signals directly from Polymarket data:
 No external API required - uses existing Polymarket Gamma/CLOB APIs
 """
 
-import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from collections import defaultdict
 import numpy as np
 

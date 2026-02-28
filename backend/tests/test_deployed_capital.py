@@ -15,7 +15,6 @@ Key Verification Points:
 """
 import pytest
 import requests
-import os
 import sys
 
 # Add backend to path for direct imports
@@ -218,7 +217,7 @@ class TestBacktestEngineDeployedCapital:
         assert 'self.deployed_capital' in content, \
             "BacktestEngine should use deployed_capital for Sharpe calculation"
         
-        print(f"✓ BacktestEngine code uses config.DEPLOYED_CAPITAL")
+        print("✓ BacktestEngine code uses config.DEPLOYED_CAPITAL")
     
     def test_backtest_return_calculation_formula(self):
         """Verify backtest return % formula uses deployed capital"""
@@ -235,7 +234,7 @@ class TestBacktestEngineDeployedCapital:
         assert 'self.current_capital - self.initial_capital' in content, \
             "Return calculation should compute PnL as current - initial"
         
-        print(f"✓ Backtest return calculation uses deployed_capital as denominator")
+        print("✓ Backtest return calculation uses deployed_capital as denominator")
 
 
 class TestStrategyTunerDeployedCapital:
@@ -244,14 +243,13 @@ class TestStrategyTunerDeployedCapital:
     def test_strategy_tuner_uses_deployed_capital(self):
         """Verify strategy tuner uses deployed_capital from config"""
         from ml.strategy_tuner import StrategyTuner
-        from config import config
         
         tuner = StrategyTuner()
         
         # The tuner should use config.DEPLOYED_CAPITAL for simulations
         # Check the _test_parameters method uses deployed_capital
         # This is verified by code inspection - the method imports config and uses DEPLOYED_CAPITAL
-        print(f"✓ StrategyTuner imports config.DEPLOYED_CAPITAL for simulations")
+        print("✓ StrategyTuner imports config.DEPLOYED_CAPITAL for simulations")
 
 
 class TestRiskControllerDeployedCapital:
@@ -267,7 +265,7 @@ class TestRiskControllerDeployedCapital:
         assert 'self.deployed_capital = config.DEPLOYED_CAPITAL' in content, \
             "RiskController should set deployed_capital from config.DEPLOYED_CAPITAL"
         
-        print(f"✓ RiskController code uses config.DEPLOYED_CAPITAL")
+        print("✓ RiskController code uses config.DEPLOYED_CAPITAL")
     
     def test_sharpe_calculation_uses_deployed(self):
         """Verify Sharpe ratio calculation uses deployed capital"""
@@ -279,7 +277,7 @@ class TestRiskControllerDeployedCapital:
         assert 'config.DEPLOYED_CAPITAL' in content, \
             "Sharpe calculation should use config.DEPLOYED_CAPITAL"
         
-        print(f"✓ RiskController._calculate_portfolio_sharpe uses config.DEPLOYED_CAPITAL")
+        print("✓ RiskController._calculate_portfolio_sharpe uses config.DEPLOYED_CAPITAL")
 
 
 class TestAPIEndpointsDeployedCapital:
@@ -324,7 +322,7 @@ class TestAPIEndpointsDeployedCapital:
             pnl_pct = data['total_pnl_pct']
             print(f"  total_pnl_pct (on deployed): {pnl_pct:.2f}%")
         
-        print(f"✓ /api/paper/status returns deployed capital metrics")
+        print("✓ /api/paper/status returns deployed capital metrics")
     
     def test_config_endpoint_returns_deployed_values(self):
         """Verify /api/config returns correct deployed capital calculation"""
@@ -346,7 +344,7 @@ class TestAPIEndpointsDeployedCapital:
         print(f"  Expected deployed_capital: ${expected_deployed:.2f}")
         print(f"  Expected max_single_position: ${expected_max_pos:.2f}")
         
-        print(f"✓ /api/config returns capital configuration")
+        print("✓ /api/config returns capital configuration")
 
 
 class TestIntegrationDeployedCapital:
@@ -387,7 +385,7 @@ class TestIntegrationDeployedCapital:
         assert breakdown.get('max_single_position') == expected_max, \
             f"max_single_position should be {expected_max}"
         
-        print(f"✓ Full position sizing flow uses deployed capital correctly")
+        print("✓ Full position sizing flow uses deployed capital correctly")
         print(f"  sizing_base: ${breakdown.get('sizing_base', 0):.2f}")
         print(f"  max_single_position: ${breakdown.get('max_single_position', 0):.2f}")
         print(f"  position_size: ${result.get('position_size', 0):.2f}")

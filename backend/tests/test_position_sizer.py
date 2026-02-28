@@ -13,7 +13,6 @@ Tests cover:
 """
 
 import pytest
-from datetime import datetime, timezone, timedelta
 
 # Import the sizer
 import sys

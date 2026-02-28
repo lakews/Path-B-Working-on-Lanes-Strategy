@@ -13,9 +13,8 @@ Features:
 
 import json
 import logging
-import os
 from pathlib import Path
-from typing import Dict, Tuple, Optional, Any
+from typing import Dict, Tuple, Optional
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from threading import Lock

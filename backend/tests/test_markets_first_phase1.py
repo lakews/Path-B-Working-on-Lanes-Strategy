@@ -17,7 +17,6 @@ import pytest
 import requests
 import os
 import time
-from datetime import datetime, timezone
 
 # Get BASE_URL from environment
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
@@ -165,7 +164,7 @@ class TestNewsWebhook:
             assert 'path_b_opportunities' in data
             assert 'timestamp' in data
             
-            print(f"✓ News webhook processed:")
+            print("✓ News webhook processed:")
             print(f"  PATH A signals: {data['path_a_signals']}")
             print(f"  PATH B opportunities: {data['path_b_opportunities']}")
         else:
@@ -352,7 +351,7 @@ class TestDualPathIntegration:
                     print(f"✓ PATH B created {path_b_count} opportunities")
                     print(f"  Initial count: {initial_count}, New count: {new_count}")
             else:
-                print(f"✓ PATH B returned 0 opportunities (scanner may have 0 cached markets)")
+                print("✓ PATH B returned 0 opportunities (scanner may have 0 cached markets)")
     
     def test_semantic_search_relevance(self):
         """Test that PATH A finds relevant markets via semantic search"""
@@ -373,7 +372,7 @@ class TestDualPathIntegration:
             # PATH A may return 0 if LLM determines news is not relevant
             # This is expected behavior per the agent context
             print(f"✓ PATH A semantic search: {path_a_signals} signals created")
-            print(f"  (0 signals is valid if LLM determines news not relevant to cached markets)")
+            print("  (0 signals is valid if LLM determines news not relevant to cached markets)")
 
 
 class TestScannerContinuousScan:
@@ -394,7 +393,7 @@ class TestScannerContinuousScan:
             markets_cached = scanner['markets_cached']
             stats = scanner.get('stats', {})
             
-            print(f"✓ Scanner status:")
+            print("✓ Scanner status:")
             print(f"  Markets cached: {markets_cached}")
             print(f"  Scan count: {stats.get('scan_count', 0)}")
             print(f"  REST fallback used: {stats.get('rest_fallback_used', 0)}")
@@ -403,9 +402,9 @@ class TestScannerContinuousScan:
             # Scanner should cache markets (may take a few scans)
             # Per agent context: "Scanner caches 500 markets"
             if markets_cached > 0:
-                print(f"  ✓ Scanner is caching markets successfully")
+                print("  ✓ Scanner is caching markets successfully")
             else:
-                print(f"  ⚠ Scanner has 0 markets cached (may need more time)")
+                print("  ⚠ Scanner has 0 markets cached (may need more time)")
         else:
             print(f"✓ Scanner not running yet: initialized={scanner['initialized']}, running={scanner['running']}")
 
@@ -426,7 +425,7 @@ class TestMongoDBCollections:
         assert 'signals_count' in mongo
         assert 'hft_opportunities_count' in mongo
         
-        print(f"✓ MongoDB collections:")
+        print("✓ MongoDB collections:")
         print(f"  polymarket_cache: {mongo['polymarket_cache_count']} documents")
         print(f"  signals: {mongo['signals_count']} documents")
         print(f"  hft_opportunities: {mongo['hft_opportunities_count']} documents")

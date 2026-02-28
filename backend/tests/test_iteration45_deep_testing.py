@@ -20,9 +20,7 @@ import pytest
 import requests
 import os
 import time
-import json
-import asyncio
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 
 # Get BASE_URL from environment
@@ -63,7 +61,7 @@ class TestAPIKeyPersistenceDeep:
         assert exa_key is not None
         assert exa_key.get('is_set') == True
         assert exa_key.get('in_database') == True
-        print(f"✓ Encryption roundtrip: key saved and loaded successfully")
+        print("✓ Encryption roundtrip: key saved and loaded successfully")
     
     def test_invalid_key_names(self):
         """Test that invalid key names are rejected"""
@@ -295,7 +293,7 @@ class TestPATHASignalCreationFlow:
                     assert field in signal, f"Missing required field: {field}"
                 
                 # Check type is path_a
-                assert signal.get('type') == 'path_a', f"Signal type should be 'path_a'"
+                assert signal.get('type') == 'path_a', "Signal type should be 'path_a'"
                 
                 # Check expected fields
                 present_expected = [f for f in expected_fields if f in signal]
@@ -303,7 +301,7 @@ class TestPATHASignalCreationFlow:
             
             print(f"✓ Signal fields verified for {len(signals)} signals")
         else:
-            print(f"✓ No PATH A signals found (DualPathNewsInjector may not be initialized)")
+            print("✓ No PATH A signals found (DualPathNewsInjector may not be initialized)")
     
     def test_signal_ttl_expiration(self):
         """Test that signals have proper TTL/expiration"""
@@ -377,7 +375,7 @@ class TestPaperTradingLifecycle:
         scanner_data = scanner_response.json()
         print(f"  Scanner: {scanner_data.get('status')}")
         
-        print(f"✓ All lanes checked")
+        print("✓ All lanes checked")
     
     def test_inject_news_and_verify_processing(self):
         """Inject news and verify signal processing"""
@@ -404,7 +402,7 @@ class TestPaperTradingLifecycle:
             stats = sniper_data.get('stats', {})
             print(f"  NEWS Sniper: signals_processed={stats.get('signals_processed')}, mongodb_reads={stats.get('mongodb_reads')}")
         
-        print(f"✓ News injection and processing verified")
+        print("✓ News injection and processing verified")
     
     def test_paper_status_during_session(self):
         """Check paper trading status during session"""
@@ -417,7 +415,7 @@ class TestPaperTradingLifecycle:
         print(f"  total_trades: {data.get('total_trades')}")
         print(f"  current_capital: {data.get('current_capital')}")
         
-        print(f"✓ Paper status retrieved")
+        print("✓ Paper status retrieved")
     
     def test_stop_paper_trading(self):
         """Stop paper trading session"""
@@ -435,7 +433,7 @@ class TestPaperTradingLifecycle:
             else:
                 print(f"✓ Paper stop returned: status={response.status_code}")
         except requests.exceptions.Timeout:
-            print(f"✓ Paper stop timed out (operation may still be processing)")
+            print("✓ Paper stop timed out (operation may still be processing)")
         
         time.sleep(3)
     
@@ -459,7 +457,7 @@ class TestPaperTradingLifecycle:
         print(f"  After restart - HFT V2: {hft_response.json().get('status')}")
         print(f"  After restart - NEWS Sniper: {news_response.json().get('status')}")
         
-        print(f"✓ Paper trading restarted successfully")
+        print("✓ Paper trading restarted successfully")
 
 
 class TestHFTV2Integration:
@@ -501,9 +499,9 @@ class TestHFTV2Integration:
             print(f"  PATH B hits: {path_b_hits}")
             print(f"  Cycles executed: {stats.get('cycles_executed', 0)}")
             
-            print(f"✓ HFT V2 MongoDB integration verified")
+            print("✓ HFT V2 MongoDB integration verified")
         else:
-            print(f"✓ HFT V2 not operational (paper trading may not be running)")
+            print("✓ HFT V2 not operational (paper trading may not be running)")
 
 
 class TestNewsSniperIntegration:
@@ -523,7 +521,7 @@ class TestNewsSniperIntegration:
             print(f"  trades_executed: {stats.get('trades_executed', 0)}")
             print(f"  trades_skipped_low_conviction: {stats.get('trades_skipped_low_conviction', 0)}")
             
-            print(f"✓ NEWS Sniper MongoDB reads verified")
+            print("✓ NEWS Sniper MongoDB reads verified")
         else:
             print(f"✓ NEWS Sniper status: {data.get('status')}")
     
@@ -543,9 +541,9 @@ class TestNewsSniperIntegration:
             print(f"  Average conviction: {avg_conviction}")
             print(f"  Kelly tiers: {list(kelly_tiers.keys())}")
             
-            print(f"✓ Conviction calculation verified")
+            print("✓ Conviction calculation verified")
         else:
-            print(f"✓ NEWS Sniper not operational")
+            print("✓ NEWS Sniper not operational")
 
 
 class TestScannerResilience:
@@ -572,7 +570,7 @@ class TestScannerResilience:
             if running:
                 assert markets_cached > 0, "Scanner running but no markets cached"
             
-            print(f"✓ Scanner resilience verified")
+            print("✓ Scanner resilience verified")
         else:
             print(f"✓ Scanner not initialized: {data.get('status')}")
     
@@ -600,7 +598,7 @@ class TestScannerResilience:
         # Count should be stable (around 500)
         assert updated_count > 0, "No markets cached"
         
-        print(f"✓ Market cache updates verified")
+        print("✓ Market cache updates verified")
 
 
 class TestMongoDBSignalQueries:
@@ -742,7 +740,7 @@ class TestCrossLaneIntegration:
             print(f"  HFT V2 errors: {hft_errors}")
             print(f"  NEWS Sniper errors: {news_errors}")
         
-        print(f"✓ Cross-lane integration verified")
+        print("✓ Cross-lane integration verified")
     
     def test_both_read_same_mongodb(self):
         """Verify both lanes read from same MongoDB collections"""
@@ -759,7 +757,7 @@ class TestCrossLaneIntegration:
         print(f"  MongoDB signals: {signals_count}")
         print(f"  MongoDB opportunities: {opportunities_count}")
         
-        print(f"✓ Both lanes use same MongoDB collections")
+        print("✓ Both lanes use same MongoDB collections")
 
 
 class TestCleanup:
@@ -776,11 +774,11 @@ class TestCleanup:
             )
             
             if response.status_code in [200, 400]:
-                print(f"✓ Final cleanup: paper trading stopped")
+                print("✓ Final cleanup: paper trading stopped")
             else:
                 print(f"✓ Final cleanup: status={response.status_code}")
         except requests.exceptions.Timeout:
-            print(f"✓ Final cleanup: stop timed out")
+            print("✓ Final cleanup: stop timed out")
 
 
 if __name__ == "__main__":

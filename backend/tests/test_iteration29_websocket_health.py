@@ -15,7 +15,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://sports-hft-router.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://websocket-primary.preview.emergentagent.com')
 
 # Test credentials
 TEST_USERNAME = "admin"
@@ -98,7 +98,7 @@ class TestRealtimeStatus:
         assert "is_healthy" in health
         assert "update_rate" in health
         
-        print(f"✅ Realtime status endpoint working:")
+        print("✅ Realtime status endpoint working:")
         print(f"   - Status: {data.get('status')}")
         print(f"   - WebSocket connected: {ws.get('connected')}")
         print(f"   - Token mapping ready: {ms.get('token_mapping_ready')}")
@@ -184,7 +184,7 @@ class TestPaperTrading:
         assert "initial_capital" in data
         assert "current_capital" in data
         
-        print(f"✅ Paper trading status:")
+        print("✅ Paper trading status:")
         print(f"   - Session ID: {data.get('session_id')}")
         print(f"   - Running: {data.get('running')}")
         print(f"   - Initial capital: ${data.get('initial_capital')}")
@@ -242,7 +242,7 @@ class TestPaperTrading:
                 # Allow 5% tolerance for rounding
                 diff = abs(unrealized_pnl_pct - expected_pnl_pct)
                 assert diff < 5, f"P&L {unrealized_pnl_pct}% doesn't match expected {expected_pnl_pct:.2f}% (diff: {diff:.2f}%)"
-                print(f"   ⚠️ High P&L position (verified mathematically correct):")
+                print("   ⚠️ High P&L position (verified mathematically correct):")
             else:
                 print(f"   ✅ {market_question}...")
             
@@ -309,7 +309,7 @@ class TestWebSocketPriceAccuracy:
         ms = rt_data.get("market_service", {})
         yes_prices_cached = ms.get("yes_prices_cached", 0)
         
-        print(f"Price comparison:")
+        print("Price comparison:")
         print(f"   - REST API markets: {len(markets)}")
         print(f"   - WebSocket cached prices: {yes_prices_cached}")
         
@@ -360,7 +360,7 @@ class TestStartStopPaperTrading:
         assert "session_id" in data
         assert data.get("initial_capital", 0) > 0
         
-        print(f"✅ Paper trading started:")
+        print("✅ Paper trading started:")
         print(f"   - Session ID: {data.get('session_id')}")
         print(f"   - Initial capital: ${data.get('initial_capital')}")
         print(f"   - Deployed capital: ${data.get('deployed_capital')}")
@@ -387,7 +387,7 @@ class TestStartStopPaperTrading:
         ws = rt_data.get("websocket", {})
         
         # When paper trading is running, WebSocket should be active
-        print(f"WebSocket status with paper trading:")
+        print("WebSocket status with paper trading:")
         print(f"   - Market service running: {ms.get('running')}")
         print(f"   - WebSocket connected: {ws.get('connected')}")
         print(f"   - Token mapping ready: {ms.get('token_mapping_ready')}")
@@ -395,7 +395,7 @@ class TestStartStopPaperTrading:
         # Token mapping should be ready
         assert ms.get("token_mapping_ready"), "Token mapping should be ready"
         
-        print(f"✅ WebSocket service active with paper trading")
+        print("✅ WebSocket service active with paper trading")
 
 
 if __name__ == "__main__":

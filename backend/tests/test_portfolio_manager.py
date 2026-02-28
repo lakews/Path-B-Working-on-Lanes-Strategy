@@ -20,8 +20,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from trading.portfolio_manager import (
     PortfolioManager,
-    TradingRegime,
-    SizingResult,
     get_portfolio_manager
 )
 from risk_config import RISK

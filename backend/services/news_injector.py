@@ -22,15 +22,14 @@ All external calls are wrapped in try/except.
 import asyncio
 import logging
 import os
-import re
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
 import aiohttp
 
 # Internal imports
-from bayesian_math.event_bayes import EventBayesianUpdater, EventPosterior, get_event_bayes
-from services.llm_service import get_llm_service, EmergentLLMService, LLMAnalysisResult
+from bayesian_math.event_bayes import get_event_bayes
+from services.llm_service import get_llm_service
 
 logger = logging.getLogger(__name__)
 
