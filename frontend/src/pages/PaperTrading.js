@@ -143,6 +143,138 @@ const SessionTradesModal = ({ isOpen, session, trades, onClose }) => {
   );
 };
 
+// Pop-out Table Modal - Full screen modal for tables
+const PopOutTableModal = ({ isOpen, title, onClose, children }) => {
+  if (!isOpen) return null;
+  
+  // Handle opening in new window
+  const handleOpenInNewWindow = () => {
+    const newWindow = window.open('', '_blank', 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no');
+    if (newWindow) {
+      newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>${title} - APEX Trader</title>
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { 
+                background: #0f172a; 
+                color: white; 
+                font-family: system-ui, -apple-system, sans-serif;
+                padding: 20px;
+              }
+              h1 { font-size: 1.5rem; margin-bottom: 20px; color: #22d3ee; }
+              table { width: 100%; border-collapse: collapse; font-size: 13px; }
+              th { 
+                background: rgba(255,255,255,0.1); 
+                padding: 12px 16px; 
+                text-align: left; 
+                font-weight: 500;
+                text-transform: uppercase;
+                font-size: 11px;
+                color: rgba(255,255,255,0.6);
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+              }
+              td { 
+                padding: 12px 16px; 
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+              }
+              tr:hover { background: rgba(255,255,255,0.05); }
+              .positive { color: #34d399; }
+              .negative { color: #f87171; }
+              .muted { color: rgba(255,255,255,0.4); }
+              .badge { 
+                display: inline-block; 
+                padding: 2px 8px; 
+                border-radius: 4px; 
+                font-size: 11px; 
+                font-weight: 500;
+              }
+              .badge-green { background: rgba(34,197,94,0.2); color: #22c55e; }
+              .badge-blue { background: rgba(59,130,246,0.2); color: #3b82f6; }
+              .badge-yellow { background: rgba(234,179,8,0.2); color: #eab308; }
+              .badge-red { background: rgba(239,68,68,0.2); color: #ef4444; }
+              .refresh-note { 
+                position: fixed; 
+                top: 10px; 
+                right: 20px; 
+                font-size: 11px; 
+                color: rgba(255,255,255,0.4);
+              }
+            </style>
+          </head>
+          <body>
+            <div class="refresh-note">Data snapshot - refresh main app for updates</div>
+            <h1>${title}</h1>
+            <div id="content"></div>
+            <script>
+              // Auto-refresh every 30 seconds
+              setInterval(() => {
+                document.querySelector('.refresh-note').textContent = 'Last updated: ' + new Date().toLocaleTimeString() + ' (static snapshot)';
+              }, 1000);
+            </script>
+          </body>
+        </html>
+      `);
+      
+      // Get the table content and inject it
+      const tableContent = document.querySelector('[data-popout-content]');
+      if (tableContent) {
+        newWindow.document.getElementById('content').innerHTML = tableContent.innerHTML;
+      }
+      newWindow.document.close();
+    }
+    onClose();
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-slate-900 border border-white/20 rounded-xl w-[95vw] max-w-7xl mx-4 shadow-2xl max-h-[90vh] flex flex-col">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <Maximize2 className="w-5 h-5 text-cyan-400" />
+            {title}
+          </h3>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleOpenInNewWindow}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-sm transition-all"
+              data-testid="open-new-window-btn"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open in New Window
+            </button>
+            <button 
+              onClick={onClose} 
+              className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white"
+              data-testid="close-popout-btn"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-4" data-popout-content>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Pop-out button component
+const PopOutButton = ({ onClick, tooltip = "Pop out" }) => (
+  <button
+    onClick={onClick}
+    className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-cyan-400 transition-all"
+    title={tooltip}
+    data-testid="popout-btn"
+  >
+    <Maximize2 className="w-4 h-4" />
+  </button>
+);
+
+
 // Trade Details Modal - Shows all details when clicking on a trade row
 const TradeDetailsModal = ({ isOpen, trade, onClose }) => {
   if (!isOpen || !trade) return null;
