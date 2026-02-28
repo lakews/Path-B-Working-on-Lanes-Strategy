@@ -1641,27 +1641,68 @@ const Configuration = () => {
               <div className="flex justify-between"><span className="text-sm text-white/60">Max Trade</span><span className="text-xl font-bold text-cyan-400">${maxPositionValue.toFixed(2)}</span></div>
             </div>
           </div>
-          <div className="lg:col-span-2 rounded-xl bg-red-500/10 border border-red-500/30 p-6">
+          <div className="lg:col-span-2 rounded-xl bg-gradient-to-br from-rose-500/10 to-amber-500/10 border border-rose-500/30 p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center"><AlertTriangle className="w-5 h-5 text-red-400" /></div>
-              <div><h3 className="text-white font-semibold">Circuit Breaker (Max Drawdown)</h3><p className="text-xs text-white/50">Trading halts at this loss level</p></div>
+              <div className="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center"><AlertTriangle className="w-5 h-5 text-rose-400" /></div>
+              <div><h3 className="text-white font-semibold">Dual Circuit Breaker</h3><p className="text-xs text-white/50">Two-level protection against losses</p></div>
             </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <div className="flex items-center gap-4">
-                  <input type="range" value={config.max_drawdown_pct || 3} onChange={(e) => setConfig({...config, max_drawdown_pct: parseFloat(e.target.value)})} className="flex-1 h-2 bg-white/10 rounded-lg" min="1" max="15" step="0.5" />
-                  <span className="text-white font-bold text-xl w-16 text-right">{config.max_drawdown_pct}%</span>
+              {/* PRIMARY: Account Drawdown */}
+              <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <span className="text-xs text-rose-300/60 uppercase tracking-wider">Primary Circuit Breaker</span>
+                    <h4 className="text-white font-medium">Account Drawdown</h4>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold">CAPITAL PROTECTION</span>
                 </div>
-                <div className="grid grid-cols-4 gap-2 mt-4">
-                  {[2, 3, 5, 10].map((val) => (
-                    <button key={val} onClick={() => setConfig({...config, max_drawdown_pct: val})} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${config.max_drawdown_pct === val ? 'bg-red-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>{val}%</button>
+                <p className="text-xs text-white/50 mb-3">Triggers when total equity falls below initial capital by this %</p>
+                <div className="flex items-center gap-4 mb-3">
+                  <input type="range" value={config.max_account_drawdown_pct || 10} onChange={(e) => setConfig({...config, max_account_drawdown_pct: parseFloat(e.target.value)})} className="flex-1 h-2 bg-white/10 rounded-lg" min="3" max="25" step="1" />
+                  <span className="text-white font-bold text-xl w-16 text-right">{config.max_account_drawdown_pct || 10}%</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {[5, 10, 15, 20].map((val) => (
+                    <button key={val} onClick={() => setConfig({...config, max_account_drawdown_pct: val})} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${config.max_account_drawdown_pct === val ? 'bg-rose-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>{val}%</button>
                   ))}
                 </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/40">Triggers at loss of</span>
+                  <span className="text-rose-400 font-bold">-${accountCBValue.toFixed(0)}</span>
+                </div>
               </div>
-              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-                <div className="flex justify-between mb-3"><span className="text-sm text-white/60">Triggers At</span><span className="text-2xl font-bold text-red-400">-${circuitBreakerValue.toFixed(2)}</span></div>
-                <p className="text-xs text-red-400">⚠️ Trading stops if losses exceed {config.max_drawdown_pct}%</p>
+              
+              {/* SECONDARY: Realized Drawdown */}
+              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <span className="text-xs text-amber-300/60 uppercase tracking-wider">Secondary Circuit Breaker</span>
+                    <h4 className="text-white font-medium">Realized Drawdown</h4>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold">PROFIT PROTECTION</span>
+                </div>
+                <p className="text-xs text-white/50 mb-3">Triggers when locked-in P&L falls from peak realized gains</p>
+                <div className="flex items-center gap-4 mb-3">
+                  <input type="range" value={config.max_realized_drawdown_pct || 15} onChange={(e) => setConfig({...config, max_realized_drawdown_pct: parseFloat(e.target.value)})} className="flex-1 h-2 bg-white/10 rounded-lg" min="5" max="30" step="1" />
+                  <span className="text-white font-bold text-xl w-16 text-right">{config.max_realized_drawdown_pct || 15}%</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {[10, 15, 20, 25].map((val) => (
+                    <button key={val} onClick={() => setConfig({...config, max_realized_drawdown_pct: val})} className={`px-3 py-2 rounded-lg text-sm font-medium transition ${config.max_realized_drawdown_pct === val ? 'bg-amber-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>{val}%</button>
+                  ))}
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/40">Max drawback from peak</span>
+                  <span className="text-amber-400 font-bold">-${realizedCBValue.toFixed(0)}</span>
+                </div>
               </div>
+            </div>
+            
+            <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
+              <p className="text-[10px] text-white/40 text-center">
+                ⚠️ Trading halts when <span className="text-rose-400">Account DD ≥ {config.max_account_drawdown_pct || 10}%</span> OR <span className="text-amber-400">Realized DD ≥ {config.max_realized_drawdown_pct || 15}%</span>
+              </p>
             </div>
           </div>
         </div>
