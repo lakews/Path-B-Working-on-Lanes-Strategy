@@ -5473,67 +5473,79 @@ class PaperTrader:
             asset_class = position.get('asset_class', 'unknown')
             
             # ==========================================================================
-            # SPORTS ARBITRAGE: Fetch FRESH prices from Polymarket API
+            # SPORTS: REQUIRE REAL MARKET PRICES - NO DEFAULTS ALLOWED
             # ==========================================================================
-            # Sports markets often have stale cached data. For accurate exit pricing,
-            # always fetch fresh market data directly from Polymarket for sports positions.
-            # This prevents the 0.49/0.50 exit price bug caused by fallback values.
+            # Real trading requires actual market prices to exit. You can't sell if 
+            # there's no buyer. For sports markets, we MUST have:
+            # 1. Fresh price from Polymarket API
+            # 2. Verified orderbook with real bids/asks
+            # 3. Exit price derived from actual orderbook, NOT API mid-price
+            # 
+            # This completely eliminates the 0.49/0.50 default price problem.
             # ==========================================================================
             if strategy == 'sports_arbitrage' or asset_class == 'sports':
-                yes_entry_price = position.get('yes_entry_price', position.get('entry_price', 0))
-                
                 try:
                     from data.polymarket_api import PolymarketAPI
                     async with PolymarketAPI() as api:
                         fresh_market = await api.get_market(market_id)
-                        if fresh_market:
-                            fresh_yes_price = fresh_market.get('yes_price') or fresh_market.get('outcomePrices', [None])[0]
-                            if fresh_yes_price and float(fresh_yes_price) > 0:
-                                fresh_price = float(fresh_yes_price)
-                                
-                                # ==========================================================
-                                # SPORTS SANITY CHECK: Block suspicious price jumps
-                                # ==========================================================
-                                # If entry was at extreme (e.g., $0.0025) and current is ~0.5,
-                                # this is almost certainly a default/fallback, NOT real movement
-                                # ==========================================================
-                                entry_is_extreme = yes_entry_price < 0.10 or yes_entry_price > 0.90
-                                current_is_neutral = abs(fresh_price - 0.5) < 0.05
-                                
-                                if entry_is_extreme and current_is_neutral:
-                                    # Verify with orderbook before accepting this suspicious price
-                                    token_ids = fresh_market.get('clobTokenIds', [])
-                                    orderbook_verified = False
-                                    if token_ids:
-                                        try:
-                                            fresh_ob = await api.get_order_book(token_ids[0])
-                                            if fresh_ob.get('bids') and fresh_ob.get('asks'):
-                                                # Orderbook exists, use best bid/ask for pricing
-                                                bids = fresh_ob.get('bids', [])
-                                                asks = fresh_ob.get('asks', [])
-                                                if bids and asks:
-                                                    best_bid = float(bids[0].get('price', 0))
-                                                    best_ask = float(asks[0].get('price', 0))
-                                                    if best_bid > 0 and best_ask > 0:
-                                                        # Use orderbook mid for exit, not the suspicious 0.5
-                                                        current_price = (best_bid + best_ask) / 2
-                                                        orderbook_verified = True
-                                                        logger.info(f"[SPORTS-EXIT] Using orderbook mid ${current_price:.4f} (bid={best_bid:.4f}, ask={best_ask:.4f})")
-                                        except Exception as ob_err:
-                                            logger.debug(f"[SPORTS-EXIT] Orderbook fetch failed: {ob_err}")
-                                    
-                                    if not orderbook_verified:
-                                        logger.warning(f"[SPORTS-EXIT-BLOCK] Entry ${yes_entry_price:.4f} -> Current ${fresh_price:.4f}")
-                                        logger.warning(f"   Suspicious price jump to ~0.5 without orderbook verification")
-                                        logger.warning(f"   Blocking exit to prevent fake P&L calculation")
-                                        return
-                                else:
-                                    current_price = fresh_price
-                                    market_data['yes_price'] = current_price
-                                    market_data['token_ids'] = fresh_market.get('clobTokenIds', [])
-                                    logger.info(f"[SPORTS-EXIT] Fresh price for {market_id[:16]}: ${current_price:.4f}")
+                        if not fresh_market:
+                            logger.warning(f"[SPORTS-EXIT-BLOCK] Market {market_id[:16]} not found - cannot exit without real price")
+                            return
+                        
+                        token_ids = fresh_market.get('clobTokenIds', [])
+                        if not token_ids:
+                            logger.warning(f"[SPORTS-EXIT-BLOCK] No token IDs for {market_id[:16]} - cannot fetch orderbook")
+                            return
+                        
+                        # Fetch REAL orderbook - this is the source of truth
+                        side = position['side']
+                        token_index = 0 if side == 'YES' else 1
+                        
+                        if len(token_ids) <= token_index:
+                            logger.warning(f"[SPORTS-EXIT-BLOCK] Invalid token index for {market_id[:16]}")
+                            return
+                        
+                        fresh_ob = await api.get_order_book(token_ids[token_index])
+                        bids = fresh_ob.get('bids', [])
+                        asks = fresh_ob.get('asks', [])
+                        
+                        if not bids and not asks:
+                            logger.warning(f"[SPORTS-EXIT-BLOCK] Empty orderbook for {market_id[:16]} - no liquidity to exit")
+                            return
+                        
+                        # ==========================================================
+                        # REAL EXIT PRICE FROM ORDERBOOK
+                        # ==========================================================
+                        # Selling YES = hit the bid (taker sell)
+                        # Selling NO = hit the bid on NO token (already fetched correct token)
+                        # ==========================================================
+                        if bids:
+                            # Use best bid - this is what we'd actually get in real trading
+                            best_bid = float(bids[0].get('price', 0))
+                            bid_size = float(bids[0].get('size', 0))
+                            
+                            if best_bid <= 0:
+                                logger.warning(f"[SPORTS-EXIT-BLOCK] Invalid bid price for {market_id[:16]}")
+                                return
+                            
+                            # For YES positions, bid price IS the exit price
+                            # For NO positions, we fetched NO orderbook, so bid is correct
+                            current_price = best_bid
+                            market_data['yes_price'] = current_price if side == 'YES' else (1 - current_price)
+                            market_data['token_ids'] = token_ids
+                            market_data['order_book'] = {'bids': bids, 'asks': asks}
+                            
+                            logger.info(f"[SPORTS-EXIT] Real orderbook price for {market_id[:16]}: "
+                                       f"${current_price:.4f} (bid size: {bid_size:.2f})")
+                        else:
+                            # No bids = no buyers = cannot exit
+                            logger.warning(f"[SPORTS-EXIT-BLOCK] No bids for {market_id[:16]} - cannot sell without buyers")
+                            return
+                            
                 except Exception as e:
-                    logger.warning(f"[SPORTS-EXIT] Could not fetch fresh market data: {e}")
+                    logger.warning(f"[SPORTS-EXIT-BLOCK] Could not fetch real market data: {e}")
+                    logger.warning(f"   Blocking exit - real trading requires verified prices")
+                    return
             
             if current_price is None or current_price == 0:
                 logger.warning(f"[EXIT-SKIP] No valid price for {market_id[:16]} - cannot exit safely")
