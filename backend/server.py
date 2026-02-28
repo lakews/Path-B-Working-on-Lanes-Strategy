@@ -1440,6 +1440,13 @@ async def update_config(config_update: TradingConfig):
             os.environ['MAX_DRAWDOWN_PCT'] = str(config_update.max_drawdown_pct)
             db_update["max_drawdown_pct"] = config_update.max_drawdown_pct
         
+        # Dual Circuit Breaker Configuration
+        if config_update.max_account_drawdown_pct is not None:
+            db_update["max_account_drawdown_pct"] = config_update.max_account_drawdown_pct
+        
+        if config_update.max_realized_drawdown_pct is not None:
+            db_update["max_realized_drawdown_pct"] = config_update.max_realized_drawdown_pct
+        
         # Kelly enabled toggle
         if config_update.kelly_enabled is not None:
             db_update["kelly_enabled"] = config_update.kelly_enabled
