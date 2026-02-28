@@ -9073,8 +9073,24 @@ class PaperTrader:
         # Calculate total equity = cash + deployed + unrealized (using snapshot)
         total_equity = current_capital_snapshot + actual_deployed + self.unrealized_pnl
         
-        # Calculate TRUE drawdown based on total equity, not just cash
-        true_drawdown_pct = ((self.peak_capital - total_equity) / self.peak_capital * 100) if self.peak_capital > 0 else 0
+        # NEW: Four-Metric Drawdown Calculations
+        # 1. Positional DD: How much are open positions losing?
+        positional_dd_pct = max(0, (-self.unrealized_pnl / actual_deployed) * 100) if actual_deployed > 0 else 0
+        
+        # 2. Account DD: How much is account down from initial? (PRIMARY CIRCUIT BREAKER)
+        account_dd_pct = max(0, ((self.initial_capital - total_equity) / self.initial_capital) * 100)
+        
+        # 3. Realized DD: How much locked-in profit given back? (SECONDARY CIRCUIT BREAKER)
+        if self.peak_realized_pnl > 0:
+            realized_dd_pct = max(0, ((self.peak_realized_pnl - self.total_pnl) / self.initial_capital) * 100)
+        else:
+            realized_dd_pct = max(0, (-self.total_pnl / self.initial_capital) * 100)
+        
+        # 4. Total DD: Industry standard HWM drawdown (informational)
+        if self.peak_equity_on_close > 0:
+            total_dd_pct = max(0, ((self.peak_equity_on_close - total_equity) / self.peak_equity_on_close) * 100)
+        else:
+            total_dd_pct = 0.0
         
         return {
             "session_id": self.session_id,
@@ -9083,9 +9099,7 @@ class PaperTrader:
             "duration_seconds": duration_seconds,
             "initial_capital": self.initial_capital,
             "current_capital": current_capital_snapshot,  # Use snapshot for consistency
-            "peak_capital": self.peak_capital,  # Highest capital reached
             "total_equity": round(total_equity, 2),  # Cash + Deployed + Unrealized
-            "current_drawdown_pct": round(max(0, true_drawdown_pct), 2),  # True drawdown based on equity
             "deployed_capital": round(actual_deployed, 2),  # ACTUAL deployed (sum of position sizes)
             "max_deployed_capital": self.deployed_capital,  # Max allowed deployment (config setting)
             "total_pnl": total_pnl_snapshot,  # Realized P&L (closed trades) - use snapshot
@@ -9100,8 +9114,18 @@ class PaperTrader:
             "total_trades": self.total_trades,
             "winning_trades": self.winning_trades,
             "win_rate": win_rate,
-            "max_drawdown": self.max_drawdown,
-            "circuit_breaker_triggered": self.circuit_breaker_triggered,  # Whether max drawdown was hit
+            # =============================================================
+            # NEW: Four-Metric Drawdown System
+            # =============================================================
+            "positional_drawdown_pct": round(positional_dd_pct, 2),   # Open position losses vs deployed
+            "account_drawdown_pct": round(account_dd_pct, 2),         # Account vs initial (PRIMARY CB)
+            "realized_drawdown_pct": round(realized_dd_pct, 2),       # Realized P&L drawdown (SECONDARY CB)
+            "total_drawdown_pct": round(total_dd_pct, 2),             # HWM drawdown (informational)
+            "peak_realized_pnl": round(self.peak_realized_pnl, 2),
+            "peak_equity_on_close": round(self.peak_equity_on_close, 2),
+            # Circuit breaker
+            "circuit_breaker_triggered": self.circuit_breaker_triggered,
+            "circuit_breaker_reason": self.circuit_breaker_reason,
             "open_positions": len(positions_snapshot),  # Use snapshot for consistency
             "strategy_results": strategy_results,
             "asset_class_results": asset_class_results,
