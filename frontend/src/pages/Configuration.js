@@ -1584,7 +1584,7 @@ const Configuration = () => {
               <div className="text-center p-4 rounded-lg bg-white/5"><p className="text-xs text-white/50 mb-1">Total</p><p className="text-2xl font-bold text-white">${config.initial_capital.toFixed(2)}</p></div>
               <div className="text-center p-4 rounded-lg bg-white/5"><p className="text-xs text-white/50 mb-1">Deployed</p><p className="text-2xl font-bold text-blue-400">${deployedCapital.toFixed(2)}</p></div>
               <div className="text-center p-4 rounded-lg bg-white/5"><p className="text-xs text-white/50 mb-1">Max/Trade</p><p className="text-2xl font-bold text-cyan-400">${maxPositionValue.toFixed(2)}</p></div>
-              <div className="text-center p-4 rounded-lg bg-white/5"><p className="text-xs text-white/50 mb-1">Circuit Breaker</p><p className="text-2xl font-bold text-red-400">-${circuitBreakerValue.toFixed(2)}</p></div>
+              <div className="text-center p-4 rounded-lg bg-white/5"><p className="text-xs text-white/50 mb-1">Account CB</p><p className="text-2xl font-bold text-red-400">-${accountCBValue.toFixed(2)}</p></div>
             </div>
           </div>
         </div>
