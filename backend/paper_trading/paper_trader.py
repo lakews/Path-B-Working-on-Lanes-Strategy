@@ -6075,12 +6075,68 @@ class PaperTrader:
             
             current_price = float(current_price)
             
-            # Check for suspicious default prices (likely no real data)
+            # ============================================
+            # ENTRY VALIDATION (Phantom Order Protection)
+            # ============================================
+            # Load configurable thresholds from RISK SSOT
+            price_floor = RISK.ENTRY_PRICE_FLOOR  # Default: 0.02
+            price_ceiling = RISK.ENTRY_PRICE_CEILING  # Default: 0.98
+            max_spread_pct = RISK.MAX_SPREAD_ENTRY_PCT  # Default: 0.15
+            max_consumption_pct = RISK.MAX_LIQUIDITY_CONSUMPTION_PCT  # Default: 0.25
+            min_coverage_pct = RISK.MIN_LIQUIDITY_COVERAGE_PCT  # Default: 1.0
+            
+            # 1. HARD PRICE FLOOR/CEILING CHECK
+            # Rejects phantom dust orders (e.g., $0.001 asks, $0.999 bids)
+            if current_price < price_floor:
+                logger.warning(f"[ENTRY-REJECT] Price ${current_price:.4f} < floor ${price_floor:.2f} for {market_id[:16]} ({strategy}) - phantom dust order")
+                return
+            if current_price > price_ceiling:
+                logger.warning(f"[ENTRY-REJECT] Price ${current_price:.4f} > ceiling ${price_ceiling:.2f} for {market_id[:16]} ({strategy}) - phantom dust order")
+                return
+            
+            # 2. ORDERBOOK VALIDATION (Spread & Liquidity)
+            order_book = market_data.get('order_book', {})
+            bids = order_book.get('bids', [])
+            asks = order_book.get('asks', [])
+            
+            if bids and asks:
+                best_bid = float(bids[0].get('price', 0))
+                best_ask = float(asks[0].get('price', 0))
+                mid_price = (best_bid + best_ask) / 2 if (best_bid > 0 and best_ask > 0) else current_price
+                spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 1.0
+                
+                # 2a. SPREAD CHECK - Reject illiquid orderbooks
+                if spread_pct > max_spread_pct:
+                    logger.warning(f"[ENTRY-REJECT] Spread {spread_pct:.1%} > max {max_spread_pct:.1%} for {market_id[:16]} ({strategy}) - illiquid book")
+                    return
+                
+                # 2b. ENTRY PRICE FLOOR/CEILING ON ACTUAL FILL PRICE
+                fill_price = best_ask if side == 'YES' else best_bid
+                if fill_price < price_floor:
+                    logger.warning(f"[ENTRY-REJECT] Fill price ${fill_price:.4f} < floor ${price_floor:.2f} for {market_id[:16]} ({strategy}) - phantom ask")
+                    return
+                if fill_price > price_ceiling:
+                    logger.warning(f"[ENTRY-REJECT] Fill price ${fill_price:.4f} > ceiling ${price_ceiling:.2f} for {market_id[:16]} ({strategy}) - phantom bid")
+                    return
+                
+                # 2c. LIQUIDITY COVERAGE CHECK - Can we fill?
+                available_size = float(asks[0].get('size', 0)) if side == 'YES' else float(bids[0].get('size', 0))
+                required_coverage = size * min_coverage_pct
+                if available_size < required_coverage:
+                    logger.warning(f"[ENTRY-REJECT] Liquidity ${available_size:.2f} < required ${required_coverage:.2f} for {market_id[:16]} ({strategy}) - insufficient depth")
+                    return
+                
+                # 2d. MARKET IMPACT CHECK - Should we fill at this size?
+                max_size_for_liquidity = available_size * max_consumption_pct
+                if size > max_size_for_liquidity:
+                    # Reduce size to avoid excessive market impact
+                    old_size = size
+                    size = max(RISK.MIN_TRADE_AMOUNT, max_size_for_liquidity)
+                    logger.info(f"[ENTRY-RESIZE] Size reduced ${old_size:.2f} → ${size:.2f} (max {max_consumption_pct:.0%} of ${available_size:.2f} liquidity) for {market_id[:16]}")
+            
+            # 3. SUSPICIOUS DEFAULT PRICE CHECK
             if abs(current_price - 0.5) < 0.02:
                 # Price is suspiciously close to 0.5 - check if we have real orderbook
-                order_book = market_data.get('order_book', {})
-                bids = order_book.get('bids', [])
-                asks = order_book.get('asks', [])
                 if not bids or not asks:
                     logger.warning(f"[ENTRY-REJECT] Price {current_price:.4f} near 0.5 and no orderbook for {market_id[:16]} - likely default price")
                     return
