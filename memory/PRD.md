@@ -55,6 +55,12 @@ Polymarket API → WebSocket/REST → RealTimeMarketService → PaperTrader
 
 ## Completed Work (Feb 2026)
 
+### Session 53 (Feb 28, 2026)
+- ✅ Fixed Risk Config loading in Settings page (5-Lane SSOT tab)
+- ✅ Added `max_account_drawdown_pct` and `max_realized_drawdown_pct` to `risk_config.json`
+- ✅ Updated dual circuit breaker defaults: Account DD = 10%, Realized DD = 15%
+- ✅ Verified Risk Monitor panel displays all 4 metrics with info directly in cards (no tooltips)
+
 ### Session 52
 - ✅ Removed Layer 3 (stale cached orderbook fallback) from exit logic
 - ✅ Added REST API retry logic (2 attempts, 500ms delay)
