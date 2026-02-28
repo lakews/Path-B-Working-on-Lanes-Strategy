@@ -251,15 +251,23 @@ NEWS EVENT ARRIVES
     - "Counter-Strike: MOUZ vs PARIVISION..." ✅
     - "LoL: T1 vs BNK FEARX..." ✅
   - Files modified: `services/tag_library_service.py`, `trading/hft_engine_v2.py` (added debug logging)
-- [x] **Sports Exit - Real Market Prices Only (Feb 28, 2026)** - Completely eliminated default prices:
-  - **Approach**: Sports exits now require REAL orderbook data - just like actual trading
-  - **Logic**: 
-    1. MUST fetch fresh orderbook from Polymarket API
-    2. MUST have real bids to sell into
-    3. Exit price = best bid (what you'd actually get in real trading)
-    4. NO exit possible without buyers (mimics real market)
-  - **Why this works**: You can't sell in real markets without a buyer. By requiring actual orderbook bids, we eliminate ALL default/fallback prices
-  - **Result**: Exit prices are always real market prices, never 0.49/0.5 defaults
+- [x] **ALL STRATEGIES: Real Market Prices Only (Feb 28, 2026)** - Complete exit architecture overhaul:
+  - **Scope**: ALL strategies (sports, news_sniper, HFT, alpha, gamma, arbitrage)
+  - **Approach**: Exits ONLY happen with verified orderbook data - just like real trading
+  - **Exit Flow**:
+    1. Fetch fresh market from Polymarket API
+    2. Get token IDs for YES/NO tokens
+    3. Fetch orderbook for position side
+    4. Verify orderbook has real bids
+    5. Exit price = best bid (actual execution price)
+    6. Calculate P&L using real verified price
+  - **Blocked Scenarios**:
+    - Market not found in API
+    - No token IDs available
+    - Empty orderbook (no bids)
+    - Invalid bid price (<=0)
+    - Suspicious price (~0.5) + extreme entry + low liquidity (<$10)
+  - **Result**: ALL P&L calculations use real market prices, no defaults
   - Files modified: `paper_trading/paper_trader.py` (_evaluate_exit, _execute_paper_exit)
   - Also fixed: `ml/enhanced_sentiment.py` - sports fair_value rejects ~0.5 values
 
