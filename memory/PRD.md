@@ -251,6 +251,15 @@ NEWS EVENT ARRIVES
     - "Counter-Strike: MOUZ vs PARIVISION..." ✅
     - "LoL: T1 vs BNK FEARX..." ✅
   - Files modified: `services/tag_library_service.py`, `trading/hft_engine_v2.py` (added debug logging)
+- [x] **Sports Exit 0.49 Default Price Fix (Feb 28, 2026)** - Fixed suspicious exits at default 0.5 prices:
+  - **Root cause**: Sports markets with extreme entry prices (e.g., $0.0025) were exiting at ~$0.49 when API returned default/fallback prices
+  - **Bug impact**: Fake P&L of +19000% when real price hadn't moved significantly  
+  - **Fixes implemented**:
+    1. Enhanced `_evaluate_exit()` for sports: Detects suspicious price jumps from extreme to ~0.5, fetches fresh orderbook data, blocks exit if unverified
+    2. Enhanced `_execute_paper_exit()` for sports: Same sanity check before calculating P&L
+    3. Sports fair_value in `enhanced_sentiment.py`: Now uses `None` instead of `0.5` default, blocks trades if API returns ~0.5
+  - **Validation logic**: Block sports exit if (entry extreme) AND (current ~0.5) AND (no orderbook verification)
+  - Files modified: `paper_trading/paper_trader.py`, `ml/enhanced_sentiment.py`
 
 ### P1 - High Priority (NEXT)
 - [ ] Verify BF-based Kelly sizing in NewsSniper
