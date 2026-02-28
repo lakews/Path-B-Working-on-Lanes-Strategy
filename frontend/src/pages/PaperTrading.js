@@ -3841,17 +3841,17 @@ const PaperTrading = () => {
                   <p className="text-white/50 mb-1">Fallback Source</p>
                   <p className="text-white font-medium flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                    REST API
+                    REST API (×2)
                   </p>
-                  <p className="text-white/40 text-[10px] mt-1">~100ms latency</p>
+                  <p className="text-white/40 text-[10px] mt-1">~100ms + 500ms retry</p>
                 </div>
                 <div className="bg-white/5 rounded-lg p-3">
-                  <p className="text-white/50 mb-1">Safety Check</p>
+                  <p className="text-white/50 mb-1">No Stale Data</p>
                   <p className="text-white font-medium flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-rose-400"></span>
-                    Block if No Price
+                    Queue if No Price
                   </p>
-                  <p className="text-white/40 text-[10px] mt-1">No defaults (0.5)</p>
+                  <p className="text-white/40 text-[10px] mt-1">Retry next cycle</p>
                 </div>
               </div>
             </div>
