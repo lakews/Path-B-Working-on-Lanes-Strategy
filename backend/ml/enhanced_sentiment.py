@@ -335,7 +335,19 @@ class EnhancedSentimentAnalyzer:
         market_id = market_data.get('id', '')
         question = market_data.get('question', '')
         raw_category = market_data.get('category', 'unknown')
-        yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
+        
+        # CRITICAL: Do NOT use 0.5 default for yes_price - it causes incorrect trading
+        raw_yes_price = market_data.get('yes_price')
+        if raw_yes_price is None or raw_yes_price == 0:
+            logger.warning(f"[SENTIMENT] No valid yes_price for {market_id[:20]} - cannot analyze")
+            return {
+                'combined_sentiment': None,
+                'combined_confidence': 0.0,
+                'analysis_source': 'none',
+                'block_reason': 'no_valid_price',
+                'detected_category': self._detect_category(market_data),
+            }
+        yes_price = float(raw_yes_price)
         
         # Detect TRUE category for proper weighting
         detected_category = self._detect_category(market_data)
