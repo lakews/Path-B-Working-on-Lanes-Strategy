@@ -635,9 +635,17 @@ class PaperTrader:
         self.winning_trades = 0
         self.total_pnl = 0.0  # Realized P&L
         self.unrealized_pnl = 0.0  # Unrealized P&L from open positions
-        self.max_drawdown = 0.0
-        self.peak_capital = self.initial_capital
-        self.circuit_breaker_triggered = False  # Circuit breaker flag
+        
+        # NEW: Four-Metric Drawdown System (Feb 2026)
+        # Peaks updated ONLY on profitable trade close (no phantom peaks from unrealized)
+        self.peak_realized_pnl = 0.0  # Highest locked-in P&L
+        self.peak_equity_on_close = self.initial_capital  # Highest equity at trade close
+        
+        # Circuit breaker config (dual triggers)
+        self.max_account_drawdown_pct = 10.0  # PRIMARY: Account down from initial
+        self.max_realized_drawdown_pct = 15.0  # SECONDARY: Realized P&L drawdown
+        self.circuit_breaker_triggered = False
+        self.circuit_breaker_reason = None  # 'account_drawdown' or 'realized_drawdown'
         
         # Strategy performance tracking (with full metrics like backtest)
         # Initialize ALL strategies upfront so they appear in results even with 0 trades
