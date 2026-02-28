@@ -5480,6 +5480,8 @@ class PaperTrader:
             # This prevents the 0.49/0.50 exit price bug caused by fallback values.
             # ==========================================================================
             if strategy == 'sports_arbitrage' or asset_class == 'sports':
+                yes_entry_price = position.get('yes_entry_price', position.get('entry_price', 0))
+                
                 try:
                     from data.polymarket_api import PolymarketAPI
                     async with PolymarketAPI() as api:
@@ -5487,11 +5489,49 @@ class PaperTrader:
                         if fresh_market:
                             fresh_yes_price = fresh_market.get('yes_price') or fresh_market.get('outcomePrices', [None])[0]
                             if fresh_yes_price and float(fresh_yes_price) > 0:
-                                current_price = float(fresh_yes_price)
-                                # Update market_data for downstream orderbook fetch
-                                market_data['yes_price'] = current_price
-                                market_data['token_ids'] = fresh_market.get('clobTokenIds', [])
-                                logger.info(f"[SPORTS-EXIT] Fresh price for {market_id[:16]}: ${current_price:.4f}")
+                                fresh_price = float(fresh_yes_price)
+                                
+                                # ==========================================================
+                                # SPORTS SANITY CHECK: Block suspicious price jumps
+                                # ==========================================================
+                                # If entry was at extreme (e.g., $0.0025) and current is ~0.5,
+                                # this is almost certainly a default/fallback, NOT real movement
+                                # ==========================================================
+                                entry_is_extreme = yes_entry_price < 0.10 or yes_entry_price > 0.90
+                                current_is_neutral = abs(fresh_price - 0.5) < 0.05
+                                
+                                if entry_is_extreme and current_is_neutral:
+                                    # Verify with orderbook before accepting this suspicious price
+                                    token_ids = fresh_market.get('clobTokenIds', [])
+                                    orderbook_verified = False
+                                    if token_ids:
+                                        try:
+                                            fresh_ob = await api.get_order_book(token_ids[0])
+                                            if fresh_ob.get('bids') and fresh_ob.get('asks'):
+                                                # Orderbook exists, use best bid/ask for pricing
+                                                bids = fresh_ob.get('bids', [])
+                                                asks = fresh_ob.get('asks', [])
+                                                if bids and asks:
+                                                    best_bid = float(bids[0].get('price', 0))
+                                                    best_ask = float(asks[0].get('price', 0))
+                                                    if best_bid > 0 and best_ask > 0:
+                                                        # Use orderbook mid for exit, not the suspicious 0.5
+                                                        current_price = (best_bid + best_ask) / 2
+                                                        orderbook_verified = True
+                                                        logger.info(f"[SPORTS-EXIT] Using orderbook mid ${current_price:.4f} (bid={best_bid:.4f}, ask={best_ask:.4f})")
+                                        except Exception as ob_err:
+                                            logger.debug(f"[SPORTS-EXIT] Orderbook fetch failed: {ob_err}")
+                                    
+                                    if not orderbook_verified:
+                                        logger.warning(f"[SPORTS-EXIT-BLOCK] Entry ${yes_entry_price:.4f} -> Current ${fresh_price:.4f}")
+                                        logger.warning(f"   Suspicious price jump to ~0.5 without orderbook verification")
+                                        logger.warning(f"   Blocking exit to prevent fake P&L calculation")
+                                        return
+                                else:
+                                    current_price = fresh_price
+                                    market_data['yes_price'] = current_price
+                                    market_data['token_ids'] = fresh_market.get('clobTokenIds', [])
+                                    logger.info(f"[SPORTS-EXIT] Fresh price for {market_id[:16]}: ${current_price:.4f}")
                 except Exception as e:
                     logger.warning(f"[SPORTS-EXIT] Could not fetch fresh market data: {e}")
             
