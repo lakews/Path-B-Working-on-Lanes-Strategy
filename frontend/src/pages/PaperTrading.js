@@ -4198,7 +4198,13 @@ const PaperTrading = () => {
 
           {/* Open Positions */}
           <div className="rounded-xl bg-white/5 border border-white/10 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><Layers className="w-5 h-5 text-orange-400" />Open Positions ({positions.length})</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Layers className="w-5 h-5 text-orange-400" />
+                Open Positions ({positions.length})
+              </h3>
+              <PopOutButton onClick={() => setPositionsPopOut(true)} tooltip="Pop out positions" />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-80 overflow-y-auto">
               {positions.length > 0 ? positions.map((pos, idx) => (
                 <PositionCard 
