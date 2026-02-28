@@ -3975,6 +3975,7 @@ const PaperTrading = () => {
                 : laneAnalytics  // Fall back to database analytics
             }
             isLoading={!status && !laneAnalytics}
+            onReset={handleResetLiveSession}
           />
 
           {/* Equity Curves */}
