@@ -854,6 +854,18 @@ class RiskConfig:
         if 'max_liquidity_consumption' in data:
             self.MAX_LIQUIDITY_CONSUMPTION = float(data['max_liquidity_consumption'])
         
+        # Entry Validation (Phantom Order Protection)
+        if 'entry_price_floor' in data:
+            self.ENTRY_PRICE_FLOOR = float(data['entry_price_floor'])
+        if 'entry_price_ceiling' in data:
+            self.ENTRY_PRICE_CEILING = float(data['entry_price_ceiling'])
+        if 'max_liquidity_consumption_pct' in data:
+            self.MAX_LIQUIDITY_CONSUMPTION_PCT = float(data['max_liquidity_consumption_pct'])
+        if 'min_liquidity_coverage_pct' in data:
+            self.MIN_LIQUIDITY_COVERAGE_PCT = float(data['min_liquidity_coverage_pct'])
+        if 'max_spread_entry_pct' in data:
+            self.MAX_SPREAD_ENTRY_PCT = float(data['max_spread_entry_pct'])
+        
         # Exposure
         if 'max_event_exposure_pct' in data:
             self.MAX_EVENT_EXPOSURE_PCT = float(data['max_event_exposure_pct'])
