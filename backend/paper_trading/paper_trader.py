@@ -8180,22 +8180,40 @@ class PaperTrader:
                     # Calculate TOTAL EQUITY (cash + deployed + unrealized)
                     total_equity = self.current_capital + deployed_capital + self.unrealized_pnl
                     
-                    # Update peak capital based on TOTAL EQUITY (not just cash)
-                    # This ensures peak tracks true highest value during trading
-                    if total_equity > self.peak_capital:
-                        self.peak_capital = total_equity
+                    # NOTE: Peaks are updated ONLY on profitable trade close (see _execute_paper_exit)
+                    # This prevents phantom peaks from unrealized gains
                     
-                    # CIRCUIT BREAKER: Check drawdown based on TOTAL EQUITY
-                    if self.peak_capital > 0:
-                        # Drawdown should only trigger if total equity drops below peak
-                        # NOT when we simply deploy cash to positions
-                        combined_drawdown = (self.peak_capital - total_equity) / self.peak_capital
-                        combined_drawdown_pct = combined_drawdown * 100
-                        
-                        if combined_drawdown_pct >= self.max_drawdown_pct and not self.circuit_breaker_triggered:
-                            logger.warning(f"🚨 CIRCUIT BREAKER TRIGGERED! Drawdown {combined_drawdown_pct:.2f}% >= {self.max_drawdown_pct}% limit")
-                            logger.warning(f"   Peak: ${self.peak_capital:.2f} | Equity: ${total_equity:.2f} (Cash: ${self.current_capital:.2f} + Deployed: ${deployed_capital:.2f} + Unrealized: ${self.unrealized_pnl:.2f})")
+                    # Four-Metric Drawdown Calculations (real-time monitoring)
+                    # 1. Positional DD
+                    positional_dd_pct = max(0, (-self.unrealized_pnl / deployed_capital) * 100) if deployed_capital > 0 else 0
+                    
+                    # 2. Account DD (PRIMARY CIRCUIT BREAKER)
+                    account_dd_pct = max(0, ((self.initial_capital - total_equity) / self.initial_capital) * 100)
+                    
+                    # 3. Realized DD (SECONDARY CIRCUIT BREAKER)  
+                    if self.peak_realized_pnl > 0:
+                        realized_dd_pct = max(0, ((self.peak_realized_pnl - self.total_pnl) / self.initial_capital) * 100)
+                    else:
+                        realized_dd_pct = max(0, (-self.total_pnl / self.initial_capital) * 100)
+                    
+                    # 4. Total DD (informational, uses peak from close)
+                    if self.peak_equity_on_close > 0:
+                        total_dd_pct = max(0, ((self.peak_equity_on_close - total_equity) / self.peak_equity_on_close) * 100)
+                    else:
+                        total_dd_pct = 0.0
+                    
+                    # DUAL CIRCUIT BREAKER CHECK
+                    if not self.circuit_breaker_triggered:
+                        if account_dd_pct >= self.max_account_drawdown_pct:
+                            logger.warning(f"🚨 CIRCUIT BREAKER: Account DD {account_dd_pct:.1f}% >= {self.max_account_drawdown_pct}% limit")
+                            logger.warning(f"   Initial: ${self.initial_capital:.2f} | Equity: ${total_equity:.2f}")
                             self.circuit_breaker_triggered = True
+                            self.circuit_breaker_reason = "account_drawdown"
+                        elif realized_dd_pct >= self.max_realized_drawdown_pct:
+                            logger.warning(f"🚨 CIRCUIT BREAKER: Realized DD {realized_dd_pct:.1f}% >= {self.max_realized_drawdown_pct}% limit")
+                            logger.warning(f"   Peak P&L: ${self.peak_realized_pnl:.2f} | Current P&L: ${self.total_pnl:.2f}")
+                            self.circuit_breaker_triggered = True
+                            self.circuit_breaker_reason = "realized_drawdown"
                 else:
                     self.unrealized_pnl = 0.0
                 
