@@ -415,6 +415,110 @@ const RiskSettings = () => {
             </div>
             </div>
           </div>
+
+          {/* Entry Validation Section */}
+          <div className="mt-6 pt-6 border-t border-white/10">
+            <h4 className="text-md font-semibold text-cyan-400 mb-4 flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Entry Validation (Phantom Order Protection)
+            </h4>
+            <p className="text-xs text-gray-500 mb-4">
+              Prevents recording phantom fills from dust orders that would never execute in reality.
+              These settings protect P&L accuracy and ML/RL training data.
+            </p>
+            
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {/* Entry Price Floor */}
+              <div className="bg-gray-900/50 rounded-lg p-4">
+                <label className="block text-sm text-gray-400 mb-2">Price Floor</label>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-red-400" />
+                  <input
+                    type="number"
+                    value={(config.global.entry_price_floor || 0.02)}
+                    onChange={(e) => updateConfig('global.entry_price_floor', parseFloat(e.target.value))}
+                    className="w-20 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
+                    min="0.01"
+                    max="0.10"
+                    step="0.01"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Reject below</p>
+              </div>
+
+              {/* Entry Price Ceiling */}
+              <div className="bg-gray-900/50 rounded-lg p-4">
+                <label className="block text-sm text-gray-400 mb-2">Price Ceiling</label>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-red-400" />
+                  <input
+                    type="number"
+                    value={(config.global.entry_price_ceiling || 0.98)}
+                    onChange={(e) => updateConfig('global.entry_price_ceiling', parseFloat(e.target.value))}
+                    className="w-20 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
+                    min="0.90"
+                    max="0.99"
+                    step="0.01"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Reject above</p>
+              </div>
+
+              {/* Max Spread */}
+              <div className="bg-gray-900/50 rounded-lg p-4">
+                <label className="block text-sm text-gray-400 mb-2">Max Spread</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={((config.global.max_spread_entry_pct || 0.15) * 100).toFixed(0)}
+                    onChange={(e) => updateConfig('global.max_spread_entry_pct', parseFloat(e.target.value) / 100)}
+                    className="w-20 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
+                    min="5"
+                    max="25"
+                    step="1"
+                  />
+                  <Percent className="w-4 h-4 text-gray-400" />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Skip illiquid</p>
+              </div>
+
+              {/* Max Liquidity Consumption */}
+              <div className="bg-gray-900/50 rounded-lg p-4">
+                <label className="block text-sm text-gray-400 mb-2">Max Consumption</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={((config.global.max_liquidity_consumption_pct || 0.25) * 100).toFixed(0)}
+                    onChange={(e) => updateConfig('global.max_liquidity_consumption_pct', parseFloat(e.target.value) / 100)}
+                    className="w-20 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
+                    min="10"
+                    max="50"
+                    step="5"
+                  />
+                  <Percent className="w-4 h-4 text-gray-400" />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Of book depth</p>
+              </div>
+
+              {/* Min Liquidity Coverage */}
+              <div className="bg-gray-900/50 rounded-lg p-4">
+                <label className="block text-sm text-gray-400 mb-2">Min Coverage</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={((config.global.min_liquidity_coverage_pct || 1.0) * 100).toFixed(0)}
+                    onChange={(e) => updateConfig('global.min_liquidity_coverage_pct', parseFloat(e.target.value) / 100)}
+                    className="w-20 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
+                    min="50"
+                    max="100"
+                    step="10"
+                  />
+                  <Percent className="w-4 h-4 text-gray-400" />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Can fill order</p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
