@@ -335,19 +335,7 @@ class EnhancedSentimentAnalyzer:
         market_id = market_data.get('id', '')
         question = market_data.get('question', '')
         raw_category = market_data.get('category', 'unknown')
-        
-        # CRITICAL: Do NOT use 0.5 default for yes_price - it causes incorrect trading
-        raw_yes_price = market_data.get('yes_price')
-        if raw_yes_price is None or raw_yes_price == 0:
-            logger.warning(f"[SENTIMENT] No valid yes_price for {market_id[:20]} - cannot analyze")
-            return {
-                'combined_sentiment': None,
-                'combined_confidence': 0.0,
-                'analysis_source': 'none',
-                'block_reason': 'no_valid_price',
-                'detected_category': self._detect_category(market_data),
-            }
-        yes_price = float(raw_yes_price)
+        yes_price = float(market_data.get('yes_price', 0.5) or 0.5)
         
         # Detect TRUE category for proper weighting
         detected_category = self._detect_category(market_data)
@@ -502,7 +490,7 @@ class EnhancedSentimentAnalyzer:
         # ================================================================
         # 5. GITHUB SENTIMENT (ONLY for crypto/tech markets)
         # ================================================================
-        github_sentiment = None  # CRITICAL: None, not 0.5 - no default values
+        github_sentiment = 0.5
         github_confidence = 0.0
         
         if detected_category == 'crypto' and self.github_sentiment:
@@ -510,20 +498,17 @@ class EnhancedSentimentAnalyzer:
                 github_result = await self.github_sentiment.analyze_market(market_data)
                 
                 if github_result.get('is_relevant'):
-                    raw_github_sentiment = github_result.get('github_sentiment')
-                    # Only use if it's a real value, not 0.5 default
-                    if raw_github_sentiment is not None and abs(raw_github_sentiment - 0.5) >= 0.01:
-                        github_sentiment = raw_github_sentiment
-                        github_confidence = github_result.get('github_confidence', 0.0)
-                        
-                        result['github_sentiment'] = github_sentiment
-                        result['github_confidence'] = github_confidence
-                        result['github_signals'] = github_result.get('signals', {})
-                        result['github_repos'] = github_result.get('repos_analyzed', [])
-                        result['github_interpretation'] = github_result.get('interpretation', '')
-                        
-                        if github_confidence > 0.2:
-                            sources_used.append('github')
+                    github_sentiment = github_result.get('github_sentiment', 0.5)
+                    github_confidence = github_result.get('github_confidence', 0.0)
+                    
+                    result['github_sentiment'] = github_sentiment
+                    result['github_confidence'] = github_confidence
+                    result['github_signals'] = github_result.get('signals', {})
+                    result['github_repos'] = github_result.get('repos_analyzed', [])
+                    result['github_interpretation'] = github_result.get('interpretation', '')
+                    
+                    if github_confidence > 0.2:
+                        sources_used.append('github')
                         
             except Exception as e:
                 logger.debug(f"GitHub sentiment error: {e}")
