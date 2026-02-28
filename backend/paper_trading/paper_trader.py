@@ -6635,30 +6635,47 @@ class PaperTrader:
                 self.total_pnl += pnl
                 self.current_capital += size + pnl
                 
-                # Calculate total equity for accurate peak tracking
-                # total_equity = cash + deployed + unrealized
+                # Calculate total equity for accurate tracking
                 actual_deployed = sum(p.get('size', 0) for p in self.paper_positions.values())
                 total_equity = self.current_capital + actual_deployed + self.unrealized_pnl
                 
-                # Track peak based on TOTAL EQUITY (not just cash)
-                # This ensures peak reflects true highest value including open positions
-                if total_equity > self.peak_capital:
-                    self.peak_capital = total_equity
-                
-                # Calculate drawdown based on total equity
-                drawdown = (self.peak_capital - total_equity) / self.peak_capital if self.peak_capital > 0 else 0
-                self.max_drawdown = max(self.max_drawdown, drawdown)
+                # NEW: Update peaks ONLY on PROFITABLE close (no phantom peaks)
+                if pnl > 0:
+                    if self.total_pnl > self.peak_realized_pnl:
+                        self.peak_realized_pnl = self.total_pnl
+                        logger.info(f"📈 New Peak Realized P&L: ${self.peak_realized_pnl:.2f}")
+                    if total_equity > self.peak_equity_on_close:
+                        self.peak_equity_on_close = total_equity
+                        logger.info(f"📈 New Peak Equity: ${self.peak_equity_on_close:.2f}")
             
             # PERSIST: Delete position from database (after lock release)
             await self._delete_position_from_db(market_id)
             
-            # CIRCUIT BREAKER: Check if drawdown exceeds max allowed (from Settings)
-            drawdown_pct = drawdown * 100
-            if drawdown_pct >= self.max_drawdown_pct:
-                logger.warning(f"🚨 CIRCUIT BREAKER TRIGGERED! Drawdown {drawdown_pct:.2f}% >= {self.max_drawdown_pct}% limit")
-                logger.warning(f"   Peak: ${self.peak_capital:.2f} | Equity: ${total_equity:.2f} (Cash: ${self.current_capital:.2f} + Deployed: ${actual_deployed:.2f} + Unrealized: ${self.unrealized_pnl:.2f})")
-                self.circuit_breaker_triggered = True
-                # Stop accepting new trades - will be checked in main loop
+            # NEW: Four-Metric Drawdown Calculations
+            # 1. Positional DD: How much are open positions losing?
+            positional_dd_pct = max(0, (-self.unrealized_pnl / actual_deployed) * 100) if actual_deployed > 0 else 0
+            
+            # 2. Account DD: How much is account down from initial? (PRIMARY CIRCUIT BREAKER)
+            account_dd_pct = max(0, ((self.initial_capital - total_equity) / self.initial_capital) * 100)
+            
+            # 3. Realized DD: How much locked-in profit given back? (SECONDARY CIRCUIT BREAKER)
+            if self.peak_realized_pnl > 0:
+                realized_dd_pct = max(0, ((self.peak_realized_pnl - self.total_pnl) / self.initial_capital) * 100)
+            else:
+                realized_dd_pct = max(0, (-self.total_pnl / self.initial_capital) * 100)
+            
+            # DUAL CIRCUIT BREAKER CHECK
+            if not self.circuit_breaker_triggered:
+                if account_dd_pct >= self.max_account_drawdown_pct:
+                    logger.warning(f"🚨 CIRCUIT BREAKER: Account DD {account_dd_pct:.1f}% >= {self.max_account_drawdown_pct}% limit")
+                    logger.warning(f"   Initial: ${self.initial_capital:.2f} | Equity: ${total_equity:.2f}")
+                    self.circuit_breaker_triggered = True
+                    self.circuit_breaker_reason = "account_drawdown"
+                elif realized_dd_pct >= self.max_realized_drawdown_pct:
+                    logger.warning(f"🚨 CIRCUIT BREAKER: Realized DD {realized_dd_pct:.1f}% >= {self.max_realized_drawdown_pct}% limit")
+                    logger.warning(f"   Peak P&L: ${self.peak_realized_pnl:.2f} | Current P&L: ${self.total_pnl:.2f}")
+                    self.circuit_breaker_triggered = True
+                    self.circuit_breaker_reason = "realized_drawdown"
             
             # Track wins
             is_win = pnl > 0
