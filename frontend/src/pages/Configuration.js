@@ -33,7 +33,9 @@ const Configuration = () => {
     max_position_size_pct: 3,
     kelly_fraction: 0.25,
     kelly_enabled: true,
-    max_drawdown_pct: 5,
+    // NEW: Dual Circuit Breaker Config
+    max_account_drawdown_pct: 10,   // PRIMARY: Account vs Initial Capital
+    max_realized_drawdown_pct: 15,  // SECONDARY: Realized P&L drawdown
     min_liquidity: 100,
     max_liquidity: 1000000,
     min_volume_24h: 1000,
