@@ -3664,6 +3664,109 @@ const PaperTrading = () => {
         onClose={() => setTradeDetailsModal({ isOpen: false, trade: null })}
       />
 
+      {/* Pop-out Modal for Open Positions */}
+      <PopOutTableModal 
+        isOpen={positionsPopOut} 
+        title={`Open Positions (${positions.length})`}
+        onClose={() => setPositionsPopOut(false)}
+      >
+        <table className="w-full text-sm">
+          <thead className="bg-white/5 sticky top-0">
+            <tr>
+              <th className="py-3 px-4 text-left text-xs text-white/60 uppercase">Market</th>
+              <th className="py-3 px-4 text-left text-xs text-white/60 uppercase">Strategy</th>
+              <th className="py-3 px-4 text-left text-xs text-white/60 uppercase">Side</th>
+              <th className="py-3 px-4 text-right text-xs text-white/60 uppercase">Entry</th>
+              <th className="py-3 px-4 text-right text-xs text-white/60 uppercase">Current</th>
+              <th className="py-3 px-4 text-right text-xs text-white/60 uppercase">Size</th>
+              <th className="py-3 px-4 text-right text-xs text-white/60 uppercase">Unrealized P&L</th>
+              <th className="py-3 px-4 text-right text-xs text-white/60 uppercase">Return %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {positions.map((pos, idx) => {
+              const pnl = pos.unrealized_pnl || 0;
+              const pnlPct = pos.unrealized_pnl_pct ? pos.unrealized_pnl_pct * 100 : 0;
+              return (
+                <tr key={idx} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="py-3 px-4 text-white/80 max-w-xs truncate">{pos.question || pos.market_id?.substring(0, 40)}</td>
+                  <td className="py-3 px-4"><span className="px-2 py-1 rounded text-xs bg-cyan-500/20 text-cyan-400">{pos.strategy}</span></td>
+                  <td className="py-3 px-4"><span className={`px-2 py-1 rounded text-xs ${pos.side === 'YES' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>{pos.side}</span></td>
+                  <td className="py-3 px-4 text-right font-mono text-white">${pos.entry_price?.toFixed(4)}</td>
+                  <td className="py-3 px-4 text-right font-mono text-white">${pos.current_price?.toFixed(4)}</td>
+                  <td className="py-3 px-4 text-right font-mono text-white">${pos.size?.toFixed(2)}</td>
+                  <td className={`py-3 px-4 text-right font-mono font-medium ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                  </td>
+                  <td className={`py-3 px-4 text-right font-mono font-medium ${pnlPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
+                  </td>
+                </tr>
+              );
+            })}
+            {positions.length === 0 && (
+              <tr><td colSpan={8} className="py-8 text-center text-white/40">No open positions</td></tr>
+            )}
+          </tbody>
+        </table>
+      </PopOutTableModal>
+
+      {/* Pop-out Modal for Trade History */}
+      <PopOutTableModal 
+        isOpen={tradesPopOut} 
+        title={`Trade History (${trades.length} trades)`}
+        onClose={() => setTradesPopOut(false)}
+      >
+        <table className="w-full text-sm">
+          <thead className="bg-white/5 sticky top-0">
+            <tr>
+              <th className="py-3 px-4 text-left text-xs text-white/60 uppercase">Status</th>
+              <th className="py-3 px-4 text-left text-xs text-white/60 uppercase">Market</th>
+              <th className="py-3 px-4 text-left text-xs text-white/60 uppercase">Strategy</th>
+              <th className="py-3 px-4 text-left text-xs text-white/60 uppercase">Side</th>
+              <th className="py-3 px-4 text-right text-xs text-white/60 uppercase">Entry</th>
+              <th className="py-3 px-4 text-right text-xs text-white/60 uppercase">Exit</th>
+              <th className="py-3 px-4 text-right text-xs text-white/60 uppercase">Size</th>
+              <th className="py-3 px-4 text-right text-xs text-white/60 uppercase">P&L ($)</th>
+              <th className="py-3 px-4 text-right text-xs text-white/60 uppercase">Return %</th>
+              <th className="py-3 px-4 text-left text-xs text-white/60 uppercase">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedTrades.map((trade, idx) => {
+              const isEntry = trade.type === 'entry';
+              const pnl = trade.pnl || 0;
+              const pnlPct = trade.pnl_pct ? trade.pnl_pct * 100 : (trade.size > 0 ? (pnl / trade.size * 100) : 0);
+              return (
+                <tr key={idx} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="py-3 px-4">
+                    <span className={`px-2 py-1 rounded text-xs ${isEntry ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                      {isEntry ? 'OPEN' : 'CLOSED'}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-white/80 max-w-xs truncate">{trade.question || trade.market_question || trade.market_id?.substring(0, 40)}</td>
+                  <td className="py-3 px-4"><span className="px-2 py-1 rounded text-xs bg-cyan-500/20 text-cyan-400">{trade.strategy}</span></td>
+                  <td className="py-3 px-4"><span className={`px-2 py-1 rounded text-xs ${trade.side === 'YES' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>{trade.side}</span></td>
+                  <td className="py-3 px-4 text-right font-mono text-white">${trade.entry_price?.toFixed(4)}</td>
+                  <td className="py-3 px-4 text-right font-mono text-white">{trade.exit_price ? `$${trade.exit_price.toFixed(4)}` : '-'}</td>
+                  <td className="py-3 px-4 text-right font-mono text-white">${trade.size?.toFixed(2)}</td>
+                  <td className={`py-3 px-4 text-right font-mono font-medium ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {!isEntry ? (pnl >= 0 ? '+' : '') + `$${pnl.toFixed(2)}` : '-'}
+                  </td>
+                  <td className={`py-3 px-4 text-right font-mono font-medium ${pnlPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {!isEntry ? (pnlPct >= 0 ? '+' : '') + `${pnlPct.toFixed(2)}%` : '-'}
+                  </td>
+                  <td className="py-3 px-4 text-white/60 text-xs">{trade.timestamp ? new Date(trade.timestamp).toLocaleString() : '-'}</td>
+                </tr>
+              );
+            })}
+            {trades.length === 0 && (
+              <tr><td colSpan={10} className="py-8 text-center text-white/40">No trades yet</td></tr>
+            )}
+          </tbody>
+        </table>
+      </PopOutTableModal>
+
       {/* Header */}
       <div className="rounded-2xl bg-[#111111] border border-white/[0.06] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.04]">
