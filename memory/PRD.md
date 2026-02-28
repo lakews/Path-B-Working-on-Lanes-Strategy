@@ -60,6 +60,9 @@ Polymarket API → WebSocket/REST → RealTimeMarketService → PaperTrader
 - ✅ Added `max_account_drawdown_pct` and `max_realized_drawdown_pct` to `risk_config.json`
 - ✅ Updated dual circuit breaker defaults: Account DD = 10%, Realized DD = 15%
 - ✅ Verified Risk Monitor panel displays all 4 metrics with info directly in cards (no tooltips)
+- ✅ Added dual CB fields to `TradingConfig` model in `server.py`
+- ✅ Updated `/api/config` GET and `/api/config/update` POST endpoints for new fields
+- ✅ Fixed Risk Monitor showing wrong limits (was 3%/$300, now 10%/$1000)
 
 ### Session 52
 - ✅ Removed Layer 3 (stale cached orderbook fallback) from exit logic
