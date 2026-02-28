@@ -3788,23 +3788,6 @@ const PaperTrading = () => {
                 icon={Activity} 
                 color="violet" 
               />
-              {/* Max Drawdown - Custom styling for alerts */}
-              <div className={`rounded-xl p-4 min-w-0 overflow-hidden ${
-                status?.circuit_breaker_triggered 
-                  ? 'bg-rose-500/20 border-2 border-rose-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3)] animate-pulse' 
-                  : 'bg-gradient-to-br from-rose-500/10 to-rose-600/5 border border-rose-500/20'
-              }`}>
-                <div className="flex items-center justify-between mb-2 min-w-0">
-                  <span className={`text-[10px] sm:text-xs uppercase tracking-wider truncate ${status?.circuit_breaker_triggered ? 'text-rose-400' : 'text-white/50'}`}>Max Drawdown</span>
-                  <Shield className={`w-4 h-4 flex-shrink-0 ${status?.circuit_breaker_triggered ? 'text-rose-400' : 'text-rose-400/60'}`} />
-                </div>
-                <p className={`text-lg sm:text-xl lg:text-2xl font-bold font-mono tracking-tight ${status?.circuit_breaker_triggered ? 'text-rose-400' : 'text-white'}`}>
-                  {(status?.current_drawdown_pct || 0).toFixed(1)}%
-                </p>
-                <p className={`text-[10px] sm:text-xs mt-1.5 truncate ${status?.circuit_breaker_triggered ? 'text-rose-300/60' : 'text-white/40'}`}>
-                  Limit: {savedConfig?.max_drawdown_pct || status.config?.max_drawdown_pct || 5}%
-                </p>
-              </div>
             </div>
           )}
 
