@@ -3817,6 +3817,46 @@ const PaperTrading = () => {
             />
           )}
 
+          {/* WebSocket Health Monitor - Real-time data source visibility */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-1">
+              <WebSocketHealthMonitor />
+            </div>
+            <div className="lg:col-span-2 rounded-xl bg-gradient-to-br from-slate-900/50 to-slate-800/30 border border-white/10 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-sm font-semibold text-white">Exit Data Source</h3>
+                <span className="ml-auto px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-medium">REAL PRICES ONLY</span>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                <div className="bg-white/5 rounded-lg p-3">
+                  <p className="text-white/50 mb-1">Primary Source</p>
+                  <p className="text-white font-medium flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                    WebSocket Cache
+                  </p>
+                  <p className="text-white/40 text-[10px] mt-1">sub-1ms latency</p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                  <p className="text-white/50 mb-1">Fallback Source</p>
+                  <p className="text-white font-medium flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                    REST API
+                  </p>
+                  <p className="text-white/40 text-[10px] mt-1">~100ms latency</p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                  <p className="text-white/50 mb-1">Safety Check</p>
+                  <p className="text-white font-medium flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                    Block if No Price
+                  </p>
+                  <p className="text-white/40 text-[10px] mt-1">No defaults (0.5)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Lane Performance Cards - Five-Lane Analytics */}
           <LanePerformance 
             data={
