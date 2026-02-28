@@ -335,6 +335,9 @@ class TradingConfig(BaseModel):
     kelly_fraction: Optional[float] = None
     kelly_enabled: Optional[bool] = None  # Toggle Kelly Criterion on/off
     max_drawdown_pct: Optional[float] = None
+    # Dual Circuit Breaker Configuration
+    max_account_drawdown_pct: Optional[float] = None    # PRIMARY: Account vs initial capital (default 10%)
+    max_realized_drawdown_pct: Optional[float] = None   # SECONDARY: Realized P&L drawdown (default 15%)
     # Market selection filters
     min_liquidity: Optional[float] = None
     max_liquidity: Optional[float] = None  # New: max liquidity filter
