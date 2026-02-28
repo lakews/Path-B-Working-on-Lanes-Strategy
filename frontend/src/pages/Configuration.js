@@ -418,7 +418,9 @@ const Configuration = () => {
         max_position_size_pct: savedConfig.max_position_size_pct ?? prev.max_position_size_pct,
         kelly_fraction: savedConfig.kelly_fraction ?? prev.kelly_fraction,
         kelly_enabled: savedConfig.kelly_enabled ?? prev.kelly_enabled,
-        max_drawdown_pct: savedConfig.max_drawdown_pct ?? prev.max_drawdown_pct,
+        // NEW: Dual Circuit Breaker Config
+        max_account_drawdown_pct: savedConfig.max_account_drawdown_pct ?? prev.max_account_drawdown_pct,
+        max_realized_drawdown_pct: savedConfig.max_realized_drawdown_pct ?? prev.max_realized_drawdown_pct,
         min_liquidity: savedConfig.min_liquidity ?? prev.min_liquidity,
         max_liquidity: savedConfig.max_liquidity ?? prev.max_liquidity,
         min_volume_24h: savedConfig.min_volume_24h ?? prev.min_volume_24h,
