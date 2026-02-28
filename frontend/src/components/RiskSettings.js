@@ -242,7 +242,20 @@ const RiskSettings = () => {
         
         {expandedSections.global && config.global && (
           <div className="p-4 pt-0 space-y-4">
-            {/* NEW: Dual Circuit Breaker */}
+            {/* NEW: Dual Circuit Breaker with Reset Button */}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-white/50">Circuit Breaker Limits</span>
+              <button
+                onClick={() => {
+                  updateConfig('global.max_account_drawdown_pct', 0.10);
+                  updateConfig('global.max_realized_drawdown_pct', 0.15);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/60 hover:text-white transition-colors"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Reset to Defaults (10%/15%)
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Account Drawdown - Primary */}
               <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-4">
