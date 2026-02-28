@@ -42,7 +42,7 @@ class TestBackendHealth:
     
     def test_paper_trading_status(self):
         """Check paper trading status endpoint."""
-        response = requests.get(f"{BASE_URL}/api/paper-trading/status", timeout=10)
+        response = requests.get(f"{BASE_URL}/api/paper/status", timeout=10)
         assert response.status_code == 200
         data = response.json()
         print(f"✓ Paper trading status: running={data.get('running')}, session={data.get('session_id')}")
@@ -102,7 +102,7 @@ class TestPaperTradingSessionStart:
     def test_start_paper_trading_session(self):
         """Start a paper trading session and verify it initializes correctly."""
         # First check current status
-        status_response = requests.get(f"{BASE_URL}/api/paper-trading/status", timeout=10)
+        status_response = requests.get(f"{BASE_URL}/api/paper/status", timeout=10)
         assert status_response.status_code == 200
         status = status_response.json()
         
@@ -111,14 +111,14 @@ class TestPaperTradingSessionStart:
             return
         
         # Start paper trading
-        start_response = requests.post(f"{BASE_URL}/api/paper-trading/start", timeout=30)
+        start_response = requests.post(f"{BASE_URL}/api/paper/start", timeout=30)
         assert start_response.status_code == 200
         data = start_response.json()
         print(f"✓ Paper trading started: {json.dumps(data, indent=2)[:500]}")
     
     def test_paper_trading_positions(self):
         """Check paper trading positions endpoint."""
-        response = requests.get(f"{BASE_URL}/api/paper-trading/positions", timeout=10)
+        response = requests.get(f"{BASE_URL}/api/paper/positions", timeout=10)
         assert response.status_code == 200
         data = response.json()
         print(f"✓ Paper trading positions: {len(data) if isinstance(data, list) else 'N/A'} positions")
@@ -181,7 +181,7 @@ class TestExitLogicVerification:
     def test_exit_evaluation_endpoint(self):
         """Test exit evaluation endpoint if available."""
         # This tests the exit evaluation logic directly
-        response = requests.get(f"{BASE_URL}/api/paper-trading/exit-evaluation", timeout=10)
+        response = requests.get(f"{BASE_URL}/api/paper/exit-evaluation", timeout=10)
         if response.status_code == 200:
             data = response.json()
             print(f"✓ Exit evaluation: {json.dumps(data, indent=2)[:500]}")
@@ -190,7 +190,7 @@ class TestExitLogicVerification:
     
     def test_paper_trading_trades_history(self):
         """Check trade history for exit price sources."""
-        response = requests.get(f"{BASE_URL}/api/paper-trading/trades", timeout=10)
+        response = requests.get(f"{BASE_URL}/api/paper/trades", timeout=10)
         if response.status_code == 200:
             trades = response.json()
             if isinstance(trades, list) and len(trades) > 0:
@@ -219,7 +219,7 @@ class TestStrategyLaneExitLogic:
             print(f"✓ HFT lane status: {json.dumps(data, indent=2)[:300]}")
         else:
             # Try alternative endpoint
-            response = requests.get(f"{BASE_URL}/api/paper-trading/lanes", timeout=10)
+            response = requests.get(f"{BASE_URL}/api/paper/lanes", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 hft_data = data.get('HFT', data.get('hft', {}))
@@ -232,7 +232,7 @@ class TestStrategyLaneExitLogic:
             data = response.json()
             print(f"✓ SPORTS lane status: {json.dumps(data, indent=2)[:300]}")
         else:
-            response = requests.get(f"{BASE_URL}/api/paper-trading/lanes", timeout=10)
+            response = requests.get(f"{BASE_URL}/api/paper/lanes", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 sports_data = data.get('SPORTS', data.get('sports', {}))
@@ -245,7 +245,7 @@ class TestStrategyLaneExitLogic:
             data = response.json()
             print(f"✓ ALPHA lane status: {json.dumps(data, indent=2)[:300]}")
         else:
-            response = requests.get(f"{BASE_URL}/api/paper-trading/lanes", timeout=10)
+            response = requests.get(f"{BASE_URL}/api/paper/lanes", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 alpha_data = data.get('ALPHA', data.get('alpha', {}))
@@ -258,7 +258,7 @@ class TestStrategyLaneExitLogic:
             data = response.json()
             print(f"✓ GAMMA lane status: {json.dumps(data, indent=2)[:300]}")
         else:
-            response = requests.get(f"{BASE_URL}/api/paper-trading/lanes", timeout=10)
+            response = requests.get(f"{BASE_URL}/api/paper/lanes", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 gamma_data = data.get('GAMMA', data.get('gamma', {}))
