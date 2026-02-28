@@ -719,6 +719,13 @@ class RiskConfig:
             # Liquidity
             'max_liquidity_consumption': self.MAX_LIQUIDITY_CONSUMPTION,
             
+            # Entry Validation (Phantom Order Protection)
+            'entry_price_floor': self.ENTRY_PRICE_FLOOR,
+            'entry_price_ceiling': self.ENTRY_PRICE_CEILING,
+            'max_liquidity_consumption_pct': self.MAX_LIQUIDITY_CONSUMPTION_PCT,
+            'min_liquidity_coverage_pct': self.MIN_LIQUIDITY_COVERAGE_PCT,
+            'max_spread_entry_pct': self.MAX_SPREAD_ENTRY_PCT,
+            
             # Exposure
             'max_event_exposure_pct': self.MAX_EVENT_EXPOSURE_PCT,
             'sector_limits': self.SECTOR_LIMITS,
