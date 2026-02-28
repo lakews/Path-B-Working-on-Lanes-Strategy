@@ -5664,11 +5664,11 @@ class PaperTrader:
                 exit_price = best_bid
                 
                 # Convert to YES-equivalent price for P&L calculation
-                    if side == 'YES':
-                        exit_yes_price = exit_price
-                    else:
-                        # NO token price -> YES equivalent: YES_price = 1 - NO_price
-                        exit_yes_price = 1 - exit_price
+                if side == 'YES':
+                    exit_yes_price = exit_price
+                else:
+                    # NO token price -> YES equivalent: YES_price = 1 - NO_price
+                    exit_yes_price = 1 - exit_price
                     
                 logger.debug(f"[EXIT-EVAL] Using {side} orderbook: bid={best_bid:.4f}, exit_yes_price={exit_yes_price:.4f}")
             else:
