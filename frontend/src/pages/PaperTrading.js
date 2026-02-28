@@ -3756,6 +3756,118 @@ const PaperTrading = () => {
             </div>
           )}
 
+          {/* Risk Monitor Panel - Compact with Hover Tooltips */}
+          <div className={`rounded-xl overflow-hidden ${
+            status?.circuit_breaker_triggered 
+              ? 'bg-gradient-to-r from-rose-950/40 to-rose-900/20 border-2 border-rose-500/50' 
+              : 'bg-gradient-to-r from-slate-900/60 to-slate-800/40 border border-white/[0.08]'
+          }`} data-testid="risk-monitor-compact">
+            <div className="px-4 py-3 flex items-center justify-between flex-wrap gap-3">
+              {/* Left: Title and Status */}
+              <div className="flex items-center gap-3">
+                <Shield className={`w-5 h-5 ${status?.circuit_breaker_triggered ? 'text-rose-400' : 'text-white/50'}`} />
+                <span className="text-sm font-semibold text-white">Risk Monitor</span>
+                {status?.circuit_breaker_triggered && (
+                  <span className="px-2 py-1 rounded bg-rose-500 text-white text-[10px] font-bold animate-pulse">
+                    {status?.circuit_breaker_reason === 'account_drawdown' ? 'ACCOUNT CB TRIGGERED' : 'REALIZED CB TRIGGERED'}
+                  </span>
+                )}
+              </div>
+              
+              {/* Right: Four Metrics with Hover Tooltips */}
+              <div className="flex items-center gap-2">
+                {/* Position DD */}
+                <div className="group relative">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] cursor-help transition-all">
+                    <span className="text-[10px] text-white/50">Position</span>
+                    <span className={`text-sm font-bold font-mono ${
+                      (status?.positional_drawdown_pct || 0) > 10 ? 'text-rose-400' :
+                      (status?.positional_drawdown_pct || 0) > 5 ? 'text-amber-400' : 'text-emerald-400'
+                    }`}>{(status?.positional_drawdown_pct || 0).toFixed(1)}%</span>
+                    <span className="px-1.5 py-0.5 rounded text-[8px] bg-slate-700/50 text-white/40">INFO</span>
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 rounded-lg bg-slate-800 border border-white/10 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    <p className="text-xs font-semibold text-white mb-1">Position Drawdown</p>
+                    <p className="text-[10px] text-white/60 leading-relaxed">Unrealized loss on open positions relative to deployed capital (${(status?.deployed_capital || 0).toLocaleString()} deployed)</p>
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-800 border-r border-b border-white/10 rotate-45"></div>
+                  </div>
+                </div>
+                
+                {/* Account DD - Primary CB */}
+                <div className="group relative">
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-help transition-all ${
+                    (status?.account_drawdown_pct || 0) >= (status?.config?.max_account_drawdown_pct || 10)
+                      ? 'bg-rose-500/30 border-2 border-rose-500 animate-pulse'
+                      : 'bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20'
+                  }`}>
+                    <span className="text-[10px] text-rose-300/70">Account</span>
+                    <span className={`text-sm font-bold font-mono ${
+                      (status?.account_drawdown_pct || 0) >= (status?.config?.max_account_drawdown_pct || 10) ? 'text-rose-400' :
+                      (status?.account_drawdown_pct || 0) > 5 ? 'text-amber-400' : 'text-emerald-400'
+                    }`}>{(status?.account_drawdown_pct || 0).toFixed(1)}%</span>
+                    <span className="px-1.5 py-0.5 rounded text-[8px] bg-rose-500/30 text-rose-300 font-bold">1°CB</span>
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 rounded-lg bg-slate-800 border border-rose-500/30 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    <p className="text-xs font-semibold text-rose-400 mb-1">Account Drawdown (Primary Circuit Breaker)</p>
+                    <p className="text-[10px] text-white/60 leading-relaxed mb-2">Total equity loss from initial capital. Measures capital protection.</p>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-white/40">Limit: <span className="text-rose-400 font-bold">{status?.config?.max_account_drawdown_pct || 10}%</span></span>
+                      <span className="text-white/40">Triggers at: <span className="text-rose-400">-${((status?.initial_capital || 10000) * (status?.config?.max_account_drawdown_pct || 10) / 100).toFixed(0)}</span></span>
+                    </div>
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-800 border-r border-b border-rose-500/30 rotate-45"></div>
+                  </div>
+                </div>
+                
+                {/* Realized DD - Secondary CB */}
+                <div className="group relative">
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-help transition-all ${
+                    (status?.realized_drawdown_pct || 0) >= (status?.config?.max_realized_drawdown_pct || 15)
+                      ? 'bg-amber-500/30 border-2 border-amber-500 animate-pulse'
+                      : 'bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20'
+                  }`}>
+                    <span className="text-[10px] text-amber-300/70">Realized</span>
+                    <span className={`text-sm font-bold font-mono ${
+                      (status?.realized_drawdown_pct || 0) >= (status?.config?.max_realized_drawdown_pct || 15) ? 'text-rose-400' :
+                      (status?.realized_drawdown_pct || 0) > 8 ? 'text-amber-400' : 'text-emerald-400'
+                    }`}>{(status?.realized_drawdown_pct || 0).toFixed(1)}%</span>
+                    <span className="px-1.5 py-0.5 rounded text-[8px] bg-amber-500/30 text-amber-300 font-bold">2°CB</span>
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 rounded-lg bg-slate-800 border border-amber-500/30 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    <p className="text-xs font-semibold text-amber-400 mb-1">Realized Drawdown (Secondary Circuit Breaker)</p>
+                    <p className="text-[10px] text-white/60 leading-relaxed mb-2">Locked-in P&L given back from peak realized gains. Protects profits.</p>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-white/40">Limit: <span className="text-amber-400 font-bold">{status?.config?.max_realized_drawdown_pct || 15}%</span></span>
+                      <span className="text-white/40">Peak P&L: <span className="text-amber-400">${(status?.peak_realized_pnl || 0).toFixed(0)}</span></span>
+                    </div>
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-800 border-r border-b border-amber-500/30 rotate-45"></div>
+                  </div>
+                </div>
+                
+                {/* Total DD - HWM */}
+                <div className="group relative">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] cursor-help transition-all">
+                    <span className="text-[10px] text-white/50">Total</span>
+                    <span className={`text-sm font-bold font-mono ${
+                      (status?.total_drawdown_pct || 0) > 20 ? 'text-rose-400' :
+                      (status?.total_drawdown_pct || 0) > 10 ? 'text-amber-400' : 'text-emerald-400'
+                    }`}>{(status?.total_drawdown_pct || 0).toFixed(1)}%</span>
+                    <span className="px-1.5 py-0.5 rounded text-[8px] bg-slate-700/50 text-white/40">INFO</span>
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full right-0 mb-2 w-64 p-3 rounded-lg bg-slate-800 border border-white/10 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    <p className="text-xs font-semibold text-white mb-1">Total Drawdown (HWM)</p>
+                    <p className="text-[10px] text-white/60 leading-relaxed mb-2">Industry standard high-water mark drawdown. Informational only.</p>
+                    <p className="text-[10px] text-white/40">HWM: <span className="text-cyan-400">${(status?.peak_equity_on_close || status?.initial_capital || 0).toLocaleString()}</span></p>
+                    <div className="absolute bottom-0 right-6 translate-y-1/2 w-2 h-2 bg-slate-800 border-r border-b border-white/10 rotate-45"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Five Lane Architecture - Shows all 5 trading lanes with percentages */}
           {status && (
             <FiveLaneArchitectureCard 
