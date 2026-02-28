@@ -502,7 +502,7 @@ class EnhancedSentimentAnalyzer:
         # ================================================================
         # 5. GITHUB SENTIMENT (ONLY for crypto/tech markets)
         # ================================================================
-        github_sentiment = 0.5
+        github_sentiment = None  # CRITICAL: None, not 0.5 - no default values
         github_confidence = 0.0
         
         if detected_category == 'crypto' and self.github_sentiment:
@@ -510,17 +510,20 @@ class EnhancedSentimentAnalyzer:
                 github_result = await self.github_sentiment.analyze_market(market_data)
                 
                 if github_result.get('is_relevant'):
-                    github_sentiment = github_result.get('github_sentiment', 0.5)
-                    github_confidence = github_result.get('github_confidence', 0.0)
-                    
-                    result['github_sentiment'] = github_sentiment
-                    result['github_confidence'] = github_confidence
-                    result['github_signals'] = github_result.get('signals', {})
-                    result['github_repos'] = github_result.get('repos_analyzed', [])
-                    result['github_interpretation'] = github_result.get('interpretation', '')
-                    
-                    if github_confidence > 0.2:
-                        sources_used.append('github')
+                    raw_github_sentiment = github_result.get('github_sentiment')
+                    # Only use if it's a real value, not 0.5 default
+                    if raw_github_sentiment is not None and abs(raw_github_sentiment - 0.5) >= 0.01:
+                        github_sentiment = raw_github_sentiment
+                        github_confidence = github_result.get('github_confidence', 0.0)
+                        
+                        result['github_sentiment'] = github_sentiment
+                        result['github_confidence'] = github_confidence
+                        result['github_signals'] = github_result.get('signals', {})
+                        result['github_repos'] = github_result.get('repos_analyzed', [])
+                        result['github_interpretation'] = github_result.get('interpretation', '')
+                        
+                        if github_confidence > 0.2:
+                            sources_used.append('github')
                         
             except Exception as e:
                 logger.debug(f"GitHub sentiment error: {e}")
