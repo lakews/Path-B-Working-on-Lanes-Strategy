@@ -241,26 +241,47 @@ const RiskSettings = () => {
         </button>
         
         {expandedSections.global && config.global && (
-          <div className="p-4 pt-0 grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* Max Drawdown */}
-            <div className="bg-gray-900/50 rounded-lg p-4">
-              <label className="block text-sm text-gray-400 mb-2">Max Drawdown</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={(config.global.max_drawdown_pct * 100).toFixed(0)}
-                  onChange={(e) => updateConfig('global.max_drawdown_pct', parseFloat(e.target.value) / 100)}
-                  className="w-20 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
-                  min="1"
-                  max="20"
-                  step="1"
-                />
-                <Percent className="w-4 h-4 text-gray-400" />
+          <div className="p-4 pt-0 space-y-4">
+            {/* NEW: Dual Circuit Breaker */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Account Drawdown - Primary */}
+              <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-4">
+                <label className="block text-sm text-rose-300 mb-2">Account Drawdown (Primary CB)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={(config.global.max_account_drawdown_pct ? config.global.max_account_drawdown_pct * 100 : config.global.max_drawdown_pct * 100).toFixed(0)}
+                    onChange={(e) => updateConfig('global.max_account_drawdown_pct', parseFloat(e.target.value) / 100)}
+                    className="w-20 bg-gray-800 border border-rose-500/50 rounded px-3 py-2 text-white"
+                    min="3"
+                    max="25"
+                    step="1"
+                  />
+                  <Percent className="w-4 h-4 text-rose-400" />
+                </div>
+                <p className="text-xs text-rose-400/60 mt-1">Capital protection - vs initial</p>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Circuit breaker trigger</p>
+              
+              {/* Realized Drawdown - Secondary */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                <label className="block text-sm text-amber-300 mb-2">Realized Drawdown (Secondary CB)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={(config.global.max_realized_drawdown_pct ? config.global.max_realized_drawdown_pct * 100 : 15).toFixed(0)}
+                    onChange={(e) => updateConfig('global.max_realized_drawdown_pct', parseFloat(e.target.value) / 100)}
+                    className="w-20 bg-gray-800 border border-amber-500/50 rounded px-3 py-2 text-white"
+                    min="5"
+                    max="30"
+                    step="1"
+                  />
+                  <Percent className="w-4 h-4 text-amber-400" />
+                </div>
+                <p className="text-xs text-amber-400/60 mt-1">Profit protection - from peak P&L</p>
+              </div>
             </div>
-
-            {/* Max Deployment */}
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-gray-900/50 rounded-lg p-4">
               <label className="block text-sm text-gray-400 mb-2">Max Deployment</label>
               <div className="flex items-center gap-2">
