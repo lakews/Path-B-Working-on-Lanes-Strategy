@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://websocket-primary.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://paper-trading-7.preview.emergentagent.com').rstrip('/')
 
 class TestPaperTradingAPI:
     """Paper Trading API endpoint tests"""

@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
     # Fallback for local testing
-    BASE_URL = 'https://websocket-primary.preview.emergentagent.com'
+    BASE_URL = 'https://paper-trading-7.preview.emergentagent.com'
 
 
 class TestBackendHealth:
