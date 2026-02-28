@@ -841,7 +841,7 @@ class PaperTrader:
                     if self.current_capital == 0 or not hasattr(self, '_session_started'):
                         self.initial_capital = new_initial
                         self.current_capital = new_initial
-                        self.peak_capital = new_initial
+                        self.peak_equity_on_close = new_initial
                     else:
                         # Hot reload: update initial_capital for reference but DON'T reset current_capital
                         self.initial_capital = new_initial
@@ -853,8 +853,14 @@ class PaperTrader:
                     self.kelly_fraction = float(user_config["kelly_fraction"])
                 if "kelly_enabled" in user_config:
                     self.kelly_enabled = bool(user_config["kelly_enabled"])
-                if "max_drawdown_pct" in user_config:
-                    self.max_drawdown_pct = float(user_config["max_drawdown_pct"])
+                # NEW: Dual circuit breaker config
+                if "max_account_drawdown_pct" in user_config:
+                    self.max_account_drawdown_pct = float(user_config["max_account_drawdown_pct"])
+                if "max_realized_drawdown_pct" in user_config:
+                    self.max_realized_drawdown_pct = float(user_config["max_realized_drawdown_pct"])
+                # Legacy support: old max_drawdown_pct maps to account drawdown
+                if "max_drawdown_pct" in user_config and "max_account_drawdown_pct" not in user_config:
+                    self.max_account_drawdown_pct = float(user_config["max_drawdown_pct"])
                 if "trades_per_10min" in user_config:
                     self.trades_per_10min = int(user_config["trades_per_10min"])
                 
