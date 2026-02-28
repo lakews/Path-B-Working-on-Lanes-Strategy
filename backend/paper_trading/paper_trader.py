@@ -9187,7 +9187,9 @@ class PaperTrader:
                 "max_position_size_pct": self.max_position_size_pct,
                 "max_position_size": self.max_position_size,
                 "kelly_fraction": self.kelly_fraction,
-                "max_drawdown_pct": self.max_drawdown_pct,
+                # NEW: Dual Circuit Breaker Config
+                "max_account_drawdown_pct": self.max_account_drawdown_pct,
+                "max_realized_drawdown_pct": self.max_realized_drawdown_pct,
                 "trades_per_10min": self.trades_per_10min,
                 "trade_interval_seconds": self.trade_interval
             },
