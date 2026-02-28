@@ -6500,33 +6500,12 @@ class PaperTrader:
             exit_yes_price = current_yes_price
             
             logger.debug(f"[EXIT] {strategy} {side}: exit_yes_price={exit_yes_price:.4f}")
-            else:
-                # No orderbook - use midpoint with conservative spread estimate
-                spread_estimate = 0.02
-                if side == 'YES':
-                    exit_yes_price = current_yes_price - (spread_estimate / 2)
-                else:
-                    exit_yes_price = current_yes_price + (spread_estimate / 2)
-                exit_yes_price = max(0.001, min(0.999, exit_yes_price))
-                logger.debug(f"[EXIT] No orderbook, using estimate: {exit_yes_price:.4f}")
             
-            # Use yes_entry_price for internal calculations (stores the YES price at entry)
-            yes_entry_price = position.get('yes_entry_price', position['entry_price'])
+            # Price already verified from orderbook - set source
+            exit_price_source = 'orderbook_verified'
+            
+            # Retrieve size from position
             size = position['size']  # USD invested
-            strategy = position['strategy']
-            asset_class = position.get('asset_class', 'unknown')
-            
-            # ================================================================
-            # PRICE SOURCE CONSISTENCY CHECK
-            # ================================================================
-            entry_price_source = position.get('price_source', 'unknown')
-            exit_price_source = 'orderbook_exit' if (bids and asks) else 'mid_price_fallback'
-            
-            if entry_price_source != exit_price_source and entry_price_source != 'orderbook_entry':
-                logger.warning(f"[EXIT-MISMATCH] Price source inconsistency!")
-                logger.warning(f"   Entry source: {entry_price_source} @ ${yes_entry_price:.4f}")
-                logger.warning(f"   Exit source: {exit_price_source} @ ${exit_yes_price:.4f}")
-                logger.warning(f"   This may cause inaccurate PnL calculation")
             
             # ==========================================================================
             # CORRECT P&L Calculation based on shares (using spread-aware exit price)
