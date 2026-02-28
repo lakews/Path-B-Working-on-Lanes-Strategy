@@ -3490,7 +3490,7 @@ const PaperTrading = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] space-y-6 p-6" data-testid="paper-trading-page">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 space-y-6 p-6" data-testid="paper-trading-page">
       {/* Confirmation Modal */}
       <ConfirmModal 
         isOpen={confirmModal.isOpen}
