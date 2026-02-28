@@ -4229,7 +4229,10 @@ const PaperTrading = () => {
                 <History className="w-5 h-5 text-cyan-400" />Trade History
                 <span className="text-xs text-white/40 ml-2">({trades.length} trades)</span>
               </h3>
-              <span className="text-xs text-white/40">Click any row for details • Drag column edges to resize</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-white/40">Click any row for details</span>
+                <PopOutButton onClick={() => setTradesPopOut(true)} tooltip="Pop out trade history" />
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full" style={{ tableLayout: 'fixed' }}>
