@@ -7,7 +7,8 @@ import {
   RefreshCw, AlertTriangle, CheckCircle, XCircle, History, Brain, Download,
   Layers, Settings, Sparkles, Crosshair, Scale, Timer, Wallet, ArrowUpRight,
   ArrowDownRight, Eye, FileText, PieChart, LineChart as LineChartIcon,
-  Wifi, WifiOff, RotateCcw, List, GripVertical, GitBranch, Filter, ChevronsUpDown, X, Lock
+  Wifi, WifiOff, RotateCcw, List, GripVertical, GitBranch, Filter, ChevronsUpDown, X, Lock,
+  ExternalLink, Maximize2
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart as RePieChart, Pie, Legend } from 'recharts';
 import LanePerformance from '../components/analytics/LanePerformance';
