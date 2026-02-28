@@ -6404,20 +6404,24 @@ class PaperTrader:
             current_yes_price = float(current_yes_price)
             side = position['side']
             yes_entry_price = position.get('yes_entry_price', position['entry_price'])
+            strategy = position.get('strategy', 'unknown')
+            asset_class = position.get('asset_class', 'unknown')
             
             # ==========================================================================
-            # CRITICAL: SANITY CHECK FOR DEFAULT/FALLBACK PRICES
+            # SPORTS-SPECIFIC: SANITY CHECK FOR DEFAULT/FALLBACK PRICES
             # ==========================================================================
-            # Block exit if:
+            # Block sports exit if:
             # 1. Current price is ~0.5 (likely default) AND
             # 2. Entry price was NOT ~0.5 (price shouldn't jump to 0.5)
             # 3. No orderbook data to verify
+            # This is critical for sports because they often have illiquid markets
             # ==========================================================================
+            is_sports = strategy == 'sports_arbitrage' or asset_class == 'sports'
             price_near_half = abs(current_yes_price - 0.5) < 0.03
             entry_not_near_half = abs(yes_entry_price - 0.5) >= 0.1
             
-            if price_near_half and entry_not_near_half:
-                # This is HIGHLY suspicious - price jumped from extreme to 0.5
+            if is_sports and price_near_half and entry_not_near_half:
+                # This is HIGHLY suspicious for sports - price jumped from extreme to 0.5
                 # Try to get fresh price
                 try:
                     from data.polymarket_api import PolymarketAPI
@@ -6431,14 +6435,14 @@ class PaperTrader:
                                     # Real price is NOT 0.5, use it
                                     current_yes_price = real_price
                                     market_data['yes_price'] = current_yes_price
-                                    logger.info(f"[EXIT-PRICE-CORRECT] Using fresh price ${real_price:.4f} instead of suspicious ${current_yes_price:.4f}")
+                                    logger.info(f"[SPORTS-EXIT-CORRECT] Using fresh price ${real_price:.4f} instead of suspicious ${current_yes_price:.4f}")
                                 else:
                                     # Fresh price is also ~0.5, check orderbook
                                     token_ids = fresh_market.get('clobTokenIds', [])
                                     if token_ids:
                                         market_data['token_ids'] = token_ids
                 except Exception as e:
-                    logger.debug(f"[EXIT-VERIFY] Could not fetch fresh price: {e}")
+                    logger.debug(f"[SPORTS-EXIT-VERIFY] Could not fetch fresh price: {e}")
                 
                 # Re-check after potential correction
                 if abs(current_yes_price - 0.5) < 0.03 and entry_not_near_half:
@@ -6446,8 +6450,8 @@ class PaperTrader:
                     cached_bids = order_book.get('bids', [])
                     cached_asks = order_book.get('asks', [])
                     if not cached_bids or not cached_asks:
-                        logger.warning(f"[EXIT-BLOCK] Suspicious price jump: entry=${yes_entry_price:.4f} -> exit=${current_yes_price:.4f}")
-                        logger.warning(f"   Blocking exit - price ${current_yes_price:.4f} near 0.5 without orderbook")
+                        logger.warning(f"[SPORTS-EXIT-BLOCK] Suspicious price jump: entry=${yes_entry_price:.4f} -> exit=${current_yes_price:.4f}")
+                        logger.warning(f"   Blocking SPORTS exit - price ${current_yes_price:.4f} near 0.5 without orderbook")
                         logger.warning(f"   This prevents fake P&L calculations from default prices")
                         return
             
