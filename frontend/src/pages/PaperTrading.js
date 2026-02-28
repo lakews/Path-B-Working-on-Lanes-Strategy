@@ -3288,6 +3288,8 @@ const PaperTrading = () => {
   const [sentimentModal, setSentimentModal] = useState({ isOpen: false, trade: null });
   const [sizingModal, setSizingModal] = useState({ isOpen: false, position: null });
   const [tradeDetailsModal, setTradeDetailsModal] = useState({ isOpen: false, trade: null });
+  const [positionsPopOut, setPositionsPopOut] = useState(false);
+  const [tradesPopOut, setTradesPopOut] = useState(false);
   
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
