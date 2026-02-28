@@ -3917,29 +3917,6 @@ const PaperTrading = () => {
             isLoading={!status && !laneAnalytics}
           />
 
-          {/* Strategy & Asset Class Tables with Totals */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-white/60">Strategy Performance (Live)</span>
-                <ResetButton onClick={handleResetLiveSession} label="Reset Live Stats" />
-              </div>
-              <PerformanceTable title="Strategy Performance" icon={BarChart3} iconColor="purple" data={status?.strategy_results} dataType="strategy" showLiveBadge={running} initialCapital={initialCapital} />
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-white/60">Category P&L Dashboard (Live)</span>
-              </div>
-              <CategoryDashboard 
-                title="Category P&L Dashboard" 
-                assetClassData={status?.asset_class_results}
-                subCategoryData={null}
-                showLiveBadge={running}
-                initialCapital={initialCapital}
-              />
-            </div>
-          </div>
-
           {/* Equity Curves */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-3">
