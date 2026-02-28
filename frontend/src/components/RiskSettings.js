@@ -400,6 +400,7 @@ const RiskSettings = () => {
               </div>
               <p className="text-xs text-gray-500 mt-1">Price below = Whale Zone</p>
             </div>
+            </div>
           </div>
         )}
       </div>
