@@ -19,7 +19,12 @@
     "taker_fee": 0.02,
     "maker_fee": 0.00,
     "max_open_positions": 50,
-    "price_zone_threshold": 0.10
+    "price_zone_threshold": 0.10,
+    "entry_price_floor": 0.02,
+    "entry_price_ceiling": 0.98,
+    "max_liquidity_consumption_pct": 0.25,
+    "min_liquidity_coverage_pct": 1.0,
+    "max_spread_entry_pct": 0.15
   },
   
   "extreme_price_validation": {
