@@ -5501,6 +5501,52 @@ class PaperTrader:
             
             current_price = float(current_price)
             
+            # ==========================================================================
+            # CRITICAL: BLOCK EXIT ON SUSPICIOUS 0.5 PRICES
+            # ==========================================================================
+            # A price of ~0.5 with no orderbook data is almost certainly a default value
+            # from the API, NOT a real market price. Exiting on this would cause massive
+            # P&L miscalculations (e.g., entry at $0.0025, exit at $0.49 = fake +19000%)
+            # ==========================================================================
+            if abs(current_price - 0.5) < 0.03:  # Price is 0.47-0.53
+                order_book = market_data.get('order_book', {})
+                bids = order_book.get('bids', [])
+                asks = order_book.get('asks', [])
+                
+                # Try to fetch fresh orderbook to verify price is real
+                fresh_price_verified = False
+                try:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        fresh_market = await api.get_market(market_id)
+                        if fresh_market:
+                            fresh_yes = fresh_market.get('yes_price') or fresh_market.get('outcomePrices', [None])[0]
+                            if fresh_yes and float(fresh_yes) > 0:
+                                fresh_price = float(fresh_yes)
+                                # Check if fresh price is also ~0.5
+                                if abs(fresh_price - 0.5) >= 0.03:
+                                    # Real price is NOT 0.5, use fresh price
+                                    current_price = fresh_price
+                                    market_data['yes_price'] = current_price
+                                    fresh_price_verified = True
+                                    logger.info(f"[EXIT-PRICE-FIX] Corrected price from ${current_price:.4f} to fresh ${fresh_price:.4f}")
+                                else:
+                                    # Fresh price is also ~0.5, might be real or might be illiquid
+                                    # Check orderbook
+                                    token_ids = fresh_market.get('clobTokenIds', [])
+                                    if token_ids:
+                                        fresh_ob = await api.get_order_book(token_ids[0])
+                                        if fresh_ob.get('bids') and fresh_ob.get('asks'):
+                                            fresh_price_verified = True
+                                            logger.info(f"[EXIT-VERIFY] Price ${current_price:.4f} verified with orderbook")
+                except Exception as e:
+                    logger.debug(f"[EXIT-VERIFY] Could not verify price: {e}")
+                
+                if not fresh_price_verified and not (bids and asks):
+                    logger.warning(f"[EXIT-BLOCK] Blocking exit for {market_id[:16]} - price ${current_price:.4f} near 0.5 without orderbook verification")
+                    logger.warning(f"   This prevents fake P&L from default prices")
+                    return
+            
             # Use yes_entry_price for internal calculations (stores the YES price at entry)
             yes_entry_price = position.get('yes_entry_price', position['entry_price'])
             side = position['side']
