@@ -415,8 +415,10 @@ const RiskSettings = () => {
             </div>
             </div>
           </div>
+        )}
 
-          {/* Entry Validation Section */}
+        {/* Entry Validation Section */}
+        {expandedSections.global && config.global && (
           <div className="mt-6 pt-6 border-t border-white/10">
             <h4 className="text-md font-semibold text-cyan-400 mb-4 flex items-center gap-2">
               <Shield className="w-4 h-4" />
