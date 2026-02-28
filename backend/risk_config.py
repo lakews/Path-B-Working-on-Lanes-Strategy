@@ -89,7 +89,7 @@ DEFAULTS = {
     
     # Global Safety
     'STOP_LOSS_PCT': 0.15,
-    'MAX_DRAWDOWN_PCT': 5.0,
+    'MAX_DRAWDOWN_PCT': 10.0,  # Updated to 10% for dual circuit breaker (Account DD)
     'KILL_SWITCH_LOW': 0.03,
     'KILL_SWITCH_HIGH': 0.97,
     
