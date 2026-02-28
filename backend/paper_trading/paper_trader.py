@@ -5561,23 +5561,36 @@ class PaperTrader:
             peak_price = position.get('peak_price', yes_entry_price)  # Track peak for trailing stops
             
             # ==========================================================================
-            # EXIT PRICE DETERMINATION
+            # ALL STRATEGIES: REQUIRE REAL MARKET PRICES - NO DEFAULTS ALLOWED
             # ==========================================================================
-            # BOTH MODES: Use orderbook for realistic exit pricing
-            # - Sell YES = hit the bid
-            # - Sell NO = hit the ask (equivalent to buying YES)
+            # Real trading requires actual market prices to exit. You can't sell if 
+            # there's no buyer. For ALL strategies, we:
+            # 1. Fetch fresh orderbook from Polymarket API
+            # 2. Require real bids to sell into
+            # 3. Exit price = best bid (what we'd actually get in real trading)
+            # 4. Block exit if no real market data (mimics real trading)
+            # 
+            # This completely eliminates default/fallback price problems.
             # ==========================================================================
             
-            # Fetch fresh orderbook for exit evaluation
             bids = []
             asks = []
-            current_spread_pct = 0.02  # Default if no orderbook
+            current_spread_pct = 0.02
+            orderbook_verified = False
             
-            # Fetch correct orderbook based on position side
-            # YES position -> fetch YES token orderbook (token_ids[0])
-            # NO position -> fetch NO token orderbook (token_ids[1])
+            # Fetch fresh orderbook for exit evaluation
             try:
                 token_ids = market_data.get('token_ids', [])
+                
+                # If no token_ids in market_data, fetch from API
+                if not token_ids:
+                    from data.polymarket_api import PolymarketAPI
+                    async with PolymarketAPI() as api:
+                        fresh_market = await api.get_market(market_id)
+                        if fresh_market:
+                            token_ids = fresh_market.get('clobTokenIds', [])
+                            market_data['token_ids'] = token_ids
+                
                 token_index = 0 if side == 'YES' else 1
                 if token_ids and len(token_ids) > token_index:
                     from data.polymarket_api import PolymarketAPI
@@ -5585,39 +5598,72 @@ class PaperTrader:
                         fresh_orderbook = await api.get_order_book(token_ids[token_index])
                         bids = fresh_orderbook.get('bids', [])
                         asks = fresh_orderbook.get('asks', [])
-                        if bids and asks:
-                            best_bid = float(bids[0]['price'])
-                            best_ask = float(asks[0]['price'])
-                            mid_price = (best_bid + best_ask) / 2
-                            current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.02
-                            logger.debug(f"[EXIT-OB] Fresh {side} orderbook: bid={best_bid:.4f}, ask={best_ask:.4f}, spread={current_spread_pct:.2%}")
+                        
+                        if bids:
+                            best_bid = float(bids[0].get('price', 0))
+                            bid_size = float(bids[0].get('size', 0))
+                            
+                            if best_bid > 0 and bid_size > 0:
+                                orderbook_verified = True
+                                best_ask = float(asks[0].get('price', best_bid + 0.02)) if asks else best_bid + 0.02
+                                mid_price = (best_bid + best_ask) / 2
+                                current_spread_pct = (best_ask - best_bid) / mid_price if mid_price > 0 else 0.02
+                                logger.debug(f"[EXIT-OB] Fresh {side} orderbook verified: bid=${best_bid:.4f} (size={bid_size:.2f}), ask=${best_ask:.4f}")
             except Exception as e:
                 logger.debug(f"[EXIT-OB] Could not fetch fresh orderbook: {e}")
             
-            # Fallback to cached orderbook if fresh fetch failed
-            if not bids or not asks:
+            # ==========================================================================
+            # BLOCK EXIT IF NO VERIFIED ORDERBOOK
+            # ==========================================================================
+            # Real trading requires buyers. If we can't verify the orderbook, we cannot
+            # determine a real exit price, so we block the exit.
+            # ==========================================================================
+            if not orderbook_verified:
+                # Check cached orderbook as last resort
                 order_book = market_data.get('order_book', {})
-                bids = order_book.get('bids', [])
-                asks = order_book.get('asks', [])
+                cached_bids = order_book.get('bids', [])
+                cached_asks = order_book.get('asks', [])
+                
+                if cached_bids and len(cached_bids) > 0:
+                    best_bid = float(cached_bids[0].get('price', 0))
+                    if best_bid > 0:
+                        # Verify cached price is not a default ~0.5
+                        entry_is_extreme = yes_entry_price < 0.15 or yes_entry_price > 0.85
+                        price_is_suspicious = abs(best_bid - 0.5) < 0.05
+                        
+                        if entry_is_extreme and price_is_suspicious:
+                            logger.warning(f"[EXIT-BLOCK] {strategy}: Cached price ${best_bid:.4f} suspicious (entry was ${yes_entry_price:.4f})")
+                            logger.warning(f"   Cannot verify real market price - blocking exit")
+                            return
+                        
+                        # Cached price seems reasonable
+                        bids = cached_bids
+                        asks = cached_asks
+                        orderbook_verified = True
+                        logger.debug(f"[EXIT-OB] Using cached orderbook: bid=${best_bid:.4f}")
+                
+                if not orderbook_verified:
+                    logger.warning(f"[EXIT-BLOCK] {strategy}: No verified orderbook for {market_id[:16]}")
+                    logger.warning(f"   Real trading requires buyers - cannot exit without orderbook")
+                    return
             
+            # Now we have verified orderbook - proceed with exit evaluation
             if bids:
-                best_bid = float(bids[0]['price'])
-                best_ask = float(asks[0]['price']) if asks else best_bid + 0.02
+                best_bid = float(bids[0].get('price', 0))
+                best_ask = float(asks[0].get('price', best_bid + 0.02)) if asks else best_bid + 0.02
                 spread = best_ask - best_bid
                 mid_price = (best_bid + best_ask) / 2
                 current_spread_pct = spread / mid_price if mid_price > 0 else 0.02
                 
                 # SANITY CHECK: Reject if spread is too wide (>20%)
                 if spread < 0 or spread > 0.20:
-                    logger.warning(f"[EXIT-EVAL] Suspicious orderbook spread={spread:.2%}, using midpoint instead")
-                    exit_yes_price = current_price
-                else:
-                    # Exiting is always SELLING tokens - hit the bid
-                    # For YES position: sell YES tokens, hit YES bid
-                    # For NO position: sell NO tokens, hit NO bid
-                    exit_price = best_bid  # Always hit bid when selling
-                    
-                    # Convert to YES-equivalent price for P&L calculation
+                    logger.warning(f"[EXIT-EVAL] Suspicious orderbook spread={spread:.2%}, blocking exit")
+                    return
+                
+                # Exiting is always SELLING tokens - hit the bid
+                exit_price = best_bid
+                
+                # Convert to YES-equivalent price for P&L calculation
                     if side == 'YES':
                         exit_yes_price = exit_price
                     else:
