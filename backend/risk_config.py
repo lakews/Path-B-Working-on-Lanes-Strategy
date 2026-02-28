@@ -65,11 +65,18 @@ DEFAULTS = {
     'GAMMA_MIN_VOLUME_24H': 250.0,
     
     # 4. SAFETY CAPS (Global)
-    'MAX_LIQUIDITY_CONSUMPTION': 0.10,  # Max 10% depth usage per trade
+    'MAX_LIQUIDITY_CONSUMPTION': 0.10,  # Max 10% depth usage per trade (legacy)
     'MAX_LIQUIDITY_CAP': 1000000.0,     # Wash trading / anomaly filter
     'FULL_SIZE_LIQUIDITY_THRESHOLD': 10000.0,  # Liq required for 100% size
     
-    # 5. ANALYSIS & INTELLIGENCE (The Brain)
+    # 5. ENTRY VALIDATION (Prevents phantom/dust order fills)
+    'ENTRY_PRICE_FLOOR': 0.02,           # Minimum entry price ($0.02) - rejects dust asks
+    'ENTRY_PRICE_CEILING': 0.98,         # Maximum entry price ($0.98) - rejects dust bids
+    'MAX_LIQUIDITY_CONSUMPTION_PCT': 0.25,  # Max 25% of available liquidity per trade
+    'MIN_LIQUIDITY_COVERAGE_PCT': 1.0,   # Must have 100% coverage (ask_size >= trade_size)
+    'MAX_SPREAD_ENTRY_PCT': 0.15,        # Max 15% spread to enter (reject illiquid books)
+    
+    # 6. ANALYSIS & INTELLIGENCE (The Brain)
     # Data Cleaning: Uses GAMMA (Lowest) limits so AI learns from ALL executed trades
     'DATA_CLEANING_MIN_LIQUIDITY': 250.0,  # Same as GAMMA
     'DATA_CLEANING_MIN_VOLUME': 250.0,
