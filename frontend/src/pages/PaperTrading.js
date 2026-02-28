@@ -3877,15 +3877,6 @@ const PaperTrading = () => {
             </div>
           </div>
 
-          {/* Five Lane Architecture - Shows all 5 trading lanes with percentages */}
-          {status && (
-            <FiveLaneArchitectureCard 
-              executionPathStats={status?.execution_path_stats} 
-              laneEquity={status?.lane_equity}
-              showLive={running} 
-            />
-          )}
-
           {/* Strategy & Asset Class Tables with Totals - MOVED ABOVE LANE CARDS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-3">
