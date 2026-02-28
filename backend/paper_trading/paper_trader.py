@@ -6361,65 +6361,76 @@ class PaperTrader:
             if not position:
                 return
             
-            # Get current price - require valid price for exit
-            current_yes_price = market_data.get('yes_price')
-            if current_yes_price is None or current_yes_price == 0:
-                logger.warning(f"[EXIT-SKIP] No valid exit price for {market_id[:16]}")
-                return
-            
-            current_yes_price = float(current_yes_price)
             side = position['side']
             yes_entry_price = position.get('yes_entry_price', position['entry_price'])
             strategy = position.get('strategy', 'unknown')
             asset_class = position.get('asset_class', 'unknown')
-            
-            # ==========================================================================
-            # SPORTS-SPECIFIC: SANITY CHECK FOR DEFAULT/FALLBACK PRICES
-            # ==========================================================================
-            # Block sports exit if:
-            # 1. Current price is ~0.5 (likely default) AND
-            # 2. Entry price was NOT ~0.5 (price shouldn't jump to 0.5)
-            # 3. No orderbook data to verify
-            # This is critical for sports because they often have illiquid markets
-            # ==========================================================================
             is_sports = strategy == 'sports_arbitrage' or asset_class == 'sports'
-            price_near_half = abs(current_yes_price - 0.5) < 0.03
-            entry_not_near_half = abs(yes_entry_price - 0.5) >= 0.1
             
-            if is_sports and price_near_half and entry_not_near_half:
-                # This is HIGHLY suspicious for sports - price jumped from extreme to 0.5
-                # Try to get fresh price
+            # ==========================================================================
+            # SPORTS: REQUIRE REAL MARKET PRICES - NO DEFAULTS ALLOWED
+            # ==========================================================================
+            # Real trading requires actual market prices to exit. For sports markets:
+            # 1. MUST fetch fresh orderbook from Polymarket API
+            # 2. MUST have real bids to sell into
+            # 3. Exit price = best bid (what we'd actually get in real trading)
+            # 
+            # This completely eliminates the 0.49/0.50 default price problem.
+            # ==========================================================================
+            if is_sports:
                 try:
                     from data.polymarket_api import PolymarketAPI
                     async with PolymarketAPI() as api:
                         fresh_market = await api.get_market(market_id)
-                        if fresh_market:
-                            fresh_yes = fresh_market.get('yes_price') or fresh_market.get('outcomePrices', [None])[0]
-                            if fresh_yes and float(fresh_yes) > 0:
-                                real_price = float(fresh_yes)
-                                if abs(real_price - 0.5) >= 0.03:
-                                    # Real price is NOT 0.5, use it
-                                    current_yes_price = real_price
-                                    market_data['yes_price'] = current_yes_price
-                                    logger.info(f"[SPORTS-EXIT-CORRECT] Using fresh price ${real_price:.4f} instead of suspicious ${current_yes_price:.4f}")
-                                else:
-                                    # Fresh price is also ~0.5, check orderbook
-                                    token_ids = fresh_market.get('clobTokenIds', [])
-                                    if token_ids:
-                                        market_data['token_ids'] = token_ids
+                        if not fresh_market:
+                            logger.warning(f"[SPORTS-EXIT-BLOCK] Market {market_id[:16]} not found - cannot exit")
+                            return
+                        
+                        token_ids = fresh_market.get('clobTokenIds', [])
+                        if not token_ids:
+                            logger.warning(f"[SPORTS-EXIT-BLOCK] No token IDs for {market_id[:16]}")
+                            return
+                        
+                        # Fetch orderbook for the correct side
+                        token_index = 0 if side == 'YES' else 1
+                        if len(token_ids) <= token_index:
+                            logger.warning(f"[SPORTS-EXIT-BLOCK] Invalid token index for {market_id[:16]}")
+                            return
+                        
+                        fresh_ob = await api.get_order_book(token_ids[token_index])
+                        bids = fresh_ob.get('bids', [])
+                        
+                        if not bids:
+                            logger.warning(f"[SPORTS-EXIT-BLOCK] No bids for {market_id[:16]} - cannot sell without buyers")
+                            return
+                        
+                        # Use REAL bid price - this is what we'd get in actual trading
+                        best_bid = float(bids[0].get('price', 0))
+                        bid_size = float(bids[0].get('size', 0))
+                        
+                        if best_bid <= 0:
+                            logger.warning(f"[SPORTS-EXIT-BLOCK] Invalid bid price for {market_id[:16]}")
+                            return
+                        
+                        # Set the verified real price
+                        current_yes_price = best_bid if side == 'YES' else (1 - best_bid)
+                        market_data['yes_price'] = current_yes_price
+                        market_data['order_book'] = fresh_ob
+                        market_data['token_ids'] = token_ids
+                        
+                        logger.info(f"[SPORTS-EXIT] Real price for {market_id[:16]}: ${best_bid:.4f} (bid size: {bid_size:.2f})")
+                        
                 except Exception as e:
-                    logger.debug(f"[SPORTS-EXIT-VERIFY] Could not fetch fresh price: {e}")
-                
-                # Re-check after potential correction
-                if abs(current_yes_price - 0.5) < 0.03 and entry_not_near_half:
-                    order_book = market_data.get('order_book', {})
-                    cached_bids = order_book.get('bids', [])
-                    cached_asks = order_book.get('asks', [])
-                    if not cached_bids or not cached_asks:
-                        logger.warning(f"[SPORTS-EXIT-BLOCK] Suspicious price jump: entry=${yes_entry_price:.4f} -> exit=${current_yes_price:.4f}")
-                        logger.warning(f"   Blocking SPORTS exit - price ${current_yes_price:.4f} near 0.5 without orderbook")
-                        logger.warning(f"   This prevents fake P&L calculations from default prices")
-                        return
+                    logger.warning(f"[SPORTS-EXIT-BLOCK] Could not fetch real market data: {e}")
+                    logger.warning(f"   Blocking exit - real trading requires verified prices")
+                    return
+            else:
+                # Non-sports: use cached price (existing behavior)
+                current_yes_price = market_data.get('yes_price')
+                if current_yes_price is None or current_yes_price == 0:
+                    logger.warning(f"[EXIT-SKIP] No valid exit price for {market_id[:16]}")
+                    return
+                current_yes_price = float(current_yes_price)
             
             # ==========================================================================
             # EXIT PRICE DETERMINATION
