@@ -3696,40 +3696,106 @@ const PaperTrading = () => {
       {activeTab === 'live' && (
         <div className="space-y-5">
           
-          {/* Circuit Breaker Alert - Compact with Flash Animation */}
-          {status?.circuit_breaker_triggered && (
-            <div className="relative overflow-hidden rounded-lg border border-red-500/60 bg-red-950/40" data-testid="circuit-breaker-banner">
-              {/* Animated background pulse */}
-              <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 via-red-500/10 to-red-600/20 animate-pulse" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(239,68,68,0.15),transparent_70%)]" />
-              
-              <div className="relative flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-40" />
-                    <div className="relative w-8 h-8 rounded-full bg-red-500/30 flex items-center justify-center border border-red-500/50">
-                      <AlertTriangle className="w-4 h-4 text-red-400" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-red-400 tracking-wide">CIRCUIT BREAKER ACTIVE</p>
-                    <p className="text-xs text-red-300/60">New entries blocked • Monitoring exits</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-xs text-red-300/50 uppercase tracking-wider">Drawdown</p>
-                    <p className="text-lg font-bold text-red-400 tabular-nums">{status?.current_drawdown_pct?.toFixed(1) || 0}%</p>
-                  </div>
-                  <div className="h-8 w-px bg-red-500/30" />
-                  <div className="text-right">
-                    <p className="text-xs text-red-300/50 uppercase tracking-wider">Limit</p>
-                    <p className="text-lg font-bold text-red-300/80 tabular-nums">{status?.config?.max_drawdown_pct || 5}%</p>
-                  </div>
-                </div>
+          {/* NEW: Four-Metric Drawdown System - Always Visible */}
+          <div className={`rounded-xl border ${
+            status?.circuit_breaker_triggered 
+              ? 'bg-rose-950/30 border-rose-500/40' 
+              : 'bg-white/[0.02] border-white/[0.06]'
+          } p-4`} data-testid="drawdown-metrics-panel">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Shield className={`w-4 h-4 ${status?.circuit_breaker_triggered ? 'text-rose-400' : 'text-white/40'}`} />
+                <span className="text-sm font-medium text-white">Drawdown Monitor</span>
+                {status?.circuit_breaker_triggered && (
+                  <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold animate-pulse">
+                    🚨 {status?.circuit_breaker_reason === 'account_drawdown' ? 'ACCOUNT DD LIMIT' : 'REALIZED DD LIMIT'}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3 text-[10px] text-white/40">
+                <span>Account Limit: <span className="text-rose-400 font-medium">{status?.config?.max_account_drawdown_pct || 10}%</span></span>
+                <span>Realized Limit: <span className="text-amber-400 font-medium">{status?.config?.max_realized_drawdown_pct || 15}%</span></span>
               </div>
             </div>
-          )}
+            
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* 1. Positional Drawdown */}
+              <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-white/50 uppercase tracking-wider">Position DD</span>
+                  <TrendingDown className="w-3 h-3 text-white/30" />
+                </div>
+                <p className={`text-xl font-bold font-mono ${
+                  (status?.positional_drawdown_pct || 0) > 10 ? 'text-rose-400' :
+                  (status?.positional_drawdown_pct || 0) > 5 ? 'text-amber-400' : 'text-emerald-400'
+                }`}>
+                  {(status?.positional_drawdown_pct || 0).toFixed(1)}%
+                </p>
+                <p className="text-[10px] text-white/40 mt-1">
+                  ${(status?.deployed_capital || 0).toLocaleString()} deployed
+                </p>
+              </div>
+
+              {/* 2. Account Drawdown - PRIMARY CIRCUIT BREAKER */}
+              <div className={`rounded-lg p-3 ${
+                (status?.account_drawdown_pct || 0) >= (status?.config?.max_account_drawdown_pct || 10)
+                  ? 'bg-rose-500/20 border-2 border-rose-500 animate-pulse' 
+                  : 'bg-white/[0.03] border border-white/[0.06]'
+              }`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-white/50 uppercase tracking-wider">Account DD</span>
+                  <Shield className={`w-3 h-3 ${(status?.account_drawdown_pct || 0) >= (status?.config?.max_account_drawdown_pct || 10) ? 'text-rose-400' : 'text-white/30'}`} />
+                </div>
+                <p className={`text-xl font-bold font-mono ${
+                  (status?.account_drawdown_pct || 0) >= (status?.config?.max_account_drawdown_pct || 10) ? 'text-rose-400' :
+                  (status?.account_drawdown_pct || 0) > 5 ? 'text-amber-400' : 'text-emerald-400'
+                }`}>
+                  {(status?.account_drawdown_pct || 0).toFixed(1)}%
+                </p>
+                <p className="text-[10px] text-white/40 mt-1">
+                  Limit: {status?.config?.max_account_drawdown_pct || 10}% <span className="text-rose-400/60">(Primary CB)</span>
+                </p>
+              </div>
+
+              {/* 3. Realized Drawdown - SECONDARY CIRCUIT BREAKER */}
+              <div className={`rounded-lg p-3 ${
+                (status?.realized_drawdown_pct || 0) >= (status?.config?.max_realized_drawdown_pct || 15)
+                  ? 'bg-rose-500/20 border-2 border-rose-500 animate-pulse' 
+                  : 'bg-white/[0.03] border border-white/[0.06]'
+              }`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-white/50 uppercase tracking-wider">Realized DD</span>
+                  <Lock className={`w-3 h-3 ${(status?.realized_drawdown_pct || 0) >= (status?.config?.max_realized_drawdown_pct || 15) ? 'text-rose-400' : 'text-white/30'}`} />
+                </div>
+                <p className={`text-xl font-bold font-mono ${
+                  (status?.realized_drawdown_pct || 0) >= (status?.config?.max_realized_drawdown_pct || 15) ? 'text-rose-400' :
+                  (status?.realized_drawdown_pct || 0) > 8 ? 'text-amber-400' : 'text-emerald-400'
+                }`}>
+                  {(status?.realized_drawdown_pct || 0).toFixed(1)}%
+                </p>
+                <p className="text-[10px] text-white/40 mt-1">
+                  Peak P&L: ${(status?.peak_realized_pnl || 0).toFixed(0)}
+                </p>
+              </div>
+
+              {/* 4. Total Drawdown - INFORMATIONAL */}
+              <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-white/50 uppercase tracking-wider">Total DD</span>
+                  <Activity className="w-3 h-3 text-white/30" />
+                </div>
+                <p className={`text-xl font-bold font-mono ${
+                  (status?.total_drawdown_pct || 0) > 20 ? 'text-rose-400' :
+                  (status?.total_drawdown_pct || 0) > 10 ? 'text-amber-400' : 'text-emerald-400'
+                }`}>
+                  {(status?.total_drawdown_pct || 0).toFixed(1)}%
+                </p>
+                <p className="text-[10px] text-white/40 mt-1">
+                  HWM: ${(status?.peak_equity_on_close || status?.initial_capital || 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
           
           {/* Performance Metrics - Redesigned Bento Grid */}
           {status && (
