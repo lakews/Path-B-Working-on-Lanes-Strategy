@@ -55,6 +55,12 @@ Polymarket API → WebSocket/REST → RealTimeMarketService → PaperTrader
 
 ## Completed Work (Feb 2026)
 
+### Session 52
+- ✅ Removed Layer 3 (stale cached orderbook fallback) from exit logic
+- ✅ Added REST API retry logic (2 attempts, 500ms delay)
+- ✅ Changed exit behavior: QUEUE for retry instead of using stale data
+- ✅ Updated frontend Exit Data Source widget
+
 ### Session 51 (continued)
 - ✅ Added WebSocket Health Dashboard widget to Paper Trading page
 - ✅ Added Exit Data Source info panel showing WebSocket-primary architecture
