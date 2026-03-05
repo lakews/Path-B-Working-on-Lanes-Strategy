@@ -2,31 +2,29 @@
   "_metadata": {
     "version": "1.1.0",
     "description": "SSOT Risk Configuration for 5-Lane Trading Architecture",
-    "last_updated": "2026-02-15T00:00:00Z",
+    "last_updated": "2026-02-28T22:34:19.449082+00:00",
     "spec_reference": "/app/docs/5_LANE_ARCHITECTURE.md"
   },
-  
   "global": {
-    "max_drawdown_pct": 0.10,
-    "max_account_drawdown_pct": 0.10,
+    "max_drawdown_pct": 0.1,
+    "max_account_drawdown_pct": 0.1,
     "max_realized_drawdown_pct": 0.15,
-    "max_deployment_pct": 0.80,
+    "max_deployment_pct": 0.8,
     "cash_buffer_pct": 0.05,
     "kill_switch_low": 0.03,
     "kill_switch_high": 0.97,
-    "min_trade_amount": 2.0,
-    "min_bet_floor": 5.0,
+    "min_trade_amount": 2,
+    "min_bet_floor": 5,
     "taker_fee": 0.02,
-    "maker_fee": 0.00,
-    "max_open_positions": 50,
-    "price_zone_threshold": 0.10,
+    "maker_fee": 0,
+    "max_open_positions": 100,
+    "price_zone_threshold": 0.1,
     "entry_price_floor": 0.02,
     "entry_price_ceiling": 0.98,
     "max_liquidity_consumption_pct": 0.25,
-    "min_liquidity_coverage_pct": 1.0,
+    "min_liquidity_coverage_pct": 1,
     "max_spread_entry_pct": 0.15
   },
-  
   "extreme_price_validation": {
     "enabled": true,
     "description": "Tiered validation for extreme prices instead of blanket kill switch",
@@ -53,94 +51,104 @@
       }
     }
   },
-  
   "lanes": {
     "HFT": {
       "name": "Market Maker",
       "description": "High-frequency, low-latency market making. Never blocks for slow operations.",
       "alloc_pct": 0.35,
-      "max_pos_usd": 50.0,
+      "max_pos_usd": 50,
       "max_pos_pct": 0.02,
       "cycle_seconds": 0.5,
-      "min_liquidity": 10000.0,
-      "min_volume_24h": 5000.0,
+      "min_liquidity": 10000,
+      "min_volume_24h": 5000,
       "max_spread_pct": 0.12,
       "sizing_method": "fixed_unit",
-      "strategies": ["hft_scalp", "hft_maker", "delta_neutral"]
+      "strategies": [
+        "hft_scalp",
+        "hft_maker",
+        "delta_neutral"
+      ]
     },
     "ALPHA": {
       "name": "Strategist",
       "description": "Slower, conviction-driven directional trading based on deep analysis.",
       "alloc_pct": 0.55,
-      "max_pos_usd": 100.0,
+      "max_pos_usd": 100,
       "max_pos_pct": 0.03,
-      "cycle_seconds": 30.0,
-      "min_liquidity_core": 1000.0,
-      "min_liquidity_whale": 500.0,
-      "min_volume_core": 1000.0,
-      "min_volume_whale": 500.0,
+      "cycle_seconds": 30,
+      "min_liquidity_core": 1000,
+      "min_liquidity_whale": 500,
+      "min_volume_core": 1000,
+      "min_volume_whale": 500,
       "max_spread_pct": 0.05,
       "sizing_method": "binary_kelly",
-      "strategies": ["alpha_directional", "arbitrage"]
+      "strategies": [
+        "alpha_directional",
+        "arbitrage"
+      ]
     },
     "GAMMA": {
       "name": "Sniper",
       "description": "Opportunistic convexity hunting in low-liquidity, OTM markets.",
-      "alloc_pct": 0.10,
-      "max_pos_usd": 15.0,
+      "alloc_pct": 0.1,
+      "max_pos_usd": 15,
       "max_pos_pct": 0.01,
-      "cycle_seconds": 30.0,
-      "min_liquidity": 250.0,
-      "min_volume_24h": 250.0,
+      "cycle_seconds": 30,
+      "min_liquidity": 250,
+      "min_volume_24h": 250,
       "max_spread_cents": 0.03,
-      "whale_price_ceiling": 0.10,
+      "whale_price_ceiling": 0.1,
       "sizing_method": "fixed_unit",
-      "strategies": ["gamma_scalp"]
+      "strategies": [
+        "gamma_scalp"
+      ]
     },
     "SPORTS": {
       "name": "Bookie",
       "description": "Isolated lane for sports arbitrage against real bookmaker odds.",
       "alloc_pct": 0.15,
       "is_overlay": true,
-      "max_pos_usd": 100.0,
+      "max_pos_usd": 100,
       "max_pos_pct": 0.03,
-      "cycle_seconds": 30.0,
-      "min_liquidity": 250.0,
-      "min_volume_24h": 250.0,
+      "cycle_seconds": 30,
+      "min_liquidity": 250,
+      "min_volume_24h": 250,
       "max_spread_pct": 0.15,
       "min_edge": 0.02,
       "allow_no_bets": true,
       "sizing_method": "sports_kelly",
-      "strategies": ["sports_arbitrage"]
+      "strategies": [
+        "sports_arbitrage"
+      ]
     },
     "NEWS": {
       "name": "Injector",
       "description": "Bridge between slow LLM analysis and fast HFT execution.",
       "alloc_pct": 0.05,
       "is_overlay": true,
-      "max_pos_usd": 100.0,
+      "max_pos_usd": 100,
       "max_pos_pct": 0.05,
-      "min_bayes_factor": 3.0,
-      "strong_bayes_factor": 10.0,
+      "min_bayes_factor": 3,
+      "strong_bayes_factor": 10,
       "default_ttl_seconds": 300,
       "resolution_ttl_seconds": 3600,
       "max_injections_per_minute": 20,
       "sizing_method": "news_kelly",
-      "strategies": ["news_sniper"]
+      "strategies": [
+        "news_sniper"
+      ]
     }
   },
-  
   "kelly": {
-    "scaling_factor": 0.25,
-    "min_fraction": 0.10,
-    "max_fraction": 0.50,
+    "scaling_factor": 0.35,
+    "min_fraction": 0.1,
+    "max_fraction": 0.5,
     "utilization_exponent": 1.5,
     "utilization_hard_stop": 0.95,
-    "edge_retention_pct": 0.20,
+    "edge_retention_pct": 0.2,
     "time_penalty_max_days": 90,
-    "time_penalty_floor": 0.50
+    "time_penalty_floor": 0.5
   },
-  
   "exit_strategies": {
     "hft_scalp": {
       "type": "mechanical",
@@ -162,7 +170,7 @@
     },
     "alpha_directional": {
       "type": "complex",
-      "base_tp_pct": 0.30,
+      "base_tp_pct": 0.3,
       "base_sl_pct": 0.15,
       "base_max_hours": 72,
       "use_asset_modifiers": true
@@ -175,15 +183,15 @@
     },
     "gamma_scalp": {
       "type": "whale",
-      "stop_multiple": 0.50,
-      "free_roll_multiple": 2.0,
-      "free_roll_sell_pct": 0.50,
-      "moonbag_multiple": 5.0,
+      "stop_multiple": 0.5,
+      "free_roll_multiple": 2,
+      "free_roll_sell_pct": 0.5,
+      "moonbag_multiple": 5,
       "max_hours": 168
     },
     "sports_arbitrage": {
       "type": "mechanical",
-      "tp_pct": 0.30,
+      "tp_pct": 0.3,
       "sl_pct": 0.25,
       "max_hours": 48
     },
@@ -193,21 +201,20 @@
       "resolution_ttl_seconds": 3600
     }
   },
-  
   "asset_modifiers": {
     "politics": {
       "description": "Trending markets. Momentum matters.",
       "tp_mult": 1.2,
-      "sl_mult": 1.0,
-      "time_mult": 3.0,
+      "sl_mult": 1,
+      "time_mult": 3,
       "use_trailing": true,
       "use_thesis_fail": true
     },
     "finance": {
       "description": "Stable, predictable markets.",
-      "tp_mult": 1.0,
+      "tp_mult": 1,
       "sl_mult": 1.2,
-      "time_mult": 1.0,
+      "time_mult": 1,
       "use_trailing": true,
       "use_thesis_fail": true
     },
@@ -221,7 +228,7 @@
     },
     "sports": {
       "description": "High vol events. Fixed duration.",
-      "tp_mult": 1.0,
+      "tp_mult": 1,
       "sl_mult": 1.5,
       "time_mult": 0.25,
       "use_trailing": false,
@@ -229,58 +236,56 @@
     },
     "entertainment": {
       "description": "Pop culture, viral events.",
-      "tp_mult": 2.0,
+      "tp_mult": 2,
       "sl_mult": 0.8,
-      "time_mult": 2.0,
+      "time_mult": 2,
       "use_trailing": false,
       "use_thesis_fail": false
     },
     "science": {
       "description": "Binary/Lotto outcomes. Long holds.",
-      "tp_mult": 2.0,
+      "tp_mult": 2,
       "sl_mult": 0.5,
-      "time_mult": 5.0,
+      "time_mult": 5,
       "use_trailing": false,
       "use_thesis_fail": false
     },
     "conflict": {
       "description": "Geopolitical events.",
-      "tp_mult": 1.0,
+      "tp_mult": 1,
       "sl_mult": 1.2,
-      "time_mult": 2.0,
+      "time_mult": 2,
       "use_trailing": false,
       "use_thesis_fail": false
     },
     "social": {
       "description": "Social media/tweets.",
       "tp_mult": 1.5,
-      "sl_mult": 1.0,
+      "sl_mult": 1,
       "time_mult": 0.5,
       "use_trailing": true,
       "use_thesis_fail": true
     },
     "default": {
       "description": "Default/Unknown category.",
-      "tp_mult": 1.0,
-      "sl_mult": 1.0,
-      "time_mult": 1.0,
+      "tp_mult": 1,
+      "sl_mult": 1,
+      "time_mult": 1,
       "use_trailing": true,
       "use_thesis_fail": true
     }
   },
-  
   "sector_caps": {
     "politics": 0.25,
-    "sports": 0.30,
-    "crypto": 0.20,
-    "finance": 0.20,
+    "sports": 0.3,
+    "crypto": 0.2,
+    "finance": 0.2,
     "entertainment": 0.15,
     "science": 0.15,
-    "conflict": 0.10,
-    "social": 0.10,
+    "conflict": 0.1,
+    "social": 0.1,
     "unknown": 0.15
   },
-  
   "categories": {
     "_metadata": {
       "description": "Hierarchical category structure for granular P&L, capital allocation, and risk management",
@@ -292,34 +297,114 @@
       "allocation_pct": 0.15,
       "max_position_pct": 0.05,
       "sub_categories": {
-        "basketball": { "allocation_pct": 0.25, "tp_mult": 1.0, "sl_mult": 1.5 },
-        "american-football": { "allocation_pct": 0.25, "tp_mult": 1.0, "sl_mult": 1.5 },
-        "soccer": { "allocation_pct": 0.20, "tp_mult": 1.0, "sl_mult": 1.5 },
-        "mma": { "allocation_pct": 0.10, "tp_mult": 1.2, "sl_mult": 1.3 },
-        "boxing": { "allocation_pct": 0.05, "tp_mult": 1.2, "sl_mult": 1.3 },
-        "tennis": { "allocation_pct": 0.05, "tp_mult": 1.0, "sl_mult": 1.2 },
-        "formula1": { "allocation_pct": 0.03, "tp_mult": 1.0, "sl_mult": 1.2 },
-        "baseball": { "allocation_pct": 0.03, "tp_mult": 1.0, "sl_mult": 1.5 },
-        "ice-hockey": { "allocation_pct": 0.02, "tp_mult": 1.0, "sl_mult": 1.5 },
-        "golf": { "allocation_pct": 0.02, "tp_mult": 1.5, "sl_mult": 1.0 },
-        "esports": { "allocation_pct": 0.10, "tp_mult": 1.5, "sl_mult": 1.0 },
-        "_default": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 }
+        "basketball": {
+          "allocation_pct": 0.25,
+          "tp_mult": 1,
+          "sl_mult": 1.5
+        },
+        "american-football": {
+          "allocation_pct": 0.25,
+          "tp_mult": 1,
+          "sl_mult": 1.5
+        },
+        "soccer": {
+          "allocation_pct": 0.2,
+          "tp_mult": 1,
+          "sl_mult": 1.5
+        },
+        "mma": {
+          "allocation_pct": 0.1,
+          "tp_mult": 1.2,
+          "sl_mult": 1.3
+        },
+        "boxing": {
+          "allocation_pct": 0.05,
+          "tp_mult": 1.2,
+          "sl_mult": 1.3
+        },
+        "tennis": {
+          "allocation_pct": 0.05,
+          "tp_mult": 1,
+          "sl_mult": 1.2
+        },
+        "formula1": {
+          "allocation_pct": 0.03,
+          "tp_mult": 1,
+          "sl_mult": 1.2
+        },
+        "baseball": {
+          "allocation_pct": 0.03,
+          "tp_mult": 1,
+          "sl_mult": 1.5
+        },
+        "ice-hockey": {
+          "allocation_pct": 0.02,
+          "tp_mult": 1,
+          "sl_mult": 1.5
+        },
+        "golf": {
+          "allocation_pct": 0.02,
+          "tp_mult": 1.5,
+          "sl_mult": 1
+        },
+        "esports": {
+          "allocation_pct": 0.1,
+          "tp_mult": 1.5,
+          "sl_mult": 1
+        },
+        "_default": {
+          "allocation_pct": 0.1,
+          "tp_mult": 1,
+          "sl_mult": 1
+        }
       }
     },
     "crypto": {
       "label": "Crypto",
       "lane": "ALPHA",
-      "allocation_pct": 0.20,
+      "allocation_pct": 0.2,
       "max_position_pct": 0.03,
       "sub_categories": {
-        "btc": { "allocation_pct": 0.40, "tp_mult": 1.5, "sl_mult": 1.5 },
-        "eth": { "allocation_pct": 0.25, "tp_mult": 1.5, "sl_mult": 1.5 },
-        "altcoin": { "allocation_pct": 0.10, "tp_mult": 2.0, "sl_mult": 1.2 },
-        "defi": { "allocation_pct": 0.15, "tp_mult": 2.0, "sl_mult": 1.0 },
-        "nft": { "allocation_pct": 0.05, "tp_mult": 2.0, "sl_mult": 0.8 },
-        "meme": { "allocation_pct": 0.03, "tp_mult": 3.0, "sl_mult": 0.5 },
-        "exchange": { "allocation_pct": 0.02, "tp_mult": 1.5, "sl_mult": 1.0 },
-        "_default": { "allocation_pct": 0.05, "tp_mult": 1.5, "sl_mult": 1.5 }
+        "btc": {
+          "allocation_pct": 0.4,
+          "tp_mult": 1.5,
+          "sl_mult": 1.5
+        },
+        "eth": {
+          "allocation_pct": 0.25,
+          "tp_mult": 1.5,
+          "sl_mult": 1.5
+        },
+        "altcoin": {
+          "allocation_pct": 0.1,
+          "tp_mult": 2,
+          "sl_mult": 1.2
+        },
+        "defi": {
+          "allocation_pct": 0.15,
+          "tp_mult": 2,
+          "sl_mult": 1
+        },
+        "nft": {
+          "allocation_pct": 0.05,
+          "tp_mult": 2,
+          "sl_mult": 0.8
+        },
+        "meme": {
+          "allocation_pct": 0.03,
+          "tp_mult": 3,
+          "sl_mult": 0.5
+        },
+        "exchange": {
+          "allocation_pct": 0.02,
+          "tp_mult": 1.5,
+          "sl_mult": 1
+        },
+        "_default": {
+          "allocation_pct": 0.05,
+          "tp_mult": 1.5,
+          "sl_mult": 1.5
+        }
       }
     },
     "politics": {
@@ -328,22 +413,54 @@
       "allocation_pct": 0.25,
       "max_position_pct": 0.05,
       "sub_categories": {
-        "us-politics": { "allocation_pct": 0.70, "tp_mult": 1.2, "sl_mult": 1.0 },
-        "uk-politics": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 },
-        "international-politics": { "allocation_pct": 0.20, "tp_mult": 1.0, "sl_mult": 1.2 },
-        "_default": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 }
+        "us-politics": {
+          "allocation_pct": 0.7,
+          "tp_mult": 1.2,
+          "sl_mult": 1
+        },
+        "uk-politics": {
+          "allocation_pct": 0.1,
+          "tp_mult": 1,
+          "sl_mult": 1
+        },
+        "international-politics": {
+          "allocation_pct": 0.2,
+          "tp_mult": 1,
+          "sl_mult": 1.2
+        },
+        "_default": {
+          "allocation_pct": 0.1,
+          "tp_mult": 1,
+          "sl_mult": 1
+        }
       }
     },
     "economics": {
       "label": "Economics",
       "lane": "ALPHA",
-      "allocation_pct": 0.20,
+      "allocation_pct": 0.2,
       "max_position_pct": 0.05,
       "sub_categories": {
-        "macro": { "allocation_pct": 0.50, "tp_mult": 1.0, "sl_mult": 1.2 },
-        "markets": { "allocation_pct": 0.30, "tp_mult": 1.0, "sl_mult": 1.0 },
-        "commodities": { "allocation_pct": 0.20, "tp_mult": 1.2, "sl_mult": 1.0 },
-        "_default": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 }
+        "macro": {
+          "allocation_pct": 0.5,
+          "tp_mult": 1,
+          "sl_mult": 1.2
+        },
+        "markets": {
+          "allocation_pct": 0.3,
+          "tp_mult": 1,
+          "sl_mult": 1
+        },
+        "commodities": {
+          "allocation_pct": 0.2,
+          "tp_mult": 1.2,
+          "sl_mult": 1
+        },
+        "_default": {
+          "allocation_pct": 0.1,
+          "tp_mult": 1,
+          "sl_mult": 1
+        }
       }
     },
     "science-tech": {
@@ -352,26 +469,74 @@
       "allocation_pct": 0.05,
       "max_position_pct": 0.03,
       "sub_categories": {
-        "ai": { "allocation_pct": 0.40, "tp_mult": 2.0, "sl_mult": 0.5 },
-        "space": { "allocation_pct": 0.30, "tp_mult": 2.0, "sl_mult": 0.5 },
-        "health": { "allocation_pct": 0.15, "tp_mult": 1.5, "sl_mult": 1.0 },
-        "climate": { "allocation_pct": 0.10, "tp_mult": 2.0, "sl_mult": 0.5 },
-        "cybersecurity": { "allocation_pct": 0.05, "tp_mult": 1.5, "sl_mult": 1.0 },
-        "_default": { "allocation_pct": 0.10, "tp_mult": 1.5, "sl_mult": 1.0 }
+        "ai": {
+          "allocation_pct": 0.4,
+          "tp_mult": 2,
+          "sl_mult": 0.5
+        },
+        "space": {
+          "allocation_pct": 0.3,
+          "tp_mult": 2,
+          "sl_mult": 0.5
+        },
+        "health": {
+          "allocation_pct": 0.15,
+          "tp_mult": 1.5,
+          "sl_mult": 1
+        },
+        "climate": {
+          "allocation_pct": 0.1,
+          "tp_mult": 2,
+          "sl_mult": 0.5
+        },
+        "cybersecurity": {
+          "allocation_pct": 0.05,
+          "tp_mult": 1.5,
+          "sl_mult": 1
+        },
+        "_default": {
+          "allocation_pct": 0.1,
+          "tp_mult": 1.5,
+          "sl_mult": 1
+        }
       }
     },
     "entertainment": {
       "label": "Entertainment",
       "lane": "ALPHA",
-      "allocation_pct": 0.10,
+      "allocation_pct": 0.1,
       "max_position_pct": 0.03,
       "sub_categories": {
-        "media": { "allocation_pct": 0.30, "tp_mult": 2.0, "sl_mult": 0.8 },
-        "film": { "allocation_pct": 0.25, "tp_mult": 2.0, "sl_mult": 0.8 },
-        "tv": { "allocation_pct": 0.15, "tp_mult": 2.0, "sl_mult": 0.8 },
-        "music": { "allocation_pct": 0.15, "tp_mult": 2.0, "sl_mult": 0.8 },
-        "gaming": { "allocation_pct": 0.15, "tp_mult": 1.5, "sl_mult": 1.0 },
-        "_default": { "allocation_pct": 0.10, "tp_mult": 1.5, "sl_mult": 1.0 }
+        "media": {
+          "allocation_pct": 0.3,
+          "tp_mult": 2,
+          "sl_mult": 0.8
+        },
+        "film": {
+          "allocation_pct": 0.25,
+          "tp_mult": 2,
+          "sl_mult": 0.8
+        },
+        "tv": {
+          "allocation_pct": 0.15,
+          "tp_mult": 2,
+          "sl_mult": 0.8
+        },
+        "music": {
+          "allocation_pct": 0.15,
+          "tp_mult": 2,
+          "sl_mult": 0.8
+        },
+        "gaming": {
+          "allocation_pct": 0.15,
+          "tp_mult": 1.5,
+          "sl_mult": 1
+        },
+        "_default": {
+          "allocation_pct": 0.1,
+          "tp_mult": 1.5,
+          "sl_mult": 1
+        }
       }
     },
     "geopolitics": {
@@ -380,12 +545,36 @@
       "allocation_pct": 0.05,
       "max_position_pct": 0.03,
       "sub_categories": {
-        "conflict": { "allocation_pct": 0.30, "tp_mult": 1.0, "sl_mult": 1.2 },
-        "middle-east": { "allocation_pct": 0.25, "tp_mult": 1.0, "sl_mult": 1.2 },
-        "ukraine": { "allocation_pct": 0.20, "tp_mult": 1.0, "sl_mult": 1.2 },
-        "europe": { "allocation_pct": 0.15, "tp_mult": 1.0, "sl_mult": 1.0 },
-        "asia": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 },
-        "_default": { "allocation_pct": 0.10, "tp_mult": 1.0, "sl_mult": 1.0 }
+        "conflict": {
+          "allocation_pct": 0.3,
+          "tp_mult": 1,
+          "sl_mult": 1.2
+        },
+        "middle-east": {
+          "allocation_pct": 0.25,
+          "tp_mult": 1,
+          "sl_mult": 1.2
+        },
+        "ukraine": {
+          "allocation_pct": 0.2,
+          "tp_mult": 1,
+          "sl_mult": 1.2
+        },
+        "europe": {
+          "allocation_pct": 0.15,
+          "tp_mult": 1,
+          "sl_mult": 1
+        },
+        "asia": {
+          "allocation_pct": 0.1,
+          "tp_mult": 1,
+          "sl_mult": 1
+        },
+        "_default": {
+          "allocation_pct": 0.1,
+          "tp_mult": 1,
+          "sl_mult": 1
+        }
       }
     },
     "default": {
@@ -394,11 +583,14 @@
       "allocation_pct": 0.05,
       "max_position_pct": 0.02,
       "sub_categories": {
-        "_default": { "allocation_pct": 1.0, "tp_mult": 1.0, "sl_mult": 1.0 }
+        "_default": {
+          "allocation_pct": 1,
+          "tp_mult": 1,
+          "sl_mult": 1
+        }
       }
     }
   },
-  
   "tag_library_sync": {
     "enabled": true,
     "sync_interval_minutes": 60,
